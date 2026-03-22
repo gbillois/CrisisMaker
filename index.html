@@ -8,7 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Georgia&family=Lora:wght@400;700&family=Source+Sans+3:wght@400;600;700&family=Noto+Sans:wght@400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=UnifrakturMaguntia&family=Libre+Baskerville:wght@400;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;700&family=Noto+Sans:wght@400;700&family=DM+Serif+Display&family=Lora:wght@400;700&family=Source+Sans+3:wght@400;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #f6f8ff;
@@ -371,7 +371,12 @@
     .tweet-metrics, .tweet-actions { display: flex; justify-content: space-between; color: #536471; font-size: 13px; }
     .tweet-divider { border-top: 1px solid #eff3f4; margin: 14px 0; }
 
-    .press-article { width: 700px; background: #fff; padding-bottom: 28px; }
+    .press-article { width: 720px; background: #fff; }
+    .press-photo { background: linear-gradient(135deg, #d6dde6 0%, #b2bcc9 100%); position: relative; overflow: hidden; }
+    .press-photo::after { content: ""; position: absolute; inset: 18px; border: 1px solid rgba(255,255,255,0.32); border-radius: 6px; }
+    .press-content a { text-decoration: underline; }
+
+    .lm-article { width: 700px; padding-bottom: 28px; }
     .lm-header { border-bottom: 1px solid #dde3ea; padding: 18px 26px 14px; }
     .lm-logo { font-family: Lora, Georgia, serif; font-size: 42px; font-weight: 700; text-align: center; color: #10243f; }
     .lm-nav { display: flex; justify-content: center; gap: 18px; font-size: 13px; color: #384a5c; margin-top: 10px; }
@@ -381,11 +386,127 @@
     .press-headline { font-family: Lora, Georgia, serif; font-size: 32px; line-height: 1.15; margin: 12px 0; color: #1a1a1a; }
     .press-subheadline { font-family: Georgia, serif; font-size: 20px; line-height: 1.45; color: #404040; margin-bottom: 20px; }
     .press-byline { display: flex; justify-content: space-between; gap: 20px; color: #536471; font-size: 14px; padding-bottom: 18px; border-bottom: 1px solid #ebeff4; }
-    .press-photo { height: 260px; background: linear-gradient(135deg, #c6d5e5, #8fa4c4); border-radius: 14px; margin: 24px 0 10px; position: relative; overflow: hidden; }
-    .press-photo::after { content: ""; position: absolute; inset: 18px; border: 1px solid rgba(255,255,255,0.25); border-radius: 10px; }
+    .lm-article .press-photo { height: 260px; border-radius: 14px; margin: 24px 0 10px; }
     .press-caption { font-size: 13px; color: #5f6b7a; margin-bottom: 18px; }
     .press-content { font-family: Georgia, serif; font-size: 18px; line-height: 1.6; color: #202020; }
     .press-content p { margin: 0 0 18px; }
+
+    .nyt-article { width: 720px; padding: 0 0 40px; color: #121212; }
+    .nyt-rail { border-top: 1px solid #dfdfdf; border-bottom: 1px solid #dfdfdf; padding: 10px 28px 12px; }
+    .nyt-masthead-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+    .nyt-date { font: 12px/1.4 Arial, Helvetica, sans-serif; color: #555; }
+    .nyt-masthead { text-align: center; font-family: 'UnifrakturMaguntia', serif; font-size: 30px; line-height: 1; color: #000; }
+    .nyt-nav { justify-self: end; font: 11px/1.3 'Arial Narrow', Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: #333; }
+    .nyt-nav span { color: #bbb; margin: 0 5px; }
+    .nyt-divider { border-top: 1px solid #dfdfdf; margin-top: 10px; }
+    .nyt-body { width: 600px; margin: 0 auto; padding-top: 28px; }
+    .nyt-category { font: 12px/1.4 Arial, Helvetica, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #666; }
+    .nyt-headline { font-family: 'Playfair Display', 'Noto Serif', Georgia, serif; font-size: 36px; line-height: 1.15; font-weight: 700; margin: 14px 0 0; }
+    .nyt-subheadline { font-family: Georgia, serif; font-size: 19px; line-height: 1.4; color: #333; margin-top: 14px; }
+    .nyt-photo { height: 400px; margin: 26px 0 10px; border-radius: 2px; }
+    .nyt-caption { font: 12px/1.5 Arial, Helvetica, sans-serif; color: #666; }
+    .nyt-byline { display: grid; gap: 8px; margin-top: 22px; font-family: Arial, Helvetica, sans-serif; }
+    .nyt-author { font-size: 14px; font-weight: 700; color: #121212; }
+    .nyt-author span { font-weight: 400; }
+    .nyt-date-line { font-size: 14px; color: #666; }
+    .nyt-actions { display: flex; gap: 16px; align-items: center; padding: 14px 0; margin: 18px 0 24px; border-top: 1px solid #dfdfdf; border-bottom: 1px solid #dfdfdf; color: #666; }
+    .nyt-actions svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.75; }
+    .nyt-content { font-family: Georgia, serif; font-size: 20px; line-height: 1.7; color: #333; }
+    .nyt-content p { margin: 0 0 20px; }
+    .nyt-content a { color: #326891; }
+
+    .faz-article { width: 760px; padding-bottom: 36px; }
+    .faz-header { background: #324055; color: #fff; padding: 0 40px; }
+    .faz-header-top { height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .faz-brand { display: flex; align-items: baseline; gap: 12px; }
+    .faz-logo { font-family: Inter, sans-serif; font-size: 20px; font-weight: 700; letter-spacing: 0.15em; }
+    .faz-title { font-family: Inter, sans-serif; font-size: 14px; letter-spacing: 0.05em; }
+    .faz-date { font-family: Inter, sans-serif; font-size: 12px; }
+    .faz-nav { background: #fff; border-bottom: 1px solid #d6d6d6; padding: 13px 40px; font: 13px/1.4 Inter, 'Source Sans 3', sans-serif; color: #324055; display: flex; gap: 20px; flex-wrap: wrap; }
+    .faz-nav .active { border-bottom: 2px solid #324055; padding-bottom: 6px; }
+    .faz-body { width: 680px; margin: 0 auto; padding-top: 26px; }
+    .faz-kicker-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .faz-kicker { font: 600 13px/1.4 Inter, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: #324055; }
+    .faz-content-type { font: 12px/1.4 Inter, sans-serif; color: #324055; }
+    .faz-content-type.comment { font-style: italic; }
+    .faz-fplus { display: inline-flex; align-items: center; justify-content: center; background: #324055; color: #fff; border-radius: 2px; padding: 2px 6px; font: 700 11px/1 Inter, sans-serif; }
+    .faz-headline { font-family: 'Libre Baskerville', 'Noto Serif', Georgia, serif; font-size: 32px; line-height: 1.2; color: #1a1a1a; margin: 0; }
+    .faz-subheadline { font-family: 'Libre Baskerville', Georgia, serif; font-size: 17px; line-height: 1.35; color: #555; font-style: italic; margin: 12px 0 0; }
+    .faz-photo { height: 400px; margin: 24px 0 10px; }
+    .faz-caption { font-size: 12px; line-height: 1.4; color: #666; margin-bottom: 20px; }
+    .faz-byline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px solid #d6d6d6; font-family: Inter, sans-serif; font-size: 13px; }
+    .faz-author { color: #324055; }
+    .faz-datetime { color: #888; }
+    .faz-content { padding-top: 22px; font-family: 'Libre Baskerville', Merriweather, Georgia, serif; font-size: 17px; line-height: 1.7; color: #1a1a1a; text-align: justify; }
+    .faz-content p { margin: 0 0 16px; }
+    .faz-content p:first-child::first-letter { float: left; color: #324055; font-size: 3.1em; line-height: 0.95; padding-right: 8px; font-weight: 700; }
+    .faz-content a { color: #324055; }
+
+    .ft-article { width: 740px; background: #fff1e0; color: #1a1a1a; padding: 0 0 38px; }
+    .ft-header { padding: 22px 40px 14px; }
+    .ft-top { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+    .ft-logo { font-family: 'Playfair Display', 'DM Serif Display', Georgia, serif; font-size: 28px; font-weight: 700; }
+    .ft-nav { font: 13px/1.4 'Noto Sans', 'Source Sans 3', sans-serif; color: #333; display: flex; gap: 18px; flex-wrap: wrap; }
+    .ft-separator { border-top: 1px solid #ccc1b7; margin-top: 16px; }
+    .ft-body { width: 660px; margin: 0 auto; padding-top: 26px; }
+    .ft-kicker-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .ft-category { font: 12px/1.4 'Noto Sans', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #0d7680; }
+    .ft-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font: 700 10px/1.3 'Noto Sans', sans-serif; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ft-badge.analysis { background: #0d7680; }
+    .ft-badge.exclusive { background: #990f3d; }
+    .ft-badge.opinion { background: #262a33; }
+    .ft-headline { font-family: 'Playfair Display', 'DM Serif Display', Georgia, serif; font-size: 36px; line-height: 1.15; margin: 14px 0 0; max-width: 620px; }
+    .ft-subheadline { font-family: Lora, Merriweather, Georgia, serif; font-size: 18px; font-style: italic; line-height: 1.35; color: #333; margin-top: 14px; }
+    .ft-photo { height: 380px; margin: 24px 0 10px; }
+    .ft-caption { font-size: 12px; color: #666; line-height: 1.45; }
+    .ft-byline { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid #ccc1b7; margin-top: 18px; font-family: 'Noto Sans', sans-serif; }
+    .ft-author { font-size: 14px; font-weight: 700; }
+    .ft-author em { font-style: italic; font-weight: 400; }
+    .ft-datetime { font-size: 14px; color: #666; }
+    .ft-premium { display: flex; align-items: center; gap: 6px; margin-top: 10px; font: 11px/1.4 'Noto Sans', sans-serif; color: #990f3d; }
+    .ft-premium svg { width: 12px; height: 12px; fill: currentColor; }
+    .ft-content { padding-top: 22px; font-family: Lora, Merriweather, Georgia, serif; font-size: 18px; line-height: 1.65; color: #333; }
+    .ft-content p { margin: 0 0 18px; }
+    .ft-content a { color: #0d7680; }
+
+    .reddit-page { width: 780px; background: #dae0e6; padding: 20px; font-family: 'IBM Plex Sans', 'Noto Sans', sans-serif; }
+    .reddit-header { height: 48px; background: #fff; border-bottom: 1px solid #edeff1; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-radius: 8px 8px 0 0; }
+    .reddit-logo { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1a1a1b; }
+    .reddit-logo-mark { width: 18px; height: 18px; border-radius: 50%; background: #ff4500; position: relative; }
+    .reddit-logo-mark::before { content: ""; position: absolute; width: 8px; height: 2px; background: #fff; border-radius: 999px; top: 8px; left: 5px; }
+    .reddit-search { flex: 1; min-width: 0; background: #f6f7f8; border-radius: 20px; padding: 8px 14px; color: #787c7e; font-size: 13px; }
+    .reddit-card { margin: 14px auto 0; max-width: 740px; background: #fff; border: 1px solid #ccc; border-radius: 4px; display: grid; grid-template-columns: 40px 1fr; overflow: hidden; }
+    .reddit-votes { background: #f8f9fa; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0; color: #878a8c; }
+    .reddit-votes svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .reddit-votes .upvote { color: #ff4500; }
+    .reddit-score { font-size: 12px; font-weight: 700; color: #1a1a1b; }
+    .reddit-main { padding: 10px 12px 12px; }
+    .reddit-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: #787c7e; }
+    .reddit-sub-icon { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 700; }
+    .reddit-sub-name { color: #1a1a1b; font-weight: 700; }
+    .reddit-author-flair, .reddit-comment-flair { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 600; }
+    .reddit-post-flair { display: inline-flex; align-items: center; border-radius: 2px; padding: 2px 8px; font-size: 12px; font-weight: 700; color: #fff; margin-top: 10px; }
+    .reddit-title { font-size: 18px; font-weight: 500; line-height: 1.3; color: #1a1a1b; margin: 8px 0; }
+    .reddit-body { font-family: 'Noto Sans', sans-serif; font-size: 14px; line-height: 1.5; color: #1c1c1c; max-height: 250px; overflow: hidden; position: relative; }
+    .reddit-body.truncated::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 100%); }
+    .reddit-readmore { color: #0079d3; font-size: 13px; font-weight: 600; margin-top: 6px; }
+    .reddit-link-preview { border: 1px solid #edeff1; border-radius: 4px; background: #f6f7f8; padding: 12px; margin: 10px 0 0; }
+    .reddit-link-domain { font-size: 12px; color: #787c7e; }
+    .reddit-awards { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .award-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #6b7280; }
+    .award-icon { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+    .award-icon.gold { background: #ffd700; color: #805a00; }
+    .award-icon.silver { background: #c0c0c0; color: #4b5563; }
+    .award-icon.helpful { background: #ff4500; color: #fff; }
+    .reddit-ratio { font-size: 12px; color: #787c7e; }
+    .reddit-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; font-weight: 700; color: #878a8c; }
+    .reddit-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 2px; }
+    .reddit-action svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .reddit-comment { max-width: 740px; margin: 8px auto 0; background: #fff; border-left: 2px solid #ff4500; padding: 12px 14px 12px 16px; border-radius: 0 4px 4px 0; }
+    .reddit-comment-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: #787c7e; }
+    .reddit-comment-author { color: #1a1a1b; font-weight: 700; }
+    .reddit-comment-text { font-family: 'Noto Sans', sans-serif; font-size: 14px; line-height: 1.5; color: #1c1c1c; margin-top: 8px; }
+    .reddit-comment-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 10px; font-weight: 700; color: #878a8c; }
 
     .linkedin-card { width: 555px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     .li-header { display: flex; gap: 12px; }
@@ -496,9 +617,82 @@
         breaking_news_tv: { label: 'Breaking News TV', color: '#dc2626', category: 'TV' },
         post_twitter: { label: 'X/Twitter post', color: '#16a34a', category: 'Social' },
         post_linkedin: { label: 'LinkedIn post', color: '#0a66c2', category: 'Social' },
+        post_reddit: { label: 'Reddit post', color: '#ff4500', category: 'Social' },
         press_release: { label: 'Press release', color: '#7c3aed', category: 'Corporate' },
         sms_notification: { label: 'SMS / Notification', color: '#f59e0b', category: 'Mobile' },
         internal_memo: { label: 'Internal memo', color: '#4b5563', category: 'Corporate' }
+      };
+
+      const ARTICLE_TEMPLATE_LIBRARY = {
+        lemonde: {
+          label: 'Le Monde',
+          template_id: 'lemonde',
+          defaults: {
+            headline: 'A massive cyberattack cripples Group X',
+            subheadline: 'IT systems have been degraded since early morning as initial investigations point to a sophisticated intrusion.',
+            author: 'By John Carter',
+            date: 'March 15, 2026 at 10:42 AM',
+            category: 'Pixels',
+            body: '<p>Group X confirmed on Saturday that it is facing a major cyber incident that forced several internal applications and production services offline. Security teams are still investigating to determine the exact scope of the compromise.</p><p>According to several sources close to the matter, the company assembled a crisis cell before dawn bringing together executive leadership, IT, security, communications, and external advisers. Part of the internal coordination has now moved to backup channels.</p><p>"The absolute priority remains continuity of critical activities and protection of data," a spokesperson said. No timeline for full recovery has been announced yet.</p><p>The event highlights the persistent vulnerability of large enterprises to attack chains that combine initial compromise, lateral movement, and opportunistic encryption. Authorities could be notified quickly if personal data is confirmed to be affected.</p>',
+            image_caption: 'Group X headquarters.',
+            read_time: '3 min read',
+            is_premium: false
+          },
+          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Standfirst', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('category', 'Section', 'text'), field('read_time', 'Read time', 'text'), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+        },
+        nyt: {
+          label: 'The New York Times',
+          template_id: 'nyt',
+          defaults: {
+            headline: 'Major Cyberattack Cripples European Financial Services Giant',
+            subheadline: 'Hackers are believed to have used ransomware to lock thousands of systems across multiple countries.',
+            author: 'By Nicole Perlroth and David E. Sanger',
+            date: 'March 15, 2026',
+            update_time: 'Updated 2:47 p.m. ET',
+            category: 'Technology',
+            body: '<p>PARIS — A major cyberattack on Group X disrupted online banking, trading support and back-office operations across several European markets on Sunday, according to company executives and advisers briefed on the response.</p><p>The company said it had isolated affected systems and shifted some critical processes to contingency procedures while investigators examined whether the attackers had exfiltrated data before deploying ransomware.</p><p>“The first priority is to preserve critical services while understanding the full scope of the compromise,” said Elise Warren, a cybersecurity analyst at Delta Advisory.</p><p>The breach is likely to intensify scrutiny of how large financial institutions are preparing for the new DORA resilience rules as regulators press banks to demonstrate they can withstand prolonged digital disruption.</p>',
+            image_caption: 'The company\'s European headquarters outside Paris. Credit: Thomas Samson/AFP',
+            read_time: '5 min read',
+            is_premium: false,
+            location: 'PARIS'
+          },
+          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('update_time', 'Update time', 'text'), field('category', 'Category', 'text'), field('location', 'Location', 'text'), field('read_time', 'Read time', 'text'), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+        },
+        faz: {
+          label: 'Frankfurter Allgemeine Zeitung',
+          template_id: 'faz',
+          defaults: {
+            kicker: 'Cyberangriff',
+            headline: 'Großangriff auf Europas Finanzinfrastruktur legt Systeme lahm',
+            subheadline: 'Die Attacke wirft Fragen zur digitalen Widerstandsfähigkeit des Bankensektors auf.',
+            author: 'Von Hans Müller, Frankfurt',
+            date: '15.03.2026',
+            time: '10:42 Uhr',
+            category: 'Wirtschaft',
+            body: '<p>Ein groß angelegter Cyberangriff hat am Sonntag wesentliche Systeme des Finanzdienstleisters Group X in mehreren europäischen Ländern beeinträchtigt und damit Transaktionen, interne Steuerungsprozesse sowie Teile des Kundenservices vorübergehend lahmgelegt.</p><p>Nach Angaben aus dem Umfeld des Unternehmens arbeiten externe Forensiker und interne Spezialisten daran, die Angriffskette zu rekonstruieren. Im Mittelpunkt steht die Frage, ob die Täter vor der Verschlüsselung zunächst Daten abgeflossen ließen, um zusätzlichen Druck aufzubauen.</p><p>„Entscheidend ist nun, welche kritischen Funktionen unter Notfallbedingungen aufrechterhalten werden können und wie sauber die Trennung der betroffenen Netze tatsächlich war“, sagte eine mit dem Vorgang vertraute BSI-nahe Expertin.</p><p>Der Vorfall dürfte auch deshalb besondere Aufmerksamkeit erregen, weil mit DORA und NIS2 der regulatorische Erwartungsdruck auf Finanzunternehmen deutlich steigt. Für Investoren ist relevant, ob die Störung auf Handels- und Abwicklungsprozesse durchschlägt und wie lange die manuelle Überbrückung tragfähig bleibt.</p>',
+            image_caption: 'Das Rechenzentrum der Bank in Frankfurt. Bild: dpa',
+            is_faz_plus: true,
+            content_type: 'Bericht'
+          },
+          fields: [field('kicker', 'Kicker', 'text'), field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('time', 'Time', 'text'), field('category', 'Category', 'text'), field('content_type', 'Content type', 'select', { options: ['Bericht', 'Analyse', 'Kommentar'] }), field('is_faz_plus', 'F+ article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+        },
+        ft: {
+          label: 'Financial Times',
+          template_id: 'ft',
+          defaults: {
+            headline: 'European bank hit by major cyber attack as hackers demand ransom',
+            subheadline: 'Incident raises fresh questions about financial sector resilience.',
+            author: 'Hannah Murphy and Robert Smith in London',
+            date: 'March 15 2026',
+            time: '2:47 pm GMT',
+            category: 'Cyber Security',
+            body: '<p>Group X, a large European financial services company, was hit by a significant cyber attack on Sunday that disrupted customer-facing services and several internal processing systems, according to people familiar with the response.</p><p>The company has moved parts of its operations on to contingency arrangements while investigators assess whether the attackers stole data before deploying ransomware. The incident has already prompted outreach from supervisors and critical suppliers.</p><p>“The market focus will be on operational resilience rather than the immediate ransom demand,” said one London-based cyber insurance adviser, noting that prolonged outages could quickly become a conduct and liquidity issue.</p><p>The episode is likely to sharpen attention on DORA implementation and on whether large institutions can sustain core processes when a compromise affects multiple jurisdictions at the same time.</p>',
+            image_caption: 'Operations teams switched several processes to contingency mode on Sunday.',
+            is_premium: true,
+            content_type: 'News'
+          },
+          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('time', 'Time', 'text'), field('category', 'Category', 'text'), field('content_type', 'Content type', 'select', { options: ['News', 'Analysis', 'Opinion', 'Exclusive'] }), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+        }
       };
 
       const TEMPLATE_LIBRARY = {
@@ -517,25 +711,13 @@
             attachment_name: 'Rapport_incident_v1.pdf',
             importance: 'high'
           },
-          fields: [
-            field('from_name', 'Sender', 'text'), field('from_email', 'Sender email', 'text'), field('to', 'To', 'text'), field('cc', 'Cc', 'text'), field('subject', 'Subject', 'text'), field('date', 'Date', 'text'), field('importance', 'Importance', 'select', { options: ['high', 'normal'] }), field('has_attachment', 'Attachment', 'checkbox'), field('attachment_name', 'Attachment name', 'text'), field('body', 'HTML body', 'textarea')
-          ]
+          fields: [field('from_name', 'Sender', 'text'), field('from_email', 'Sender email', 'text'), field('to', 'To', 'text'), field('cc', 'Cc', 'text'), field('subject', 'Subject', 'text'), field('date', 'Date', 'text'), field('importance', 'Importance', 'select', { options: ['high', 'normal'] }), field('has_attachment', 'Attachment', 'checkbox'), field('attachment_name', 'Attachment name', 'text'), field('body', 'HTML body', 'textarea')]
         },
         article_press: {
           label: 'Press article',
-          template_id: 'lemonde',
-          defaults: {
-            headline: 'A massive cyberattack cripples Group X',
-            subheadline: 'IT systems have been degraded since early morning as initial investigations point to a sophisticated intrusion.',
-            author: 'By John Carter',
-            date: 'March 15, 2026 at 10:42 AM',
-            category: 'Pixels',
-            body: '<p>Group X confirmed on Saturday that it is facing a major cyber incident that forced several internal applications and production services offline. Security teams are still investigating to determine the exact scope of the compromise.</p><p>According to several sources close to the matter, the company assembled a crisis cell before dawn bringing together executive leadership, IT, security, communications, and external advisers. Part of the internal coordination has now moved to backup channels.</p><p>"The absolute priority remains continuity of critical activities and protection of data," a spokesperson said. No timeline for full recovery has been announced yet.</p><p>The event highlights the persistent vulnerability of large enterprises to attack chains that combine initial compromise, lateral movement, and opportunistic encryption. Authorities could be notified quickly if personal data is confirmed to be affected.</p>',
-            image_caption: 'Group X headquarters.',
-            read_time: '3 min read',
-            is_premium: false
-          },
-          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Standfirst', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('category', 'Section', 'text'), field('read_time', 'Read time', 'text'), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+          template_id: 'nyt',
+          defaults: deepClone(ARTICLE_TEMPLATE_LIBRARY.nyt.defaults),
+          fields: ARTICLE_TEMPLATE_LIBRARY.nyt.fields
         },
         post_twitter: {
           label: 'Post X/Twitter',
@@ -574,6 +756,31 @@
             reaction_types: ['👍', '👏', '💡']
           },
           fields: [field('display_name', 'Display name', 'text'), field('title', 'Title', 'text'), field('avatar_initials', 'Avatar initials', 'text'), field('avatar_color', 'Avatar color', 'text'), field('text', 'Text', 'textarea'), field('date', 'Relative date', 'text'), field('reactions_count', 'Reactions', 'number'), field('comments_count', 'Comments', 'number'), field('reposts_count', 'Reposts', 'number'), field('reaction_types', 'Reactions (JSON array)', 'textarea')]
+        },
+        post_reddit: {
+          label: 'Reddit post',
+          template_id: 'reddit',
+          defaults: {
+            subreddit: 'r/cybersecurity',
+            subreddit_icon_color: '#FF4500',
+            author: 'u/threat_intel_analyst',
+            author_flair: 'Incident Responder',
+            flair_color: '#0079D3',
+            post_flair: 'Breaking News',
+            post_flair_color: '#FF0000',
+            title: 'Major European bank confirmed hit by ransomware - systems down across 12 countries',
+            body: '<p>Seeing multiple reports that Group X has invoked incident response and is failing over to contingency processes. If anyone is tracking IOCs tied to the access brokers active in western Europe this weekend, please share what you can confirm.</p><p>Hearing the blast radius includes identity, VDI and some customer service tooling. Curious whether others are seeing the same TTP pattern: initial access, quiet lateral movement, then encryption once backups and admin paths were mapped.</p>',
+            link_url: '',
+            link_domain: '',
+            upvotes: 4823,
+            upvote_ratio: '96% upvoted',
+            comments_count: 847,
+            awards: ['gold', 'silver', 'helpful'],
+            date: '3 hours ago',
+            is_pinned: false,
+            top_comment: { author: 'u/soc_manager_42', flair: 'SOC Lead', text: 'Can confirm one of our clients has started isolating third-party links while waiting for a fuller scope update.', upvotes: 1256, date: '2 hours ago' }
+          },
+          fields: [field('subreddit', 'Subreddit', 'text'), field('subreddit_icon_color', 'Subreddit icon color', 'text'), field('author', 'Author', 'text'), field('author_flair', 'Author flair', 'text'), field('flair_color', 'Author flair color', 'text'), field('post_flair', 'Post flair', 'text'), field('post_flair_color', 'Post flair color', 'text'), field('title', 'Title', 'text'), field('body', 'HTML body', 'textarea'), field('link_url', 'Link URL', 'text'), field('link_domain', 'Link domain', 'text'), field('upvotes', 'Upvotes', 'number'), field('upvote_ratio', 'Upvote ratio', 'text'), field('comments_count', 'Comments', 'number'), field('awards', 'Awards (JSON array)', 'textarea'), field('date', 'Relative date', 'text'), field('is_pinned', 'Pinned post', 'checkbox'), field('top_comment', 'Top comment (JSON object)', 'textarea')]
         },
         breaking_news_tv: {
           label: 'Breaking news banner',
@@ -704,6 +911,7 @@
           breaking_news_tv: ['Breaking News TV', 'Breaking News TV'],
           post_twitter: ['X/Twitter post', 'Post X/Twitter'],
           post_linkedin: ['LinkedIn post', 'Post LinkedIn'],
+          post_reddit: ['Reddit post', 'Post Reddit'],
           press_release: ['Press release', 'Communiqué de presse'],
           sms_notification: ['SMS / Notification', 'SMS / Notification'],
           internal_memo: ['Internal memo', 'Note interne']
@@ -740,6 +948,7 @@
         const samples = [
           makeStimulus('email_internal', actors[1].id, 0),
           makeStimulus('article_press', actors[0].id, 120),
+          makeStimulus('post_reddit', actors[0].id, 130),
           makeStimulus('post_twitter', actors[0].id, 135),
           makeStimulus('breaking_news_tv', actors[0].id, 165),
           makeStimulus('email_authority', actors[2].id, 180),
@@ -801,18 +1010,25 @@
       }
 
       function normalizeStimulus(stimulus) {
-        const library = TEMPLATE_LIBRARY[stimulus.channel] || TEMPLATE_LIBRARY.email_internal;
+        const channel = stimulus.channel || 'email_internal';
+        const templateId = channel === 'article_press' ? (stimulus.template_id || 'nyt') : (stimulus.template_id || (TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal).template_id);
+        const library = getTemplateDefinition({ channel, template_id: templateId }) || TEMPLATE_LIBRARY.email_internal;
         return {
           id: stimulus.id || uid('stimulus'),
           timestamp_offset_minutes: Number(stimulus.timestamp_offset_minutes || 0),
-          channel: stimulus.channel || 'email_internal',
-          template_id: stimulus.template_id || library.template_id,
+          channel,
+          template_id: templateId,
           actor_id: stimulus.actor_id || appState?.scenario?.actors?.[0]?.id || '',
           status: stimulus.status || 'draft',
           fields: { ...deepClone(library.defaults), ...(stimulus.fields || {}) },
           generated_text: stimulus.generated_text || {},
           manual_overrides: stimulus.manual_overrides || {}
         };
+      }
+
+      function getTemplateDefinition(stimulus) {
+        if (stimulus?.channel === 'article_press') return ARTICLE_TEMPLATE_LIBRARY[stimulus.template_id] || ARTICLE_TEMPLATE_LIBRARY.nyt;
+        return TEMPLATE_LIBRARY[stimulus?.channel] || TEMPLATE_LIBRARY.email_internal;
       }
 
       function deepClone(data) {
@@ -1176,7 +1392,7 @@
       }
 
       function renderStimulusEditor(stimulus) {
-        const library = TEMPLATE_LIBRARY[stimulus.channel] || TEMPLATE_LIBRARY.email_internal;
+        const library = getTemplateDefinition(stimulus);
         const actorOptions = appState.scenario.actors.map((actor) => `<option value="${actor.id}" ${stimulus.actor_id === actor.id ? 'selected' : ''}>${escapeHtml(actor.name)} — ${escapeHtml(actor.title)}</option>`).join('');
         return `
           <div class="section-header">
@@ -1194,6 +1410,9 @@
             <label class="field">${tt('Channel', 'Canal')}
               <select data-stimulus-bind="${stimulus.id}.channel">${Object.entries(CHANNEL_META).map(([channel]) => `<option value="${channel}" ${stimulus.channel === channel ? 'selected' : ''}>${channelLabel(channel)}</option>`).join('')}</select>
             </label>
+            ${stimulus.channel === 'article_press' ? `<label class="field">${tt('Press template', 'Template presse')}
+              <select data-stimulus-bind="${stimulus.id}.template_id">${Object.values(ARTICLE_TEMPLATE_LIBRARY).map((template) => `<option value="${template.template_id}" ${stimulus.template_id === template.template_id ? 'selected' : ''}>${escapeHtml(template.label)}</option>`).join('')}</select>
+            </label>` : ''}
             <label class="field">${tt('Source actor', 'Acteur émetteur')}
               <select data-stimulus-bind="${stimulus.id}.actor_id">${actorOptions}</select>
             </label>
@@ -1307,9 +1526,10 @@
           const f = stimulus.fields || {};
           switch (stimulus.channel) {
             case 'email_internal': return this.emailInternal(f);
-            case 'article_press': return this.articleLeMonde(f);
+            case 'article_press': return this.articlePress(stimulus.template_id, f);
             case 'post_twitter': return this.twitter(f);
             case 'post_linkedin': return this.linkedin(f);
+            case 'post_reddit': return this.reddit(f);
             case 'breaking_news_tv': return this.bfm(f);
             case 'email_authority': return this.authority(f);
             case 'press_release': return this.pressRelease(f);
@@ -1340,9 +1560,19 @@
             </div>
           `;
         },
+        articlePress(templateId, f) {
+          switch (templateId) {
+            case 'lemonde': return this.articleLeMonde(f);
+            case 'faz': return this.articleFaz(f);
+            case 'ft': return this.articleFt(f);
+            case 'nyt':
+            default:
+              return this.articleNyt(f);
+          }
+        },
         articleLeMonde(f) {
           return `
-            <article class="press-article">
+            <article class="press-article lm-article">
               <div class="lm-header">
                 <div class="lm-logo">Le Monde</div>
                 <div class="lm-nav"><span>${tt('Politics', 'Politique')}</span><span>${tt('World', 'International')}</span><span>${tt('Business', 'Économie')}</span><span>Pixels</span><span>${tt('Culture', 'Culture')}</span><span>${tt('Opinions', 'Opinions')}</span></div>
@@ -1357,6 +1587,146 @@
                 <div class="press-caption">${escapeHtml(f.image_caption || '')}</div>
                 <div class="press-content">${f.body || ''}</div>
               </div>
+            </article>
+          `;
+        },
+        articleNyt(f) {
+          return `
+            <article class="press-article nyt-article">
+              <div class="nyt-rail">
+                <div class="nyt-masthead-row">
+                  <div class="nyt-date">${escapeHtml(f.date || '')}</div>
+                  <div class="nyt-masthead">The New York Times</div>
+                  <div class="nyt-nav">U.S.<span>|</span>WORLD<span>|</span>BUSINESS<span>|</span>TECHNOLOGY<span>|</span>SCIENCE<span>|</span>CLIMATE<span>|</span>OPINION</div>
+                </div>
+                <div class="nyt-divider"></div>
+              </div>
+              <div class="nyt-body">
+                <div class="nyt-category">${escapeHtml(f.category || '')}</div>
+                <h1 class="nyt-headline">${escapeHtml(f.headline || '')}</h1>
+                <div class="nyt-subheadline">${escapeHtml(f.subheadline || '')}</div>
+                <div class="press-photo nyt-photo"></div>
+                <div class="nyt-caption">${escapeHtml(f.image_caption || '')}</div>
+                <div class="nyt-byline">
+                  <div class="nyt-author"><span>By </span>${escapeHtml(String(f.author || '').replace(/^By\s+/i, ''))}</div>
+                  <div class="nyt-date-line">${escapeHtml(f.date || '')}${f.update_time ? ` · ${escapeHtml(f.update_time)}` : ''}${f.read_time ? ` · ${escapeHtml(f.read_time)}` : ''}</div>
+                </div>
+                <div class="nyt-actions">${iconGift()} ${iconBookmark()} ${iconComment()} ${iconShare()}</div>
+                <div class="nyt-content">${f.body || ''}</div>
+              </div>
+            </article>
+          `;
+        },
+        articleFaz(f) {
+          const typeLabel = f.content_type && f.content_type !== 'Bericht' ? `<span class="faz-content-type ${String(f.content_type).toLowerCase() === 'kommentar' ? 'comment' : ''}">[${escapeHtml(f.content_type)}]</span>` : '';
+          return `
+            <article class="press-article faz-article">
+              <div class="faz-header">
+                <div class="faz-header-top">
+                  <div class="faz-brand"><div class="faz-logo">F.A.Z.</div><div class="faz-title">Frankfurter Allgemeine</div></div>
+                  <div class="faz-date">${escapeHtml(f.date || '')}</div>
+                </div>
+              </div>
+              <div class="faz-nav"><span>Politik</span><span class="active">Wirtschaft</span><span>Finanzen</span><span>Feuilleton</span><span>Sport</span><span>Technik</span><span>Wissen</span></div>
+              <div class="faz-body">
+                <div class="faz-kicker-row">
+                  ${f.kicker ? `<div class="faz-kicker">${escapeHtml(f.kicker)}</div>` : ''}
+                  ${typeLabel}
+                  ${f.is_faz_plus ? '<span class="faz-fplus">F+</span>' : ''}
+                </div>
+                <h1 class="faz-headline">${escapeHtml(f.headline || '')}</h1>
+                <div class="faz-subheadline">${escapeHtml(f.subheadline || '')}</div>
+                <div class="press-photo faz-photo"></div>
+                <div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>
+                <div class="faz-byline"><span class="faz-author">${escapeHtml(f.author || '')}</span><span>·</span><span class="faz-datetime">${escapeHtml(f.date || '')}${f.time ? ` ${escapeHtml(f.time)}` : ''}</span></div>
+                <div class="faz-content">${f.body || ''}</div>
+              </div>
+            </article>
+          `;
+        },
+        articleFt(f) {
+          const type = String(f.content_type || 'News').toLowerCase();
+          const badge = type !== 'news' ? `<span class="ft-badge ${escapeAttribute(type)}">${escapeHtml(f.content_type)}</span>` : '';
+          return `
+            <article class="press-article ft-article">
+              <div class="ft-header">
+                <div class="ft-top">
+                  <div class="ft-logo">Financial Times</div>
+                  <div class="ft-nav"><span>Home</span><span>World</span><span>UK</span><span>Markets</span><span>Climate</span><span>Opinion</span><span>Tech</span></div>
+                </div>
+                <div class="ft-separator"></div>
+              </div>
+              <div class="ft-body">
+                <div class="ft-kicker-row"><div class="ft-category">${escapeHtml(f.category || '')}</div>${badge}</div>
+                <h1 class="ft-headline">${escapeHtml(f.headline || '')}</h1>
+                ${f.subheadline ? `<div class="ft-subheadline">${escapeHtml(f.subheadline)}</div>` : ''}
+                <div class="press-photo ft-photo"></div>
+                ${f.image_caption ? `<div class="ft-caption">${escapeHtml(f.image_caption)}</div>` : ''}
+                <div class="ft-byline">
+                  <div>
+                    <div class="ft-author">${formatFtAuthor(f.author || '')}</div>
+                    ${f.is_premium ? `<div class="ft-premium">${iconLock()}<span>Premium content</span></div>` : ''}
+                  </div>
+                  <div class="ft-datetime">${escapeHtml(f.date || '')}${f.time ? ` · ${escapeHtml(f.time)}` : ''}</div>
+                </div>
+                <div class="ft-content">${f.body || ''}</div>
+              </div>
+            </article>
+          `;
+        },
+        reddit(f) {
+          const awards = parseArrayField(f.awards);
+          const topComment = parseObjectField(f.top_comment);
+          const postBody = String(f.body || '');
+          const hasTextBody = Boolean(postBody.trim());
+          const truncated = postBody.replace(/<[^>]+>/g, '').length > 320;
+          return `
+            <article class="reddit-page">
+              <div class="reddit-header">
+                <div class="reddit-logo"><span class="reddit-logo-mark"></span><span>reddit</span></div>
+                <div class="reddit-search">Search Reddit</div>
+              </div>
+              <div class="reddit-card">
+                <div class="reddit-votes">
+                  ${iconRedditArrow('upvote')}
+                  <div class="reddit-score">${formatMetric(f.upvotes)}</div>
+                  ${iconRedditArrow()}
+                </div>
+                <div class="reddit-main">
+                  <div class="reddit-meta">
+                    <span class="reddit-sub-icon" style="background:${escapeAttribute(f.subreddit_icon_color || '#FF4500')};">${escapeHtml(subredditInitials(f.subreddit || 'r/cybersecurity'))}</span>
+                    <span class="reddit-sub-name">${escapeHtml(f.subreddit || '')}</span>
+                    <span>·</span>
+                    <span>${f.is_pinned ? 'Pinned by moderators' : 'Posted by'}</span>
+                    <span>${escapeHtml(f.author || '')}</span>
+                    ${f.author_flair ? `<span class="reddit-author-flair" style="color:${escapeAttribute(f.flair_color || '#0079D3')};">${escapeHtml(f.author_flair)}</span>` : ''}
+                    <span>·</span>
+                    <span>${escapeHtml(f.date || '')}</span>
+                  </div>
+                  ${f.post_flair ? `<div class="reddit-post-flair" style="background:${escapeAttribute(f.post_flair_color || '#ff4500')};">${escapeHtml(f.post_flair)}</div>` : ''}
+                  <div class="reddit-title">${escapeHtml(f.title || '')}</div>
+                  ${hasTextBody ? `<div class="reddit-body ${truncated ? 'truncated' : ''}">${postBody}</div>${truncated ? `<div class="reddit-readmore">…read more</div>` : ''}` : ''}
+                  ${!hasTextBody && f.link_url ? `<div class="reddit-link-preview"><div class="reddit-link-domain">${escapeHtml(f.link_domain || f.link_url)}</div><div>${escapeHtml(f.link_url)}</div></div>` : ''}
+                  ${(awards.length || f.upvote_ratio) ? `<div class="reddit-awards">${awards.map(renderAward).join('')}${f.upvote_ratio ? `<span class="reddit-ratio">${escapeHtml(f.upvote_ratio)}</span>` : ''}</div>` : ''}
+                  <div class="reddit-actions">
+                    <span class="reddit-action">${iconComment()} <span>${formatMetric(f.comments_count)} Comments</span></span>
+                    <span class="reddit-action">${iconShare()} <span>Share</span></span>
+                    <span class="reddit-action">${iconBookmark()} <span>Save</span></span>
+                    <span class="reddit-action">···</span>
+                  </div>
+                </div>
+              </div>
+              ${topComment && (topComment.text || topComment.author) ? `
+                <div class="reddit-comment" style="border-left-color:${escapeAttribute(f.subreddit_icon_color || '#FF4500')};">
+                  <div class="reddit-comment-meta">
+                    <span class="reddit-comment-author">${escapeHtml(topComment.author || '')}</span>
+                    ${topComment.flair ? `<span class="reddit-comment-flair" style="color:${escapeAttribute(f.flair_color || '#0079D3')};">${escapeHtml(topComment.flair)}</span>` : ''}
+                    <span>·</span>
+                    <span>${escapeHtml(topComment.date || '')}</span>
+                  </div>
+                  <div class="reddit-comment-text">${escapeHtml(topComment.text || '')}</div>
+                  <div class="reddit-comment-actions"><span>▲ ${formatMetric(topComment.upvotes)}</span><span>Reply</span><span>Share</span><span>···</span></div>
+                </div>` : ''}
             </article>
           `;
         },
@@ -1555,11 +1925,19 @@
           };
           const eventDescription = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || 'New development in the cyber crisis';
           switch (stimulus.channel) {
-            case 'article_press':
+            case 'article_press': {
+              const variant = stimulus.template_id || 'nyt';
+              const pressPrompts = {
+                nyt: `You are a New York Times journalist in the ${stimulus.fields.category || 'Technology'} section. Write in American English about a cyber security incident. Scenario: ${common.scenarioSummary}. Event: ${eventDescription}. Timeline: ${common.timestamp}. Instructions: factual headline with no final punctuation, one-sentence subheadline, byline formatted "By Firstname Lastname and Firstname Lastname", body of 4-5 HTML paragraphs in NYT style with the first paragraph summarising who/what/when/where/why, include 1-2 fictional expert or spokesperson quotes, include location in caps if relevant, calm authoritative tone, never mention this is an exercise. Reply only with JSON containing headline, subheadline, author, body, image_caption.`,
+                faz: `Du bist Journalist der Frankfurter Allgemeinen Zeitung, Ressort ${stimulus.fields.category || 'Wirtschaft'}. Du schreibst auf Deutsch über einen Cybersicherheitsvorfall. Kontext: ${common.scenarioSummary}. Ereignis: ${eventDescription}. Zeitpunkt: ${common.timestamp}. Vorgaben: Kicker mit 1-2 Wörtern, sachliche präzise Überschrift im Stil der F.A.Z., Subheadline mit systemischer oder regulatorischer Einordnung, Byline im Format "Von Vorname Nachname, Stadt", 4-5 dichte HTML-Absätze mit langen strukturierten Sätzen, Verweise auf DORA/NIS2/BSI wenn relevant, 1-2 fiktive Zitate, nüchterner analytischer Ton, nie erwähnen, dass es eine Übung ist. Antworte nur mit JSON mit kicker, headline, subheadline, author, body, content_type, image_caption.`,
+                ft: `You are a Financial Times journalist covering ${stimulus.fields.category || 'Cyber Security'}. Write in British English about a cyber security incident. Scenario: ${common.scenarioSummary}. Event: ${eventDescription}. Timeline: ${common.timestamp}. Instructions: factual headline with no final punctuation, analytical subheadline, byline formatted "Firstname Lastname and Firstname Lastname in City", 4-5 HTML paragraphs with concise first paragraph and subsequent financial, regulatory and market context, include 1-2 fictional quotes, sober FT tone, never mention this is an exercise. Reply only with JSON containing headline, subheadline, author, body, content_type, image_caption.`,
+                lemonde: `You are a Le Monde journalist writing in French about a cyber crisis. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Timeline: ${common.timestamp}. Instructions: factual headline, concise standfirst, 3-4 HTML paragraphs, one fictional quote, serious newspaper tone, never mention this is an exercise. Reply only with JSON containing headline, subheadline, author, body, image_caption.`
+              };
               return {
-                systemPrompt: `You are a cybersecurity journalist writing a factual press article about an information security incident. Scenario context: ${common.scenarioSummary}. Event to cover: ${eventDescription}. Timeline point: ${common.timestamp}. Instructions: engaging but factual headline, 2-sentence standfirst, 3-4 HTML paragraphs with <p>, one fictional quote, write in ${common.language}, never mention that this is an exercise. Reply only with JSON containing headline, subheadline, body, image_caption.`,
+                systemPrompt: pressPrompts[variant] || pressPrompts.nyt,
                 userPrompt: fieldName ? `Generate the best possible value for field ${fieldName}, but still answer with JSON containing all expected keys.` : 'Write the full article.'
               };
+            }
             case 'post_twitter':
               return {
                 systemPrompt: `You are ${common.actorName}, ${common.actorTitle}. You are reacting on X/Twitter to a cybersecurity event. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Character role: ${common.actorRole}. Instructions: maximum 280 characters, authentic tone, may include 1-2 hashtags, write in ${common.language}. Reply only with JSON {"text":"..."}.`,
@@ -1570,6 +1948,15 @@
                 systemPrompt: `You are ${common.actorName}, ${common.actorTitle}. You are posting on LinkedIn about a cybersecurity event. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Instructions: 500-1000 characters, professional but engaged tone, structure hook + analysis + perspective, restrained hashtags, write in ${common.language}. Reply only with JSON {"text":"..."}.`,
                 userPrompt: 'Write the LinkedIn post.'
               };
+            case 'post_reddit': {
+              const subreddit = stimulus.fields.subreddit || 'r/cybersecurity';
+              const redditLanguage = /^r\/(france|francais|cybersecurite)$/i.test(subreddit) ? 'French' : 'English';
+              const postType = stimulus.fields.link_url ? 'link' : 'text';
+              return {
+                systemPrompt: `Generate a realistic Reddit post for ${subreddit} about a cyber security incident. Scenario: ${common.scenarioSummary}. Event: ${eventDescription}. Simulated author: ${common.actorName}, ${common.actorTitle}. Post type: ${postType}. Instructions: catchy but informative title, ${postType === 'text' ? '100-300 words of authentic Reddit-style HTML body with community-specific tone, optional technical acronyms, questions or field observations.' : 'no body text, title should summarise the linked article.'} Pick a relevant post flair such as Breaking News, Threat Intel, Discussion or Incident Response. Language must be ${redditLanguage}. If a top comment is needed, include an informal complementary comment with author and flair. Never mention this is an exercise. Reply only with JSON containing title, body, post_flair, top_comment.`,
+                userPrompt: fieldName ? `Improve field ${fieldName} while keeping the JSON schema.` : 'Write the Reddit post.'
+              };
+            }
             case 'email_internal':
               return {
                 systemPrompt: `Write an internal email during a cyber crisis. Sender: ${stimulus.fields.from_name || common.actorName}. Recipient: ${stimulus.fields.to || 'Crisis Committee'}. Context: ${common.scenarioSummary}. Goal: status update and instructions. Time: ${common.timestamp}. Instructions: clear subject line, structured HTML body using <p>, <ul>, <strong>, write in ${common.language}. Reply only with JSON {"subject":"...","body":"..."}.`,
@@ -1672,6 +2059,7 @@
             if (!stimulus) return;
             if (property === 'timestamp_offset_minutes') stimulus.timestamp_offset_minutes = Number(input.value);
             else if (property === 'channel') replaceStimulusTemplate(stimulus, input.value);
+            else if (property === 'template_id') replaceArticleVariant(stimulus, input.value);
             else stimulus[property] = input.value;
             App.render();
           });
@@ -1686,6 +2074,12 @@
             let value = input.value;
             if (input.tagName === 'TEXTAREA' && fieldName === 'reaction_types') {
               try { value = JSON.parse(value); } catch { value = value.split(',').map((item) => item.trim()).filter(Boolean); }
+            }
+            if (input.tagName === 'TEXTAREA' && fieldName === 'awards') {
+              try { value = JSON.parse(value); } catch { value = value.split(',').map((item) => item.trim()).filter(Boolean); }
+            }
+            if (input.tagName === 'TEXTAREA' && fieldName === 'top_comment') {
+              try { value = JSON.parse(value); } catch { value = { text: value }; }
             }
             if (String(value) === 'true') value = true;
             if (String(value) === 'false') value = false;
@@ -1831,8 +2225,14 @@
       }
 
       function replaceStimulusTemplate(stimulus, newChannel) {
-        const template = TEMPLATE_LIBRARY[newChannel];
+        const template = TEMPLATE_LIBRARY[newChannel] || TEMPLATE_LIBRARY.email_internal;
         stimulus.channel = newChannel;
+        stimulus.template_id = template.template_id;
+        stimulus.fields = deepClone(template.defaults);
+      }
+
+      function replaceArticleVariant(stimulus, templateId) {
+        const template = ARTICLE_TEMPLATE_LIBRARY[templateId] || ARTICLE_TEMPLATE_LIBRARY.nyt;
         stimulus.template_id = template.template_id;
         stimulus.fields = deepClone(template.defaults);
       }
@@ -1925,11 +2325,33 @@
         try { return JSON.parse(value || '[]'); } catch { return String(value || '').split(',').map((item) => item.trim()).filter(Boolean); }
       }
 
+      function parseObjectField(value) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+        try { return JSON.parse(value || '{}'); } catch { return {}; }
+      }
+
       function formatMetric(value) {
         const num = Number(value || 0);
         if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace('.0', '')}M`;
         if (num >= 1000) return `${(num / 1000).toFixed(1).replace('.0', '')}K`;
         return String(num);
+      }
+
+      function formatFtAuthor(value) {
+        const text = String(value || '');
+        const match = text.match(/^(.*?)(\s+in\s+.+)$/i);
+        if (!match) return escapeHtml(text);
+        return `${escapeHtml(match[1])}<em>${escapeHtml(match[2])}</em>`;
+      }
+
+      function subredditInitials(value) {
+        return String(value || 'r').replace(/^r\//i, '').split(/[^A-Za-z0-9]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'R';
+      }
+
+      function renderAward(name) {
+        const value = String(name || '').toLowerCase();
+        const label = value === 'gold' ? '★' : value === 'silver' ? '✦' : '✋';
+        return `<span class="award-pill"><span class="award-icon ${escapeAttribute(value)}">${label}</span><span>${escapeHtml(name)}</span></span>`;
       }
 
       function escapeHtml(value) {
@@ -1938,6 +2360,11 @@
       function escapeAttribute(value) { return escapeHtml(value).replace(/`/g, '&#96;'); }
 
       function iconReply() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"></path></svg>'; }
+      function iconGift() { return '<svg viewBox="0 0 24 24"><path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"></path><path d="M2 7h20v5H2z"></path><path d="M12 21V7"></path><path d="M12 7H8.5a2.5 2.5 0 1 1 0-5c2.2 0 3.5 2.1 3.5 5z"></path><path d="M12 7h3.5a2.5 2.5 0 1 0 0-5c-2.2 0-3.5 2.1-3.5 5z"></path></svg>'; }
+      function iconBookmark() { return '<svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z"></path></svg>'; }
+      function iconComment() { return '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>'; }
+      function iconLock() { return '<svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3"></path><rect x="5" y="10" width="14" height="10" rx="2" ry="2"></rect></svg>'; }
+      function iconRedditArrow(extraClass = '') { return `<svg class="${extraClass}" viewBox="0 0 24 24"><path d="M12 6l6 9H6z"></path></svg>`; }
       function iconReplyAll() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 9V5l-7 7 7 7v-4.1c2.3 0 4.2.3 5.9 1"></path><path d="M14 9V5l7 7-7 7v-4.1c-3.3 0-6.1.8-8.4 2.5"></path></svg>'; }
       function iconForward() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"></path></svg>'; }
       function iconRetweet() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>'; }
