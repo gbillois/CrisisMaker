@@ -947,7 +947,8 @@
         };
         const samples = [
           makeStimulus('email_internal', actors[1].id, 0),
-          makeStimulus('article_press', actors[0].id, 120),
+          makeStimulus('article_press', actors[0].id, 120, 'lemonde'),
+          makeStimulus('article_press', actors[0].id, 125, 'nyt'),
           makeStimulus('post_reddit', actors[0].id, 130),
           makeStimulus('post_twitter', actors[0].id, 135),
           makeStimulus('breaking_news_tv', actors[0].id, 165),
@@ -958,8 +959,10 @@
         return scenario;
       }
 
-      function makeStimulus(channel, actorId, offsetMinutes) {
-        const template = TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal;
+      function makeStimulus(channel, actorId, offsetMinutes, templateId = null) {
+        const template = channel === 'article_press'
+          ? (ARTICLE_TEMPLATE_LIBRARY[templateId] || ARTICLE_TEMPLATE_LIBRARY[TEMPLATE_LIBRARY.article_press.template_id] || ARTICLE_TEMPLATE_LIBRARY.nyt)
+          : (TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal);
         return {
           id: uid('stimulus'),
           timestamp_offset_minutes: offsetMinutes,
