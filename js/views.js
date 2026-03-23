@@ -462,6 +462,7 @@
                 </div>
               ` : ''}
               <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`)}</p>
+              ${(isOpenAI || isAzure) ? `<p class="helper">${tt('The OpenAI model dropdown is a curated list of current general-purpose chat-compatible model IDs. Azure availability still depends on your deployed model and region.', 'La liste déroulante OpenAI propose une sélection de modèles généralistes récents compatibles chat. La disponibilité dans Azure dépend toujours de votre déploiement et de votre région.')}</p>` : ''}
             </article>
             <article class="card">
               <div class="section-header"><h3>${tt('Included modules', 'Modules implémentés')}</h3></div>

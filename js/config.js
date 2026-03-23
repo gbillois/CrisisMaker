@@ -4,8 +4,8 @@
       const SETTINGS_KEY = 'crisismaker_settings_v1';
       const DEFAULT_MODELS = {
         anthropic: ['claude-sonnet-4-20250514'],
-        openai: ['gpt-4.1', 'gpt-4o', 'gpt-4.1-mini'],
-        azure_openai: ['gpt-4o', 'gpt-4.1', 'gpt-4.1-mini']
+        openai: ['gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3', 'o4-mini', 'o3-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
+        azure_openai: ['gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3', 'o4-mini', 'o3-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini']
       };
       const PROVIDER_STORAGE_KEYS = {
         aiProvider: 'aiProvider',
