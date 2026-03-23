@@ -45,7 +45,7 @@
             if (!response.ok) throw new Error(data.error?.message || 'Erreur API Azure OpenAI');
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.'));
-            const parsed = JSON.parse(content);
+            const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Azure OpenAI.', 'Contenu généré avec Azure OpenAI.'), 'success');
             return parsed;
           }
@@ -58,9 +58,7 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error?.message || 'Erreur API Anthropic');
             const text = data.content?.[0]?.text || '{}';
-            const match = text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-            if (!match) throw new Error(tt('Anthropic response was not valid JSON.', 'Réponse Anthropic non JSON.'));
-            const parsed = JSON.parse(match[0]);
+            const parsed = parseLLMJson(text);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.'), 'success');
             return parsed;
           }
@@ -71,7 +69,6 @@
               body: JSON.stringify({
                 model: ai_model,
                 temperature: 0.8,
-                response_format: { type: 'json_object' },
                 messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])]
               })
             });
@@ -79,7 +76,7 @@
             if (!response.ok) throw new Error(data.error?.message || 'OpenAI API error');
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.'));
-            const parsed = JSON.parse(content);
+            const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with OpenAI.', 'Contenu généré avec OpenAI.'), 'success');
             return parsed;
           }
@@ -180,6 +177,8 @@ CONSIGNES :
 - Détermine le canal et le template les plus adaptés à la description
 - Si un acteur est mentionné ou correspond à la description, mets son nom dans actor_id (le code fera la résolution)
 - Pour la position timeline, interprète "H+2" comme 120 minutes, "H+30" comme 30, etc. Si non mentionné, utilise 0
+- Si l'utilisateur demande un lot ("crée 30 stimuli…" avec des catégories), retourne EXACTEMENT le nombre demandé et répartis les timestamps de façon crédible si aucun horaire précis n'est donné
+- Pour les stimuli externes ("client", "regulator", "press", etc.), alterne les acteurs/sources pour refléter la répartition demandée
 - Génère le contenu des champs dans la LANGUE NATIVE DU MÉDIA
 - Pour les informations NON mentionnées, INVENTE des détails réalistes cohérents
 - Le champ generation_mode doit être "ai_guided"
@@ -200,6 +199,18 @@ Format d'un stimulus :
           };
         }
       };
+
+      function parseLLMJson(text) {
+        const trimmed = String(text || '').trim();
+        if (!trimmed) throw new Error(tt('LLM response was empty.', 'La réponse du LLM était vide.'));
+        try {
+          return JSON.parse(trimmed);
+        } catch (err) {
+          const match = trimmed.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+          if (!match) throw new Error(tt('LLM response was not valid JSON.', 'La réponse du LLM n’était pas un JSON valide.'));
+          return JSON.parse(match[0]);
+        }
+      }
 
       const PromptBuilder = {
         forStimulus(stimulus, actor, scenario, fieldName = null, guidedPrompt = null) {

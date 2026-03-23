@@ -7,6 +7,7 @@
         toasts: [],
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
         historyModalStimulusId: null,
+        llmState: makeDefaultLLMState()
         ui: {
           stimuliTimelineHeight: 255,
           stimuliEditorWidth: 42
@@ -132,6 +133,35 @@
         });
       }
 
+      function makeDefaultLLMState() {
+        return {
+          scenario: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
+          actors:   { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
+          stimulus: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
+        };
+      }
+
+      function confirmClearData() {
+        return window.confirm(tt(
+          'Clear all current scenario data? This will remove actors, stimuli, and browser autosave for this project.',
+          'Effacer toutes les données du scénario en cours ? Cela supprimera les acteurs, les stimuli et la sauvegarde navigateur de ce projet.'
+        ));
+      }
+
+      function clearScenarioData() {
+        const preservedSettings = { ...appState.scenario.settings };
+        appState.scenario = emptyScenario(preservedSettings);
+        appState.selectedStimulusId = null;
+        appState.slideshowIndex = 0;
+        appState.historyModalStimulusId = null;
+        appState.libraryFilter = { channel: '', status: '', actorId: '', sort: 'timeline' };
+        appState.llmState = makeDefaultLLMState();
+        _fileHandle = null;
+        saveLocal(false);
+        App.render();
+        pushToast(tt('Scenario data cleared.', 'Données du scénario effacées.'), 'success');
+      }
+
       async function handleAction(event) {
         const action = event.currentTarget.dataset.action;
         try {
@@ -170,6 +200,9 @@
             case 'save-json': saveScenarioToFile(); break;
             case 'load-json': loadScenarioFromFile(); break;
             case 'export-all': await ExportEngine.exportAll(); break;
+            case 'clear-data':
+              if (confirmClearData()) clearScenarioData();
+              break;
             case 'test-connection': {
               const provider = appState.scenario.settings.ai_provider;
               appState.connectionTest = {
@@ -315,14 +348,34 @@
               state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
               try {
                 const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors);
-                if (Array.isArray(result)) {
-                  await handleMultiStimulusResult(result);
+                const multiple = Array.isArray(result) ? result : (Array.isArray(result?.stimuli) ? result.stimuli : null);
+                if (multiple) {
+                  await handleMultiStimulusResult(multiple, state.text);
+                  state.lastFilledCount = multiple.length;
                 } else {
                   await applyStimulusConfig(selected, result);
                   const filled = Object.keys(result.fields || {}).length + 3;
                   state.lastFilledCount = filled;
                 }
                 state.loading = false;
+                App.render();
+              } catch (err) {
+                state.loading = false;
+                state.error = classifyLLMError(err);
+                App.render();
+              }
+              break;
+            }
+            case 'llm-generate-stimuli_batch': {
+              const state = appState.llmState.stimuli_batch;
+              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
+              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              try {
+                const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors);
+                const configs = Array.isArray(result) ? result : (Array.isArray(result?.stimuli) ? result.stimuli : [result]);
+                const addedCount = await handleMultiStimulusResult(configs, state.text);
+                state.loading = false;
+                state.lastFilledCount = addedCount;
                 App.render();
               } catch (err) {
                 state.loading = false;
@@ -679,15 +732,20 @@
         stimulus.updated_at = new Date().toISOString();
       }
 
-      async function handleMultiStimulusResult(configs) {
-        configs.forEach((config) => {
+      async function handleMultiStimulusResult(configs, fallbackPrompt = '') {
+        const validConfigs = configs.filter((config) => config && typeof config === 'object');
+        validConfigs.forEach((config) => {
           const actorId = appState.scenario.actors[0]?.id;
           const stimulus = makeStimulus(config.channel || 'email_internal', actorId, config.timestamp_offset_minutes || 0, config.template_id || null);
+          if (!config.generation_prompt && fallbackPrompt) config.generation_prompt = fallbackPrompt;
           applyStimulusConfig(stimulus, config);
           appState.scenario.stimuli.push(stimulus);
         });
         appState.selectedStimulusId = appState.scenario.stimuli[appState.scenario.stimuli.length - 1]?.id || null;
-        pushToast(tt(`${configs.length} stimuli added to timeline.`, `${configs.length} stimuli ajoutés à la timeline.`), 'success');
+        if (validConfigs.length > 0) {
+          pushToast(tt(`${validConfigs.length} stimuli added to timeline.`, `${validConfigs.length} stimuli ajoutés à la timeline.`), 'success');
+        }
+        return validConfigs.length;
       }
 
       App.init();

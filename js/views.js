@@ -17,15 +17,20 @@
         return 'malformed';
       }
 
-      function renderLLMConfigBlock(zone, placeholder) {
+      function renderLLMConfigBlock(zone, placeholder, options = {}) {
         const state = appState.llmState[zone];
         const available = isLLMAvailable();
         const collapsed = state.collapsed;
         const loading = state.loading;
+        const title = options.title || tt('Configure with LLM', 'Configurer avec le LLM');
+        const subtitle = options.subtitle || tt(
+          'Describe what you want in natural language. If information is missing, the LLM will fill in the most likely values.',
+          'Décrivez ce que vous voulez en langage naturel. Si des informations manquent, le LLM complétera avec les valeurs les plus probables.'
+        );
 
         const generateLabel = loading
-          ? tt('Generating…', 'Génération en cours…')
-          : tt('Generate ✨', 'Générer ✨');
+          ? (options.loadingLabel || tt('Generating…', 'Génération en cours…'))
+          : (options.generateLabel || tt('Generate ✨', 'Générer ✨'));
         const disabledAttr = (!available || loading) ? 'disabled' : '';
         const noKeyTooltip = !available
           ? escapeAttribute(tt(
@@ -42,9 +47,13 @@
           ? renderPendingActorsPanel(state.pendingActors)
           : '';
 
+        const successMessage = options.successMessage
+          ? options.successMessage(state.lastFilledCount)
+          : tt(`${state.lastFilledCount} field(s) pre-filled by the LLM. Check and adjust if needed.`, `${state.lastFilledCount} champ(s) pré-rempli(s) par le LLM. Vérifiez et ajustez si nécessaire.`);
+
         const successBannerHtml = (zone !== 'actors' && state.lastFilledCount > 0 && !loading && !state.error)
           ? `<div class="llm-success-banner">
-              <span>✅ ${tt(`${state.lastFilledCount} field(s) pre-filled by the LLM. Check and adjust if needed.`, `${state.lastFilledCount} champ(s) pré-rempli(s) par le LLM. Vérifiez et ajustez si nécessaire.`)}</span>
+              <span>✅ ${successMessage}</span>
               <button data-action="llm-dismiss-banner" data-zone="${zone}">OK</button>
              </div>`
           : '';
@@ -52,16 +61,13 @@
         return `
           <div class="llm-config-block${collapsed ? ' collapsed' : ''}" id="llm-block-${zone}">
             <div class="llm-config-header">
-              <span class="llm-config-title">🤖 ${tt('Configure with LLM', 'Configurer avec le LLM')}</span>
+              <span class="llm-config-title">🤖 ${title}</span>
               <button class="btn-llm-collapse" data-action="llm-collapse" data-zone="${zone}">
                 ${collapsed ? '▶ ' + tt('Expand', 'Développer') : '▼ ' + tt('Reduce', 'Réduire')}
               </button>
             </div>
             <div class="llm-config-body">
-              <p class="llm-config-subtitle">${tt(
-                'Describe what you want in natural language. If information is missing, the LLM will fill in the most likely values.',
-                'Décrivez ce que vous voulez en langage naturel. Si des informations manquent, le LLM complétera avec les valeurs les plus probables.'
-              )}</p>
+              <p class="llm-config-subtitle">${subtitle}</p>
               <textarea
                 data-llm-zone="${zone}"
                 placeholder="${escapeAttribute(placeholder)}"
@@ -141,6 +147,9 @@
               </div>
               <div class="nav-topbar-right">
                 <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
+                <button class="nav-clear-btn" data-action="clear-data" title="${tt('Clear scenario data', 'Effacer les données du scénario')}">
+                  ${tt('Clear data', 'Effacer les données')}
+                </button>
                 <button class="nav-gear-btn ${appState.settingsDrawerOpen ? 'active' : ''}" data-action="toggle-settings-drawer" title="${tt('Settings', 'Paramètres')}">
                   ${svgGear()}
                 </button>
@@ -497,7 +506,7 @@
         const types = [['Ransomware', 'Ransomware'], ['Data Breach', 'Data Breach'], ['Supply Chain', 'Supply Chain'], ['DDoS', 'DDoS'], ['Insider Threat', 'Insider Threat'], ['Other', 'Autre']];
         const langOptions = LANGUAGES.map((l) => `<option value="${l.value}" ${(scenario.client.language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('');
         const scenarioPlaceholder = tt(
-          'Ex: "A French bank called BNP Paribas hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."',
+          'Ex: "A French bank hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."',
           'Ex: "Exercice de crise pour un hôpital français (CHU de Lyon). Scénario : fuite de données patients via un prestataire compromis. Début le 15 mars 2026 à 8h."'
         );
         const actorsPlaceholder = tt(
