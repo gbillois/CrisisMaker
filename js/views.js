@@ -498,7 +498,7 @@
         const types = [['Ransomware', 'Ransomware'], ['Data Breach', 'Data Breach'], ['Supply Chain', 'Supply Chain'], ['DDoS', 'DDoS'], ['Insider Threat', 'Insider Threat'], ['Other', 'Autre']];
         const langOptions = LANGUAGES.map((l) => `<option value="${l.value}" ${(scenario.client.language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('');
         const scenarioPlaceholder = tt(
-          'Ex: "A French bank called BNP Paribas hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."',
+          'Ex: "A French bank hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."',
           'Ex: "Exercice de crise pour un hôpital français (CHU de Lyon). Scénario : fuite de données patients via un prestataire compromis. Début le 15 mars 2026 à 8h."'
         );
         const actorsPlaceholder = tt(
