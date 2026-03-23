@@ -5,7 +5,8 @@
         settingsDrawerOpen: false,
         scenario: loadInitialScenario(),
         toasts: [],
-        libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' }
+        libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
+        historyModalStimulusId: null
       };
 
       const App = {
@@ -176,6 +177,21 @@
               break;
             }
             case 'edit-in-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.route = 'stimuli'; App.render(); break;
+            case 'show-history': {
+              appState.historyModalStimulusId = event.currentTarget.dataset.stimulusId;
+              App.render();
+              break;
+            }
+            case 'close-history': {
+              appState.historyModalStimulusId = null;
+              App.render();
+              break;
+            }
+            case 'restore-version': {
+              const s = getStimulus(event.currentTarget.dataset.stimulusId);
+              if (s) { restoreVersion(s, Number(event.currentTarget.dataset.versionIndex)); await autoSave(); App.render(); }
+              break;
+            }
             default: console.warn(tt('Unhandled action', 'Action non gérée'), action);
           }
         } catch (error) {
@@ -253,16 +269,21 @@
         pushToast(tt('Generation in progress…', 'Génération en cours…'), 'success');
         const guided = stimulus.generation_mode === 'ai_guided' ? stimulus.generation_prompt : null;
         const generated = await AITextGenerator.generateForStimulus(stimulus, fieldName, guided);
+        // Build the new fields state (merge generated into current for field-level regen)
+        const newFields = deepClone(stimulus.fields);
         Object.entries(generated).forEach(([key, value]) => {
-          if (!fieldName || fieldName === key) stimulus.fields[key] = value;
+          if (!fieldName || fieldName === key) newFields[key] = value;
           stimulus.generated_text[key] = value;
         });
         if (fieldName && generated[fieldName] === undefined) {
           const first = Object.values(generated)[0];
-          if (first !== undefined) stimulus.fields[fieldName] = first;
+          if (first !== undefined) newFields[fieldName] = first;
         }
+        // saveStimulus pushes current fields to history, then sets fields to newFields
+        saveStimulus(stimulus, newFields, fieldName
+          ? tt(`AI: regenerated ${fieldName}`, `IA : régénération de ${fieldName}`)
+          : tt('AI: full generation', 'IA : génération complète'));
         stimulus.status = 'ready';
-        stimulus.updated_at = new Date().toISOString();
         App.render();
       }
 

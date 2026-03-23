@@ -59,6 +59,7 @@
               </section>` : ‘’}
               ${renderCurrentView()}
             </main>
+            ${appState.historyModalStimulusId ? renderHistoryModal(getStimulus(appState.historyModalStimulusId)) : ‘’}
           </div>
         `;
       }
@@ -499,6 +500,7 @@
               <p class="subtle">${escapeHtml(channelLabel(stimulus.channel))} · ${tt('template', 'template')} <span class="mono">${escapeHtml(stimulus.template_id)}</span></p>
             </div>
             <div class="actions">
+              ${(stimulus.history?.length > 0) ? `<button class="btn btn-secondary" data-action="show-history" data-stimulus-id="${stimulus.id}">${tt('History', 'Historique')} (${stimulus.history.length})</button>` : ''}
               <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer')}</button>
               <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}">${tt('Delete', 'Supprimer')}</button>
             </div>
@@ -636,4 +638,40 @@
         const wrapperId = id || `render-${stimulus.id}`;
         const body = TemplateEngine.render(stimulus, getActor(stimulus.actor_id), appState.scenario);
         return `<div id="${wrapperId}" class="render-frame" style="transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center;">${body}</div>`;
+      }
+
+      function renderHistoryModal(stimulus) {
+        if (!stimulus) return '';
+        const history = stimulus.history || [];
+        const actor = getActor(stimulus.actor_id);
+        return `
+          <div class="modal-backdrop" data-action="close-history">
+            <div class="modal-box" onclick="event.stopPropagation()">
+              <div class="modal-header">
+                <h3>${tt('Version history', 'Historique des versions')} — ${escapeHtml(channelLabel(stimulus.channel))}</h3>
+                <button class="btn btn-secondary" data-action="close-history">✕</button>
+              </div>
+              <div class="modal-body">
+                ${history.length === 0
+                  ? `<p class="subtle" style="padding:16px;">${tt('No history yet. Generate content to create versions.', 'Aucun historique. Générez du contenu pour créer des versions.')}</p>`
+                  : history.map((version, index) => `
+                    <div class="history-entry">
+                      <div class="history-entry-meta">
+                        <strong>v${history.length - index}</strong>
+                        <span class="subtle">${new Date(version.saved_at).toLocaleString()}</span>
+                        <span>${escapeHtml(version.change_summary || '')}</span>
+                        <button class="btn btn-xs btn-secondary" data-action="restore-version" data-stimulus-id="${stimulus.id}" data-version-index="${index}">${tt('Restore', 'Restaurer')}</button>
+                      </div>
+                      <div class="history-entry-preview">
+                        ${Object.entries(version.fields).slice(0, 2).map(([k, v]) =>
+                          `<div><span class="mono" style="color:var(--muted); font-size:0.75rem;">${escapeHtml(k)}</span>: ${escapeHtml(String(v || '').slice(0, 80))}${String(v || '').length > 80 ? '…' : ''}</div>`
+                        ).join('')}
+                      </div>
+                    </div>
+                  `).join('')
+                }
+              </div>
+            </div>
+          </div>
+        `;
       }
