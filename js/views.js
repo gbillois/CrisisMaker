@@ -356,6 +356,7 @@
               <div class="library-card-actions">
                 <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt('Edit', 'Éditer')}">✏️</button>
                 <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer')}">⧉</button>
+                ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-xs" data-action="export-msg" data-stimulus-id="${stimulus.id}" title="${tt('Export .msg file', 'Exporter le fichier .msg')}">✉️</button>` : ''}
                 <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG')}">⤓</button>
                 <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Delete', 'Supprimer')}">✕</button>
               </div>
@@ -612,6 +613,7 @@
               <div class="resize-handle resize-handle-vertical" data-resize-handle="editor-width" role="separator" aria-orientation="vertical" aria-label="${tt('Resize editor and preview', 'Redimensionner l\'éditeur et la prévisualisation')}"></div>
               <article class="stimuli-right-panel">
                 <div class="preview-toolbar-inline">
+                  ${selected && String(selected.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${selected.id}">${tt('Export .msg file', 'Exporter le fichier .msg')}</button>` : ''}
                   ${selected ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${selected.id}">${tt('Export PNG', 'Exporter PNG')}</button>` : ''}
                 </div>
                 <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
@@ -697,6 +699,7 @@
 
           <div class="actions" style="margin:14px 0 12px;">
             ${stimulus.generation_mode !== 'manual' ? `<button class="btn btn-primary" data-action="generate-stimulus" data-stimulus-id="${stimulus.id}">${stimulus.generation_mode === 'ai_guided' ? tt('Generate from description', 'Générer depuis la description') : tt('Generate all', 'Tout générer')}</button>` : ''}
+            ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .msg file', 'Exporter le fichier .msg')}</button>` : ''}
             <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer')}</button>
             <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}">${tt('Delete', 'Supprimer')}</button>
           </div>
@@ -764,6 +767,7 @@
                 <button class="btn btn-secondary" data-action="preview-prev">← ${tt('Previous', 'Précédent')}</button>
                 <button class="btn btn-secondary" data-action="preview-next">${tt('Next', 'Suivant')} →</button>
                 <button class="btn btn-primary" data-action="goto-stimuli" data-stimulus-id="${current.id}">${tt('Edit', 'Éditer')}</button>
+                ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .msg file', 'Exporter le fichier .msg')}</button>` : ''}
                 <button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}">${tt('Export PNG', 'Exporter PNG')}</button>
               </div>
             </article>

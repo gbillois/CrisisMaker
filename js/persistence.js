@@ -114,6 +114,14 @@
           this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
           pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
         },
+        async exportRawEmail(stimulus) {
+          if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.'));
+          if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email stimuli can be exported as .msg.', 'Seuls les stimuli e-mail peuvent être exportés en .msg.'));
+          const content = this.buildRawEmailContent(stimulus);
+          const blob = new Blob([content], { type: 'application/vnd.ms-outlook' });
+          downloadBlob(blob, this.filenameForRawEmail(stimulus));
+          pushToast(tt('Email exported as .msg.', 'E-mail exporté en .msg.'), 'success');
+        },
         async exportAll() {
           const zip = new JSZip();
           const stimuli = getSortedStimuli();
@@ -137,6 +145,39 @@
         filenameForStimulus(stimulus) {
           const actor = getActor(stimulus.actor_id);
           return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.png`;
+        },
+        filenameForRawEmail(stimulus) {
+          const actor = getActor(stimulus.actor_id);
+          return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${slugify(stimulus.fields.subject || stimulus.channel)}_${slugify(actor?.name || 'actor')}.msg`;
+        },
+        isEmailStimulus(stimulus) {
+          return Boolean(stimulus?.channel && String(stimulus.channel).startsWith('email_'));
+        },
+        buildRawEmailContent(stimulus) {
+          const fields = stimulus.fields || {};
+          const actor = getActor(stimulus.actor_id);
+          const line = (label, value) => `${label}: ${value || ''}`;
+          const headers = [
+            line('From', this.formatMailbox(fields.from_name || actor?.name, fields.from_email)),
+            line('To', fields.to || ''),
+            line('Cc', fields.cc || ''),
+            line('Subject', fields.subject || ''),
+            line('Date', fields.date || ''),
+            line('Importance', fields.importance || (fields.severity ? String(fields.severity).toUpperCase() : 'normal')),
+            line('X-Unsent', '1')
+          ];
+          if (fields.reference) headers.push(line('X-Reference', fields.reference));
+          if (fields.has_attachment && fields.attachment_name) headers.push(line('X-Attachment-Placeholder', fields.attachment_name));
+          const body = this.normalizeEmailBody(fields.body || '');
+          return `${headers.join('\r\n')}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${body}`;
+        },
+        formatMailbox(name, email) {
+          if (name && email) return `${name} <${email}>`;
+          return name || email || '';
+        },
+        normalizeEmailBody(value) {
+          const html = String(value || '').trim();
+          return html.startsWith('<!DOCTYPE html>') ? html : `<!DOCTYPE html><html><body>${html}</body></html>`;
         },
         downloadDataUrl(dataUrl, filename) {
           const link = document.createElement('a');

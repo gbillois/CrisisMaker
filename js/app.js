@@ -213,6 +213,7 @@
             case 'generate-stimulus': await generateStimulus(event.currentTarget.dataset.stimulusId); break;
             case 'generate-field': await generateStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.fieldName); break;
             case 'export-png': await ExportEngine.exportStimulus(getStimulus(event.currentTarget.dataset.stimulusId)); break;
+            case 'export-msg': await ExportEngine.exportRawEmail(getStimulus(event.currentTarget.dataset.stimulusId)); break;
             case 'preview-prev': appState.slideshowIndex = Math.max(0, appState.slideshowIndex - 1); App.render(); break;
             case 'preview-next': appState.slideshowIndex = Math.min(getSortedStimuli().length - 1, appState.slideshowIndex + 1); App.render(); break;
             case 'goto-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.route = 'stimuli'; App.render(); break;
