@@ -379,29 +379,31 @@
           <section class="grid">
             <article class="card">
               <div class="section-header">
-                <div>
-                  <h3>${tt('Visual timeline', 'Timeline visuelle')}</h3>
-                  <p class="subtle">${tt('Horizontal relative-time axis with color-coded cards sorted chronologically.', 'Axe horizontal en temps relatif, cartes colorées par canal, triées chronologiquement.')}</p>
-                </div>
+                <h3>${tt(‘Timeline’, ‘Timeline’)}</h3>
                 <div class="actions">
-                  <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add stimulus', '+ Ajouter un stimulus')}</button>
-                  <button class="btn btn-secondary" data-action="sort-stimuli">${tt('Sort timeline', 'Trier la timeline')}</button>
+                  <button class="btn btn-primary" data-action="add-stimulus">${tt(‘+ Add stimulus’, ‘+ Ajouter un stimulus’)}</button>
+                  <button class="btn btn-secondary" data-action="sort-stimuli">${tt(‘Sort’, ‘Trier’)}</button>
                 </div>
               </div>
               <div class="timeline">
                 <div class="timeline-track" style="width:${width}px;">
-                  ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * 120}px;">H+${tick}</div>`).join('')}
-                  ${appState.scenario.stimuli.map((stimulus, index) => renderStimulusCard(stimulus, index)).join('')}
+                  ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * 120}px;">H+${tick}</div>`).join(‘’)}
+                  ${appState.scenario.stimuli.map((stimulus, index) => renderStimulusCard(stimulus, index)).join(‘’)}
                 </div>
               </div>
             </article>
-            <section class="editor-layout">
-              <article class="card">
-                ${selected ? renderStimulusEditor(selected) : `<p class="subtle">${tt('Select a stimulus to edit it.', 'Sélectionnez un stimulus pour l’éditer.')}</p>`}
+            <section class="stimuli-split">
+              <article class="stimuli-left-panel card">
+                ${selected ? renderStimulusEditor(selected) : `<p class="subtle" style="padding:20px;">${tt(‘Select a stimulus from the timeline to edit it.’, ‘Sélectionnez un stimulus dans la timeline pour l\’éditer.’)}</p>`}
               </article>
-              <article class="preview-shell">
-                <div class="preview-stage">
-                  ${selected ? renderStimulusPreview(selected) : `<div class="subtle">${tt('The preview will appear here.', 'La prévisualisation apparaîtra ici.')}</div>`}
+              <article class="stimuli-right-panel">
+                <div class="preview-toolbar-inline">
+                  ${selected ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${selected.id}">${tt(‘Export PNG’, ‘Exporter PNG’)}</button>` : ‘’}
+                </div>
+                <div class="preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 48px);">
+                  <div class="preview-stage">
+                    ${selected ? renderStimulusPreview(selected) : `<div class="subtle" style="padding:40px;">${tt(‘Select a stimulus to preview it.’, ‘Sélectionnez un stimulus pour le prévisualiser.’)}</div>`}
+                  </div>
                 </div>
               </article>
             </section>
@@ -416,7 +418,7 @@
         const actor = getActor(stimulus.actor_id);
         return `
           <div class="stimulus-card ${appState.selectedStimulusId === stimulus.id ? 'selected' : ''}" data-action="select-stimulus" data-stimulus-id="${stimulus.id}" style="left:${left}px; top:${top}px; background:${meta.color};">
-            <strong>${escapeHtml(channelLabel(current.channel))}</strong>
+            <strong>${escapeHtml(channelLabel(stimulus.channel))}</strong>
             <small>${escapeHtml(actor?.name || tt('No actor', 'Sans acteur'))}</small>
             <small>H+${Math.floor(stimulus.timestamp_offset_minutes / 60)}:${String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0')}</small>
             <small>${tt('Status', 'Statut')} : ${escapeHtml(stimulus.status)}</small>
@@ -457,9 +459,26 @@
             </label>
           </div>
 
-          <div class="actions" style="margin:18px 0 16px;">
-            <button class="btn btn-primary" data-action="generate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Generate all', 'Tout générer')}</button>
-            <button class="btn btn-success" data-action="export-png" data-stimulus-id="${stimulus.id}">${tt('Export PNG', 'Exporter PNG')}</button>
+          <div class="field-grid cols-2" style="margin-top:14px;">
+            <label class="field">${tt('Generation mode', 'Mode de génération')}
+              <select data-stimulus-bind="${stimulus.id}.generation_mode">
+                <option value="ai" ${(stimulus.generation_mode || 'ai') === 'ai' ? 'selected' : ''}>${tt('AI automatic', 'IA automatique')}</option>
+                <option value="ai_guided" ${stimulus.generation_mode === 'ai_guided' ? 'selected' : ''}>${tt('AI guided', 'IA guidée')}</option>
+                <option value="manual" ${stimulus.generation_mode === 'manual' ? 'selected' : ''}>${tt('Manual', 'Manuel')}</option>
+              </select>
+            </label>
+          </div>
+
+          ${stimulus.generation_mode === 'ai_guided' ? `
+            <label class="field" style="margin-top:10px;">${tt('Generation instruction', 'Instruction de génération')}
+              <textarea data-stimulus-bind="${stimulus.id}.generation_prompt" placeholder="${tt('Describe the desired content...', 'Décrivez le contenu souhaité...')}">${escapeHtml(stimulus.generation_prompt || '')}</textarea>
+            </label>
+          ` : ''}
+
+          <div class="actions" style="margin:14px 0 12px;">
+            ${stimulus.generation_mode !== 'manual' ? `<button class="btn btn-primary" data-action="generate-stimulus" data-stimulus-id="${stimulus.id}">${stimulus.generation_mode === 'ai_guided' ? tt('Generate from description', 'Générer depuis la description') : tt('Generate all', 'Tout générer')}</button>` : ''}
+            <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer')}</button>
+            <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}">${tt('Delete', 'Supprimer')}</button>
           </div>
 
           <div class="field-grid">
@@ -471,12 +490,14 @@
       function renderFieldControl(stimulus, spec) {
         const value = stimulus.fields[spec.key];
         const bind = `data-stimulus-field="${stimulus.id}.${spec.key}"`;
+        const isManual = stimulus.generation_mode === 'manual';
+        const genBtn = isManual ? '' : `<div class="actions" style="margin-top:4px;"><button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">✨ ${tt('Regenerate', 'Régénérer')}</button></div>`;
         if (spec.type === 'textarea') {
           const content = Array.isArray(value) ? JSON.stringify(value) : String(value ?? '');
           return `
             <label class="field">${escapeHtml(spec.label)}
               <textarea ${bind}>${escapeHtml(content)}</textarea>
-              <div class="actions"><button class="btn btn-ghost" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">✨ ${tt('Generate this field', 'Générer ce champ')}</button></div>
+              ${genBtn}
             </label>
           `;
         }
@@ -486,7 +507,7 @@
               <select ${bind}>
                 ${(spec.options || []).map((option) => `<option value="${option}" ${String(value) === String(option) ? 'selected' : ''}>${option}</option>`).join('')}
               </select>
-              <div class="actions"><button class="btn btn-ghost" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">✨ ${tt('Generate this field', 'Générer ce champ')}</button></div>
+              ${genBtn}
             </label>
           `;
         }
@@ -500,7 +521,7 @@
         return `
           <label class="field">${escapeHtml(spec.label)}
             <input type="${spec.type}" ${bind} value="${escapeAttribute(value ?? '')}">
-            <div class="actions"><button class="btn btn-ghost" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">✨ ${tt('Generate this field', 'Générer ce champ')}</button></div>
+            ${genBtn}
           </label>
         `;
       }

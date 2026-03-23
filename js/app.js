@@ -235,8 +235,10 @@
       async function generateStimulus(stimulusId, fieldName = null) {
         const stimulus = getStimulus(stimulusId);
         if (!stimulus) return;
+        if (stimulus.generation_mode === 'manual') return; // respect manual mode
         pushToast(tt('Generation in progress…', 'Génération en cours…'), 'success');
-        const generated = await AITextGenerator.generateForStimulus(stimulus, fieldName);
+        const guided = stimulus.generation_mode === 'ai_guided' ? stimulus.generation_prompt : null;
+        const generated = await AITextGenerator.generateForStimulus(stimulus, fieldName, guided);
         Object.entries(generated).forEach(([key, value]) => {
           if (!fieldName || fieldName === key) stimulus.fields[key] = value;
           stimulus.generated_text[key] = value;
@@ -246,6 +248,7 @@
           if (first !== undefined) stimulus.fields[fieldName] = first;
         }
         stimulus.status = 'ready';
+        stimulus.updated_at = new Date().toISOString();
         App.render();
       }
 

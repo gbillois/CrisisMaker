@@ -314,6 +314,39 @@
       align-items: start;
     }
 
+    /* Split-panel for Stimuli view */
+    .stimuli-split {
+      display: grid;
+      grid-template-columns: 40fr 60fr;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .stimuli-left-panel {
+      overflow-y: auto;
+      max-height: 70vh;
+      border-radius: 0;
+      box-shadow: none;
+      border: none;
+      border-right: 1px solid var(--border);
+    }
+    .stimuli-right-panel {
+      background: linear-gradient(180deg, #dfe8f3, #f7fafc 30%, #dde6f2);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      max-height: 70vh;
+    }
+    .preview-toolbar-inline {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(19,34,56,0.08);
+      display: flex;
+      gap: 8px;
+      background: rgba(255,255,255,0.6);
+      flex-shrink: 0;
+    }
+
     .preview-shell {
       background: linear-gradient(180deg, #dfe8f3, #f7fafc 30%, #dde6f2);
       border-radius: var(--radius);
