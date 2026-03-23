@@ -370,6 +370,19 @@
         const isAnthropic = settings.ai_provider === 'anthropic';
         const isOpenAI = settings.ai_provider === 'openai';
         const isAzure = settings.ai_provider === 'azure_openai';
+        const connectionTest = appState.connectionTest || { status: 'idle', message: '', checkedAt: null, provider: '' };
+        const connectionStatusLabels = {
+          testing: tt('Testing…', 'Test en cours…'),
+          success: tt('Confirmed', 'Confirmé'),
+          error: tt('Failed', 'Échec')
+        };
+        const connectionStatusColors = {
+          testing: { background: '#EFF6FF', border: '#BFDBFE', text: '#1D4ED8' },
+          success: { background: '#ECFDF5', border: '#A7F3D0', text: '#047857' },
+          error: { background: '#FEF2F2', border: '#FECACA', text: '#B91C1C' }
+        };
+        const statusTone = connectionStatusColors[connectionTest.status];
+        const checkedAt = connectionTest.checkedAt ? formatLocalDateTime(connectionTest.checkedAt) : '';
         return `
           <section class="grid cols-2">
             <article class="card">
@@ -418,9 +431,18 @@
                 </label>
               </div>
               <div class="actions" style="margin-top:18px;">
-                <button class="btn btn-primary" data-action="test-connection">${tt('Test connection', 'Tester la connexion')}</button>
+                <button class="btn btn-primary" data-action="test-connection" ${connectionTest.status === 'testing' ? 'disabled' : ''}>${connectionTest.status === 'testing' ? tt('Testing…', 'Test en cours…') : tt('Test connection', 'Tester la connexion')}</button>
                 <button class="btn btn-secondary" data-action="save-local">${tt('Save locally', 'Sauvegarder localement')}</button>
               </div>
+              ${statusTone ? `
+                <div style="margin-top:14px;padding:12px 14px;border-radius:8px;border:1px solid ${statusTone.border};background:${statusTone.background};color:${statusTone.text};">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                    <strong>${connectionStatusLabels[connectionTest.status]}</strong>
+                    ${checkedAt ? `<span style="font-size:12px;opacity:0.8;">${tt('Checked at', 'Vérifié à')} ${checkedAt}</span>` : ''}
+                  </div>
+                  <div style="margin-top:6px;font-size:13px;line-height:1.4;">${escapeHtml(connectionTest.message)}</div>
+                </div>
+              ` : ''}
               <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`)}</p>
             </article>
             <article class="card">

@@ -11,7 +11,8 @@
           scenario: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
           actors:   { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
           stimulus: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
-        }
+        },
+        connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' }
       };
 
       const App = {
@@ -49,6 +50,9 @@
             if (input.dataset.bind === 'settings.ai_provider') {
               const models = DEFAULT_MODELS[input.value];
               if (models?.length) appState.scenario.settings.ai_model = models[0];
+            }
+            if (input.dataset.bind.startsWith('settings.')) {
+              appState.connectionTest = { status: 'idle', message: '', checkedAt: null, provider: '' };
             }
             persistProviderSettings(appState.scenario.settings);
             App.render();
@@ -162,8 +166,34 @@
             case 'load-json': loadScenarioFromFile(); break;
             case 'export-all': await ExportEngine.exportAll(); break;
             case 'test-connection': {
-              await AITextGenerator.testConnection();
-              pushToast(tt('AI connection validated.', 'Connexion IA validée.'), 'success');
+              const provider = appState.scenario.settings.ai_provider;
+              appState.connectionTest = {
+                status: 'testing',
+                message: tt('Checking the AI connection…', 'Vérification de la connexion IA…'),
+                checkedAt: null,
+                provider
+              };
+              App.render();
+              try {
+                const result = await AITextGenerator.testConnection();
+                appState.connectionTest = {
+                  status: 'success',
+                  message: result?.message || tt('Connection confirmed. The provider returned a valid response.', 'Connexion confirmée. Le fournisseur a renvoyé une réponse valide.'),
+                  checkedAt: new Date().toISOString(),
+                  provider
+                };
+                App.render();
+                pushToast(tt('AI connection validated.', 'Connexion IA validée.'), 'success');
+              } catch (error) {
+                appState.connectionTest = {
+                  status: 'error',
+                  message: error.message || tt('The AI connection test failed.', 'Le test de connexion IA a échoué.'),
+                  checkedAt: new Date().toISOString(),
+                  provider
+                };
+                App.render();
+                throw error;
+              }
               break;
             }
             case 'add-actor': addActor(); break;
