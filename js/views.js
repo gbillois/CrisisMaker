@@ -616,6 +616,19 @@
                   <button class="btn btn-secondary" data-action="sort-stimuli">${tt('Sort', 'Trier')}</button>
                 </div>
               </div>
+              ${renderLLMConfigBlock('stimuli_batch', tt(
+                'Ex: "Create 12 stimuli from H+0 to H+6 mixing internal emails, customer complaints, press coverage, regulator outreach, and social posts. Keep the tone escalating but credible."',
+                'Ex : "Crée 12 stimuli de H+0 à H+6 en mélangeant emails internes, plaintes clients, couverture presse, sollicitations du régulateur et posts sociaux. Fais monter la tension de façon crédible."'
+              ), {
+                title: tt('Mass create with LLM', 'Création en lot avec le LLM'),
+                subtitle: tt(
+                  'Describe the batch you want above the timeline and the LLM will add multiple stimuli directly to it.',
+                  'Décrivez le lot souhaité au-dessus de la timeline et le LLM ajoutera directement plusieurs stimuli.'
+                ),
+                generateLabel: tt('Generate batch ✨', 'Générer le lot ✨'),
+                loadingLabel: tt('Generating batch…', 'Génération du lot…'),
+                successMessage: (count) => tt(`${count} stimulus/stimuli added to the timeline. Review and adjust them if needed.`, `${count} stimulus ajouté(s) à la timeline. Vérifiez-les et ajustez-les si besoin.`)
+              })}
               <div class="timeline">
                 <div class="timeline-track" style="width:${width}px;">
                   ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * hourWidth}px;">H+${tick}</div>`).join('')}

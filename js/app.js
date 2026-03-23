@@ -130,9 +130,10 @@
 
       function makeDefaultLLMState() {
         return {
-          scenario: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
-          actors:   { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
-          stimulus: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
+          scenario:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
+          actors:        { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
+          stimulus:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
+          stimuli_batch: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
         };
       }
 
