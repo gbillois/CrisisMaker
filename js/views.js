@@ -131,25 +131,25 @@
           <div class="app-shell">
             <nav class="nav-topbar">
               <div class="nav-topbar-left">
-                ${renderNavIconButton(‘project’, svgFolder(), tt(‘Project’, ‘Projet’))}
-                ${renderNavIconButton(‘scenario’, svgTarget(), tt(‘Scenario’, ‘Scénario’))}
-                ${renderNavIconButton(‘stimuli’, svgPen(), tt(‘Stimuli’, ‘Stimuli’))}
-                ${renderNavIconButton(‘library’, svgGrid(), tt(‘Library’, ‘Bibliothèque’))}
+                ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet'))}
+                ${renderNavIconButton('scenario', svgTarget(), tt('Scenario', 'Scénario'))}
+                ${renderNavIconButton('stimuli', svgPen(), tt('Stimuli', 'Stimuli'))}
+                ${renderNavIconButton('library', svgGrid(), tt('Library', 'Bibliothèque'))}
               </div>
               <div class="nav-topbar-center">
-                <span class="nav-project-name">${escapeHtml(appState.scenario.name || ‘CrisisStim’)}</span>
+                <span class="nav-project-name">${escapeHtml(appState.scenario.name || 'CrisisStim')}</span>
               </div>
               <div class="nav-topbar-right">
                 <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
-                <button class="nav-gear-btn ${appState.settingsDrawerOpen ? ‘active’ : ‘’}" data-action="toggle-settings-drawer" title="${tt(‘Settings’, ‘Paramètres’)}">
+                <button class="nav-gear-btn ${appState.settingsDrawerOpen ? 'active' : ''}" data-action="toggle-settings-drawer" title="${tt('Settings', 'Paramètres')}">
                   ${svgGear()}
                 </button>
               </div>
             </nav>
 
-            <div class="settings-drawer ${appState.settingsDrawerOpen ? ‘open’ : ‘’}">
+            <div class="settings-drawer ${appState.settingsDrawerOpen ? 'open' : ''}">
               <div class="settings-drawer-header">
-                <h3>${tt(‘Settings’, ‘Paramètres’)}</h3>
+                <h3>${tt('Settings', 'Paramètres')}</h3>
                 <button class="btn btn-secondary" data-action="toggle-settings-drawer">✕</button>
               </div>
               <div class="settings-drawer-body">
@@ -164,59 +164,59 @@
                   <p>${vc.subtitle}</p>
                 </div>
                 <div class="status-pills">
-                  <span class="pill">${appState.scenario.stimuli.length} ${tt(‘stimuli’, ‘stimuli’)}</span>
-                  <span class="pill">${appState.scenario.actors.length} ${tt(‘actors’, ‘acteurs’)}</span>
+                  <span class="pill">${appState.scenario.stimuli.length} ${tt('stimuli', 'stimuli')}</span>
+                  <span class="pill">${appState.scenario.actors.length} ${tt('actors', 'acteurs')}</span>
                   <span class="pill">${renderProviderSummary(appState.scenario.settings)}</span>
                 </div>
-              </section>` : ‘’}
+              </section>` : ''}
               ${renderCurrentView()}
             </main>
-            ${appState.historyModalStimulusId ? renderHistoryModal(getStimulus(appState.historyModalStimulusId)) : ‘’}
+            ${appState.historyModalStimulusId ? renderHistoryModal(getStimulus(appState.historyModalStimulusId)) : ''}
           </div>
         `;
       }
 
       function renderNavIconButton(route, iconSvg, label) {
         const isActive = appState.route === route;
-        return `<button class="nav-icon-btn ${isActive ? ‘active’ : ‘’}" data-route="${route}" title="${label}">
+        return `<button class="nav-icon-btn ${isActive ? 'active' : ''}" data-route="${route}" title="${label}">
           ${iconSvg}
           <span>${label}</span>
         </button>`;
       }
 
-      function svgFolder() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>’; }
-      function svgTarget() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>’; }
-      function svgPen() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>’; }
-      function svgGrid() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>’; }
-      function svgGear() { return ‘<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>’; }
+      function svgFolder() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'; }
+      function svgTarget() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'; }
+      function svgPen() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'; }
+      function svgGrid() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>'; }
+      function svgGear() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'; }
 
       function viewConfig() {
         const map = {
           project: {
-            title: tt(‘Project’, ‘Projet’),
-            subtitle: tt(‘Create, open, save and export your crisis exercise project.’, ‘Créez, ouvrez, sauvegardez et exportez votre projet d\’exercice de crise.’)
+            title: tt('Project', 'Projet'),
+            subtitle: tt('Create, open, save and export your crisis exercise project.', 'Créez, ouvrez, sauvegardez et exportez votre projet d\'exercice de crise.')
           },
           scenario: {
-            title: tt(‘Crisis scenario’, ‘Scénario de crise’),
-            subtitle: tt(‘Define the client, context, and actors involved in the exercise.’, ‘Définissez le client, le contexte et les acteurs impliqués dans l\’exercice.’)
+            title: tt('Crisis scenario', 'Scénario de crise'),
+            subtitle: tt('Define the client, context, and actors involved in the exercise.', 'Définissez le client, le contexte et les acteurs impliqués dans l\'exercice.')
           },
           stimuli: {
-            title: tt(‘Stimuli editor’, ‘Éditeur de stimuli’),
-            subtitle: tt(‘Create realistic stimuli and generate their content with AI.’, ‘Créez des stimuli réalistes et générez leur contenu avec l\’IA.’)
+            title: tt('Stimuli editor', 'Éditeur de stimuli'),
+            subtitle: tt('Create realistic stimuli and generate their content with AI.', 'Créez des stimuli réalistes et générez leur contenu avec l\'IA.')
           },
           library: {
-            title: tt(‘Stimulus library’, ‘Bibliothèque de stimuli’),
-            subtitle: tt(‘Browse, filter, and manage all stimuli in your project.’, ‘Parcourez, filtrez et gérez tous les stimuli de votre projet.’)
+            title: tt('Stimulus library', 'Bibliothèque de stimuli'),
+            subtitle: tt('Browse, filter, and manage all stimuli in your project.', 'Parcourez, filtrez et gérez tous les stimuli de votre projet.')
           }
         };
         return map[appState.route] || null;
       }
 
       function renderCurrentView() {
-        if (appState.route === ‘project’) return renderProjectView();
-        if (appState.route === ‘scenario’) return renderScenarioView();
-        if (appState.route === ‘stimuli’) return renderStimuliView();
-        if (appState.route === ‘library’) return renderLibraryView();
+        if (appState.route === 'project') return renderProjectView();
+        if (appState.route === 'scenario') return renderScenarioView();
+        if (appState.route === 'stimuli') return renderStimuliView();
+        if (appState.route === 'library') return renderLibraryView();
         return renderProjectView();
       }
 
@@ -228,23 +228,23 @@
             <section class="grid" style="max-width:700px; margin: 40px auto;">
               <div style="text-align:center; padding: 20px 0 30px;">
                 <h1 style="font-size:2rem; margin:0; font-weight:800;">CrisisStim</h1>
-                <p style="color:var(--muted); font-size:1rem; margin-top:8px;">${tt(‘Stimulus generator for cyber crisis exercises’, ‘Générateur de stimuli pour exercices de crise cyber’)}</p>
+                <p style="color:var(--muted); font-size:1rem; margin-top:8px;">${tt('Stimulus generator for cyber crisis exercises', 'Générateur de stimuli pour exercices de crise cyber')}</p>
               </div>
               <div class="grid cols-3" style="gap:20px;">
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="new-scenario">
                   <div style="font-size:2rem; margin-bottom:12px;">➕</div>
-                  <strong>${tt(‘New scenario’, ‘Nouveau scénario’)}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt(‘Start from scratch’, ‘Partir de zéro’)}</p>
+                  <strong>${tt('New scenario', 'Nouveau scénario')}</strong>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt('Start from scratch', 'Partir de zéro')}</p>
                 </article>
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="load-json">
                   <div style="font-size:2rem; margin-bottom:12px;">📂</div>
-                  <strong>${tt(‘Open a file’, ‘Ouvrir un fichier’)}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json ${tt(‘or’, ‘ou’)} .crisisstim.json</p>
+                  <strong>${tt('Open a file', 'Ouvrir un fichier')}</strong>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json ${tt('or', 'ou')} .crisisstim.json</p>
                 </article>
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="nav-scenario">
                   <div style="font-size:2rem; margin-bottom:12px;">▶️</div>
-                  <strong>${tt(‘Continue’, ‘Continuer’)}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt(‘Use current scenario’, ‘Utiliser le scénario actuel’)}</p>
+                  <strong>${tt('Continue', 'Continuer')}</strong>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt('Use current scenario', 'Utiliser le scénario actuel')}</p>
                 </article>
               </div>
             </section>
@@ -256,25 +256,25 @@
               <div class="section-header">
                 <h3>${escapeHtml(s.name)}</h3>
                 <div class="actions">
-                  <button class="btn btn-primary" data-action="save-local">${tt(‘Save’, ‘Sauvegarder’)} 💾</button>
-                  <button class="btn btn-secondary" data-action="save-json">${tt(‘Export JSON’, ‘Exporter JSON’)} ⇩</button>
-                  <button class="btn btn-secondary" data-action="export-all">${tt(‘Export ZIP’, ‘Exporter ZIP’)} 🗜️</button>
-                  <button class="btn btn-secondary" data-action="new-scenario">${tt(‘New’, ‘Nouveau’)} ↺</button>
+                  <button class="btn btn-primary" data-action="save-local">${tt('Save', 'Sauvegarder')} 💾</button>
+                  <button class="btn btn-secondary" data-action="save-json">${tt('Export JSON', 'Exporter JSON')} ⇩</button>
+                  <button class="btn btn-secondary" data-action="export-all">${tt('Export ZIP', 'Exporter ZIP')} 🗜️</button>
+                  <button class="btn btn-secondary" data-action="new-scenario">${tt('New', 'Nouveau')} ↺</button>
                 </div>
               </div>
               <div class="field-grid cols-3" style="font-size:0.9rem; color:var(--muted);">
-                <div><strong>${tt(‘Client’, ‘Client’)}:</strong> ${escapeHtml(s.client.name || ‘—‘)}</div>
-                <div><strong>${tt(‘Sector’, ‘Secteur’)}:</strong> ${escapeHtml(s.client.sector || ‘—‘)}</div>
-                <div><strong>${tt(‘Scenario’, ‘Scénario’)}:</strong> ${escapeHtml(s.scenario.type || ‘—‘)}</div>
-                <div><strong>${tt(‘Actors’, ‘Acteurs’)}:</strong> ${s.actors.length}</div>
-                <div><strong>${tt(‘Stimuli’, ‘Stimuli’)}:</strong> ${s.stimuli.length}</div>
-                <div><strong>${tt(‘Start’, ‘Début’)}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : ‘—‘)}</div>
+                <div><strong>${tt('Client', 'Client')}:</strong> ${escapeHtml(s.client.name || '—')}</div>
+                <div><strong>${tt('Sector', 'Secteur')}:</strong> ${escapeHtml(s.client.sector || '—')}</div>
+                <div><strong>${tt('Scenario', 'Scénario')}:</strong> ${escapeHtml(s.scenario.type || '—')}</div>
+                <div><strong>${tt('Actors', 'Acteurs')}:</strong> ${s.actors.length}</div>
+                <div><strong>${tt('Stimuli', 'Stimuli')}:</strong> ${s.stimuli.length}</div>
+                <div><strong>${tt('Start', 'Début')}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : '—')}</div>
               </div>
             </article>
             <div class="actions" style="margin-top:8px;">
-              <button class="btn btn-primary" data-action="nav-scenario">${tt(‘Edit scenario’, ‘Éditer le scénario’)} →</button>
-              <button class="btn btn-primary" data-action="nav-stimuli">${tt(‘Edit stimuli’, ‘Éditer les stimuli’)} →</button>
-              <button class="btn btn-secondary" data-action="load-json">${tt(‘Open another file’, ‘Ouvrir un autre fichier’)}</button>
+              <button class="btn btn-primary" data-action="nav-scenario">${tt('Edit scenario', 'Éditer le scénario')} →</button>
+              <button class="btn btn-primary" data-action="nav-stimuli">${tt('Edit stimuli', 'Éditer les stimuli')} →</button>
+              <button class="btn btn-secondary" data-action="load-json">${tt('Open another file', 'Ouvrir un autre fichier')}</button>
             </div>
           </section>
         `;
@@ -284,8 +284,8 @@
         const allStimuli = getSortedStimuli();
         if (!allStimuli.length) {
           return `<section class="grid" style="max-width:600px; margin: 60px auto; text-align:center;">
-            <p class="subtle">${tt(‘No stimuli yet. Create some in the Stimuli view.’, ‘Aucun stimulus encore. Créez-en dans la vue Stimuli.’)}</p>
-            <button class="btn btn-primary" data-action="nav-stimuli">${tt(‘Go to Stimuli’, ‘Aller aux Stimuli’)}</button>
+            <p class="subtle">${tt('No stimuli yet. Create some in the Stimuli view.', 'Aucun stimulus encore. Créez-en dans la vue Stimuli.')}</p>
+            <button class="btn btn-primary" data-action="nav-stimuli">${tt('Go to Stimuli', 'Aller aux Stimuli')}</button>
           </section>`;
         }
         const f = appState.libraryFilter;
@@ -293,9 +293,9 @@
         if (f.channel) filtered = filtered.filter((s) => s.channel === f.channel);
         if (f.status) filtered = filtered.filter((s) => s.status === f.status);
         if (f.actorId) filtered = filtered.filter((s) => s.actor_id === f.actorId);
-        if (f.sort === ‘updated’) filtered = [...filtered].sort((a, b) => (b.updated_at || ‘’).localeCompare(a.updated_at || ‘’));
-        else if (f.sort === ‘channel’) filtered = [...filtered].sort((a, b) => a.channel.localeCompare(b.channel));
-        else if (f.sort === ‘actor’) filtered = [...filtered].sort((a, b) => (getActor(a.actor_id)?.name || ‘’).localeCompare(getActor(b.actor_id)?.name || ‘’));
+        if (f.sort === 'updated') filtered = [...filtered].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+        else if (f.sort === 'channel') filtered = [...filtered].sort((a, b) => a.channel.localeCompare(b.channel));
+        else if (f.sort === 'actor') filtered = [...filtered].sort((a, b) => (getActor(a.actor_id)?.name || '').localeCompare(getActor(b.actor_id)?.name || ''));
         // default sort = timeline (already sorted by getSortedStimuli)
 
         const channelOptions = [...new Set(allStimuli.map((s) => s.channel))].sort();
@@ -305,30 +305,30 @@
           <section class="grid">
             <div class="library-filter-bar">
               <select data-library-filter="channel">
-                <option value="">${tt(‘All channels’, ‘Tous les canaux’)}</option>
-                ${channelOptions.map((ch) => `<option value="${ch}" ${f.channel === ch ? ‘selected’ : ‘’}>${escapeHtml(channelLabel(ch))}</option>`).join(‘’)}
+                <option value="">${tt('All channels', 'Tous les canaux')}</option>
+                ${channelOptions.map((ch) => `<option value="${ch}" ${f.channel === ch ? 'selected' : ''}>${escapeHtml(channelLabel(ch))}</option>`).join('')}
               </select>
               <select data-library-filter="status">
-                <option value="">${tt(‘All statuses’, ‘Tous les statuts’)}</option>
-                <option value="draft" ${f.status === ‘draft’ ? ‘selected’ : ‘’}>${tt(‘Draft’, ‘Brouillon’)}</option>
-                <option value="ready" ${f.status === ‘ready’ ? ‘selected’ : ‘’}>${tt(‘Ready’, ‘Prêt’)}</option>
-                <option value="sent" ${f.status === ‘sent’ ? ‘selected’ : ‘’}>${tt(‘Sent’, ‘Envoyé’)}</option>
+                <option value="">${tt('All statuses', 'Tous les statuts')}</option>
+                <option value="draft" ${f.status === 'draft' ? 'selected' : ''}>${tt('Draft', 'Brouillon')}</option>
+                <option value="ready" ${f.status === 'ready' ? 'selected' : ''}>${tt('Ready', 'Prêt')}</option>
+                <option value="sent" ${f.status === 'sent' ? 'selected' : ''}>${tt('Sent', 'Envoyé')}</option>
               </select>
               <select data-library-filter="actorId">
-                <option value="">${tt(‘All actors’, ‘Tous les acteurs’)}</option>
-                ${actorOptions.map((a) => `<option value="${a.id}" ${f.actorId === a.id ? ‘selected’ : ‘’}>${escapeHtml(a.name)}</option>`).join(‘’)}
+                <option value="">${tt('All actors', 'Tous les acteurs')}</option>
+                ${actorOptions.map((a) => `<option value="${a.id}" ${f.actorId === a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
               </select>
               <select data-library-filter="sort">
-                <option value="timeline" ${f.sort === ‘timeline’ ? ‘selected’ : ‘’}>${tt(‘Sort: timeline’, ‘Tri : timeline’)}</option>
-                <option value="updated" ${f.sort === ‘updated’ ? ‘selected’ : ‘’}>${tt(‘Sort: last modified’, ‘Tri : modifié’)}</option>
-                <option value="channel" ${f.sort === ‘channel’ ? ‘selected’ : ‘’}>${tt(‘Sort: channel’, ‘Tri : canal’)}</option>
-                <option value="actor" ${f.sort === ‘actor’ ? ‘selected’ : ‘’}>${tt(‘Sort: actor’, ‘Tri : acteur’)}</option>
+                <option value="timeline" ${f.sort === 'timeline' ? 'selected' : ''}>${tt('Sort: timeline', 'Tri : timeline')}</option>
+                <option value="updated" ${f.sort === 'updated' ? 'selected' : ''}>${tt('Sort: last modified', 'Tri : modifié')}</option>
+                <option value="channel" ${f.sort === 'channel' ? 'selected' : ''}>${tt('Sort: channel', 'Tri : canal')}</option>
+                <option value="actor" ${f.sort === 'actor' ? 'selected' : ''}>${tt('Sort: actor', 'Tri : acteur')}</option>
               </select>
-              <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt(‘stimuli’, ‘stimuli’)}</span>
-              <button class="btn btn-secondary" data-action="export-all">${tt(‘Export ZIP’, ‘Exporter ZIP’)}</button>
+              <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('stimuli', 'stimuli')}</span>
+              <button class="btn btn-secondary" data-action="export-all">${tt('Export ZIP', 'Exporter ZIP')}</button>
             </div>
             <div class="library-card-grid">
-              ${filtered.map((s) => renderLibraryCard(s)).join(‘’)}
+              ${filtered.map((s) => renderLibraryCard(s)).join('')}
             </div>
           </section>
         `;
@@ -338,8 +338,8 @@
         const meta = CHANNEL_META[stimulus.channel] || CHANNEL_META.email_internal;
         const actor = getActor(stimulus.actor_id);
         const h = Math.floor(stimulus.timestamp_offset_minutes / 60);
-        const m = String(stimulus.timestamp_offset_minutes % 60).padStart(2, ‘0’);
-        const statusColors = { draft: ‘#888’, ready: ‘#2a7a2a’, sent: ‘#1a3e6f’ };
+        const m = String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0');
+        const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
         const versionCount = stimulus.history ? stimulus.history.length : 0;
         return `
           <div class="library-card">
@@ -348,16 +348,16 @@
               <span class="library-card-time">H+${h}:${m}</span>
             </div>
             <div class="library-card-body">
-              <div class="library-card-actor">${escapeHtml(actor?.name || tt(‘No actor’, ‘Sans acteur’))}</div>
-              <div class="library-card-desc">${escapeHtml(stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || ‘—‘).slice(0, 60)}</div>
+              <div class="library-card-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur'))}</div>
+              <div class="library-card-desc">${escapeHtml(stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || '—').slice(0, 60)}</div>
             </div>
             <div class="library-card-footer">
-              <button class="pill pill-status" style="background:${statusColors[stimulus.status] || ‘#888’}; color:#fff; border:none; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${stimulus.id}" title="${tt(‘Click to change status’, ‘Cliquer pour changer le statut’)}">${escapeHtml(stimulus.status)}${versionCount > 0 ? ` · v${versionCount + 1}` : ‘’}</button>
+              <button class="pill pill-status" style="background:${statusColors[stimulus.status] || '#888'}; color:#fff; border:none; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${stimulus.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut')}">${escapeHtml(stimulus.status)}${versionCount > 0 ? ` · v${versionCount + 1}` : ''}</button>
               <div class="library-card-actions">
-                <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt(‘Edit’, ‘Éditer’)}">✏️</button>
-                <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt(‘Duplicate’, ‘Dupliquer’)}">⧉</button>
-                <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt(‘Export PNG’, ‘Exporter PNG’)}">⤓</button>
-                <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" title="${tt(‘Delete’, ‘Supprimer’)}">✕</button>
+                <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt('Edit', 'Éditer')}">✏️</button>
+                <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer')}">⧉</button>
+                <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG')}">⤓</button>
+                <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Delete', 'Supprimer')}">✕</button>
               </div>
             </div>
           </div>
@@ -410,7 +410,7 @@
                     </div>
                   </label>
                 ` : ''}
-                <label class="field">${tt('Application language', 'Langue de l’application')}
+                <label class="field">${tt("Application language", "Langue de l'application")}
                   <select data-bind="settings.language">
                     <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
                     <option value="fr" ${settings.language === 'fr' ? 'selected' : ''}>Français</option>
@@ -421,7 +421,7 @@
                 <button class="btn btn-primary" data-action="test-connection">${tt('Test connection', 'Tester la connexion')}</button>
                 <button class="btn btn-secondary" data-action="save-local">${tt('Save locally', 'Sauvegarder localement')}</button>
               </div>
-              <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu’au fournisseur sélectionné.`)}</p>
+              <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`)}</p>
             </article>
             <article class="card">
               <div class="section-header"><h3>${tt('Included modules', 'Modules implémentés')}</h3></div>
@@ -433,14 +433,14 @@
                 <span class="tag">ExportEngine</span>
                 <span class="tag">UIRouter</span>
               </div>
-              <p class="subtle" style="margin-top:18px;">${tt('The application runs serverless in a single HTML file. External dependencies are loaded via CDN for PNG and ZIP exports.', 'L’application fonctionne sans serveur dans un seul fichier HTML. Les dépendances externes sont chargées via CDN pour les exports PNG et ZIP.')}</p>
+              <p class="subtle" style="margin-top:18px;">${tt("The application runs serverless in a single HTML file. External dependencies are loaded via CDN for PNG and ZIP exports.", "L'application fonctionne sans serveur dans un seul fichier HTML. Les dépendances externes sont chargées via CDN pour les exports PNG et ZIP.")}</p>
               <div class="field-grid" style="margin-top:20px;">
                 <div class="card" style="padding:16px; background:var(--surface-alt); box-shadow:none;">
                   <h4>${tt('Generation tips', 'Conseils de génération')}</h4>
                   <ul class="helper">
                     <li>${tt('Use a precise scenario summary to get consistent stimuli.', 'Utilisez un résumé de scénario précis pour obtenir des stimuli cohérents.')}</li>
                     <li>${tt('Add multiple actors to vary perspectives.', 'Renseignez plusieurs acteurs pour varier les points de vue.')}</li>
-                    <li>${tt('Manual editing remains available after generation for every field.', 'L’édition manuelle reste possible après génération sur chaque champ.')}</li>
+                    <li>${tt("Manual editing remains available after generation for every field.", "L'édition manuelle reste possible après génération sur chaque champ.")}</li>
                   </ul>
                 </div>
                 <div class="card" style="padding:16px; background:var(--surface-alt); box-shadow:none;">
@@ -566,30 +566,30 @@
           <section class="grid">
             <article class="card">
               <div class="section-header">
-                <h3>${tt(‘Timeline’, ‘Timeline’)}</h3>
+                <h3>${tt('Timeline', 'Timeline')}</h3>
                 <div class="actions">
-                  <button class="btn btn-primary" data-action="add-stimulus">${tt(‘+ Add stimulus’, ‘+ Ajouter un stimulus’)}</button>
-                  <button class="btn btn-secondary" data-action="sort-stimuli">${tt(‘Sort’, ‘Trier’)}</button>
+                  <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add stimulus', '+ Ajouter un stimulus')}</button>
+                  <button class="btn btn-secondary" data-action="sort-stimuli">${tt('Sort', 'Trier')}</button>
                 </div>
               </div>
               <div class="timeline">
                 <div class="timeline-track" style="width:${width}px;">
-                  ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * 120}px;">H+${tick}</div>`).join(‘’)}
-                  ${appState.scenario.stimuli.map((stimulus, index) => renderStimulusCard(stimulus, index)).join(‘’)}
+                  ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * 120}px;">H+${tick}</div>`).join('')}
+                  ${appState.scenario.stimuli.map((stimulus, index) => renderStimulusCard(stimulus, index)).join('')}
                 </div>
               </div>
             </article>
             <section class="stimuli-split">
               <article class="stimuli-left-panel card">
-                ${selected ? renderStimulusEditor(selected) : `<p class="subtle" style="padding:20px;">${tt(‘Select a stimulus from the timeline to edit it.’, ‘Sélectionnez un stimulus dans la timeline pour l\’éditer.’)}</p>`}
+                ${selected ? renderStimulusEditor(selected) : `<p class="subtle" style="padding:20px;">${tt('Select a stimulus from the timeline to edit it.', 'Sélectionnez un stimulus dans la timeline pour l\'éditer.')}</p>`}
               </article>
               <article class="stimuli-right-panel">
                 <div class="preview-toolbar-inline">
-                  ${selected ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${selected.id}">${tt(‘Export PNG’, ‘Exporter PNG’)}</button>` : ‘’}
+                  ${selected ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${selected.id}">${tt('Export PNG', 'Exporter PNG')}</button>` : ''}
                 </div>
                 <div class="preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 48px);">
                   <div class="preview-stage">
-                    ${selected ? renderStimulusPreview(selected) : `<div class="subtle" style="padding:40px;">${tt(‘Select a stimulus to preview it.’, ‘Sélectionnez un stimulus pour le prévisualiser.’)}</div>`}
+                    ${selected ? renderStimulusPreview(selected) : `<div class="subtle" style="padding:40px;">${tt('Select a stimulus to preview it.', 'Sélectionnez un stimulus pour le prévisualiser.')}</div>`}
                   </div>
                 </div>
               </article>
