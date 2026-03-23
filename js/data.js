@@ -88,6 +88,20 @@
         return scenario;
       }
 
+      function emptyScenario(settingsOverrides = {}) {
+        const base = defaultScenario();
+        return {
+          ...base,
+          id: uid('scenario'),
+          name: '',
+          client: { name: '', sector: base.client.sector, language: settingsOverrides.language || 'en', logo_url: '' },
+          scenario: { ...base.scenario, type: base.scenario.type, summary: '', detailed_context: '', start_date: '', timezone: base.scenario.timezone },
+          actors: [],
+          stimuli: [],
+          settings: { ...base.settings, ...settingsOverrides }
+        };
+      }
+
       function makeStimulus(channel, actorId, offsetMinutes, templateId = null) {
         const template = channel === 'article_press'
           ? (ARTICLE_TEMPLATE_LIBRARY[templateId] || ARTICLE_TEMPLATE_LIBRARY[TEMPLATE_LIBRARY.article_press.template_id] || ARTICLE_TEMPLATE_LIBRARY.nyt)
@@ -129,7 +143,6 @@
         }
         scenario.settings = { ...scenario.settings, ...providerSettings };
         normalizeProviderSettingsInPlace(scenario.settings);
-        if (!scenario.stimuli.length) scenario.stimuli = [makeStimulus('email_internal', scenario.actors[0]?.id || uid('actor'), 0)];
         return scenario;
       }
 

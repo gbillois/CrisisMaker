@@ -141,6 +141,9 @@
               </div>
               <div class="nav-topbar-right">
                 <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
+                <button class="nav-clear-btn" data-action="clear-data" title="${tt('Clear scenario data', 'Effacer les données du scénario')}">
+                  ${tt('Clear data', 'Effacer les données')}
+                </button>
                 <button class="nav-gear-btn ${appState.settingsDrawerOpen ? 'active' : ''}" data-action="toggle-settings-drawer" title="${tt('Settings', 'Paramètres')}">
                   ${svgGear()}
                 </button>

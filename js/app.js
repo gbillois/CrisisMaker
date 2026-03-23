@@ -7,6 +7,7 @@
         toasts: [],
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
         historyModalStimulusId: null,
+        llmState: makeDefaultLLMState()
         ui: {
           stimuliTimelineHeight: 255,
           stimuliEditorWidth: 42
@@ -132,6 +133,35 @@
         });
       }
 
+      function makeDefaultLLMState() {
+        return {
+          scenario: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
+          actors:   { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
+          stimulus: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
+        };
+      }
+
+      function confirmClearData() {
+        return window.confirm(tt(
+          'Clear all current scenario data? This will remove actors, stimuli, and browser autosave for this project.',
+          'Effacer toutes les données du scénario en cours ? Cela supprimera les acteurs, les stimuli et la sauvegarde navigateur de ce projet.'
+        ));
+      }
+
+      function clearScenarioData() {
+        const preservedSettings = { ...appState.scenario.settings };
+        appState.scenario = emptyScenario(preservedSettings);
+        appState.selectedStimulusId = null;
+        appState.slideshowIndex = 0;
+        appState.historyModalStimulusId = null;
+        appState.libraryFilter = { channel: '', status: '', actorId: '', sort: 'timeline' };
+        appState.llmState = makeDefaultLLMState();
+        _fileHandle = null;
+        saveLocal(false);
+        App.render();
+        pushToast(tt('Scenario data cleared.', 'Données du scénario effacées.'), 'success');
+      }
+
       async function handleAction(event) {
         const action = event.currentTarget.dataset.action;
         try {
@@ -170,6 +200,9 @@
             case 'save-json': saveScenarioToFile(); break;
             case 'load-json': loadScenarioFromFile(); break;
             case 'export-all': await ExportEngine.exportAll(); break;
+            case 'clear-data':
+              if (confirmClearData()) clearScenarioData();
+              break;
             case 'test-connection': {
               const provider = appState.scenario.settings.ai_provider;
               appState.connectionTest = {
