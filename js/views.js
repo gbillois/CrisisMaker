@@ -238,7 +238,7 @@
               <div class="hero-card">
                 <div class="hero-copy">
                   <span class="hero-kicker">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span>
-                  <h1>${tt('Shape crisis exercises with Wavestone\'s visual identity.', 'Concevez vos exercices de crise avec l\'identité Wavestone.')}</h1>
+                  <h1>${tt('Accelerate crisis exercises stimulus creation.', 'Accélérez la création de stimuli pour les exercices de crise.')}</h1>
                   <p>${tt('A streamlined studio to prepare scenarios, generate realistic stimuli, and export polished deliverables for facilitation teams.', 'Un studio fluide pour préparer les scénarios, générer des stimuli réalistes et exporter des livrables prêts pour l\'animation.')}</p>
                 </div>
                 <div class="hero-stats">
