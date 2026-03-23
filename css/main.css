@@ -748,3 +748,149 @@
       .editor-layout, .grid.cols-2, .grid.cols-3, .field-grid.cols-2, .field-grid.cols-3 { grid-template-columns: 1fr; }
       .topbar { position: relative; top: 0; }
     }
+
+    /* === Configure with LLM block === */
+    .llm-config-block {
+      background: #F0F4FF;
+      border: 1px solid #C5D4F0;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .llm-config-block.collapsed .llm-config-body { display: none; }
+    .llm-config-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .llm-config-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1E3A5F;
+    }
+    .llm-config-subtitle {
+      font-size: 12px;
+      color: #6B7B8D;
+      margin-bottom: 12px;
+      margin-top: 4px;
+    }
+    .llm-config-block textarea {
+      width: 100%;
+      min-height: 72px;
+      max-height: 200px;
+      resize: vertical;
+      font-size: 14px;
+      border: 1px solid #D0D5DD;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .llm-config-block textarea:focus {
+      outline: none;
+      border-color: #1E3A5F;
+      box-shadow: 0 0 0 3px rgba(30,58,95,0.1);
+    }
+    .llm-config-block textarea.textarea-error { border-color: #dc2626; }
+    .llm-config-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    .btn-llm-generate {
+      background: #1E3A5F;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-llm-generate:hover:not(:disabled) { background: #162d4a; }
+    .btn-llm-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-llm-clear {
+      background: transparent;
+      border: 1px solid #D0D5DD;
+      color: #555;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-llm-clear:hover { background: #f5f5f5; }
+    .btn-llm-collapse {
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 2px 4px;
+    }
+    .btn-llm-collapse:hover { color: #1E3A5F; }
+    .llm-error-banner {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: #991B1B;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .llm-error-banner.llm-warning { background: #FFF7ED; border-color: #FED7AA; color: #92400E; }
+    .llm-success-banner {
+      background: #FEF9C3;
+      border: 1px solid #FDE68A;
+      color: #78350F;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 10px 0 0;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .llm-success-banner button {
+      background: transparent;
+      border: 1px solid #D97706;
+      border-radius: 4px;
+      color: #78350F;
+      font-size: 12px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .llm-field-highlight {
+      border-left: 3px solid #F59E0B !important;
+      transition: border-left-color 500ms ease;
+    }
+    /* Actors validation panel */
+    .llm-actors-panel { margin-top: 14px; }
+    .llm-actors-warning {
+      font-size: 12px;
+      color: #92400E;
+      background: #FFF7ED;
+      padding: 6px 10px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .llm-actor-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #fff;
+      border: 1px solid #E5E7EB;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .llm-actor-info { flex: 1; font-size: 13px; }
+    .llm-actor-info strong { display: block; color: #182033; }
+    .llm-actor-info span { color: #6B7B8D; font-size: 12px; }
+    .llm-actors-global-actions { display: flex; gap: 8px; margin-top: 10px; }

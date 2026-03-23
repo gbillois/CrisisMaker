@@ -6,7 +6,12 @@
         scenario: loadInitialScenario(),
         toasts: [],
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
-        historyModalStimulusId: null
+        historyModalStimulusId: null,
+        llmState: {
+          scenario: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
+          actors:   { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
+          stimulus: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
+        }
       };
 
       const App = {
@@ -100,6 +105,12 @@
           });
         });
 
+        document.querySelectorAll('[data-llm-zone]').forEach((textarea) => {
+          textarea.addEventListener('input', () => {
+            appState.llmState[textarea.dataset.llmZone].text = textarea.value;
+          });
+        });
+
         document.querySelectorAll('[data-action]').forEach((button) => {
           button.addEventListener('click', handleAction);
         });
@@ -190,6 +201,131 @@
             case 'restore-version': {
               const s = getStimulus(event.currentTarget.dataset.stimulusId);
               if (s) { restoreVersion(s, Number(event.currentTarget.dataset.versionIndex)); await autoSave(); App.render(); }
+              break;
+            }
+            case 'llm-collapse': {
+              const zone = event.currentTarget.dataset.zone;
+              appState.llmState[zone].collapsed = !appState.llmState[zone].collapsed;
+              App.render();
+              break;
+            }
+            case 'llm-clear': {
+              const zone = event.currentTarget.dataset.zone;
+              appState.llmState[zone].text = '';
+              appState.llmState[zone].error = null;
+              appState.llmState[zone].lastFilledCount = 0;
+              if (zone === 'actors') appState.llmState.actors.pendingActors = null;
+              App.render();
+              break;
+            }
+            case 'llm-dismiss-banner': {
+              const zone = event.currentTarget.dataset.zone;
+              appState.llmState[zone].lastFilledCount = 0;
+              App.render();
+              break;
+            }
+            case 'llm-generate-scenario': {
+              const state = appState.llmState.scenario;
+              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
+              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              try {
+                const result = await AITextGenerator.generateScenario(state.text);
+                let filled = 0;
+                if (result.client) {
+                  if (result.client.name) { appState.scenario.client.name = result.client.name; filled++; }
+                  if (result.client.sector) { appState.scenario.client.sector = result.client.sector; filled++; }
+                  if (result.client.language) { appState.scenario.client.language = result.client.language; filled++; }
+                }
+                if (result.scenario) {
+                  if (result.scenario.type) { appState.scenario.scenario.type = result.scenario.type; filled++; }
+                  if (result.scenario.summary) { appState.scenario.scenario.summary = result.scenario.summary; filled++; }
+                  if (result.scenario.detailed_context) { appState.scenario.scenario.detailed_context = result.scenario.detailed_context; filled++; }
+                  if (result.scenario.start_date) { appState.scenario.scenario.start_date = result.scenario.start_date.slice(0, 16); filled++; }
+                  if (result.scenario.timezone) { appState.scenario.scenario.timezone = result.scenario.timezone; filled++; }
+                }
+                state.loading = false;
+                state.lastFilledCount = filled;
+                App.render();
+                highlightLLMFields(['client.name', 'client.sector', 'client.language', 'scenario.type', 'scenario.summary', 'scenario.detailed_context', 'scenario.start_date', 'scenario.timezone']);
+              } catch (err) {
+                state.loading = false;
+                state.error = classifyLLMError(err);
+                App.render();
+              }
+              break;
+            }
+            case 'llm-generate-actors': {
+              const state = appState.llmState.actors;
+              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
+              state.loading = true; state.error = null; state.pendingActors = null; App.render();
+              try {
+                const result = await AITextGenerator.generateActors(state.text, appState.scenario);
+                const actors = Array.isArray(result) ? result : (result.actors || []);
+                state.loading = false;
+                state.pendingActors = actors;
+                App.render();
+              } catch (err) {
+                state.loading = false;
+                state.error = classifyLLMError(err);
+                App.render();
+              }
+              break;
+            }
+            case 'llm-generate-stimulus': {
+              const state = appState.llmState.stimulus;
+              const selected = getSelectedStimulus();
+              if (!selected) break;
+              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
+              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              try {
+                const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors);
+                if (Array.isArray(result)) {
+                  await handleMultiStimulusResult(result);
+                } else {
+                  await applyStimulusConfig(selected, result);
+                  const filled = Object.keys(result.fields || {}).length + 3;
+                  state.lastFilledCount = filled;
+                }
+                state.loading = false;
+                App.render();
+              } catch (err) {
+                state.loading = false;
+                state.error = classifyLLMError(err);
+                App.render();
+              }
+              break;
+            }
+            case 'llm-actor-add': {
+              const idx = Number(event.currentTarget.dataset.idx);
+              const pending = appState.llmState.actors.pendingActors;
+              if (!pending || !pending[idx]) break;
+              addActorFromLLM(pending[idx]);
+              appState.llmState.actors.pendingActors = pending.filter((_, i) => i !== idx);
+              if (appState.llmState.actors.pendingActors.length === 0) appState.llmState.actors.pendingActors = null;
+              App.render();
+              break;
+            }
+            case 'llm-actor-ignore': {
+              const idx = Number(event.currentTarget.dataset.idx);
+              const pending = appState.llmState.actors.pendingActors;
+              if (!pending) break;
+              appState.llmState.actors.pendingActors = pending.filter((_, i) => i !== idx);
+              if (appState.llmState.actors.pendingActors.length === 0) appState.llmState.actors.pendingActors = null;
+              App.render();
+              break;
+            }
+            case 'llm-actor-add-all': {
+              const pending = appState.llmState.actors.pendingActors;
+              if (!pending) break;
+              pending.forEach((actor) => addActorFromLLM(actor));
+              appState.llmState.actors.pendingActors = null;
+              App.render();
+              pushToast(tt('All actors added.', 'Tous les acteurs ajoutés.'), 'success');
+              break;
+            }
+            case 'llm-actor-ignore-all': {
+              appState.llmState.actors.pendingActors = null;
+              App.render();
               break;
             }
             default: console.warn(tt('Unhandled action', 'Action non gérée'), action);
@@ -403,6 +539,78 @@
       function verifiedBadge(type) {
         const fill = type === 'gold' ? '#f2b10c' : type === 'grey' ? '#8392a5' : '#1d9bf0';
         return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="${fill}"></circle><path d="M17.2 8.8l-6.1 6.4-3-2.9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+      }
+
+      function highlightLLMFields(bindPaths) {
+        setTimeout(() => {
+          bindPaths.forEach((path) => {
+            document.querySelectorAll(`[data-bind="${path}"]`).forEach((el) => {
+              el.classList.add('llm-field-highlight');
+            });
+          });
+          setTimeout(() => {
+            document.querySelectorAll('.llm-field-highlight').forEach((el) => {
+              el.classList.remove('llm-field-highlight');
+            });
+          }, 5000);
+        }, 50);
+      }
+
+      function addActorFromLLM(actorData) {
+        appState.scenario.actors.push({
+          id: uid('actor'),
+          name: actorData.name || tt('New actor', 'Nouvel acteur'),
+          role: actorData.role || 'internal',
+          organization: actorData.organization || appState.scenario.client.name,
+          title: actorData.title || '',
+          language: actorData.language || appState.scenario.client.language || 'en',
+          avatar_initials: initialsFromName(actorData.name || ''),
+          avatar_url: ''
+        });
+      }
+
+      function resolveActorFromName(nameOrNull) {
+        if (!nameOrNull) return null;
+        const lower = String(nameOrNull).toLowerCase().trim();
+        return appState.scenario.actors.find((a) => a.name.toLowerCase().trim() === lower) || null;
+      }
+
+      async function applyStimulusConfig(stimulus, config) {
+        if (config.channel && config.channel !== stimulus.channel) {
+          replaceStimulusTemplate(stimulus, config.channel);
+        }
+        if (config.template_id && config.channel === 'article_press') {
+          replaceArticleVariant(stimulus, config.template_id);
+        }
+        const resolvedActor = resolveActorFromName(config.actor_id);
+        if (resolvedActor) {
+          stimulus.actor_id = resolvedActor.id;
+        } else if (config.source_label) {
+          stimulus.source_label = config.source_label;
+        }
+        if (config.timestamp_offset_minutes !== undefined) {
+          stimulus.timestamp_offset_minutes = Number(config.timestamp_offset_minutes) || 0;
+        }
+        stimulus.generation_mode = 'ai_guided';
+        if (config.generation_prompt) stimulus.generation_prompt = config.generation_prompt;
+        else if (appState.llmState.stimulus.text) stimulus.generation_prompt = appState.llmState.stimulus.text;
+        if (config.fields && typeof config.fields === 'object') {
+          Object.entries(config.fields).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) stimulus.fields[key] = value;
+          });
+        }
+        stimulus.updated_at = new Date().toISOString();
+      }
+
+      async function handleMultiStimulusResult(configs) {
+        configs.forEach((config) => {
+          const actorId = appState.scenario.actors[0]?.id;
+          const stimulus = makeStimulus(config.channel || 'email_internal', actorId, config.timestamp_offset_minutes || 0, config.template_id || null);
+          applyStimulusConfig(stimulus, config);
+          appState.scenario.stimuli.push(stimulus);
+        });
+        appState.selectedStimulusId = appState.scenario.stimuli[appState.scenario.stimuli.length - 1]?.id || null;
+        pushToast(tt(`${configs.length} stimuli added to timeline.`, `${configs.length} stimuli ajoutés à la timeline.`), 'success');
       }
 
       App.init();

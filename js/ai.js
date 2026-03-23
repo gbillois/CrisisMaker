@@ -12,6 +12,18 @@
           const prompt = 'Reply only with a JSON object {"ok": true, "message": "valid connection"}';
           return this.generate('settings_test', prompt, null, true);
         },
+        async generateScenario(userInput) {
+          const { systemPrompt, userPrompt } = LLMConfigPrompts.scenario(userInput);
+          return this.generate('llm_config_scenario', systemPrompt, userPrompt);
+        },
+        async generateActors(userInput, scenario) {
+          const { systemPrompt, userPrompt } = LLMConfigPrompts.actors(userInput, scenario);
+          return this.generate('llm_config_actors', systemPrompt, userPrompt);
+        },
+        async generateStimulusConfig(userInput, scenario, actors) {
+          const { systemPrompt, userPrompt } = LLMConfigPrompts.stimulus(userInput, scenario, actors);
+          return this.generate('llm_config_stimulus', systemPrompt, userPrompt);
+        },
         async generateForStimulus(stimulus, fieldName = null, guidedPrompt = null) {
           const actor = getActor(stimulus.actor_id);
           const promptInfo = PromptBuilder.forStimulus(stimulus, actor, appState.scenario, fieldName, guidedPrompt);
@@ -46,7 +58,7 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error?.message || 'Erreur API Anthropic');
             const text = data.content?.[0]?.text || '{}';
-            const match = text.match(/\{[\s\S]*\}/);
+            const match = text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
             if (!match) throw new Error(tt('Anthropic response was not valid JSON.', 'Réponse Anthropic non JSON.'));
             const parsed = JSON.parse(match[0]);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.'), 'success');
@@ -72,6 +84,120 @@
             return parsed;
           }
           throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`));
+        }
+      };
+
+      const LLMConfigPrompts = {
+        scenario(userInput) {
+          const today = new Date().toISOString().slice(0, 10);
+          return {
+            systemPrompt: `Tu es un assistant spécialisé dans la préparation d'exercices de crise cybersécurité.
+L'utilisateur décrit un scénario en langage naturel. Tu dois extraire et structurer les informations pour configurer l'exercice.
+
+CONSIGNES :
+- Extrais toutes les informations mentionnées par l'utilisateur
+- Pour les informations NON mentionnées, INVENTE des valeurs réalistes et cohérentes avec le contexte décrit
+- Le champ "summary" doit être un résumé professionnel de 3-5 phrases du scénario
+- Le champ "detailed_context" doit développer avec des détails techniques plausibles (vecteur d'attaque, systèmes affectés, chronologie)
+- La langue du client doit correspondre au pays/contexte mentionné (entreprise française → "fr", entreprise allemande → "de", etc.)
+- Si aucune date n'est mentionnée, utilise la date du jour (${today})
+- Si aucun fuseau horaire n'est mentionné, déduis-le du pays
+
+Réponds UNIQUEMENT avec un objet JSON respectant exactement cette structure :
+{
+  "client": {
+    "name": "Nom de l'organisation",
+    "sector": "Banking | Energy | Healthcare | Transport | Industry | Telecom | Retail | Public sector | Other",
+    "language": "fr | en | de | es | it | pt | nl | ja | zh"
+  },
+  "scenario": {
+    "type": "Ransomware | Data Breach | Supply Chain | DDoS | Insider Threat | Other",
+    "summary": "Résumé professionnel de 3-5 phrases",
+    "detailed_context": "Contexte détaillé avec informations techniques plausibles (1-2 paragraphes)",
+    "start_date": "2026-03-15T08:00:00",
+    "timezone": "Europe/Paris"
+  }
+}`,
+            userPrompt: `DESCRIPTION DE L'UTILISATEUR :\n${userInput}`
+          };
+        },
+        actors(userInput, scenario) {
+          return {
+            systemPrompt: `Tu es un assistant spécialisé dans la préparation d'exercices de crise cybersécurité.
+L'utilisateur décrit les acteurs qu'il souhaite pour son exercice. Tu dois générer une liste d'acteurs structurée.
+
+CONTEXTE DU SCÉNARIO :
+- Client : ${scenario.client.name} (${scenario.client.sector}), langue : ${scenario.client.language}
+- Scénario : ${scenario.scenario.summary}
+- Type : ${scenario.scenario.type}
+
+CONSIGNES :
+- Génère les acteurs décrits par l'utilisateur avec des noms fictifs réalistes
+- Pour les détails NON mentionnés (noms, titres exacts, organisations), INVENTE des valeurs réalistes et cohérentes
+- Si l'utilisateur demande vaguement "des journalistes" ou "des acteurs réalistes", crée un jeu complet et équilibré d'au moins 6 acteurs
+- Chaque acteur doit avoir un nom cohérent avec sa langue/pays
+- La langue de chaque acteur correspond à sa zone d'activité
+
+Réponds UNIQUEMENT avec un tableau JSON :
+[
+  {
+    "name": "Prénom Nom",
+    "role": "journalist | authority | client_b2b | client_b2c | internal | partner | attacker | analyst",
+    "organization": "Nom de l'organisation",
+    "title": "Titre / fonction",
+    "language": "fr | en | de | es | it"
+  }
+]`,
+            userPrompt: `DESCRIPTION DES ACTEURS :\n${userInput}`
+          };
+        },
+        stimulus(userInput, scenario, actors) {
+          const actorsList = actors.map((a) => ({ name: a.name, role: a.role, organization: a.organization, language: a.language }));
+          return {
+            systemPrompt: `Tu es un assistant spécialisé dans la préparation d'exercices de crise cybersécurité.
+L'utilisateur décrit un ou plusieurs stimuli (messages de crise). Tu dois extraire la configuration ET générer le contenu.
+
+CONTEXTE DU SCÉNARIO :
+- Client : ${scenario.client.name} (${scenario.client.sector}), langue : ${scenario.client.language}
+- Scénario : ${scenario.scenario.summary}
+- Contexte détaillé : ${scenario.scenario.detailed_context || 'Non renseigné'}
+- Acteurs disponibles : ${JSON.stringify(actorsList)}
+
+TEMPLATES DISPONIBLES :
+- article_press : lemonde, nyt, faz, ft
+- email_internal : outlook
+- email_external : generic
+- email_authority : anssi
+- post_twitter : twitter
+- post_linkedin : linkedin
+- post_reddit : reddit
+- breaking_news_tv : bfm
+- press_release : generic_pr
+- sms_notification : sms
+- internal_memo : memo
+
+CONSIGNES :
+- Détermine le canal et le template les plus adaptés à la description
+- Si un acteur est mentionné ou correspond à la description, mets son nom dans actor_id (le code fera la résolution)
+- Pour la position timeline, interprète "H+2" comme 120 minutes, "H+30" comme 30, etc. Si non mentionné, utilise 0
+- Génère le contenu des champs dans la LANGUE NATIVE DU MÉDIA
+- Pour les informations NON mentionnées, INVENTE des détails réalistes cohérents
+- Le champ generation_mode doit être "ai_guided"
+- Si l'utilisateur décrit PLUSIEURS stimuli, retourne un TABLEAU JSON d'objets. Si UN SEUL stimulus, retourne un objet unique.
+
+Format d'un stimulus :
+{
+  "channel": "article_press | email_internal | post_twitter | ...",
+  "template_id": "lemonde | nyt | outlook | twitter | ...",
+  "actor_id": "nom de l'acteur ou null",
+  "source_label": "label si pas d'acteur",
+  "timestamp_offset_minutes": 120,
+  "generation_mode": "ai_guided",
+  "generation_prompt": "description originale de l'utilisateur",
+  "fields": {}
+}`,
+            userPrompt: `DESCRIPTION DU STIMULUS :\n${userInput}`
+          };
         }
       };
 

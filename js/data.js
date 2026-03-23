@@ -226,3 +226,12 @@
       function deepClone(data) {
         return JSON.parse(JSON.stringify(data));
       }
+
+      function isLLMAvailable() {
+        const s = appState?.scenario?.settings;
+        if (!s) return false;
+        if (s.ai_provider === 'azure_openai') {
+          return !!(s.azure_api_key?.trim() && s.azure_endpoint?.trim() && s.azure_deployment?.trim());
+        }
+        return !!(s.ai_api_key?.trim());
+      }

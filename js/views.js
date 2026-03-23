@@ -1,3 +1,115 @@
+      function getLLMErrorMessage(errorCode) {
+        const messages = {
+          auth:      tt('Invalid API key. Check it in settings (⚙).', 'Clé API invalide. Vérifiez-la dans les paramètres (⚙).'),
+          quota:     tt('API quota exceeded. Retry later or change model.', 'Quota API dépassé. Réessayez plus tard ou changez de modèle.'),
+          network:   tt('Connection error. Check your internet connection and retry.', 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.'),
+          malformed: tt('Generation failed. Try rephrasing your description.', 'La génération a échoué. Essayez de reformuler votre description.'),
+          empty:     tt('Describe what you want before generating.', 'Décrivez ce que vous voulez avant de générer.')
+        };
+        return messages[errorCode] || errorCode;
+      }
+
+      function classifyLLMError(err) {
+        const msg = err?.message || '';
+        if (msg.includes('401') || msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('api key')) return 'auth';
+        if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('rate')) return 'quota';
+        if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('connection')) return 'network';
+        return 'malformed';
+      }
+
+      function renderLLMConfigBlock(zone, placeholder) {
+        const state = appState.llmState[zone];
+        const available = isLLMAvailable();
+        const collapsed = state.collapsed;
+        const loading = state.loading;
+
+        const generateLabel = loading
+          ? tt('Generating…', 'Génération en cours…')
+          : tt('Generate ✨', 'Générer ✨');
+        const disabledAttr = (!available || loading) ? 'disabled' : '';
+        const noKeyTooltip = !available
+          ? escapeAttribute(tt(
+              'Configure your API key in settings (⚙) to use this feature.',
+              'Configurez votre clé API dans les paramètres (⚙) pour utiliser cette fonctionnalité.'
+            ))
+          : '';
+
+        const errorHtml = state.error && state.error !== 'empty'
+          ? `<div class="llm-error-banner${['quota', 'network', 'malformed'].includes(state.error) ? ' llm-warning' : ''}">${escapeHtml(getLLMErrorMessage(state.error))}</div>`
+          : '';
+
+        const pendingActorsHtml = (zone === 'actors' && state.pendingActors && state.pendingActors.length > 0)
+          ? renderPendingActorsPanel(state.pendingActors)
+          : '';
+
+        const successBannerHtml = (zone !== 'actors' && state.lastFilledCount > 0 && !loading && !state.error)
+          ? `<div class="llm-success-banner">
+              <span>✅ ${tt(`${state.lastFilledCount} field(s) pre-filled by the LLM. Check and adjust if needed.`, `${state.lastFilledCount} champ(s) pré-rempli(s) par le LLM. Vérifiez et ajustez si nécessaire.`)}</span>
+              <button data-action="llm-dismiss-banner" data-zone="${zone}">OK</button>
+             </div>`
+          : '';
+
+        return `
+          <div class="llm-config-block${collapsed ? ' collapsed' : ''}" id="llm-block-${zone}">
+            <div class="llm-config-header">
+              <span class="llm-config-title">🤖 ${tt('Configure with LLM', 'Configurer avec le LLM')}</span>
+              <button class="btn-llm-collapse" data-action="llm-collapse" data-zone="${zone}">
+                ${collapsed ? '▶ ' + tt('Expand', 'Développer') : '▼ ' + tt('Reduce', 'Réduire')}
+              </button>
+            </div>
+            <div class="llm-config-body">
+              <p class="llm-config-subtitle">${tt(
+                'Describe what you want in natural language. If information is missing, the LLM will fill in the most likely values.',
+                'Décrivez ce que vous voulez en langage naturel. Si des informations manquent, le LLM complétera avec les valeurs les plus probables.'
+              )}</p>
+              <textarea
+                data-llm-zone="${zone}"
+                placeholder="${escapeAttribute(placeholder)}"
+                class="${state.error === 'empty' ? 'textarea-error' : ''}"
+              >${escapeHtml(state.text || '')}</textarea>
+              ${errorHtml}
+              <div class="llm-config-actions">
+                <button class="btn-llm-generate" data-action="llm-generate-${zone}" ${disabledAttr}
+                  ${noKeyTooltip ? `title="${noKeyTooltip}"` : ''}
+                >${generateLabel}</button>
+                <button class="btn-llm-clear" data-action="llm-clear" data-zone="${zone}">${tt('Clear', 'Effacer')}</button>
+              </div>
+              ${successBannerHtml}
+              ${pendingActorsHtml}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderPendingActorsPanel(pendingActors) {
+        const actorCount = appState.scenario.actors.length;
+        const warningHtml = actorCount > 0
+          ? `<p class="llm-actors-warning">${tt(
+              `The table already contains ${actorCount} actor(s). Generated actors will be added. To replace all actors, clear the table first.`,
+              `Le tableau contient déjà ${actorCount} acteur(s). Les acteurs générés seront ajoutés. Pour tout remplacer, videz d'abord le tableau.`
+            )}</p>`
+          : '';
+        return `
+          <div class="llm-actors-panel">
+            ${warningHtml}
+            ${pendingActors.map((actor, idx) => `
+              <div class="llm-actor-row" id="llm-actor-row-${idx}">
+                <div class="llm-actor-info">
+                  <strong>${escapeHtml(actor.name)}</strong>
+                  <span>${escapeHtml(roleLabel(actor.role))} · ${escapeHtml(actor.organization)} · ${escapeHtml(actor.title)} · ${escapeHtml(actor.language)}</span>
+                </div>
+                <button class="btn btn-primary" style="font-size:12px;padding:4px 10px;" data-action="llm-actor-add" data-idx="${idx}">${tt('Add', 'Ajouter')}</button>
+                <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" data-action="llm-actor-ignore" data-idx="${idx}">${tt('Ignore', 'Ignorer')}</button>
+              </div>
+            `).join('')}
+            <div class="llm-actors-global-actions">
+              <button class="btn btn-primary" data-action="llm-actor-add-all">${tt('Add all', 'Tout ajouter')}</button>
+              <button class="btn btn-ghost" data-action="llm-actor-ignore-all">${tt('Ignore all', 'Tout ignorer')}</button>
+            </div>
+          </div>
+        `;
+      }
+
       function pushToast(message, type = 'success') {
         const id = uid('toast');
         appState.toasts.push({ id, message, type });
@@ -262,6 +374,7 @@
           <section class="grid cols-2">
             <article class="card">
               <div class="section-header"><h3>${tt('AI connection', 'Connexion IA')}</h3></div>
+              ${!isLLMAvailable() ? `<div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#78350F;">${tt('No API key configured. AI generation features are disabled.', 'Aucune clé API configurée. Les fonctionnalités de génération par IA sont désactivées.')}</div>` : ''}
               <div class="field-grid cols-2">
                 <label class="field">${tt('AI provider', 'Fournisseur IA')}
                   <select data-bind="settings.ai_provider">
@@ -352,8 +465,17 @@
         ];
         const types = [['Ransomware', 'Ransomware'], ['Data Breach', 'Data Breach'], ['Supply Chain', 'Supply Chain'], ['DDoS', 'DDoS'], ['Insider Threat', 'Insider Threat'], ['Other', 'Autre']];
         const langOptions = LANGUAGES.map((l) => `<option value="${l.value}" ${(scenario.client.language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('');
+        const scenarioPlaceholder = tt(
+          'Ex: "A French bank called BNP Paribas hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."',
+          'Ex: "Exercice de crise pour un hôpital français (CHU de Lyon). Scénario : fuite de données patients via un prestataire compromis. Début le 15 mars 2026 à 8h."'
+        );
+        const actorsPlaceholder = tt(
+          'Ex: "I need journalists from Le Monde and the Financial Times, an ANSSI authority, 2 internal actors (the CISO and the CEO), and an angry B2C customer on Twitter."',
+          'Ex: "Génère des acteurs réalistes pour ce scénario. Je veux un mix de journalistes FR et internationaux, les autorités pertinentes, et des acteurs internes."'
+        );
         return `
           <section class="grid">
+            ${renderLLMConfigBlock('scenario', scenarioPlaceholder)}
             <article class="card">
               <div class="section-header"><h3>${tt('Client', 'Client')}</h3></div>
               <div class="field-grid cols-2">
@@ -400,6 +522,7 @@
                   <button class="btn btn-primary" data-action="add-actor">${tt('Add actor', 'Ajouter un acteur')}</button>
                 </div>
               </div>
+              ${renderLLMConfigBlock('actors', actorsPlaceholder)}
               <div style="overflow-x:auto;">
                 <table class="table">
                   <thead><tr><th>${tt('Name', 'Nom')}</th><th>${tt('Role', 'Rôle')}</th><th>${tt('Organization', 'Organisation')}</th><th>${tt('Title', 'Titre')}</th><th>${tt('Language', 'Langue')}</th><th>${tt('Actions', 'Actions')}</th></tr></thead>
@@ -506,6 +629,11 @@
             </div>
           </div>
 
+          ${renderLLMConfigBlock('stimulus', tt(
+            'Ex: "A Le Monde article about the attack by journalist Jean Dupont, at H+2. Alarming but factual, mentioning impact on 2 million customers."',
+            'Ex: "Un tweet indigné d\'un client B2C qui ne peut plus accéder à son compte bancaire. H+1." Ou : "Email interne du RSSI au comité de crise, H+0."'
+          ))}
+
           <div class="field-grid cols-2">
             <label class="field">${tt('Channel', 'Canal')}
               <select data-stimulus-bind="${stimulus.id}.channel">${Object.entries(CHANNEL_META).map(([channel]) => `<option value="${channel}" ${stimulus.channel === channel ? 'selected' : ''}>${channelLabel(channel)}</option>`).join('')}</select>
@@ -527,9 +655,9 @@
           <div class="field-grid cols-2" style="margin-top:14px;">
             <label class="field">${tt('Generation mode', 'Mode de génération')}
               <select data-stimulus-bind="${stimulus.id}.generation_mode">
-                <option value="ai" ${(stimulus.generation_mode || 'ai') === 'ai' ? 'selected' : ''}>${tt('AI automatic', 'IA automatique')}</option>
-                <option value="ai_guided" ${stimulus.generation_mode === 'ai_guided' ? 'selected' : ''}>${tt('AI guided', 'IA guidée')}</option>
-                <option value="manual" ${stimulus.generation_mode === 'manual' ? 'selected' : ''}>${tt('Manual', 'Manuel')}</option>
+                <option value="ai" ${(stimulus.generation_mode || 'ai') === 'ai' ? 'selected' : ''} ${!isLLMAvailable() ? 'disabled' : ''}>${tt('AI automatic', 'IA automatique')}${!isLLMAvailable() ? tt(' (requires API key)', ' (clé API requise)') : ''}</option>
+                <option value="ai_guided" ${stimulus.generation_mode === 'ai_guided' ? 'selected' : ''} ${!isLLMAvailable() ? 'disabled' : ''}>${tt('AI guided', 'IA guidée')}${!isLLMAvailable() ? tt(' (requires API key)', ' (clé API requise)') : ''}</option>
+                <option value="manual" ${(stimulus.generation_mode === 'manual' || !isLLMAvailable()) ? 'selected' : ''}>${tt('Manual', 'Manuel')}</option>
               </select>
             </label>
           </div>
