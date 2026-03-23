@@ -1,7 +1,8 @@
       const appState = {
-        route: 'settings',
+        route: 'project',
         selectedStimulusId: null,
         slideshowIndex: 0,
+        settingsDrawerOpen: false,
         scenario: loadInitialScenario(),
         toasts: []
       };
@@ -106,15 +107,23 @@
         const action = event.currentTarget.dataset.action;
         try {
           switch (action) {
+            case 'toggle-settings-drawer':
+              appState.settingsDrawerOpen = !appState.settingsDrawerOpen;
+              App.render();
+              break;
             case 'toggle-api-key': {
               const input = document.getElementById('api-key-input');
               input.type = input.type === 'password' ? 'text' : 'password';
               break;
             }
             case 'save-local': saveLocal(); break;
+            case 'nav-scenario': appState.route = 'scenario'; App.render(); break;
+            case 'nav-stimuli': appState.route = 'stimuli'; App.render(); break;
+            case 'nav-library': appState.route = 'library'; App.render(); break;
             case 'new-scenario': {
               appState.scenario = defaultScenario();
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
+              appState.route = 'project';
               App.render();
               pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.'), 'success');
               break;

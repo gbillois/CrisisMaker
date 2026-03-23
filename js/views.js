@@ -14,91 +14,177 @@
       }
 
       function renderAppShell() {
+        const vc = viewConfig();
         return `
           <div class="app-shell">
-            <aside class="sidebar">
-              <div class="brand">
-                <h1>CrisisStim <span class="brand-signature">by Wavestone</span></h1>
-                <p>${tt('Standalone stimulus generator for cyber crisis exercises, delivered as a single serverless HTML file.', 'Générateur autonome de stimuli pour exercices de crise cyber, dans un seul fichier HTML sans serveur.')}</p>
+            <nav class="nav-topbar">
+              <div class="nav-topbar-left">
+                ${renderNavIconButton(‘project’, svgFolder(), tt(‘Project’, ‘Projet’))}
+                ${renderNavIconButton(‘scenario’, svgTarget(), tt(‘Scenario’, ‘Scénario’))}
+                ${renderNavIconButton(‘stimuli’, svgPen(), tt(‘Stimuli’, ‘Stimuli’))}
+                ${renderNavIconButton(‘library’, svgGrid(), tt(‘Library’, ‘Bibliothèque’))}
               </div>
+              <div class="nav-topbar-center">
+                <span class="nav-project-name">${escapeHtml(appState.scenario.name || ‘CrisisStim’)}</span>
+              </div>
+              <div class="nav-topbar-right">
+                <button class="nav-gear-btn ${appState.settingsDrawerOpen ? ‘active’ : ‘’}" data-action="toggle-settings-drawer" title="${tt(‘Settings’, ‘Paramètres’)}">
+                  ${svgGear()}
+                </button>
+              </div>
+            </nav>
 
-              <div>
-                <div class="subtle" style="color: rgba(255,255,255,0.78); margin-bottom: 10px;">${tt('Navigation', 'Navigation')}</div>
-                <div class="nav-list">
-                  ${renderNavButton('settings', tt('Settings', 'Paramètres'), tt('API & language', 'API & langue'))}
-                  ${renderNavButton('scenario', tt('Scenario', 'Scénario'), tt('Client, context, actors', 'Client, contexte, acteurs'))}
-                  ${renderNavButton('stimuli', tt('Stimuli', 'Stimuli'), tt('Timeline & editing', 'Timeline & édition'))}
-                  ${renderNavButton('preview', tt('Preview', 'Prévisualisation'), tt('Fullscreen & export', 'Plein écran & export'))}
-                </div>
+            <div class="settings-drawer ${appState.settingsDrawerOpen ? ‘open’ : ‘’}">
+              <div class="settings-drawer-header">
+                <h3>${tt(‘Settings’, ‘Paramètres’)}</h3>
+                <button class="btn btn-secondary" data-action="toggle-settings-drawer">✕</button>
               </div>
-
-              <div>
-                <div class="subtle" style="color: rgba(255,255,255,0.78); margin-bottom: 10px;">${tt('Global tools', 'Outils globaux')}</div>
-                <div class="toolbar-list">
-                  <button class="toolbar-button" data-action="new-scenario">${tt('New scenario', 'Nouveau scénario')} <span>↺</span></button>
-                  <button class="toolbar-button" data-action="save-json">${tt('Save JSON', 'Sauvegarder JSON')} <span>⇩</span></button>
-                  <button class="toolbar-button" data-action="load-json">${tt('Load JSON', 'Charger JSON')} <span>⇧</span></button>
-                  <button class="toolbar-button" data-action="save-local">${tt('Local save', 'Sauvegarde locale')} <span>💾</span></button>
-                  <button class="toolbar-button" data-action="export-all">${tt('Full ZIP export', 'Export complet ZIP')} <span>🗜️</span></button>
-                </div>
+              <div class="settings-drawer-body">
+                ${renderSettingsView()}
               </div>
-
-              <div class="toolbar-note">
-                <strong>${tt('Privacy.', 'Confidentialité.')}</strong><br>
-                ${tt('Your API key is stored only in the browser (localStorage) and is sent only to the selected AI provider during generation.', 'Votre clé API est stockée uniquement dans le navigateur (localStorage) et n’est envoyée qu’au fournisseur IA sélectionné lors des appels de génération.')}
-              </div>
-            </aside>
+            </div>
 
             <main class="content">
-              <section class="topbar">
+              ${vc ? `<section class="topbar">
                 <div class="page-title">
-                  <h2>${viewConfig().title}</h2>
-                  <p>${viewConfig().subtitle}</p>
+                  <h2>${vc.title}</h2>
+                  <p>${vc.subtitle}</p>
                 </div>
                 <div class="status-pills">
-                  <span class="pill">${escapeHtml(appState.scenario.name)}</span>
-                  <span class="pill">${appState.scenario.stimuli.length} ${tt('stimuli', 'stimuli')}</span>
-                  <span class="pill">${appState.scenario.actors.length} ${tt('actors', 'acteurs')}</span>
+                  <span class="pill">${appState.scenario.stimuli.length} ${tt(‘stimuli’, ‘stimuli’)}</span>
+                  <span class="pill">${appState.scenario.actors.length} ${tt(‘actors’, ‘acteurs’)}</span>
                   <span class="pill">${renderProviderSummary(appState.scenario.settings)}</span>
                 </div>
-              </section>
+              </section>` : ‘’}
               ${renderCurrentView()}
             </main>
           </div>
         `;
       }
 
-      function renderNavButton(route, label, note) {
-        return `<button class="nav-button ${appState.route === route ? 'active' : ''}" data-route="${route}"><span>${label}</span><small>${note}</small></button>`;
+      function renderNavIconButton(route, iconSvg, label) {
+        const isActive = appState.route === route;
+        return `<button class="nav-icon-btn ${isActive ? ‘active’ : ‘’}" data-route="${route}" title="${label}">
+          ${iconSvg}
+          <span>${label}</span>
+        </button>`;
       }
+
+      function svgFolder() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>’; }
+      function svgTarget() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>’; }
+      function svgPen() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>’; }
+      function svgGrid() { return ‘<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>’; }
+      function svgGear() { return ‘<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>’; }
 
       function viewConfig() {
         const map = {
-          settings: {
-            title: tt('AI settings', 'Paramètres IA'),
-            subtitle: tt('Configure your AI provider, API key, and generation preferences.', 'Configurez votre fournisseur IA, la clé API et les préférences de génération.')
+          project: {
+            title: tt(‘Project’, ‘Projet’),
+            subtitle: tt(‘Create, open, save and export your crisis exercise project.’, ‘Créez, ouvrez, sauvegardez et exportez votre projet d\’exercice de crise.’)
           },
           scenario: {
-            title: tt('Crisis scenario', 'Scénario de crise'),
-            subtitle: tt('Define the client, context, and actors involved in the exercise.', 'Définissez le client, le contexte et les acteurs impliqués dans l’exercice.')
+            title: tt(‘Crisis scenario’, ‘Scénario de crise’),
+            subtitle: tt(‘Define the client, context, and actors involved in the exercise.’, ‘Définissez le client, le contexte et les acteurs impliqués dans l\’exercice.’)
           },
           stimuli: {
-            title: tt('Timeline & editor', 'Timeline & éditeur'),
-            subtitle: tt('Create realistic stimuli, generate their content, and adjust the rendering in real time.', 'Créez des stimuli réalistes, générez leur contenu et ajustez le rendu en temps réel.')
+            title: tt(‘Stimuli editor’, ‘Éditeur de stimuli’),
+            subtitle: tt(‘Create realistic stimuli and generate their content with AI.’, ‘Créez des stimuli réalistes et générez leur contenu avec l\’IA.’)
           },
-          preview: {
-            title: tt('Fullscreen preview', 'Prévisualisation plein écran'),
-            subtitle: tt('Display, export, and browse stimuli in timeline order.', 'Affichez, exportez et faites défiler les stimuli dans l’ordre de la timeline.')
+          library: {
+            title: tt(‘Stimulus library’, ‘Bibliothèque de stimuli’),
+            subtitle: tt(‘Browse, filter, and manage all stimuli in your project.’, ‘Parcourez, filtrez et gérez tous les stimuli de votre projet.’)
           }
         };
-        return map[appState.route];
+        return map[appState.route] || null;
       }
 
       function renderCurrentView() {
-        if (appState.route === 'settings') return renderSettingsView();
-        if (appState.route === 'scenario') return renderScenarioView();
-        if (appState.route === 'stimuli') return renderStimuliView();
-        return renderPreviewView();
+        if (appState.route === ‘project’) return renderProjectView();
+        if (appState.route === ‘scenario’) return renderScenarioView();
+        if (appState.route === ‘stimuli’) return renderStimuliView();
+        if (appState.route === ‘library’) return renderLibraryView();
+        return renderProjectView();
+      }
+
+      function renderProjectView() {
+        const s = appState.scenario;
+        const hasStimuliOrConfig = s.stimuli.length > 0 || s.client.name || s.scenario.summary;
+        if (!hasStimuliOrConfig) {
+          return `
+            <section class="grid" style="max-width:700px; margin: 40px auto;">
+              <div style="text-align:center; padding: 20px 0 30px;">
+                <h1 style="font-size:2rem; margin:0; font-weight:800;">CrisisStim</h1>
+                <p style="color:var(--muted); font-size:1rem; margin-top:8px;">${tt(‘Stimulus generator for cyber crisis exercises’, ‘Générateur de stimuli pour exercices de crise cyber’)}</p>
+              </div>
+              <div class="grid cols-3" style="gap:20px;">
+                <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="new-scenario">
+                  <div style="font-size:2rem; margin-bottom:12px;">➕</div>
+                  <strong>${tt(‘New scenario’, ‘Nouveau scénario’)}</strong>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt(‘Start from scratch’, ‘Partir de zéro’)}</p>
+                </article>
+                <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="load-json">
+                  <div style="font-size:2rem; margin-bottom:12px;">📂</div>
+                  <strong>${tt(‘Open a file’, ‘Ouvrir un fichier’)}</strong>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json ${tt(‘or’, ‘ou’)} .crisisstim.json</p>
+                </article>
+                <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="nav-scenario">
+                  <div style="font-size:2rem; margin-bottom:12px;">▶️</div>
+                  <strong>${tt(‘Continue’, ‘Continuer’)}</strong>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt(‘Use current scenario’, ‘Utiliser le scénario actuel’)}</p>
+                </article>
+              </div>
+            </section>
+          `;
+        }
+        return `
+          <section class="grid" style="max-width:800px;">
+            <article class="card">
+              <div class="section-header">
+                <h3>${escapeHtml(s.name)}</h3>
+                <div class="actions">
+                  <button class="btn btn-primary" data-action="save-local">${tt(‘Save’, ‘Sauvegarder’)} 💾</button>
+                  <button class="btn btn-secondary" data-action="save-json">${tt(‘Export JSON’, ‘Exporter JSON’)} ⇩</button>
+                  <button class="btn btn-secondary" data-action="export-all">${tt(‘Export ZIP’, ‘Exporter ZIP’)} 🗜️</button>
+                  <button class="btn btn-secondary" data-action="new-scenario">${tt(‘New’, ‘Nouveau’)} ↺</button>
+                </div>
+              </div>
+              <div class="field-grid cols-3" style="font-size:0.9rem; color:var(--muted);">
+                <div><strong>${tt(‘Client’, ‘Client’)}:</strong> ${escapeHtml(s.client.name || ‘—‘)}</div>
+                <div><strong>${tt(‘Sector’, ‘Secteur’)}:</strong> ${escapeHtml(s.client.sector || ‘—‘)}</div>
+                <div><strong>${tt(‘Scenario’, ‘Scénario’)}:</strong> ${escapeHtml(s.scenario.type || ‘—‘)}</div>
+                <div><strong>${tt(‘Actors’, ‘Acteurs’)}:</strong> ${s.actors.length}</div>
+                <div><strong>${tt(‘Stimuli’, ‘Stimuli’)}:</strong> ${s.stimuli.length}</div>
+                <div><strong>${tt(‘Start’, ‘Début’)}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : ‘—‘)}</div>
+              </div>
+            </article>
+            <div class="actions" style="margin-top:8px;">
+              <button class="btn btn-primary" data-action="nav-scenario">${tt(‘Edit scenario’, ‘Éditer le scénario’)} →</button>
+              <button class="btn btn-primary" data-action="nav-stimuli">${tt(‘Edit stimuli’, ‘Éditer les stimuli’)} →</button>
+              <button class="btn btn-secondary" data-action="load-json">${tt(‘Open another file’, ‘Ouvrir un autre fichier’)}</button>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderLibraryView() {
+        const stimuli = getSortedStimuli();
+        if (!stimuli.length) {
+          return `<section class="grid" style="max-width:600px; margin: 60px auto; text-align:center;">
+            <p class="subtle">${tt(‘No stimuli yet. Create some in the Stimuli view.’, ‘Aucun stimulus encore. Créez-en dans la vue Stimuli.’)}</p>
+            <button class="btn btn-primary" data-action="nav-stimuli">${tt(‘Go to Stimuli’, ‘Aller aux Stimuli’)}</button>
+          </section>`;
+        }
+        return `
+          <section class="grid">
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+              <span style="color:var(--muted); font-size:0.9rem;">${stimuli.length} ${tt(‘stimuli’, ‘stimuli’)}</span>
+              <button class="btn btn-secondary" data-action="export-all">${tt(‘Export all ZIP’, ‘Exporter tout en ZIP’)}</button>
+            </div>
+            <div class="thumb-grid">
+              ${stimuli.map((s) => renderStimulusCard(s)).join(‘’)}
+            </div>
+          </section>
+        `;
       }
 
       function renderSettingsView() {
