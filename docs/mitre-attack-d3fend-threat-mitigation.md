@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document provides a practical threat and mitigation assessment for **CrisisMaker / CrisisStim**, the single-file web application in this repository used to build cyber crisis exercise stimuli.
+This document provides a practical threat and mitigation assessment for **CrisisMaker by Wavestone**, the single-file web application in this repository used to build cyber crisis exercise stimuli.
 
 The assessment is based on the implementation currently visible in `index.html`, notably:
 

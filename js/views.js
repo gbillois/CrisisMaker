@@ -143,7 +143,7 @@
                 ${renderNavIconButton('library', svgGrid(), tt('Library', 'Bibliothèque'))}
               </div>
               <div class="nav-topbar-center">
-                <span class="nav-project-name">${escapeHtml(appState.scenario.name || 'CrisisStim')}</span>
+                <div class="nav-brand-block"><span class="nav-brand-eyebrow">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span><span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker'))}</span></div>
               </div>
               <div class="nav-topbar-right">
                 <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
@@ -234,10 +234,18 @@
         const hasStimuliOrConfig = s.stimuli.length > 0 || s.client.name || s.scenario.summary;
         if (!hasStimuliOrConfig) {
           return `
-            <section class="grid" style="max-width:700px; margin: 40px auto;">
-              <div style="text-align:center; padding: 20px 0 30px;">
-                <h1 style="font-size:2rem; margin:0; font-weight:800;">CrisisStim</h1>
-                <p style="color:var(--muted); font-size:1rem; margin-top:8px;">${tt('Stimulus generator for cyber crisis exercises', 'Générateur de stimuli pour exercices de crise cyber')}</p>
+            <section class="grid project-welcome" style="max-width:960px; margin: 28px auto;">
+              <div class="hero-card">
+                <div class="hero-copy">
+                  <span class="hero-kicker">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span>
+                  <h1>${tt('Shape crisis exercises with Wavestone\'s visual identity.', 'Concevez vos exercices de crise avec l\'identité Wavestone.')}</h1>
+                  <p>${tt('A streamlined studio to prepare scenarios, generate realistic stimuli, and export polished deliverables for facilitation teams.', 'Un studio fluide pour préparer les scénarios, générer des stimuli réalistes et exporter des livrables prêts pour l\'animation.')}</p>
+                </div>
+                <div class="hero-stats">
+                  <div class="hero-stat"><strong>${appState.scenario.stimuli.length}</strong><span>${tt('sample stimuli', 'stimuli exemples')}</span></div>
+                  <div class="hero-stat"><strong>${appState.scenario.actors.length}</strong><span>${tt('default actors', 'acteurs par défaut')}</span></div>
+                  <div class="hero-stat"><strong>AI</strong><span>${tt('generation-ready setup', 'configuration prête pour l\'IA')}</span></div>
+                </div>
               </div>
               <div class="grid cols-3" style="gap:20px;">
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="new-scenario">
@@ -248,7 +256,7 @@
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="load-json">
                   <div style="font-size:2rem; margin-bottom:12px;">📂</div>
                   <strong>${tt('Open a file', 'Ouvrir un fichier')}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json ${tt('or', 'ou')} .crisisstim.json</p>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json ${tt('or', 'ou')} .crisismaker.json</p>
                 </article>
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="nav-scenario">
                   <div style="font-size:2rem; margin-bottom:12px;">▶️</div>

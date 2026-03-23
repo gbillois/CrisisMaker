@@ -1,7 +1,7 @@
       function field(key, label, type, extra = {}) { return { key, label, type, ...extra }; }
 
-      const STORAGE_KEY = 'crisisstim_autosave_v1';
-      const SETTINGS_KEY = 'crisisstim_settings_v1';
+      const STORAGE_KEY = 'crisismaker_autosave_v1';
+      const SETTINGS_KEY = 'crisismaker_settings_v1';
       const DEFAULT_MODELS = {
         anthropic: ['claude-sonnet-4-20250514'],
         openai: ['gpt-4.1', 'gpt-4o', 'gpt-4.1-mini'],

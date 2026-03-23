@@ -1,6 +1,6 @@
 # CrisisMaker
 
-CrisisStim single-file HTML web app for generating cyber crisis exercise stimuli.
+CrisisMaker by Wavestone is a single-file HTML web app for designing and exporting cyber crisis exercise stimuli.
 
 ## Security documentation
 

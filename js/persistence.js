@@ -8,8 +8,8 @@
         if (!supportsFileSystemAccess()) return false;
         try {
           _fileHandle = await window.showSaveFilePicker({
-            suggestedName: `${slugify(appState.scenario.name || 'crisisstim')}.crisisstim.json`,
-            types: [{ description: 'CrisisStim Project', accept: { 'application/json': ['.crisisstim.json', '.json'] } }]
+            suggestedName: `${slugify(appState.scenario.name || 'crisismaker')}.crisismaker.json`,
+            types: [{ description: 'CrisisMaker Project', accept: { 'application/json': ['.crisismaker.json', '.crisisstim.json', '.json'] } }]
           });
           return await writeToFile();
         } catch (e) {
@@ -38,7 +38,7 @@
         if (!supportsFileSystemAccess()) return null;
         try {
           const [handle] = await window.showOpenFilePicker({
-            types: [{ description: 'CrisisStim Project', accept: { 'application/json': ['.crisisstim.json', '.json'] } }]
+            types: [{ description: 'CrisisMaker Project', accept: { 'application/json': ['.crisismaker.json', '.crisisstim.json', '.json'] } }]
           });
           _fileHandle = handle;
           const file = await handle.getFile();
@@ -139,7 +139,7 @@
           }
           document.body.removeChild(sandbox);
           const blob = await zip.generateAsync({ type: 'blob' });
-          downloadBlob(blob, `crisisstim_${slugify(appState.scenario.name)}_exports.zip`);
+          downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_exports.zip`);
           pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.'), 'success');
         },
         filenameForStimulus(stimulus) {
@@ -191,7 +191,7 @@
       function saveScenarioToFile() {
         const json = JSON.stringify(appState.scenario, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
-        downloadBlob(blob, `crisisstim_${slugify(appState.scenario.name)}_${new Date().toISOString().slice(0, 10)}.json`);
+        downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_${new Date().toISOString().slice(0, 10)}.json`);
         pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.'), 'success');
       }
 
@@ -207,7 +207,7 @@
         // Fallback: classic file input
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json,.crisisstim.json,application/json';
+        input.accept = '.json,.crisismaker.json,.crisisstim.json,application/json';
         input.addEventListener('change', (event) => {
           const file = event.target.files?.[0];
           if (!file) return;
@@ -228,7 +228,7 @@
         try {
           appState.scenario = mergeScenario(migrateScenario(data));
           // restore API key from localStorage (never stored in file)
-          const savedApiKey = localStorage.getItem('crisisstim_api_key');
+          const savedApiKey = localStorage.getItem('crisismaker_api_key') || localStorage.getItem('crisisstim_api_key');
           if (savedApiKey && !appState.scenario.settings.ai_api_key) {
             appState.scenario.settings.ai_api_key = savedApiKey;
           }

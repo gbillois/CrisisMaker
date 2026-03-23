@@ -13,7 +13,7 @@
       function setDocumentLanguage() {
         const lang = currentLanguage();
         document.documentElement.lang = lang;
-        document.title = tt('CrisisStim by Wavestone - Stimulus Generator', 'CrisisStim by Wavestone - Générateur de stimuli');
+        document.title = tt('CrisisMaker by Wavestone - Crisis exercise studio', 'CrisisMaker by Wavestone - Studio d\'exercices de crise');
       }
 
       function roleLabel(value) {
@@ -67,7 +67,7 @@
         ];
         const scenario = {
           id: uid('scenario'),
-          name: 'Ransomware exercise - ClientX',
+          name: 'CrisisMaker - Ransomware exercise - ClientX',
           client: { name: 'Client X', sector: 'Banking', language: 'en', logo_url: '' },
           scenario: { type: 'Ransomware', summary: 'A ransomware attack hits the information system of a large listed company. Critical operations are disrupted, the press starts reporting the incident, and authorities are alerted.', detailed_context: '', start_date: '2026-03-15T08:00', timezone: 'America/New_York' },
           actors,
@@ -127,8 +127,8 @@
       }
 
       function loadInitialScenario() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+        const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('crisisstim_autosave_v1');
+        const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || localStorage.getItem('crisisstim_settings_v1') || 'null');
         const providerSettings = loadProviderSettings();
         let scenario = defaultScenario();
         if (saved) {
