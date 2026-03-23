@@ -39,7 +39,7 @@
             const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
-              body: JSON.stringify({ temperature: 0.8, messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
+              body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error?.message || 'Erreur API Azure OpenAI');
@@ -68,7 +68,6 @@
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
               body: JSON.stringify({
                 model: ai_model,
-                temperature: 0.8,
                 messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])]
               })
             });
