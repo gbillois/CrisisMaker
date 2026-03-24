@@ -853,6 +853,37 @@
     .ft-content p { margin: 0 0 18px; }
     .ft-content a { color: #0d7680; }
 
+    /* Nikkei */
+    .nikkei-article { width: 720px; color: #333; padding-bottom: 32px; }
+    .nikkei-header { border-bottom: 3px solid #005C98; }
+    .nikkei-header-inner { padding: 14px 24px 10px; }
+    .nikkei-logo { font-family: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif; font-size: 26px; font-weight: 700; color: #005C98; letter-spacing: 0.08em; }
+    .nikkei-nav { display: flex; gap: 18px; font-size: 13px; color: #555; margin-top: 8px; }
+    .nikkei-nav span { cursor: default; }
+    .nikkei-body { width: 620px; margin: 0 auto; padding-top: 24px; }
+    .nikkei-category { font-size: 12px; letter-spacing: 0.1em; color: #005C98; font-weight: 700; }
+    .nikkei-headline { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', sans-serif; font-size: 28px; line-height: 1.4; font-weight: 700; margin: 12px 0 0; color: #1a1a1a; }
+    .nikkei-subheadline { font-size: 16px; line-height: 1.5; color: #555; margin-top: 10px; }
+    .nikkei-meta { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 13px; color: #777; }
+    .nikkei-premium { background: #003399; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 2px; font-weight: 500; }
+    .nikkei-byline { font-size: 14px; font-weight: 700; color: #333; margin-top: 8px; padding-bottom: 14px; border-bottom: 1px solid #e0e0e0; }
+    .nikkei-photo { height: 320px; margin: 20px 0 8px; border-radius: 2px; }
+    .nikkei-caption { font-size: 12px; color: #888; }
+    .nikkei-content { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', sans-serif; font-size: 16px; line-height: 1.9; color: #333; margin-top: 20px; }
+    .nikkei-content p { margin: 0 0 18px; text-indent: 1em; }
+    .nikkei-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e0e0e0; }
+    .nikkei-tag { font-size: 12px; background: #f0f4f8; color: #005C98; padding: 4px 10px; border-radius: 3px; }
+
+    /* Custom templates */
+    .custom-templates-section { margin: 12px 0 20px; }
+    .custom-templates-section h4 { font-size: 13px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+    .custom-templates-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .custom-template-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 13px; }
+    .custom-template-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .btn-chip-delete { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; padding: 0 2px; line-height: 1; }
+    .btn-chip-delete:hover { color: var(--danger, #dc2626); }
+    .crisismaker-template-sandbox { font-family: sans-serif; color: #333; }
+
     .reddit-page { width: 780px; background: #dae0e6; padding: 20px; font-family: 'IBM Plex Sans', 'Noto Sans', sans-serif; }
     .reddit-header { height: 48px; background: #fff; border-bottom: 1px solid #edeff1; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-radius: 8px 8px 0 0; }
     .reddit-logo { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1a1a1b; }
@@ -1115,6 +1146,7 @@
       .nyt-article,
       .faz-article,
       .ft-article,
+      .nikkei-article,
       .reddit-page,
       .linkedin-card,
       .authority-email,
@@ -1128,6 +1160,7 @@
       .nyt-headline,
       .faz-headline,
       .ft-headline,
+      .nikkei-headline,
       .pr-title {
         font-size: clamp(1.4rem, 6.4vw, 2rem);
       }
@@ -1136,18 +1169,21 @@
       .nyt-content,
       .faz-content,
       .ft-content,
+      .nikkei-content,
       .pr-body {
         font-size: 1rem;
       }
       .nyt-body,
       .faz-body,
-      .ft-body {
+      .ft-body,
+      .nikkei-body {
         width: 100%;
       }
       .nyt-rail,
       .faz-header,
       .faz-nav,
       .ft-header,
+      .nikkei-header,
       .press-body,
       .press-release,
       .authority-content {

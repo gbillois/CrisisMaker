@@ -35,6 +35,14 @@
         render() {
           const root = document.getElementById('app');
           setDocumentLanguage();
+          // Load HD fonts if needed
+          if (appState.scenario.settings.template_quality === 'hd') ensureHDFonts();
+          // Sync custom template channels into CHANNEL_META
+          (appState.scenario.custom_templates || []).forEach(tpl => {
+            if (tpl.template_id && !CHANNEL_META[tpl.template_id]) {
+              CHANNEL_META[tpl.template_id] = { label: tpl.name || tpl.label || tpl.template_id, color: tpl.color || '#8B5CF6', category: tpl.category || 'Custom' };
+            }
+          });
           root.innerHTML = renderAppShell();
           bindGlobalEvents();
           bindStimuliSplitters();
@@ -42,6 +50,70 @@
           renderToasts();
         }
       };
+
+      function ensureHDFonts() {
+        if (document.getElementById('hd-fonts-link')) return;
+        const link = document.createElement('link');
+        link.id = 'hd-fonts-link';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=UnifrakturMaguntia&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&family=DM+Serif+Display&family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,700;1,400&display=swap';
+        document.head.appendChild(link);
+      }
+
+      async function importCustomTemplate() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.crisistemplate.json,.json';
+        return new Promise((resolve) => {
+          input.addEventListener('change', async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) { resolve(); return; }
+            if (file.size > 2 * 1024 * 1024) {
+              pushToast(tt('Template file too large (max 2 MB).', 'Fichier template trop volumineux (max 2 Mo).'), 'error');
+              resolve(); return;
+            }
+            try {
+              const text = await file.text();
+              const data = JSON.parse(text);
+              // Normalize label field
+              if (!data.label && data.name) data.label = data.name;
+              if (!data.name && data.label) data.name = data.label;
+              // Build defaults from fields if not provided
+              if (!data.defaults && Array.isArray(data.fields)) {
+                data.defaults = {};
+                data.fields.forEach(f => { if (f.placeholder) data.defaults[f.name || f.key] = f.placeholder; });
+              }
+              // Normalize field keys (spec uses "name", internal uses "key")
+              if (Array.isArray(data.fields)) {
+                data.fields = data.fields.map(f => ({
+                  key: f.key || f.name,
+                  label: f.label || f.name || f.key,
+                  type: f.type === 'html' ? 'textarea' : (f.type || 'text'),
+                  required: f.required || false
+                }));
+              }
+              const errors = validateCustomTemplate(data);
+              if (errors.length) {
+                pushToast(errors.join(' '), 'error');
+                resolve(); return;
+              }
+              const existing = appState.scenario.custom_templates || [];
+              if (existing.some(t => t.template_id === data.template_id)) {
+                pushToast(tt(`A custom template with id "${data.template_id}" already exists. Remove it first.`, `Un template personnalisé avec l'id "${data.template_id}" existe déjà. Supprimez-le d'abord.`), 'error');
+                resolve(); return;
+              }
+              appState.scenario.custom_templates = [...existing, data];
+              saveLocal();
+              App.render();
+              pushToast(tt(`Template "${data.name || data.label}" imported.`, `Template "${data.name || data.label}" importé.`), 'success');
+            } catch (err) {
+              pushToast(tt(`Import failed: ${err.message}`, `Import échoué : ${err.message}`), 'error');
+            }
+            resolve();
+          }, { once: true });
+          input.click();
+        });
+      }
 
       function bindGlobalEvents() {
         document.querySelectorAll('[data-route]').forEach((button) => {
@@ -57,6 +129,9 @@
             if (input.dataset.bind === 'settings.ai_provider') {
               const models = DEFAULT_MODELS[input.value];
               if (models?.length) appState.scenario.settings.ai_model = models[0];
+            }
+            if (input.dataset.bind === 'settings.template_quality' && input.value === 'hd') {
+              ensureHDFonts();
             }
             if (input.dataset.bind.startsWith('settings.')) {
               appState.connectionTest = { status: 'idle', message: '', checkedAt: null, provider: '' };
@@ -215,6 +290,18 @@
                 await ExportEngine.exportAll();
               });
               break;
+            case 'import-custom-template':
+              await importCustomTemplate();
+              break;
+            case 'delete-custom-template': {
+              const tplId = event.currentTarget.dataset.templateId;
+              appState.scenario.custom_templates = (appState.scenario.custom_templates || []).filter(t => t.template_id !== tplId);
+              delete CHANNEL_META[tplId];
+              saveLocal();
+              App.render();
+              pushToast(tt('Custom template removed.', 'Template personnalisé supprimé.'), 'success');
+              break;
+            }
             case 'clear-data':
               if (confirmClearData()) clearScenarioData();
               break;

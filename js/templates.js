@@ -1,6 +1,13 @@
       const TemplateEngine = {
         render(stimulus, actor, scenario) {
           const f = stimulus.fields || {};
+          const quality = scenario?.settings?.template_quality || 'basic';
+          // Try HD render if quality is set to HD
+          if (quality === 'hd') {
+            const hdResult = this.renderHD(stimulus, f);
+            if (hdResult !== null) return hdResult;
+            // fallback to basic if no HD variant exists
+          }
           switch (stimulus.channel) {
             case 'email_internal': return this.emailInternal(f);
             case 'article_press': return this.articlePress(stimulus.template_id, f);
@@ -11,8 +18,37 @@
             case 'email_authority': return this.authority(f);
             case 'press_release': return this.pressRelease(f);
             case 'sms_notification': return this.sms(f);
-            default: return `<div class="card">${tt('Template not implemented for', 'Template non implémenté pour')} ${escapeHtml(stimulus.channel)}.</div>`;
+            default: {
+              // Check custom templates before returning "not implemented"
+              const customTpl = (scenario?.custom_templates || []).find(
+                t => t.template_id === stimulus.template_id || t.template_id === stimulus.channel
+              );
+              if (customTpl) return this.renderCustom(customTpl, f);
+              return `<div class="card">${tt('Template not implemented for', 'Template non implémenté pour')} ${escapeHtml(stimulus.channel)}.</div>`;
+            }
           }
+        },
+        renderHD(stimulus, f) {
+          // Phase 1: no HD renderers yet. Returns null to trigger basic fallback.
+          // Future HD renderers will be dispatched here by channel/template_id.
+          return null;
+        },
+        renderCustom(templateDef, fields) {
+          let html = templateDef.render_html || '';
+          const rawKeys = new Set(['body']);
+          for (const fieldDef of (templateDef.fields || [])) {
+            const key = fieldDef.key || fieldDef.name;
+            if (!key) continue;
+            const value = fields[key];
+            const placeholder = '{{' + key + '}}';
+            if (rawKeys.has(key) || key.endsWith('_html')) {
+              html = html.split(placeholder).join(value ?? '');
+            } else {
+              html = html.split(placeholder).join(escapeHtml(String(value ?? '')));
+            }
+          }
+          const css = templateDef.render_css ? `<style>${templateDef.render_css}</style>` : '';
+          return `<div class="crisismaker-template-sandbox" style="all: initial;">${css}${html}</div>`;
         },
         emailInternal(f) {
           return `
@@ -42,6 +78,7 @@
             case 'lemonde': return this.articleLeMonde(f);
             case 'faz': return this.articleFaz(f);
             case 'ft': return this.articleFt(f);
+            case 'nikkei': return this.articleNikkei(f);
             case 'nyt':
             default:
               return this.articleNyt(f);
@@ -147,6 +184,33 @@
                   <div class="ft-datetime">${escapeHtml(f.date || '')}${f.time ? ` · ${escapeHtml(f.time)}` : ''}</div>
                 </div>
                 <div class="ft-content">${f.body || ''}</div>
+              </div>
+            </article>
+          `;
+        },
+        articleNikkei(f) {
+          const tags = String(f.related_tags || '').split(',').map(t => t.trim()).filter(Boolean);
+          return `
+            <article class="press-article nikkei-article">
+              <div class="nikkei-header">
+                <div class="nikkei-header-inner">
+                  <div class="nikkei-logo">日本経済新聞</div>
+                  <div class="nikkei-nav"><span>トップ</span><span>経済</span><span>ビジネス</span><span>テクノロジー</span><span>国際</span><span>マーケット</span><span>政治</span></div>
+                </div>
+              </div>
+              <div class="nikkei-body">
+                <div class="nikkei-category">${escapeHtml(f.category || '')}</div>
+                <h1 class="nikkei-headline">${escapeHtml(f.headline || '')}</h1>
+                ${f.subheadline ? `<div class="nikkei-subheadline">${escapeHtml(f.subheadline)}</div>` : ''}
+                <div class="nikkei-meta">
+                  <span class="nikkei-date">${escapeHtml(f.date || '')}${f.update_time ? ` （${escapeHtml(f.update_time)}）` : ''}</span>
+                  ${f.is_premium ? '<span class="nikkei-premium">有料会員限定</span>' : ''}
+                </div>
+                <div class="nikkei-byline">${escapeHtml(f.author || '')}</div>
+                <div class="press-photo nikkei-photo"></div>
+                ${f.image_caption ? `<div class="nikkei-caption">${escapeHtml(f.image_caption)}</div>` : ''}
+                <div class="nikkei-content">${f.body || ''}</div>
+                ${tags.length ? `<div class="nikkei-tags">${tags.map(t => `<span class="nikkei-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
               </div>
             </article>
           `;

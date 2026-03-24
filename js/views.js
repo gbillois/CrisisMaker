@@ -350,7 +350,22 @@
               </select>
               <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('stimuli', 'stimuli')}</span>
               <button class="btn btn-secondary" data-action="export-all">${tt('Export ZIP', 'Exporter ZIP')}</button>
+              <button class="btn btn-secondary" data-action="import-custom-template">${tt('Import template', 'Importer un template')}</button>
             </div>
+            ${(appState.scenario.custom_templates || []).length ? `
+              <div class="custom-templates-section">
+                <h4>${tt('Custom templates', 'Templates personnalisés')}</h4>
+                <div class="custom-templates-list">
+                  ${appState.scenario.custom_templates.map(tpl => `
+                    <div class="custom-template-chip">
+                      <span class="custom-template-dot" style="background:${escapeAttribute(tpl.color || '#8B5CF6')};"></span>
+                      <span>${escapeHtml(tpl.name || tpl.label || tpl.template_id)}</span>
+                      <button class="btn-chip-delete" data-action="delete-custom-template" data-template-id="${escapeAttribute(tpl.template_id)}" title="${tt('Remove', 'Supprimer')}">✕</button>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
             <div class="library-card-grid">
               ${filtered.map((s) => renderLibraryCard(s)).join('')}
             </div>
@@ -458,6 +473,12 @@
                   <select data-bind="settings.language">
                     <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
                     <option value="fr" ${settings.language === 'fr' ? 'selected' : ''}>Français</option>
+                  </select>
+                </label>
+                <label class="field">${tt('Template rendering', 'Rendu des templates')}
+                  <select data-bind="settings.template_quality">
+                    <option value="basic" ${settings.template_quality === 'basic' ? 'selected' : ''}>Basic — ${tt('Fast, lightweight', 'Léger, rapide')}</option>
+                    <option value="hd" ${settings.template_quality === 'hd' ? 'selected' : ''}>HD — ${tt('High fidelity, realistic', 'Haute fidélité, réaliste')}</option>
                   </select>
                 </label>
               </div>

@@ -72,7 +72,8 @@
           scenario: { type: 'Ransomware', summary: 'A ransomware attack hits the information system of a large listed company. Critical operations are disrupted, the press starts reporting the incident, and authorities are alerted.', detailed_context: '', start_date: '2026-03-15T08:00', timezone: 'America/New_York' },
           actors,
           stimuli: [],
-          settings: { language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30 }
+          custom_templates: [],
+          settings: { language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'basic' }
         };
         const samples = [
           makeStimulus('email_internal', actors[1].id, 0),
@@ -156,7 +157,8 @@
           scenario: { ...base.scenario, ...(input.scenario || {}) },
           settings: { ...base.settings, ...(input.settings || {}) },
           actors: Array.isArray(input.actors) && input.actors.length ? input.actors : base.actors,
-          stimuli: Array.isArray(input.stimuli) ? input.stimuli.map(normalizeStimulus) : base.stimuli
+          stimuli: Array.isArray(input.stimuli) ? input.stimuli.map(normalizeStimulus) : base.stimuli,
+          custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : []
         };
         normalizeProviderSettingsInPlace(merged.settings);
         return merged;
@@ -210,7 +212,10 @@
         if (raw.settings) {
           if (!raw.settings.max_versions) raw.settings.max_versions = 3;
           if (!raw.settings.auto_save_interval_seconds) raw.settings.auto_save_interval_seconds = 30;
+          if (!raw.settings.template_quality) raw.settings.template_quality = 'basic';
         }
+        // Add custom_templates array
+        if (!Array.isArray(raw.custom_templates)) raw.custom_templates = [];
         return raw;
       }
 
@@ -235,7 +240,54 @@
 
       function getTemplateDefinition(stimulus) {
         if (stimulus?.channel === 'article_press') return ARTICLE_TEMPLATE_LIBRARY[stimulus.template_id] || ARTICLE_TEMPLATE_LIBRARY.nyt;
-        return TEMPLATE_LIBRARY[stimulus?.channel] || TEMPLATE_LIBRARY.email_internal;
+        if (TEMPLATE_LIBRARY[stimulus?.channel]) return TEMPLATE_LIBRARY[stimulus.channel];
+        // Check custom templates
+        const custom = (appState?.scenario?.custom_templates || []).find(
+          t => t.template_id === stimulus?.template_id || t.template_id === stimulus?.channel
+        );
+        if (custom) return custom;
+        return TEMPLATE_LIBRARY.email_internal;
+      }
+
+      function validateCustomTemplate(data) {
+        const errors = [];
+        if (!data || typeof data !== 'object') return [tt('Invalid template file.', 'Fichier template invalide.')];
+        if (data.schema_version !== '1.0') errors.push(tt('Unsupported schema_version (expected "1.0").', 'schema_version non supporté (attendu "1.0").'));
+        if (!data.template_id || typeof data.template_id !== 'string') errors.push(tt('Missing or invalid template_id.', 'template_id manquant ou invalide.'));
+        if (!data.name && !data.label) errors.push(tt('Missing name/label.', 'name/label manquant.'));
+        if (!data.render_html || typeof data.render_html !== 'string') errors.push(tt('Missing render_html.', 'render_html manquant.'));
+        if (typeof data.render_css !== 'undefined' && typeof data.render_css !== 'string') errors.push(tt('render_css must be a string.', 'render_css doit être une chaîne.'));
+        if (!Array.isArray(data.fields) || data.fields.length === 0) errors.push(tt('fields must be a non-empty array.', 'fields doit être un tableau non vide.'));
+        else {
+          const hasRequired = data.fields.some(f => f.required === true);
+          if (!hasRequired) errors.push(tt('fields must contain at least one required field.', 'fields doit contenir au moins un champ requis.'));
+          // Check render_html contains at least one placeholder matching a declared field
+          const fieldNames = data.fields.map(f => f.name || f.key).filter(Boolean);
+          const hasPlaceholder = fieldNames.some(name => data.render_html.includes(`{{${name}}}`));
+          if (!hasPlaceholder) errors.push(tt('render_html must contain at least one {{field_name}} placeholder.', 'render_html doit contenir au moins un placeholder {{field_name}}.'));
+        }
+        // Collision check against native template IDs
+        const nativeIds = new Set([
+          ...Object.keys(ARTICLE_TEMPLATE_LIBRARY),
+          ...Object.keys(TEMPLATE_LIBRARY),
+          ...Object.keys(CHANNEL_META)
+        ]);
+        if (data.template_id && nativeIds.has(data.template_id)) {
+          errors.push(tt(`template_id "${data.template_id}" collides with a built-in template.`, `template_id "${data.template_id}" entre en collision avec un template natif.`));
+        }
+        // Channel must be a known channel
+        if (data.channel && !CHANNEL_META[data.channel]) {
+          errors.push(tt(`Unknown channel "${data.channel}".`, `Canal inconnu "${data.channel}".`));
+        }
+        // Sanitize CSS: no @import, no url()
+        if (data.render_css && (/url\s*\(/i.test(data.render_css) || /@import/i.test(data.render_css))) {
+          errors.push(tt('render_css must not contain url() or @import.', 'render_css ne doit pas contenir url() ou @import.'));
+        }
+        // Sanitize HTML: no <script>, no on* handlers, no <iframe>
+        if (data.render_html && (/<script/i.test(data.render_html) || /\bon\w+\s*=/i.test(data.render_html) || /<iframe/i.test(data.render_html))) {
+          errors.push(tt('render_html contains forbidden elements (script, iframe, or event handlers).', 'render_html contient des éléments interdits (script, iframe ou gestionnaires d\'événements).'));
+        }
+        return errors;
       }
 
       function deepClone(data) {

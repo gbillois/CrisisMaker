@@ -113,6 +113,23 @@
             content_type: 'News'
           },
           fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('time', 'Time', 'text'), field('category', 'Category', 'text'), field('content_type', 'Content type', 'select', { options: ['News', 'Analysis', 'Opinion', 'Exclusive'] }), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+        },
+        nikkei: {
+          label: '日本経済新聞 (Nikkei)',
+          template_id: 'nikkei',
+          defaults: {
+            headline: '大手金融グループにサイバー攻撃、システム障害が拡大',
+            subheadline: '複数国の業務に影響、復旧のめど立たず',
+            author: '田中太郎',
+            date: '2026年3月15日 10:42',
+            update_time: '12:30更新',
+            category: 'テクノロジー',
+            body: '<p>欧州の大手金融グループX社は15日、大規模なサイバー攻撃を受け、複数国にわたる業務システムに障害が発生したと発表した。同社は外部のセキュリティ専門家と連携し、被害の全容把握を急いでいる。</p><p>関係者によると、攻撃者はランサムウエアを使用し、社内ネットワークの広範囲にわたってシステムを暗号化した模様だ。同社は重要業務を手動に切り替えて対応している。</p><p>「現時点では顧客データの流出は確認されていないが、調査を継続している」と同社の広報担当者は述べた。金融庁も状況の把握に乗り出している。</p><p>今回の事案は、欧州で施行が迫るDORA（デジタル・オペレーショナル・レジリエンス法）の観点からも注目されており、金融機関のサイバーセキュリティ対策の在り方に改めて問題を投げかけている。</p>',
+            image_caption: 'X社の欧州本社（パリ近郊）',
+            is_premium: false,
+            related_tags: 'サイバーセキュリティ,金融,個人情報'
+          },
+          fields: [field('headline', 'Headline (見出し)', 'text'), field('subheadline', 'Subheadline (副見出し)', 'textarea'), field('author', 'Author (記者)', 'text'), field('date', 'Date (日付)', 'text'), field('update_time', 'Update time (更新)', 'text'), field('category', 'Category (カテゴリ)', 'text'), field('is_premium', 'Premium (有料)', 'checkbox'), field('image_caption', 'Image caption (写真説明)', 'text'), field('related_tags', 'Tags (タグ, comma-separated)', 'text'), field('body', 'HTML body (本文)', 'textarea')]
         }
       };
 
