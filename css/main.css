@@ -352,6 +352,7 @@
       padding: 14px 0 0;
       overflow: auto;
       min-height: 0;
+      flex: 1;
     }
     .timeline-track {
       position: relative;
@@ -394,7 +395,7 @@
     /* Split-panel for Stimuli view */
     .stimuli-workspace {
       display: grid;
-      grid-template-rows: minmax(190px, var(--stimuli-timeline-height, 255px)) auto;
+      grid-template-rows: 1fr auto;
       gap: 0;
       min-height: calc(100vh - 168px);
       max-height: calc(100vh - 168px);
@@ -1195,6 +1196,10 @@
       border-radius: 8px;
       padding: 16px 20px;
       margin-bottom: 20px;
+    }
+    .stimuli-timeline-panel .llm-config-block {
+      margin-bottom: 8px;
+      flex-shrink: 0;
     }
     .llm-config-block.collapsed .llm-config-body { display: none; }
     .llm-config-header {
