@@ -194,36 +194,41 @@
       };
 
 
-      function saveScenarioToFile() {
+      async function saveScenarioToFile() {
         const json = JSON.stringify(appState.scenario, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_${new Date().toISOString().slice(0, 10)}.json`);
         pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.'), 'success');
       }
 
-      function loadScenarioFromFile() {
+      async function loadScenarioFromFile() {
         // Try File System Access API first (Chrome/Edge)
         if (supportsFileSystemAccess()) {
-          openWithFileSystemAPI().then((data) => {
-            if (!data) return;
-            applyLoadedScenario(data);
-          });
+          const data = await openWithFileSystemAPI();
+          if (!data) return;
+          applyLoadedScenario(data);
           return;
         }
         // Fallback: classic file input
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json,.crisismaker.json,.crisisstim.json,.zip,application/json,application/zip';
-        input.addEventListener('change', (event) => {
-          const file = event.target.files?.[0];
-          if (!file) return;
-          parseProjectFile(file)
-            .then((data) => applyLoadedScenario(data))
-            .catch((error) => {
-              pushToast(tt(`Import failed: ${error.message}`, `Import échoué : ${error.message}`), 'error');
-            });
+        await new Promise((resolve) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json,.crisismaker.json,.crisisstim.json,.zip,application/json,application/zip';
+          input.addEventListener('change', (event) => {
+            const file = event.target.files?.[0];
+            if (!file) {
+              resolve();
+              return;
+            }
+            parseProjectFile(file)
+              .then((data) => applyLoadedScenario(data))
+              .catch((error) => {
+                pushToast(tt(`Import failed: ${error.message}`, `Import échoué : ${error.message}`), 'error');
+              })
+              .finally(() => resolve());
+          }, { once: true });
+          input.click();
         });
-        input.click();
       }
 
       async function parseProjectFile(file) {

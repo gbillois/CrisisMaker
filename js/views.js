@@ -116,6 +116,10 @@
         `;
       }
 
+      function actionButtonLabel(action, defaultLabel, loadingLabel) {
+        return appState.ui?.actionLoading?.[action] ? loadingLabel : defaultLabel;
+      }
+
       function pushToast(message, type = 'success') {
         const id = uid('toast');
         appState.toasts.push({ id, message, type });
@@ -274,8 +278,9 @@
                 <h3>${escapeHtml(s.name)}</h3>
                 <div class="actions">
                   <button class="btn btn-primary" data-action="save-local">${tt('Save', 'Sauvegarder')} 💾</button>
-                  <button class="btn btn-secondary" data-action="save-json">${tt('Export JSON', 'Exporter JSON')} ⇩</button>
-                  <button class="btn btn-secondary" data-action="export-all">${tt('Export ZIP', 'Exporter ZIP')} 🗜️</button>
+                  <button class="btn btn-secondary" data-action="save-json" ${appState.ui?.actionLoading?.['save-json'] ? 'disabled' : ''}>${actionButtonLabel('save-json', tt('Export JSON', 'Exporter JSON') + ' ⇩', tt('Exporting JSON…', 'Export JSON en cours…'))}</button>
+                  <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${actionButtonLabel('export-all', tt('Export ZIP', 'Exporter ZIP') + ' 🗜️', tt('Exporting ZIP…', 'Export ZIP en cours…'))}</button>
+                  <button class="btn btn-secondary" data-action="load-json" ${appState.ui?.actionLoading?.['load-json'] ? 'disabled' : ''}>${actionButtonLabel('load-json', tt('Import', 'Importer'), tt('Importing…', 'Import en cours…'))}</button>
                   <button class="btn btn-secondary" data-action="new-scenario">${tt('New', 'Nouveau')} ↺</button>
                 </div>
               </div>
@@ -291,7 +296,6 @@
             <div class="actions" style="margin-top:8px;">
               <button class="btn btn-primary" data-action="nav-scenario">${tt('Edit scenario', 'Éditer le scénario')} →</button>
               <button class="btn btn-primary" data-action="nav-stimuli">${tt('Edit stimuli', 'Éditer les stimuli')} →</button>
-              <button class="btn btn-secondary" data-action="load-json">${tt('Open another file', 'Ouvrir un autre fichier')}</button>
             </div>
           </section>
         `;

@@ -10,7 +10,8 @@
         llmState: makeDefaultLLMState(),
         ui: {
           stimuliTimelineHeight: 255,
-          stimuliEditorWidth: 42
+          stimuliEditorWidth: 42,
+          actionLoading: {}
         },
         connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' }
       };
@@ -193,9 +194,21 @@
               pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.'), 'success');
               break;
             }
-            case 'save-json': saveScenarioToFile(); break;
-            case 'load-json': loadScenarioFromFile(); break;
-            case 'export-all': await ExportEngine.exportAll(); break;
+            case 'save-json':
+              await withActionProgress(action, async () => {
+                await saveScenarioToFile();
+              });
+              break;
+            case 'load-json':
+              await withActionProgress(action, async () => {
+                await loadScenarioFromFile();
+              });
+              break;
+            case 'export-all':
+              await withActionProgress(action, async () => {
+                await ExportEngine.exportAll();
+              });
+              break;
             case 'clear-data':
               if (confirmClearData()) clearScenarioData();
               break;
@@ -418,6 +431,17 @@
         } catch (error) {
           console.error(error);
           pushToast(error.message || 'Une erreur est survenue.', 'error');
+        }
+      }
+
+      async function withActionProgress(action, task) {
+        appState.ui.actionLoading[action] = true;
+        App.render();
+        try {
+          return await task();
+        } finally {
+          appState.ui.actionLoading[action] = false;
+          App.render();
         }
       }
 
