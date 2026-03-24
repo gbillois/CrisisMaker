@@ -50,7 +50,10 @@
       }
 
       function uid(prefix = 'id') {
-        return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+        const buf = new Uint8Array(8);
+        crypto.getRandomValues(buf);
+        const hex = Array.from(buf, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+        return `${prefix}_${hex}`;
       }
 
       function formatLocalDateTime(date) {
@@ -143,6 +146,9 @@
           scenario.settings = { ...scenario.settings, ...settings };
         }
         scenario.settings = { ...scenario.settings, ...providerSettings };
+        // Restore API keys from sessionStorage (never persisted to disk)
+        const sessionApiKey = sessionStorage.getItem('crisismaker_api_key');
+        if (sessionApiKey) scenario.settings.ai_api_key = sessionApiKey;
         normalizeProviderSettingsInPlace(scenario.settings);
         return scenario;
       }

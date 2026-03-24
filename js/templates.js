@@ -30,7 +30,7 @@
                   <div class="outlook-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
                 </div>
                 <div class="outlook-content">
-                  ${f.body || ''}
+                  ${sanitizeHtml(f.body)}
                   ${f.has_attachment ? `<div class="outlook-attachment">📎 <span>${escapeHtml(f.attachment_name || 'piece_jointe.pdf')}</span></div>` : ''}
                 </div>
               </div>
@@ -62,7 +62,7 @@
                 <div class="press-byline"><span>${escapeHtml(f.author || '')}</span><span>${escapeHtml(f.date || '')} · ${escapeHtml(f.read_time || '')}</span></div>
                 <div class="press-photo"></div>
                 <div class="press-caption">${escapeHtml(f.image_caption || '')}</div>
-                <div class="press-content">${f.body || ''}</div>
+                <div class="press-content">${sanitizeHtml(f.body)}</div>
               </div>
             </article>
           `;
@@ -89,7 +89,7 @@
                   <div class="nyt-date-line">${escapeHtml(f.date || '')}${f.update_time ? ` · ${escapeHtml(f.update_time)}` : ''}${f.read_time ? ` · ${escapeHtml(f.read_time)}` : ''}</div>
                 </div>
                 <div class="nyt-actions">${iconGift()} ${iconBookmark()} ${iconComment()} ${iconShare()}</div>
-                <div class="nyt-content">${f.body || ''}</div>
+                <div class="nyt-content">${sanitizeHtml(f.body)}</div>
               </div>
             </article>
           `;
@@ -116,7 +116,7 @@
                 <div class="press-photo faz-photo"></div>
                 <div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>
                 <div class="faz-byline"><span class="faz-author">${escapeHtml(f.author || '')}</span><span>·</span><span class="faz-datetime">${escapeHtml(f.date || '')}${f.time ? ` ${escapeHtml(f.time)}` : ''}</span></div>
-                <div class="faz-content">${f.body || ''}</div>
+                <div class="faz-content">${sanitizeHtml(f.body)}</div>
               </div>
             </article>
           `;
@@ -146,7 +146,7 @@
                   </div>
                   <div class="ft-datetime">${escapeHtml(f.date || '')}${f.time ? ` · ${escapeHtml(f.time)}` : ''}</div>
                 </div>
-                <div class="ft-content">${f.body || ''}</div>
+                <div class="ft-content">${sanitizeHtml(f.body)}</div>
               </div>
             </article>
           `;
@@ -154,7 +154,7 @@
         reddit(f) {
           const awards = parseArrayField(f.awards);
           const topComment = parseObjectField(f.top_comment);
-          const postBody = String(f.body || '');
+          const postBody = sanitizeHtml(f.body);
           const hasTextBody = Boolean(postBody.trim());
           const truncated = postBody.replace(/<[^>]+>/g, '').length > 320;
           return `
@@ -298,7 +298,7 @@
                   <div class="authority-banner"><strong>${tt('Severity', 'Sévérité')} : ${escapeHtml(f.severity || '')}</strong> · ${tt('Restricted distribution to recipient', 'Diffusion restreinte au destinataire')}</div>
                   <p><strong>${tt('From', 'De')} :</strong> ${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;<br><strong>${tt('To', 'À')} :</strong> ${escapeHtml(f.to || '')}<br><strong>${tt('Date', 'Date')} :</strong> ${escapeHtml(f.date || '')}</p>
                   <h2 style="margin-top:0;">${escapeHtml(f.subject || '')}</h2>
-                  <div>${f.body || ''}</div>
+                  <div>${sanitizeHtml(f.body)}</div>
                 </div>
               </div>
             </article>
@@ -310,7 +310,7 @@
               <div class="pr-logo" style="color:${escapeAttribute(f.logo_color || '#003366')};">${escapeHtml(f.logo_text || '')}</div>
               <div class="pr-meta">${escapeHtml(f.date || '')}</div>
               <div class="pr-title">${escapeHtml(f.title || '')}</div>
-              <div class="pr-body">${f.body || ''}</div>
+              <div class="pr-body">${sanitizeHtml(f.body)}</div>
               <div class="pr-contact">
                 <strong>${tt('Press contact', 'Contact presse')}</strong><br>
                 ${escapeHtml(f.contact_name || '')}<br>

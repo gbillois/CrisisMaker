@@ -58,8 +58,11 @@
       // Level 2: localStorage (always active)
       function saveLocal(showToast = true) {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.scenario));
-          localStorage.setItem(SETTINGS_KEY, JSON.stringify(appState.scenario.settings));
+          const scenarioCopy = JSON.parse(JSON.stringify(appState.scenario));
+          scenarioCopy.settings = { ...scenarioCopy.settings, ai_api_key: '', azure_api_key: '' };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarioCopy));
+          const settingsCopy = { ...appState.scenario.settings, ai_api_key: '', azure_api_key: '' };
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsCopy));
           persistProviderSettings(appState.scenario.settings);
           if (showToast) pushToast(tt('Scenario saved locally.', 'Scénario enregistré localement.'), 'success');
         } catch (error) {
@@ -99,7 +102,7 @@
         return {
           ai_provider: localStorage.getItem(PROVIDER_STORAGE_KEYS.aiProvider) || undefined,
           azure_endpoint: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureEndpoint) || undefined,
-          azure_api_key: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKey) || undefined,
+          azure_api_key: sessionStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKey) || undefined,
           azure_deployment: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureDeployment) || undefined
         };
       }
@@ -107,8 +110,13 @@
       function persistProviderSettings(settings) {
         localStorage.setItem(PROVIDER_STORAGE_KEYS.aiProvider, settings.ai_provider || 'anthropic');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureEndpoint, settings.azure_endpoint || '');
-        localStorage.setItem(PROVIDER_STORAGE_KEYS.azureApiKey, settings.azure_api_key || '');
+        sessionStorage.setItem(PROVIDER_STORAGE_KEYS.azureApiKey, settings.azure_api_key || '');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureDeployment, settings.azure_deployment || '');
+        sessionStorage.setItem('crisismaker_api_key', settings.ai_api_key || '');
+        // Migrate: remove any API keys previously stored in localStorage
+        localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKey);
+        localStorage.removeItem('crisismaker_api_key');
+        localStorage.removeItem('crisisstim_api_key');
       }
 
 
@@ -206,7 +214,9 @@
 
 
       async function saveScenarioToFile() {
-        const json = JSON.stringify(appState.scenario, null, 2);
+        const exportData = JSON.parse(JSON.stringify(appState.scenario));
+        exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '' };
+        const json = JSON.stringify(exportData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_${new Date().toISOString().slice(0, 10)}.json`);
         pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.'), 'success');
@@ -288,8 +298,8 @@
           const zipImport = data?.__zipImport;
           if (zipImport) delete data.__zipImport;
           appState.scenario = mergeScenario(migrateScenario(data));
-          // restore API key from localStorage (never stored in file)
-          const savedApiKey = localStorage.getItem('crisismaker_api_key') || localStorage.getItem('crisisstim_api_key');
+          // restore API key from sessionStorage (never persisted to disk)
+          const savedApiKey = sessionStorage.getItem('crisismaker_api_key');
           if (savedApiKey && !appState.scenario.settings.ai_api_key) {
             appState.scenario.settings.ai_api_key = savedApiKey;
           }

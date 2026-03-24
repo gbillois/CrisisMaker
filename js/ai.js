@@ -36,13 +36,14 @@
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
+            if (!/^https:\/\//i.test(normalizedEndpoint)) throw new Error(tt('Azure endpoint must use HTTPS.', 'L\'endpoint Azure doit utiliser HTTPS.'));
             const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
               body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'Erreur API Azure OpenAI');
+            if (!response.ok) { console.warn('Azure OpenAI API error', data.error); throw new Error(tt(`Azure OpenAI error (HTTP ${response.status}). Check your configuration.`, `Erreur Azure OpenAI (HTTP ${response.status}). Vérifiez votre configuration.`)); }
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.'));
             const parsed = parseLLMJson(content);
@@ -56,7 +57,7 @@
               body: JSON.stringify({ model: ai_model, max_tokens: 2000, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }] })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'Erreur API Anthropic');
+            if (!response.ok) { console.warn('Anthropic API error', data.error); throw new Error(tt(`Anthropic error (HTTP ${response.status}). Check your API key.`, `Erreur Anthropic (HTTP ${response.status}). Vérifiez votre clé API.`)); }
             const text = data.content?.[0]?.text || '{}';
             const parsed = parseLLMJson(text);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.'), 'success');
@@ -72,7 +73,7 @@
               })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'OpenAI API error');
+            if (!response.ok) { console.warn('OpenAI API error', data.error); throw new Error(tt(`OpenAI error (HTTP ${response.status}). Check your API key.`, `Erreur OpenAI (HTTP ${response.status}). Vérifiez votre clé API.`)); }
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.'));
             const parsed = parseLLMJson(content);
