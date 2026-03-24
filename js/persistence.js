@@ -253,9 +253,15 @@
         }
 
         const preferred = entries.find((entry) => /\.(crisismaker|crisisstim)\.json$/i.test(entry.name)) || entries[0];
+        const imageEntries = Object.values(zip.files).filter((entry) => !entry.dir && /\.(png|jpe?g|webp|gif|svg)$/i.test(entry.name));
         try {
           const raw = await preferred.async('string');
-          return JSON.parse(raw);
+          const parsed = JSON.parse(raw);
+          parsed.__zipImport = {
+            imageCount: imageEntries.length,
+            imageNames: imageEntries.slice(0, 5).map((entry) => entry.name)
+          };
+          return parsed;
         } catch (error) {
           throw new Error(tt(`Invalid JSON in ZIP: ${error.message}`, `JSON invalide dans le ZIP : ${error.message}`));
         }
@@ -263,6 +269,8 @@
 
       function applyLoadedScenario(data) {
         try {
+          const zipImport = data?.__zipImport;
+          if (zipImport) delete data.__zipImport;
           appState.scenario = mergeScenario(migrateScenario(data));
           // restore API key from localStorage (never stored in file)
           const savedApiKey = localStorage.getItem('crisismaker_api_key') || localStorage.getItem('crisisstim_api_key');
@@ -273,6 +281,16 @@
           appState.route = 'project';
           App.render();
           pushToast(tt('Scenario loaded successfully.', 'Scénario chargé avec succès.'), 'success');
+          if (zipImport?.imageCount) {
+            const sample = zipImport.imageNames.length ? ` (${zipImport.imageNames.join(', ')})` : '';
+            pushToast(
+              tt(
+                `${zipImport.imageCount} rendered image(s) found in the ZIP${sample}. Stimulus previews are regenerated from project data after import.`,
+                `${zipImport.imageCount} image(s) rendue(s) trouvée(s) dans le ZIP${sample}. Les aperçus sont régénérés à partir des données du projet après import.`
+              ),
+              'info'
+            );
+          }
         } catch (error) {
           pushToast(tt(`Load failed: ${error.message}`, `Chargement échoué : ${error.message}`), 'error');
         }
