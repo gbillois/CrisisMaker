@@ -786,6 +786,23 @@
       }
       function escapeAttribute(value) { return escapeHtml(value).replace(/`/g, '&#96;'); }
 
+      function sanitizeHtml(html) {
+        const str = String(html || '');
+        const doc = new DOMParser().parseFromString(str, 'text/html');
+        const dangerous = doc.querySelectorAll('script, iframe, object, embed, form, input, textarea, select, button, link[rel="import"], meta, base, applet');
+        dangerous.forEach(function (el) { el.remove(); });
+        const all = doc.body.querySelectorAll('*');
+        all.forEach(function (el) {
+          Array.from(el.attributes).forEach(function (attr) {
+            const name = attr.name.toLowerCase();
+            if (name.startsWith('on') || (name === 'href' && /^\s*javascript:/i.test(attr.value)) || (name === 'src' && /^\s*javascript:/i.test(attr.value)) || name === 'formaction') {
+              el.removeAttribute(attr.name);
+            }
+          });
+        });
+        return doc.body.innerHTML;
+      }
+
       function iconReply() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"></path></svg>'; }
       function iconGift() { return '<svg viewBox="0 0 24 24"><path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"></path><path d="M2 7h20v5H2z"></path><path d="M12 21V7"></path><path d="M12 7H8.5a2.5 2.5 0 1 1 0-5c2.2 0 3.5 2.1 3.5 5z"></path><path d="M12 7h3.5a2.5 2.5 0 1 0 0-5c-2.2 0-3.5 2.1-3.5 5z"></path></svg>'; }
       function iconBookmark() { return '<svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z"></path></svg>'; }
