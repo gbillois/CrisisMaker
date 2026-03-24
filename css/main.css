@@ -83,23 +83,6 @@
       padding-right: 12px;
     }
     .nav-topbar-right { display: flex; align-items: center; margin-right: 8px; }
-    .nav-clear-btn {
-      border: 1px solid rgba(255,255,255,0.22);
-      background: rgba(220,38,38,0.16);
-      color: #fff;
-      height: 36px;
-      padding: 0 14px;
-      border-radius: 999px;
-      margin-right: 10px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .nav-clear-btn:hover {
-      background: rgba(220,38,38,0.28);
-      border-color: rgba(255,255,255,0.36);
-    }
-
     .nav-icon-btn {
       min-width: 60px;
       height: 72px;
@@ -969,36 +952,33 @@
       }
 
       .nav-topbar {
-        min-height: auto;
-        padding: 8px 10px 10px;
-        gap: 8px;
+        min-height: 56px;
+        padding: 0 6px;
+        gap: 4px;
+        flex-wrap: nowrap;
+      }
+      .nav-topbar-center {
+        display: none;
       }
       .nav-topbar-right {
-        width: 100%;
+        width: auto;
         margin-right: 0;
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 8px;
-      }
-      .nav-clear-btn {
-        margin-right: 0;
-        width: 100%;
+        display: flex;
+        flex-shrink: 0;
       }
       .nav-topbar-left {
-        width: 100%;
-        overflow-x: auto;
-        scrollbar-width: thin;
-      }
-      .nav-topbar-left::-webkit-scrollbar {
-        height: 6px;
+        width: auto;
+        flex: 1;
+        overflow: visible;
+        justify-content: space-around;
       }
       .nav-icon-btn {
-        min-width: 54px;
+        min-width: 44px;
         height: 56px;
-        gap: 2px;
+        gap: 0;
       }
       .nav-icon-btn span {
-        font-size: 0.56rem;
+        display: none;
       }
       .settings-drawer {
         top: 0;

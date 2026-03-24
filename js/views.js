@@ -151,9 +151,6 @@
               </div>
               <div class="nav-topbar-right">
                 <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
-                <button class="nav-clear-btn" data-action="clear-data" title="${tt('Clear scenario data', 'Effacer les données du scénario')}">
-                  ${tt('Clear data', 'Effacer les données')}
-                </button>
                 <button class="nav-gear-btn ${appState.settingsDrawerOpen ? 'active' : ''}" data-action="toggle-settings-drawer" title="${tt('Settings', 'Paramètres')}">
                   ${svgGear()}
                 </button>
@@ -268,6 +265,9 @@
                   <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt('Use current scenario', 'Utiliser le scénario actuel')}</p>
                 </article>
               </div>
+              <div class="actions" style="justify-content:center; margin-top:4px;">
+                <button class="btn btn-danger" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
+              </div>
             </section>
           `;
         }
@@ -282,6 +282,7 @@
                   <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${actionButtonLabel('export-all', tt('Export ZIP', 'Exporter ZIP') + ' 🗜️', tt('Exporting ZIP…', 'Export ZIP en cours…'))}</button>
                   <button class="btn btn-secondary" data-action="load-json" ${appState.ui?.actionLoading?.['load-json'] ? 'disabled' : ''}>${actionButtonLabel('load-json', tt('Import', 'Importer'), tt('Importing…', 'Import en cours…'))}</button>
                   <button class="btn btn-secondary" data-action="new-scenario">${tt('New', 'Nouveau')} ↺</button>
+                  <button class="btn btn-danger" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
                 </div>
               </div>
               <div class="field-grid cols-3" style="font-size:0.9rem; color:var(--muted);">
