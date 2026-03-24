@@ -232,6 +232,7 @@
 
       function renderProjectView() {
         const s = appState.scenario;
+        const llmAvailable = isLLMAvailable();
         const hasStimuliOrConfig = s.stimuli.length > 0 || s.client.name || s.scenario.summary;
         if (!hasStimuliOrConfig) {
           return `
@@ -245,7 +246,7 @@
                 <div class="hero-stats">
                   <div class="hero-stat"><strong>${appState.scenario.stimuli.length}</strong><span>${tt('sample stimuli', 'stimuli exemples')}</span></div>
                   <div class="hero-stat"><strong>${appState.scenario.actors.length}</strong><span>${tt('default actors', 'acteurs par défaut')}</span></div>
-                  <div class="hero-stat"><strong>AI</strong><span>${tt('generation-ready setup', 'configuration prête pour l\'IA')}</span></div>
+                  <div class="hero-stat"><strong>${llmAvailable ? tt('AI connected', 'IA connectée') : tt('Stand alone', 'Autonome')}</strong><span>${llmAvailable ? tt('generation-ready setup', 'configuration prête pour l\'IA') : tt('manual mode available', 'mode manuel disponible')}</span></div>
                 </div>
               </div>
               <div class="grid cols-3" style="gap:20px;">
