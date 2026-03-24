@@ -109,6 +109,7 @@
         const now = new Date().toISOString();
         return {
           id: uid('stimulus'),
+          name: '',
           timestamp_offset_minutes: offsetMinutes,
           channel,
           template_id: template.template_id,
@@ -168,6 +169,7 @@
         const now = new Date().toISOString();
         return {
           id: stimulus.id || uid('stimulus'),
+          name: stimulus.name ?? '',
           timestamp_offset_minutes: Number(stimulus.timestamp_offset_minutes || 0),
           channel,
           template_id: templateId,
