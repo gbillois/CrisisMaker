@@ -182,6 +182,7 @@
               ${renderCurrentView()}
             </main>
             ${appState.historyModalStimulusId ? renderHistoryModal(getStimulus(appState.historyModalStimulusId)) : ''}
+            ${appState.stimulusModalId ? renderStimulusModal(getStimulus(appState.stimulusModalId)) : ''}
           </div>
         `;
       }
@@ -611,17 +612,15 @@
       }
 
       function renderStimuliView() {
-        const selected = getSelectedStimulus();
         const maxOffset = Math.max(360, ...appState.scenario.stimuli.map((item) => item.timestamp_offset_minutes));
         const zoom = appState.ui?.timelineZoom || 1.0;
         const hourWidth = Math.round(108 * zoom);
         const width = Math.max(900, (Math.ceil(maxOffset / 60) + 1) * hourWidth + 120);
         const ticks = Array.from({ length: Math.ceil(maxOffset / 60) + 2 }, (_, index) => index);
-        const editorWidth = appState.ui?.stimuliEditorWidth || 42;
         const timelineHeight = appState.ui?.stimuliTimelineHeight || 255;
         const sortedStimuli = getSortedStimuli();
         return `
-          <section class="stimuli-workspace" data-stimuli-workspace style="--stimuli-editor-width:${editorWidth}%; --stimuli-preview-width:${100 - editorWidth}%; --stimuli-timeline-height:${timelineHeight}px;">
+          <section class="stimuli-workspace" data-stimuli-workspace style="--stimuli-timeline-height:${timelineHeight}px;">
             <article class="card stimuli-timeline-panel">
               <div class="section-header">
                 <h3>${tt('Timeline', 'Timeline')}</h3>
@@ -655,24 +654,6 @@
                 </div>
               </div>
             </article>
-            <div class="resize-handle resize-handle-horizontal" data-resize-handle="timeline-height" role="separator" aria-orientation="horizontal" aria-label="${tt('Resize timeline', 'Redimensionner la timeline')}"></div>
-            <section class="stimuli-split">
-              <article class="stimuli-left-panel card">
-                ${selected ? renderStimulusEditor(selected) : `<p class="subtle" style="padding:20px;">${tt('Select a stimulus from the timeline to edit it.', 'Sélectionnez un stimulus dans la timeline pour l\'éditer.')}</p>`}
-              </article>
-              <div class="resize-handle resize-handle-vertical" data-resize-handle="editor-width" role="separator" aria-orientation="vertical" aria-label="${tt('Resize editor and preview', 'Redimensionner l\'éditeur et la prévisualisation')}"></div>
-              <article class="stimuli-right-panel">
-                <div class="preview-toolbar-inline">
-                  ${selected && String(selected.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${selected.id}">${tt('Export .msg file', 'Exporter le fichier .msg')}</button>` : ''}
-                  ${selected ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${selected.id}">${tt('Export PNG', 'Exporter PNG')}</button>` : ''}
-                </div>
-                <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
-                  <div class="preview-stage">
-                    ${selected ? renderStimulusPreview(selected) : `<div class="subtle" style="padding:40px;">${tt('Select a stimulus to preview it.', 'Sélectionnez un stimulus pour le prévisualiser.')}</div>`}
-                  </div>
-                </div>
-              </article>
-            </section>
             ${sortedStimuli.length > 0 ? `
             <div class="stimuli-carousel-bar">
               <div class="stimuli-carousel-track">
@@ -701,75 +682,92 @@
             <strong>${escapeHtml(channelLabel(stimulus.channel))}</strong>
             <small>${escapeHtml(actor?.name || tt('No actor', 'Sans acteur'))}</small>
             <small>H+${Math.floor(stimulus.timestamp_offset_minutes / 60)}:${String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0')}</small>
-            <small>${tt('Status', 'Statut')} : ${escapeHtml(stimulus.status)}</small>
+            ${stimulus.name ? `<small>${escapeHtml(stimulus.name)}</small>` : ''}
           </div>
         `;
       }
 
-      function renderStimulusEditor(stimulus) {
+      function renderStimulusEditorModal(stimulus) {
         const library = getTemplateDefinition(stimulus);
         const actorOptions = appState.scenario.actors.map((actor) => `<option value="${actor.id}" ${stimulus.actor_id === actor.id ? 'selected' : ''}>${escapeHtml(actor.name)} — ${escapeHtml(actor.title)}</option>`).join('');
         return `
-          <div class="section-header">
-            <div>
-              <h3>${tt('Stimulus editor', 'Éditeur de stimulus')}</h3>
-              <p class="subtle">${escapeHtml(channelLabel(stimulus.channel))} · ${tt('template', 'template')} <span class="mono">${escapeHtml(stimulus.template_id)}</span></p>
-            </div>
-            <div class="actions">
-              ${(stimulus.history?.length > 0) ? `<button class="btn btn-secondary" data-action="show-history" data-stimulus-id="${stimulus.id}">${tt('History', 'Historique')} (${stimulus.history.length})</button>` : ''}
-              <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer')}</button>
-              <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}">${tt('Delete', 'Supprimer')}</button>
-            </div>
-          </div>
-
-          ${renderLLMConfigBlock('stimulus', tt(
-            'Ex: "A Le Monde article about the attack by journalist Jean Dupont, at H+2. Alarming but factual, mentioning impact on 2 million customers."',
-            'Ex: "Un tweet indigné d\'un client B2C qui ne peut plus accéder à son compte bancaire. H+1." Ou : "Email interne du RSSI au comité de crise, H+0."'
-          ))}
-
           <div class="field-grid cols-2">
-            <label class="field">${tt('Channel', 'Type de stimuli')}
+            <label class="field" style="grid-column:1/-1;">${tt('Stimulus name', 'Nom du stimulus')}
+              <input type="text" data-stimulus-bind="${stimulus.id}.name" value="${escapeAttribute(stimulus.name || '')}" placeholder="${tt('Give this stimulus a name…', 'Donnez un nom à ce stimulus…')}">
+            </label>
+            <label class="field">${tt('Stimuli type', 'Type de stimulus')}
               <select data-stimulus-bind="${stimulus.id}.channel">${Object.entries(CHANNEL_META).map(([channel]) => `<option value="${channel}" ${stimulus.channel === channel ? 'selected' : ''}>${channelLabel(channel)}</option>`).join('')}</select>
             </label>
             ${stimulus.channel === 'article_press' ? `<label class="field">${tt('Press template', 'Template presse')}
               <select data-stimulus-bind="${stimulus.id}.template_id">${Object.values(ARTICLE_TEMPLATE_LIBRARY).map((template) => `<option value="${template.template_id}" ${stimulus.template_id === template.template_id ? 'selected' : ''}>${escapeHtml(template.label)}</option>`).join('')}</select>
-            </label>` : ''}
+            </label>` : '<div></div>'}
             <label class="field">${tt('Source actor', 'Acteur émetteur')}
               <select data-stimulus-bind="${stimulus.id}.actor_id">${actorOptions}</select>
             </label>
             <label class="field">${tt('Timeline (minutes)', 'Timeline (minutes)')}
               <input type="number" min="0" step="5" data-stimulus-bind="${stimulus.id}.timestamp_offset_minutes" value="${stimulus.timestamp_offset_minutes}">
             </label>
-            <label class="field">${tt('Status', 'Statut')}
-              <select data-stimulus-bind="${stimulus.id}.status">${['draft', 'ready', 'sent'].map((value) => `<option value="${value}" ${stimulus.status === value ? 'selected' : ''}>${value}</option>`).join('')}</select>
-            </label>
           </div>
 
-          <div class="field-grid cols-2" style="margin-top:14px;">
-            <label class="field">${tt('Generation mode', 'Mode de génération')}
-              <select data-stimulus-bind="${stimulus.id}.generation_mode">
-                <option value="ai" ${(stimulus.generation_mode || 'ai') === 'ai' ? 'selected' : ''} ${!isLLMAvailable() ? 'disabled' : ''}>${tt('AI automatic', 'IA automatique')}${!isLLMAvailable() ? tt(' (requires API key)', ' (clé API requise)') : ''}</option>
-                <option value="ai_guided" ${stimulus.generation_mode === 'ai_guided' ? 'selected' : ''} ${!isLLMAvailable() ? 'disabled' : ''}>${tt('AI guided', 'IA guidée')}${!isLLMAvailable() ? tt(' (requires API key)', ' (clé API requise)') : ''}</option>
-                <option value="manual" ${(stimulus.generation_mode === 'manual' || !isLLMAvailable()) ? 'selected' : ''}>${tt('Manual', 'Manuel')}</option>
-              </select>
-            </label>
+          <div class="actions" style="margin:16px 0 4px;">
+            <button class="btn btn-secondary" data-action="clear-stimulus-content" data-stimulus-id="${stimulus.id}">${tt('Clear content', 'Effacer le contenu')}</button>
+            <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true">${tt('Delete', 'Supprimer')}</button>
           </div>
 
-          ${stimulus.generation_mode === 'ai_guided' ? `
-            <label class="field" style="margin-top:10px;">${tt('Generation instruction', 'Instruction de génération')}
-              <textarea data-stimulus-bind="${stimulus.id}.generation_prompt" placeholder="${tt('Describe the desired content...', 'Décrivez le contenu souhaité...')}">${escapeHtml(stimulus.generation_prompt || '')}</textarea>
-            </label>
-          ` : ''}
-
-          <div class="actions" style="margin:14px 0 12px;">
-            ${stimulus.generation_mode !== 'manual' ? `<button class="btn btn-primary" data-action="generate-stimulus" data-stimulus-id="${stimulus.id}">${stimulus.generation_mode === 'ai_guided' ? tt('Generate from description', 'Générer depuis la description') : tt('Generate all', 'Tout générer')}</button>` : ''}
-            ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .msg file', 'Exporter le fichier .msg')}</button>` : ''}
-            <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer')}</button>
-            <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}">${tt('Delete', 'Supprimer')}</button>
+          <div style="margin-top:16px;">
+            ${renderLLMConfigBlock('stimulus', tt(
+              'Ex: "A Le Monde article about the attack by journalist Jean Dupont, at H+2. Alarming but factual, mentioning impact on 2 million customers."',
+              'Ex: "Un tweet indigné d\'un client B2C qui ne peut plus accéder à son compte bancaire. H+1." Ou : "Email interne du RSSI au comité de crise, H+0."'
+            ))}
           </div>
 
-          <div class="field-grid">
+          <div class="field-grid" style="margin-top:16px;">
             ${library.fields.map((spec) => renderFieldControl(stimulus, spec)).join('')}
+          </div>
+        `;
+      }
+
+      function renderStimulusModal(stimulus) {
+        if (!stimulus) return '';
+        const editorWidth = appState.ui?.stimulusModalEditorWidth || 50;
+        const h = Math.floor(stimulus.timestamp_offset_minutes / 60);
+        const m = String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0');
+        const meta = CHANNEL_META[stimulus.channel] || CHANNEL_META.email_internal;
+        return `
+          <div class="modal-backdrop" data-action="close-stimulus-modal">
+            <div class="modal-box modal-box-stimulus" onclick="event.stopPropagation()">
+              <div class="modal-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span class="stimulus-modal-channel-dot" style="background:${meta.color};"></span>
+                  <div>
+                    <h3 style="margin:0;">${escapeHtml(stimulus.name || channelLabel(stimulus.channel))}</h3>
+                    <p class="subtle" style="margin:0; font-size:0.82rem;">${escapeHtml(channelLabel(stimulus.channel))} · H+${h}:${m}</p>
+                  </div>
+                </div>
+                <div class="actions">
+                  ${(stimulus.history?.length > 0) ? `<button class="btn btn-secondary" data-action="show-history" data-stimulus-id="${stimulus.id}">${tt('History', 'Historique')} (${stimulus.history.length})</button>` : ''}
+                  <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer')}</button>
+                  <button class="btn btn-secondary" data-action="close-stimulus-modal">✕</button>
+                </div>
+              </div>
+              <div class="modal-body-stimulus" data-stimulus-modal-body style="--stimulus-modal-editor-width:${editorWidth}%; --stimulus-modal-preview-width:${100 - editorWidth}%;">
+                <div class="stimulus-modal-left">
+                  ${renderStimulusEditorModal(stimulus)}
+                </div>
+                <div class="resize-handle resize-handle-vertical" data-resize-handle="stimulus-modal-width" role="separator" aria-orientation="vertical" aria-label="${tt('Resize editor and preview', 'Redimensionner l\'éditeur et la prévisualisation')}"></div>
+                <div class="stimulus-modal-right">
+                  <div class="preview-toolbar-inline">
+                    ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .msg', 'Exporter .msg')}</button>` : ''}
+                    <button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}">${tt('Export PNG', 'Exporter PNG')}</button>
+                  </div>
+                  <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
+                    <div class="preview-stage">
+                      ${renderStimulusPreview(stimulus)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         `;
       }
@@ -777,8 +775,7 @@
       function renderFieldControl(stimulus, spec) {
         const value = stimulus.fields[spec.key];
         const bind = `data-stimulus-field="${stimulus.id}.${spec.key}"`;
-        const isManual = stimulus.generation_mode === 'manual';
-        const genBtn = isManual ? '' : `<div class="actions" style="margin-top:4px;"><button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">✨ ${tt('Regenerate', 'Régénérer')}</button></div>`;
+        const genBtn = `<div class="actions" style="margin-top:4px;"><button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">✨ ${tt('Regenerate', 'Régénérer')}</button></div>`;
         if (spec.type === 'textarea') {
           const content = Array.isArray(value) ? JSON.stringify(value) : String(value ?? '');
           return `

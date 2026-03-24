@@ -1,6 +1,7 @@
       const appState = {
         route: 'project',
         selectedStimulusId: null,
+        stimulusModalId: null,
         slideshowIndex: 0,
         settingsDrawerOpen: false,
         scenario: loadInitialScenario(),
@@ -12,6 +13,7 @@
         ui: {
           stimuliTimelineHeight: 255,
           stimuliEditorWidth: 42,
+          stimulusModalEditorWidth: 50,
           timelineZoom: 1.0,
           actionLoading: {}
         },
@@ -36,6 +38,7 @@
           root.innerHTML = renderAppShell();
           bindGlobalEvents();
           bindStimuliSplitters();
+          bindStimulusModalSplitter();
           renderToasts();
         }
       };
@@ -251,7 +254,35 @@
             case 'delete-actor': deleteActor(event.currentTarget.dataset.actorId); break;
             case 'generate-sample-actors': generateSampleActors(); break;
             case 'add-stimulus': addStimulus(); break;
-            case 'select-stimulus': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; App.render(); break;
+            case 'select-stimulus': {
+              const sid = event.currentTarget.dataset.stimulusId;
+              appState.selectedStimulusId = sid;
+              appState.stimulusModalId = sid;
+              App.render();
+              break;
+            }
+            case 'open-stimulus-modal': {
+              appState.stimulusModalId = event.currentTarget.dataset.stimulusId;
+              App.render();
+              break;
+            }
+            case 'close-stimulus-modal': {
+              appState.stimulusModalId = null;
+              App.render();
+              break;
+            }
+            case 'clear-stimulus-content': {
+              const s = getStimulus(event.currentTarget.dataset.stimulusId);
+              if (s) {
+                const tpl = getTemplateDefinition(s);
+                s.fields = deepClone(tpl.defaults);
+                s.generated_text = {};
+                s.manual_overrides = {};
+                await autoSave();
+                App.render();
+              }
+              break;
+            }
             case 'duplicate-stimulus': duplicateStimulus(event.currentTarget.dataset.stimulusId); break;
             case 'delete-stimulus': deleteStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.confirm === 'true'); break;
             case 'sort-stimuli': sortStimuli(); App.render(); break;
@@ -362,7 +393,7 @@
             }
             case 'llm-generate-stimulus': {
               const state = appState.llmState.stimulus;
-              const selected = getSelectedStimulus();
+              const selected = getStimulus(appState.stimulusModalId) || getSelectedStimulus();
               if (!selected) break;
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
               state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
@@ -494,6 +525,7 @@
         const stimulus = makeStimulus('email_internal', actorId, nextStimulusOffset());
         appState.scenario.stimuli.push(stimulus);
         appState.selectedStimulusId = stimulus.id;
+        appState.stimulusModalId = stimulus.id;
         App.render();
       }
 
@@ -505,6 +537,7 @@
         copy.timestamp_offset_minutes += 15;
         appState.scenario.stimuli.push(copy);
         appState.selectedStimulusId = copy.id;
+        appState.stimulusModalId = copy.id;
         App.render();
       }
 
@@ -517,6 +550,7 @@
         }
         appState.scenario.stimuli = appState.scenario.stimuli.filter((stimulus) => stimulus.id !== stimulusId);
         appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
+        if (appState.stimulusModalId === stimulusId) appState.stimulusModalId = null;
         if (requireConfirm && appState.libraryExpandedId === stimulusId) appState.libraryExpandedId = null;
         App.render();
       }
@@ -644,6 +678,37 @@
             }
           }, { passive: true });
         }
+      }
+
+      function bindStimulusModalSplitter() {
+        const modal = document.querySelector('[data-stimulus-modal-body]');
+        if (!modal) return;
+        const handle = modal.querySelector('[data-resize-handle="stimulus-modal-width"]');
+        if (!handle) return;
+        handle.addEventListener('pointerdown', (event) => {
+          event.preventDefault();
+          const bounds = modal.getBoundingClientRect();
+          const pointerId = event.pointerId;
+          const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+          const onMove = (moveEvent) => {
+            const widthPercent = ((moveEvent.clientX - bounds.left) / bounds.width) * 100;
+            appState.ui.stimulusModalEditorWidth = Math.round(clamp(widthPercent, 25, 75));
+            modal.style.setProperty('--stimulus-modal-editor-width', `${appState.ui.stimulusModalEditorWidth}%`);
+            modal.style.setProperty('--stimulus-modal-preview-width', `${100 - appState.ui.stimulusModalEditorWidth}%`);
+          };
+          const stop = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', stop);
+            window.removeEventListener('pointercancel', stop);
+            if (modal.hasPointerCapture?.(pointerId)) modal.releasePointerCapture(pointerId);
+            document.body.classList.remove('is-resizing-panels');
+          };
+          document.body.classList.add('is-resizing-panels');
+          if (modal.setPointerCapture) modal.setPointerCapture(pointerId);
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', stop);
+          window.addEventListener('pointercancel', stop);
+        });
       }
 
       function startStimuliResize(event, type, workspace) {
