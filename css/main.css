@@ -394,7 +394,7 @@
     /* Split-panel for Stimuli view */
     .stimuli-workspace {
       display: grid;
-      grid-template-rows: minmax(190px, var(--stimuli-timeline-height, 255px)) 12px minmax(0, 1fr);
+      grid-template-rows: minmax(190px, var(--stimuli-timeline-height, 255px)) 12px minmax(0, 1fr) auto;
       gap: 0;
       min-height: calc(100vh - 168px);
       max-height: calc(100vh - 168px);
@@ -1309,3 +1309,110 @@
     .llm-actor-info strong { display: block; color: #182033; }
     .llm-actor-info span { color: #6B7B8D; font-size: 12px; }
     .llm-actors-global-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+    /* ── Timeline zoom controls ── */
+    .timeline-zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .timeline-zoom-label {
+      font-size: 0.78rem;
+      min-width: 38px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    /* ── Library card expanded preview ── */
+    .library-card.expanded {
+      grid-column: span 2;
+    }
+    .library-card-title-btn {
+      cursor: pointer;
+      user-select: none;
+      color: var(--primary);
+      font-weight: 500;
+    }
+    .library-card-title-btn:hover {
+      text-decoration: underline;
+    }
+    .library-card-preview-expand {
+      overflow: hidden;
+      height: 220px;
+      position: relative;
+      border-top: 1px solid var(--border);
+      background: #fff;
+    }
+    .library-card-preview-inner {
+      transform: scale(0.38);
+      transform-origin: top left;
+      width: calc(100% / 0.38);
+      pointer-events: none;
+    }
+
+    /* ── Stimuli carousel ── */
+    .stimuli-carousel-bar {
+      background: var(--surface-alt);
+      border-top: 1px solid var(--border);
+      padding: 8px 12px 6px;
+      flex-shrink: 0;
+    }
+    .stimuli-carousel-track {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .stimuli-carousel-track::-webkit-scrollbar { height: 4px; }
+    .stimuli-carousel-track::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .carousel-thumb {
+      flex-shrink: 0;
+      width: 110px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      overflow: hidden;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      background: var(--surface);
+    }
+    .carousel-thumb:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(15, 109, 143, 0.18);
+    }
+    .carousel-thumb.selected {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 109, 143, 0.2);
+    }
+    .carousel-thumb-preview {
+      height: 72px;
+      overflow: hidden;
+      position: relative;
+      background: #fff;
+      display: flex;
+      justify-content: center;
+    }
+    .carousel-thumb-preview .render-frame {
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+    .carousel-thumb-label {
+      padding: 4px 6px 5px;
+      font-size: 0.68rem;
+      line-height: 1.3;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      overflow: hidden;
+    }
+    .carousel-thumb-label strong {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+    .carousel-thumb-label span {
+      color: var(--muted);
+    }

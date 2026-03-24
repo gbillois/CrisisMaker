@@ -114,11 +114,22 @@
 
       const ExportEngine = {
         async exportStimulus(stimulus) {
-          const element = document.getElementById(`render-${stimulus.id}`) || document.getElementById('fullscreen-preview');
-          if (!element) throw new Error(tt('No rendered stimulus is available to export.', 'Aucun rendu disponible à exporter.'));
-          const dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
-          this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
-          pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
+          let element = document.getElementById(`render-${stimulus.id}`) || document.getElementById('fullscreen-preview');
+          let sandbox = null;
+          if (!element) {
+            sandbox = document.createElement('div');
+            sandbox.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;';
+            document.body.appendChild(sandbox);
+            sandbox.innerHTML = renderStimulusPreview(stimulus, `export-sandbox-${stimulus.id}`);
+            element = sandbox.firstElementChild;
+          }
+          try {
+            const dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+            this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
+            pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
+          } finally {
+            if (sandbox) document.body.removeChild(sandbox);
+          }
         },
         async exportRawEmail(stimulus) {
           if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.'));

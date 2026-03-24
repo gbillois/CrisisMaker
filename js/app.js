@@ -7,10 +7,12 @@
         toasts: [],
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
         historyModalStimulusId: null,
+        libraryExpandedId: null,
         llmState: makeDefaultLLMState(),
         ui: {
           stimuliTimelineHeight: 255,
           stimuliEditorWidth: 42,
+          timelineZoom: 1.0,
           actionLoading: {}
         },
         connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' }
@@ -151,6 +153,7 @@
         appState.selectedStimulusId = null;
         appState.slideshowIndex = 0;
         appState.historyModalStimulusId = null;
+        appState.libraryExpandedId = null;
         appState.libraryFilter = { channel: '', status: '', actorId: '', sort: 'timeline' };
         appState.llmState = makeDefaultLLMState();
         _fileHandle = null;
@@ -250,8 +253,16 @@
             case 'add-stimulus': addStimulus(); break;
             case 'select-stimulus': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; App.render(); break;
             case 'duplicate-stimulus': duplicateStimulus(event.currentTarget.dataset.stimulusId); break;
-            case 'delete-stimulus': deleteStimulus(event.currentTarget.dataset.stimulusId); break;
+            case 'delete-stimulus': deleteStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.confirm === 'true'); break;
             case 'sort-stimuli': sortStimuli(); App.render(); break;
+            case 'timeline-zoom-in': appState.ui.timelineZoom = Math.min(3.0, (appState.ui.timelineZoom || 1.0) + 0.25); App.render(); break;
+            case 'timeline-zoom-out': appState.ui.timelineZoom = Math.max(0.5, (appState.ui.timelineZoom || 1.0) - 0.25); App.render(); break;
+            case 'expand-library-card': {
+              const sid = event.currentTarget.dataset.stimulusId;
+              appState.libraryExpandedId = appState.libraryExpandedId === sid ? null : sid;
+              App.render();
+              break;
+            }
             case 'generate-stimulus': await generateStimulus(event.currentTarget.dataset.stimulusId); break;
             case 'generate-field': await generateStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.fieldName); break;
             case 'export-png': await ExportEngine.exportStimulus(getStimulus(event.currentTarget.dataset.stimulusId)); break;
@@ -497,9 +508,16 @@
         App.render();
       }
 
-      function deleteStimulus(stimulusId) {
+      function deleteStimulus(stimulusId, requireConfirm = false) {
+        if (requireConfirm) {
+          const s = getStimulus(stimulusId);
+          const label = s ? (s.fields.subject || s.fields.headline || s.fields.title || channelLabel(s.channel)) : '';
+          const msg = tt(`Delete this stimulus?\n"${label}"`, `Supprimer ce stimulus ?\n"${label}"`);
+          if (!window.confirm(msg)) return;
+        }
         appState.scenario.stimuli = appState.scenario.stimuli.filter((stimulus) => stimulus.id !== stimulusId);
         appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
+        if (requireConfirm && appState.libraryExpandedId === stimulusId) appState.libraryExpandedId = null;
         App.render();
       }
 
@@ -597,6 +615,35 @@
         const panelHandle = workspace.querySelector('[data-resize-handle="editor-width"]');
         if (timelineHandle) timelineHandle.addEventListener('pointerdown', (event) => startStimuliResize(event, 'timeline-height', workspace));
         if (panelHandle) panelHandle.addEventListener('pointerdown', (event) => startStimuliResize(event, 'editor-width', workspace));
+
+        // Pinch-to-zoom on timeline
+        const timeline = workspace.querySelector('[data-timeline-scroll]');
+        if (timeline) {
+          let lastPinchDist = null;
+          timeline.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 2) {
+              const dx = event.touches[0].clientX - event.touches[1].clientX;
+              const dy = event.touches[0].clientY - event.touches[1].clientY;
+              lastPinchDist = Math.sqrt(dx * dx + dy * dy);
+            } else {
+              lastPinchDist = null;
+            }
+          }, { passive: true });
+          timeline.addEventListener('touchmove', (event) => {
+            if (event.touches.length === 2 && lastPinchDist !== null) {
+              const dx = event.touches[0].clientX - event.touches[1].clientX;
+              const dy = event.touches[0].clientY - event.touches[1].clientY;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const delta = dist - lastPinchDist;
+              lastPinchDist = dist;
+              if (Math.abs(delta) > 2) {
+                const step = delta > 0 ? 0.05 : -0.05;
+                appState.ui.timelineZoom = Math.min(3.0, Math.max(0.5, (appState.ui.timelineZoom || 1.0) + step));
+                App.render();
+              }
+            }
+          }, { passive: true });
+        }
       }
 
       function startStimuliResize(event, type, workspace) {

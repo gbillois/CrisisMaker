@@ -183,6 +183,30 @@ CONSIGNES :
 - Le champ generation_mode doit être "ai_guided"
 - Si l'utilisateur décrit PLUSIEURS stimuli, retourne un TABLEAU JSON d'objets. Si UN SEUL stimulus, retourne un objet unique.
 
+COHÉRENCE DES AUTEURS/ÉMETTEURS selon le canal :
+- article_press / breaking_news_tv : l'auteur/journaliste doit avoir un nom de journaliste réaliste (ex: "Par Marie Dupont" pour Le Monde)
+- email_internal / internal_memo : from_name doit être un prénom+nom d'employé interne, from_email avec domaine de l'organisation cliente
+- email_authority : from_name doit être un organisme officiel (ANSSI, CERT-FR, CNIL…)
+- post_twitter / post_linkedin / post_reddit : display_name et handle cohérents avec le rôle de l'acteur
+- press_release : logo_text et contact_name cohérents avec l'organisation émettrice
+- sms_notification : sender court et reconnaissable (ex: "BANQUE-ALERT")
+
+CHAMPS À REMPLIR DANS "fields" selon le canal (génère un contenu réaliste et complet) :
+- email_internal: subject, from_name, from_email, to, body (HTML avec <p> et <strong>), date, importance ("normal"|"high")
+- email_external: subject, from_name, from_email, to, body (HTML), date
+- email_authority: subject, from_name, from_email, to, body (HTML), severity ("critical"|"high"|"medium"), reference, date
+- article_press (lemonde): headline, subheadline, author, date, category, body (HTML 3-4 paragraphes), image_caption, read_time
+- article_press (nyt): headline, subheadline, author, date, category, body (HTML), image_caption, read_time, location
+- article_press (faz): kicker, headline, subheadline, author, date, category, body (HTML), image_caption, content_type
+- article_press (ft): headline, subheadline, author, date, category, body (HTML), image_caption, content_type
+- post_twitter: text (≤280 car.), display_name, handle, date, verified (true|false), replies, retweets, likes, views
+- post_linkedin: text, display_name, title, date, reactions_count, comments_count
+- post_reddit: title, body (HTML), subreddit, author, date, upvotes, comments_count
+- breaking_news_tv: headline, subline, category, time, ticker
+- press_release: title, body (HTML), logo_text, date, contact_name, contact_email, contact_phone
+- sms_notification: sender, text, time
+- internal_memo: subject, from_name, to, body (HTML), date
+
 Format d'un stimulus :
 {
   "channel": "article_press | email_internal | post_twitter | ...",
@@ -192,7 +216,7 @@ Format d'un stimulus :
   "timestamp_offset_minutes": 120,
   "generation_mode": "ai_guided",
   "generation_prompt": "description originale de l'utilisateur",
-  "fields": {}
+  "fields": { /* tous les champs du canal remplis avec contenu réaliste */ }
 }`,
             userPrompt: `DESCRIPTION DU STIMULUS :\n${userInput}`
           };

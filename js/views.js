@@ -327,7 +327,7 @@
           <section class="grid">
             <div class="library-filter-bar">
               <select data-library-filter="channel">
-                <option value="">${tt('All channels', 'Tous les canaux')}</option>
+                <option value="">${tt('All channels', 'Tous les types')}</option>
                 ${channelOptions.map((ch) => `<option value="${ch}" ${f.channel === ch ? 'selected' : ''}>${escapeHtml(channelLabel(ch))}</option>`).join('')}
               </select>
               <select data-library-filter="status">
@@ -343,7 +343,7 @@
               <select data-library-filter="sort">
                 <option value="timeline" ${f.sort === 'timeline' ? 'selected' : ''}>${tt('Sort: timeline', 'Tri : timeline')}</option>
                 <option value="updated" ${f.sort === 'updated' ? 'selected' : ''}>${tt('Sort: last modified', 'Tri : modifié')}</option>
-                <option value="channel" ${f.sort === 'channel' ? 'selected' : ''}>${tt('Sort: channel', 'Tri : canal')}</option>
+                <option value="channel" ${f.sort === 'channel' ? 'selected' : ''}>${tt('Sort: channel', 'Tri : type')}</option>
                 <option value="actor" ${f.sort === 'actor' ? 'selected' : ''}>${tt('Sort: actor', 'Tri : acteur')}</option>
               </select>
               <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('stimuli', 'stimuli')}</span>
@@ -363,16 +363,22 @@
         const m = String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0');
         const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
         const versionCount = stimulus.history ? stimulus.history.length : 0;
+        const isExpanded = appState.libraryExpandedId === stimulus.id;
+        const titleText = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || '—';
         return `
-          <div class="library-card">
+          <div class="library-card${isExpanded ? ' expanded' : ''}">
             <div class="library-card-header" style="background:${meta.color};">
               <span class="library-card-channel">${escapeHtml(channelLabel(stimulus.channel))}</span>
               <span class="library-card-time">H+${h}:${m}</span>
             </div>
             <div class="library-card-body">
               <div class="library-card-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur'))}</div>
-              <div class="library-card-desc">${escapeHtml(stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || '—').slice(0, 60)}</div>
+              <div class="library-card-desc library-card-title-btn" data-action="expand-library-card" data-stimulus-id="${stimulus.id}" title="${tt('Click to preview', 'Cliquer pour prévisualiser')}">${escapeHtml(titleText.slice(0, 60))}${titleText.length > 60 ? '…' : ''} ${isExpanded ? '▲' : '▼'}</div>
             </div>
+            ${isExpanded ? `
+            <div class="library-card-preview-expand">
+              <div class="library-card-preview-inner">${renderStimulusPreview(stimulus, `lib-preview-${stimulus.id}`)}</div>
+            </div>` : ''}
             <div class="library-card-footer">
               <button class="pill pill-status" style="background:${statusColors[stimulus.status] || '#888'}; color:#fff; border:none; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${stimulus.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut')}">${escapeHtml(stimulus.status)}${versionCount > 0 ? ` · v${versionCount + 1}` : ''}</button>
               <div class="library-card-actions">
@@ -380,7 +386,7 @@
                 <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer')}">⧉</button>
                 ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-xs" data-action="export-msg" data-stimulus-id="${stimulus.id}" title="${tt('Export .msg file', 'Exporter le fichier .msg')}">✉️</button>` : ''}
                 <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG')}">⤓</button>
-                <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Delete', 'Supprimer')}">✕</button>
+                <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true" title="${tt('Delete', 'Supprimer')}">✕</button>
               </div>
             </div>
           </div>
@@ -606,17 +612,24 @@
       function renderStimuliView() {
         const selected = getSelectedStimulus();
         const maxOffset = Math.max(360, ...appState.scenario.stimuli.map((item) => item.timestamp_offset_minutes));
-        const hourWidth = 108;
+        const zoom = appState.ui?.timelineZoom || 1.0;
+        const hourWidth = Math.round(108 * zoom);
         const width = Math.max(900, (Math.ceil(maxOffset / 60) + 1) * hourWidth + 120);
         const ticks = Array.from({ length: Math.ceil(maxOffset / 60) + 2 }, (_, index) => index);
         const editorWidth = appState.ui?.stimuliEditorWidth || 42;
         const timelineHeight = appState.ui?.stimuliTimelineHeight || 255;
+        const sortedStimuli = getSortedStimuli();
         return `
           <section class="stimuli-workspace" data-stimuli-workspace style="--stimuli-editor-width:${editorWidth}%; --stimuli-preview-width:${100 - editorWidth}%; --stimuli-timeline-height:${timelineHeight}px;">
             <article class="card stimuli-timeline-panel">
               <div class="section-header">
                 <h3>${tt('Timeline', 'Timeline')}</h3>
                 <div class="actions">
+                  <div class="timeline-zoom-controls">
+                    <button class="btn btn-xs" data-action="timeline-zoom-out" title="${tt('Zoom out', 'Dézoomer')}">−</button>
+                    <span class="timeline-zoom-label">${Math.round(zoom * 100)}%</span>
+                    <button class="btn btn-xs" data-action="timeline-zoom-in" title="${tt('Zoom in', 'Zoomer')}">+</button>
+                  </div>
                   <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add stimulus', '+ Ajouter un stimulus')}</button>
                   <button class="btn btn-secondary" data-action="sort-stimuli">${tt('Sort', 'Trier')}</button>
                 </div>
@@ -634,7 +647,7 @@
                 loadingLabel: tt('Generating batch…', 'Génération du lot…'),
                 successMessage: (count) => tt(`${count} stimulus/stimuli added to the timeline. Review and adjust them if needed.`, `${count} stimulus ajouté(s) à la timeline. Vérifiez-les et ajustez-les si besoin.`)
               })}
-              <div class="timeline">
+              <div class="timeline" data-timeline-scroll>
                 <div class="timeline-track" style="width:${width}px;">
                   ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * hourWidth}px;">H+${tick}</div>`).join('')}
                   ${appState.scenario.stimuli.map((stimulus, index) => renderStimulusCard(stimulus, index, hourWidth)).join('')}
@@ -659,6 +672,20 @@
                 </div>
               </article>
             </section>
+            ${sortedStimuli.length > 0 ? `
+            <div class="stimuli-carousel-bar">
+              <div class="stimuli-carousel-track">
+                ${sortedStimuli.map((s) => `
+                  <div class="carousel-thumb ${appState.selectedStimulusId === s.id ? 'selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}" title="${escapeAttribute(channelLabel(s.channel))} H+${Math.floor(s.timestamp_offset_minutes / 60)}:${String(s.timestamp_offset_minutes % 60).padStart(2, '0')}">
+                    <div class="carousel-thumb-preview">${renderStimulusPreview(s, '', true)}</div>
+                    <div class="carousel-thumb-label">
+                      <strong>${escapeHtml(channelLabel(s.channel))}</strong>
+                      <span>H+${Math.floor(s.timestamp_offset_minutes / 60)}:${String(s.timestamp_offset_minutes % 60).padStart(2, '0')}</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>` : ''}
           </section>
         `;
       }
@@ -700,7 +727,7 @@
           ))}
 
           <div class="field-grid cols-2">
-            <label class="field">${tt('Channel', 'Canal')}
+            <label class="field">${tt('Channel', 'Type de stimuli')}
               <select data-stimulus-bind="${stimulus.id}.channel">${Object.entries(CHANNEL_META).map(([channel]) => `<option value="${channel}" ${stimulus.channel === channel ? 'selected' : ''}>${channelLabel(channel)}</option>`).join('')}</select>
             </label>
             ${stimulus.channel === 'article_press' ? `<label class="field">${tt('Press template', 'Template presse')}
