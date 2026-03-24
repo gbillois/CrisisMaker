@@ -256,7 +256,7 @@
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="load-json">
                   <div style="font-size:2rem; margin-bottom:12px;">📂</div>
                   <strong>${tt('Open a file', 'Ouvrir un fichier')}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json ${tt('or', 'ou')} .crisismaker.json</p>
+                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json / .crisismaker.json / .zip</p>
                 </article>
                 <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="nav-scenario">
                   <div style="font-size:2rem; margin-bottom:12px;">▶️</div>

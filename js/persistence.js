@@ -38,11 +38,17 @@
         if (!supportsFileSystemAccess()) return null;
         try {
           const [handle] = await window.showOpenFilePicker({
-            types: [{ description: 'CrisisMaker Project', accept: { 'application/json': ['.crisismaker.json', '.crisisstim.json', '.json'] } }]
+            types: [{
+              description: 'CrisisMaker Project',
+              accept: {
+                'application/json': ['.crisismaker.json', '.crisisstim.json', '.json'],
+                'application/zip': ['.zip']
+              }
+            }]
           });
           _fileHandle = handle;
           const file = await handle.getFile();
-          return JSON.parse(await file.text());
+          return await parseProjectFile(file);
         } catch (e) {
           if (e.name !== 'AbortError') console.warn('File open error', e);
           return null;
@@ -207,21 +213,52 @@
         // Fallback: classic file input
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json,.crisismaker.json,.crisisstim.json,application/json';
+        input.accept = '.json,.crisismaker.json,.crisisstim.json,.zip,application/json,application/zip';
         input.addEventListener('change', (event) => {
           const file = event.target.files?.[0];
           if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (loadEvent) => {
-            try {
-              applyLoadedScenario(JSON.parse(loadEvent.target.result));
-            } catch (error) {
-              pushToast(tt(`Invalid JSON file: ${error.message}`, `Fichier JSON invalide : ${error.message}`), 'error');
-            }
-          };
-          reader.readAsText(file);
+          parseProjectFile(file)
+            .then((data) => applyLoadedScenario(data))
+            .catch((error) => {
+              pushToast(tt(`Import failed: ${error.message}`, `Import échoué : ${error.message}`), 'error');
+            });
         });
         input.click();
+      }
+
+      async function parseProjectFile(file) {
+        const isZip = /\.zip$/i.test(file.name || '') || file.type === 'application/zip';
+        if (isZip) return await parseProjectZip(file);
+        try {
+          return JSON.parse(await file.text());
+        } catch (error) {
+          throw new Error(tt(`Invalid JSON file: ${error.message}`, `Fichier JSON invalide : ${error.message}`));
+        }
+      }
+
+      async function parseProjectZip(file) {
+        if (typeof JSZip === 'undefined') {
+          throw new Error(tt('ZIP support is not available.', 'Le support ZIP est indisponible.'));
+        }
+        let zip;
+        try {
+          zip = await JSZip.loadAsync(file);
+        } catch (error) {
+          throw new Error(tt(`Invalid ZIP file: ${error.message}`, `Fichier ZIP invalide : ${error.message}`));
+        }
+
+        const entries = Object.values(zip.files).filter((entry) => !entry.dir && /\.json$/i.test(entry.name));
+        if (!entries.length) {
+          throw new Error(tt('No JSON project found in ZIP.', 'Aucun projet JSON trouvé dans le ZIP.'));
+        }
+
+        const preferred = entries.find((entry) => /\.(crisismaker|crisisstim)\.json$/i.test(entry.name)) || entries[0];
+        try {
+          const raw = await preferred.async('string');
+          return JSON.parse(raw);
+        } catch (error) {
+          throw new Error(tt(`Invalid JSON in ZIP: ${error.message}`, `JSON invalide dans le ZIP : ${error.message}`));
+        }
       }
 
       function applyLoadedScenario(data) {
@@ -249,4 +286,3 @@
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-
