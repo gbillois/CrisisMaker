@@ -571,24 +571,35 @@
         articleLeMondeHD(f) {
           return `
             <article class="press-article lm-article hd">
-              <div class="hd-browser-bar lm-browser">
-                <div class="hd-browser-dots"><span></span><span></span><span></span></div>
-                <div class="hd-browser-url">lemonde.fr/pixels/article/${encodeURIComponent((f.headline || '').toLowerCase().replace(/\s+/g, '-').slice(0, 40))}</div>
-              </div>
-              <div class="lm-header">
-                <div class="lm-hd-top">
-                  <div class="lm-hd-date">${escapeHtml(f.date || '')}</div>
-                  <div class="lm-logo">Le Monde</div>
-                  <div class="lm-hd-subscribe">${tt('Subscribe', 'S\'abonner')}</div>
+              <div class="lm-hd-tier1">
+                <div class="lm-hd-tier1-left">
+                  <span class="lm-hd-icon-link"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/></svg> Le journal</span>
+                  <span class="lm-hd-icon-link"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none"><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="19" cy="5" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="19" r="1.5"/><circle cx="12" cy="19" r="1.5"/><circle cx="19" cy="19" r="1.5"/></svg> Services</span>
                 </div>
-                <div class="lm-nav"><span>${tt('Politics', 'Politique')}</span><span>${tt('World', 'International')}</span><span>${tt('Business', 'Économie')}</span><span>Pixels</span><span>${tt('Culture', 'Culture')}</span><span>${tt('Opinions', 'Opinions')}</span></div>
+                <div class="lm-hd-tier1-center">
+                  <div class="lm-logo">Le Monde</div>
+                </div>
+                <div class="lm-hd-tier1-right">
+                  <span class="lm-hd-lang"><strong>FR</strong> <span style="color:#666;">|</span> EN</span>
+                  <span class="lm-hd-account"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg> Votre compte <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 L6 7.5 L9 4.5"/></svg></span>
+                </div>
+              </div>
+              <div class="lm-hd-tier2">
+                <div class="lm-hd-tier2-left">
+                  <span class="lm-hd-hamburger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> Menu</span>
+                  <span class="lm-hd-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg></span>
+                </div>
+                <div class="lm-hd-tier2-nav">
+                  <span>Élections municipales 2026</span><span>Guerres au Proche-Orient</span><span>International</span><span>Planète</span><span>Politique</span><span>Société</span><span>Économie</span><span>Idées</span><span>Culture</span><span>Le Goût du Monde</span><span>Sciences</span><span>Sports</span>
+                </div>
+                <div class="lm-hd-tier2-right">Voir plus <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2 L8 6 L4 10"/></svg></div>
               </div>
               ${f.is_premium ? `<div class="lm-premium">${tt('Subscribers only — full article', 'Réservé aux abonnés — lecture intégrale')}</div>` : ''}
               <div class="press-body">
                 <div class="press-category">${escapeHtml(f.category || '')}</div>
                 <h1 class="press-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="press-subheadline">${escapeHtml(f.subheadline || '')}</div>
-                <div class="press-byline"><span>${escapeHtml(f.author || '')}</span><span>${escapeHtml(f.date || '')} · ${escapeHtml(f.read_time || '')}</span></div>
+                <div class="press-byline"><span>${tt('By', 'Par')} ${escapeHtml(f.author || '')}</span><span>${escapeHtml(f.date || '')} · ${escapeHtml(f.read_time || '')}</span></div>
                 <div class="lm-hd-share-bar">${iconShare()} ${iconBookmark()} ${iconComment()}</div>
                 <div class="press-photo"></div>
                 <div class="press-caption">${escapeHtml(f.image_caption || '')}</div>

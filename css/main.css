@@ -908,9 +908,32 @@
     .nyt-hd-related-item { font: 600 15px/1.3 'Playfair Display', Georgia, serif; color: #121212; padding-left: 14px; border-left: 3px solid #121212; }
 
     /* ── HD Le Monde extras ──────────────────── */
-    .lm-hd-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
-    .lm-hd-date { font-size: 12px; color: #666; }
-    .lm-hd-subscribe { font-size: 12px; font-weight: 700; color: #2a7a2a; cursor: pointer; padding: 4px 12px; border: 1px solid #2a7a2a; border-radius: 3px; }
+    /* Tier 1 — dark navy top bar */
+    .lm-hd-tier1 { display: flex; justify-content: space-between; align-items: center; background: #1D1D1B; color: #c8c8c8; padding: 10px 20px; font-size: 13px; font-family: 'Inter', Arial, sans-serif; }
+    .lm-hd-tier1-left, .lm-hd-tier1-right { display: flex; align-items: center; gap: 18px; }
+    .lm-hd-tier1-center { flex: 0 0 auto; }
+    .hd .lm-logo { font-family: 'DM Serif Display', Georgia, serif; font-size: 30px; font-weight: 400; color: #fff; letter-spacing: 0.01em; line-height: 1; }
+    .lm-hd-icon-link { display: inline-flex; align-items: center; gap: 5px; color: #c8c8c8; cursor: pointer; font-size: 13px; }
+    .lm-hd-icon-link svg { vertical-align: middle; }
+    .lm-hd-lang { color: #c8c8c8; font-size: 12px; }
+    .lm-hd-lang strong { color: #fff; }
+    .lm-hd-account { display: inline-flex; align-items: center; gap: 5px; color: #c8c8c8; cursor: pointer; font-size: 13px; }
+    .lm-hd-account svg { vertical-align: middle; }
+    /* Tier 2 — white navigation bar */
+    .lm-hd-tier2 { display: flex; align-items: center; background: #fff; border-bottom: 2px solid #dde3ea; padding: 0 20px; font-size: 14px; font-family: 'Inter', Arial, sans-serif; color: #1a1a1a; gap: 0; height: 44px; }
+    .lm-hd-tier2-left { display: flex; align-items: center; gap: 14px; flex-shrink: 0; padding-right: 16px; border-right: 1px solid #dde3ea; margin-right: 16px; }
+    .lm-hd-hamburger { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; cursor: pointer; white-space: nowrap; font-size: 14px; }
+    .lm-hd-hamburger svg, .lm-hd-search svg { stroke: #1a1a1a; }
+    .lm-hd-search { display: inline-flex; align-items: center; cursor: pointer; }
+    .lm-hd-tier2-nav { display: flex; gap: 20px; overflow: hidden; white-space: nowrap; flex: 1; min-width: 0; }
+    .lm-hd-tier2-nav span { white-space: nowrap; cursor: pointer; font-size: 14px; color: #1a1a1a; font-weight: 500; }
+    .lm-hd-tier2-right { flex-shrink: 0; color: #384a5c; font-size: 13px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; padding: 6px 14px; border: 1px solid #dde3ea; border-radius: 20px; }
+    .lm-hd-tier2-right svg { stroke: #384a5c; }
+    /* Hide old header in HD mode */
+    .hd.lm-article .lm-header { display: none; }
+    /* Category color — Le Monde uses dark green for section labels */
+    .hd.lm-article .press-category { color: #195a3a; font-weight: 700; }
+    /* Share bar */
     .lm-hd-share-bar { display: flex; gap: 16px; padding: 8px 0; margin-top: 4px; }
     .lm-hd-share-bar svg { width: 18px; height: 18px; stroke: #666; fill: none; cursor: pointer; }
 
