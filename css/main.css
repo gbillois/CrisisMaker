@@ -808,6 +808,15 @@
     .faz-date { font-family: Inter, sans-serif; font-size: 12px; }
     .faz-nav { background: #fff; border-bottom: 1px solid #d6d6d6; padding: 13px 40px; font: 13px/1.4 Inter, 'Source Sans 3', sans-serif; color: #324055; display: flex; gap: 20px; flex-wrap: wrap; }
     .faz-nav .active { border-bottom: 2px solid #324055; padding-bottom: 6px; }
+    /* HD FAZ header — white layout matching real site */
+    .faz-hd-header { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #e0e0e0; padding: 12px 24px; }
+    .faz-hd-header-left { display: flex; align-items: center; gap: 14px; }
+    .faz-hd-header-center { display: flex; align-items: center; }
+    .faz-hd-header-right { display: flex; align-items: center; gap: 12px; }
+    .faz-hd-icon { display: inline-flex; cursor: pointer; }
+    .faz-hd-meta-link { display: inline-flex; align-items: center; gap: 4px; font: 11px/1 'Inter', Arial, sans-serif; letter-spacing: 0.05em; color: #333; cursor: pointer; }
+    .faz-hd-sub-btn { background: #8a7a2a; color: #fff; font: 700 12px/1 'Inter', Arial, sans-serif; padding: 7px 14px; border-radius: 2px; cursor: pointer; white-space: nowrap; }
+    .faz-hd-user { display: inline-flex; cursor: pointer; }
     .faz-body { width: 680px; margin: 0 auto; padding-top: 26px; }
     .faz-kicker-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
     .faz-kicker { font: 600 13px/1.4 Inter, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: #324055; }

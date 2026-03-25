@@ -469,20 +469,23 @@
         },
         articleFazHD(f) {
           const typeLabel = f.content_type && f.content_type !== 'Bericht' ? `<span class="faz-content-type ${String(f.content_type).toLowerCase() === 'kommentar' ? 'comment' : ''}">[${escapeHtml(f.content_type)}]</span>` : '';
+          const fazLogo = `<svg viewBox="0 0 115 16" fill="none" aria-label="Frankfurter Allgemeine Zeitung" style="height:20px;width:auto;color:#1a1a1a;"><path fill="currentColor" fill-rule="evenodd" d="M8.64 2.18a4.1 4.1 0 0 1-1.1-.16c-.38-.1-.87-.26-1.47-.47-.65-.24-1.18-.4-1.6-.52C4.06.93 3.63.87 3.2.87a3.6 3.6 0 0 0-1.75.4A2.7 2.7 0 0 0 0 3.67c0 .58.17 1.05.5 1.4.32.35.77.54 1.25.54.5.01 1-.18 1.35-.55l-.06-.1c-.34.2-.72.3-1.1.3-.4.02-.78-.13-1.06-.4a1.34 1.34 0 0 1-.4-1c0-.43.14-.76.43-.98.28-.23.67-.34 1.17-.34.38 0 .77.06 1.13.17.4.12.87.28 1.44.5.5.21 1 .39 1.52.55.4.11.83.17 1.25.18a2.7 2.7 0 0 0 2.4-1.33c.24-.4.38-.84.43-1.29-.15.27-.38.5-.65.66a2 2 0 0 1-.96.2Zm55.83-.63c.47.46.81 1.13 1.03 2.03l1.75 7.09c.05.27.15.54.3.79.1.16.32.24.52.2-.47.4-.86.89-1.15 1.43a1.48 1.48 0 0 1-.87-.55c-.2-.27-.36-.7-.5-1.29l-.67-2.76h-2.4l-.7 1.98c.33.05.66.15.96.3.26.12.49.3.67.53l.38-.21.14.18a4.42 4.42 0 0 0-1.49 1.82c-.2-.27-.47-.5-.78-.66-.28-.15-.6-.23-.92-.21-.36-.02-.7.11-.95.36-.26.3-.4.67-.38 1.05-.01.5.22.96.63 1.27.41.34.99.5 1.72.5.58 0 1.15-.17 1.6-.52a4.1 4.1 0 0 0 1.18-1.37l.15.07a3.35 3.35 0 0 1-1.67 1.9 3 3 0 0 1-1.37.31c-.83 0-1.51-.22-2.04-.68a2.3 2.3 0 0 1-.8-1.83c0-.48.12-.95.33-1.38.2-.42.52-.78.9-1.05.38-.26.83-.4 1.29-.4l2.4-6.63a4.6 4.6 0 0 0-.66-1.55c-.21-.31-.58-.5-.97-.5-.3-.02-.59.08-.81.27a1 1 0 0 0-.29.77c0 .26.1.51.28.7.19.2.45.3.72.3.28 0 .56-.1.79-.28l.07.09a.94.94 0 0 1-.4.35c-.18.09-.38.13-.57.13-.35.01-.7-.12-.93-.37a1.36 1.36 0 0 1-.36-.98c0-.34.1-.67.3-.95.2-.29.46-.52.78-.68.33-.17.69-.25 1.06-.25.65-.02 1.28.23 1.73.68Zm-.57 2.97.87 3.52h-2.14l1.27-3.52Zm35.21 5.37V7.04a2 2 0 0 1 .05-.48.97.97 0 0 1 .15-.33 11.53 11.53 0 0 1-1.5-1.43L96.3 6.41a1.66 1.66 0 0 0-.37-.9 3.45 3.45 0 0 0-.9-.7L93.4 6.43a1.91 1.91 0 0 0-.3-.93 2.6 2.6 0 0 0-.78-.7 7.33 7.33 0 0 1-1.29 1.43c.2-.02.41.05.56.2.14.15.21.35.2.56v3.98a.72.72 0 0 1-.1.4c-.07.12-.17.2-.29.28.23.18.44.38.63.6.23.26.42.53.58.83a4.34 4.34 0 0 1 1.23-1.43.8.8 0 0 1-.32-.25.74.74 0 0 1-.1-.43V6.83l.18-.1c.18-.12.38-.18.6-.18.14 0 .27.05.36.15.1.12.16.28.14.43v3.85a.72.72 0 0 1-.09.4c-.08.12-.18.2-.3.28.24.18.45.38.63.6.23.26.43.53.59.83.17-.3.38-.58.63-.82.21-.23.45-.44.71-.61-.15-.05-.3-.14-.4-.25a.61.61 0 0 1-.14-.43V6.82l.16-.1c.17-.1.37-.17.58-.17a.5.5 0 0 1 .38.15c.1.12.15.28.14.43v3.99c-.02.4.06.79.24 1.15.21.34.5.62.86.82a6.68 6.68 0 0 1 1.29-1.43.75.75 0 0 1-.57-.2.76.76 0 0 1-.2-.57Zm7.4-7.3c.24 0 .48-.1.65-.27a.86.86 0 0 0 0-1.28.92.92 0 0 0-1.27-.04l-.04.04a.86.86 0 0 0 0 1.28c.17.18.4.28.65.28Z" clip-rule="evenodd"/></svg>`;
           return `
             <article class="press-article faz-article hd">
-              <div class="hd-browser-bar faz-browser">
-                <div class="hd-browser-dots"><span></span><span></span><span></span></div>
-                <div class="hd-browser-url">faz.net/aktuell/wirtschaft/</div>
-              </div>
-              <div class="faz-header">
-                <div class="faz-header-top">
-                  <div class="faz-brand"><div class="faz-logo">F.A.Z.</div><div class="faz-title">Frankfurter Allgemeine</div></div>
-                  <div class="faz-hd-actions"><span>Anmelden</span><span>Abo</span></div>
+              <div class="faz-hd-header">
+                <div class="faz-hd-header-left">
+                  <span class="faz-hd-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
+                  <span class="faz-hd-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg></span>
+                  <span class="faz-hd-meta-link"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="1"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg> NEWSPAPER</span>
+                  <span class="faz-hd-meta-link"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="none"><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="19" cy="5" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="19" r="1.5"/><circle cx="12" cy="19" r="1.5"/><circle cx="19" cy="19" r="1.5"/></svg> MORE FAZ</span>
+                </div>
+                <div class="faz-hd-header-center">${fazLogo}</div>
+                <div class="faz-hd-header-right">
+                  <span class="faz-hd-sub-btn">Subscription</span>
+                  <span class="faz-hd-user"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg></span>
                 </div>
               </div>
-              <div class="faz-nav"><span>Politik</span><span class="active">Wirtschaft</span><span>Finanzen</span><span>Feuilleton</span><span>Sport</span><span>Technik</span><span>Wissen</span></div>
-              <div class="faz-hd-breadcrumb">F.A.Z. › Wirtschaft › ${escapeHtml(f.category || 'Unternehmen')}</div>
+              <div class="faz-hd-breadcrumb">🏠 › ${escapeHtml(f.category || 'Wirtschaft')} › ${escapeHtml(f.headline || '').slice(0, 50)}${(f.headline || '').length > 50 ? '…' : ''}</div>
               <div class="faz-body">
                 <div class="faz-kicker-row">
                   ${f.kicker ? `<div class="faz-kicker">${escapeHtml(f.kicker)}</div>` : ''}
