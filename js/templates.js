@@ -554,18 +554,24 @@
           const tags = String(f.related_tags || '').split(',').map(t => t.trim()).filter(Boolean);
           return `
             <article class="press-article nikkei-article hd">
-              <div class="hd-browser-bar nikkei-browser">
-                <div class="hd-browser-dots"><span></span><span></span><span></span></div>
-                <div class="hd-browser-url">nikkei.com/article/</div>
-              </div>
-              <div class="nikkei-header">
-                <div class="nikkei-header-inner">
-                  <div class="nikkei-hd-top">
-                    <div class="nikkei-logo">日本経済新聞</div>
-                    <div class="nikkei-hd-actions"><span>ログイン</span><span class="nikkei-hd-subscribe">申し込む</span></div>
-                  </div>
-                  <div class="nikkei-nav"><span>トップ</span><span>経済</span><span>ビジネス</span><span>テクノロジー</span><span>国際</span><span>マーケット</span><span>政治</span></div>
+              <div class="nikkei-hd-top-bar">
+                <div class="nikkei-hd-top-left">
+                  <span class="nikkei-hd-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
+                  <span class="nikkei-hd-search-box"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#666" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg> Search articles and stock</span>
                 </div>
+                <div class="nikkei-hd-top-center">
+                  <div class="nikkei-logo">日本経済新聞</div>
+                </div>
+                <div class="nikkei-hd-top-right">
+                  <span class="nikkei-hd-app-btn">Application</span>
+                  <span class="nikkei-hd-login-btn">Log in</span>
+                </div>
+              </div>
+              <div class="nikkei-hd-mid-bar">
+                <span>Morning and evening editions</span><span>LIVE</span><span>My News</span><span>Nikkei Company Information</span><span>HR Watch</span><span>NIKKEI Prime</span>
+              </div>
+              <div class="nikkei-hd-nav-bar">
+                <span>top</span><span>breaking news</span><span>business</span><span>market</span><span>economy</span><span>international</span><span>opinion</span><span>See more</span>
               </div>
               <div class="nikkei-body">
                 <div class="nikkei-category">${escapeHtml(f.category || '')}</div>
