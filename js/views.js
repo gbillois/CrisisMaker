@@ -402,7 +402,7 @@
                 <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt('Edit', 'Éditer')}">✏️</button>
                 <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer')}">⧉</button>
                 ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-xs" data-action="export-msg" data-stimulus-id="${stimulus.id}" title="${tt('Export .msg file', 'Exporter le fichier .msg')}">✉️</button>` : ''}
-                <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG')}">⤓</button>
+                <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG')}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['export-png'] ? '…' : '⤓'}</button>
                 <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true" title="${tt('Delete', 'Supprimer')}">✕</button>
               </div>
             </div>
@@ -680,7 +680,7 @@
               <div class="stimuli-carousel-track">
                 ${sortedStimuli.map((s) => `
                   <div class="carousel-thumb ${appState.selectedStimulusId === s.id ? 'selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}" title="${escapeAttribute(channelLabel(s.channel))} H+${Math.floor(s.timestamp_offset_minutes / 60)}:${String(s.timestamp_offset_minutes % 60).padStart(2, '0')}">
-                    <div class="carousel-thumb-preview">${renderStimulusPreview(s, '', true)}</div>
+                    <div class="carousel-thumb-preview">${renderStimulusPreview(s, `thumb-carousel-${s.id}`, true)}</div>
                     <div class="carousel-thumb-label">
                       <strong>${escapeHtml(channelLabel(s.channel))}</strong>
                       <span>H+${Math.floor(s.timestamp_offset_minutes / 60)}:${String(s.timestamp_offset_minutes % 60).padStart(2, '0')}</span>
@@ -779,7 +779,7 @@
                 <div class="stimulus-modal-right">
                   <div class="preview-toolbar-inline">
                     ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .msg', 'Exporter .msg')}</button>` : ''}
-                    <button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}">${tt('Export PNG', 'Exporter PNG')}</button>
+                    <button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG'), tt('Exporting…', 'Export en cours…'))}</button>
                   </div>
                   <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
                     <div class="preview-stage">
@@ -866,7 +866,7 @@
                 <button class="btn btn-secondary" data-action="preview-next">${tt('Next', 'Suivant')} →</button>
                 <button class="btn btn-primary" data-action="goto-stimuli" data-stimulus-id="${current.id}">${tt('Edit', 'Éditer')}</button>
                 ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .msg file', 'Exporter le fichier .msg')}</button>` : ''}
-                <button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}">${tt('Export PNG', 'Exporter PNG')}</button>
+                <button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG'), tt('Exporting…', 'Export en cours…'))}</button>
               </div>
             </article>
             <article class="preview-shell">
@@ -877,7 +877,7 @@
               <div class="thumb-grid">
                 ${stimuli.map((stimulus, idx) => `
                   <div class="thumb-card">
-                    <div class="thumb-preview">${renderStimulusPreview(stimulus, '', true)}</div>
+                    <div class="thumb-preview">${renderStimulusPreview(stimulus, `thumb-slide-${stimulus.id}`, true)}</div>
                     <div class="thumb-body">
                       <strong>${escapeHtml(channelLabel(stimulus.channel))}</strong>
                       <p class="subtle">${escapeHtml(getActor(stimulus.actor_id)?.name || tt('No actor', 'Sans acteur'))} · H+${Math.floor(stimulus.timestamp_offset_minutes / 60)}:${String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0')}</p>

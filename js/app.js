@@ -408,7 +408,11 @@
             }
             case 'generate-stimulus': await generateStimulus(event.currentTarget.dataset.stimulusId); break;
             case 'generate-field': await generateStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.fieldName); break;
-            case 'export-png': await ExportEngine.exportStimulus(getStimulus(event.currentTarget.dataset.stimulusId)); break;
+            case 'export-png':
+              await withActionProgress(action, async () => {
+                await ExportEngine.exportStimulus(getStimulus(event.currentTarget.dataset.stimulusId));
+              });
+              break;
             case 'export-msg': await ExportEngine.exportRawEmail(getStimulus(event.currentTarget.dataset.stimulusId)); break;
             case 'preview-prev': appState.slideshowIndex = Math.max(0, appState.slideshowIndex - 1); App.render(); break;
             case 'preview-next': appState.slideshowIndex = Math.min(getSortedStimuli().length - 1, appState.slideshowIndex + 1); App.render(); break;
@@ -706,7 +710,11 @@
       function replaceArticleVariant(stimulus, templateId) {
         const template = ARTICLE_TEMPLATE_LIBRARY[templateId] || ARTICLE_TEMPLATE_LIBRARY.nyt;
         stimulus.template_id = template.template_id;
+        const prevPhotoData = stimulus.fields?.photo_data;
+        const prevHasPhoto = stimulus.fields?.has_photo;
         stimulus.fields = deepClone(template.defaults);
+        if (prevPhotoData) stimulus.fields.photo_data = prevPhotoData;
+        if (prevHasPhoto !== undefined) stimulus.fields.has_photo = prevHasPhoto;
       }
 
       function nextStimulusOffset() {

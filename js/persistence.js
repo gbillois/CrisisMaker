@@ -118,7 +118,7 @@
           let sandbox = null;
           if (!element) {
             sandbox = document.createElement('div');
-            sandbox.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;';
+            sandbox.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none;';
             document.body.appendChild(sandbox);
             sandbox.innerHTML = renderStimulusPreview(stimulus, `export-sandbox-${stimulus.id}`);
             element = sandbox.firstElementChild;
