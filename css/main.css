@@ -899,6 +899,12 @@
     .nikkei-browser { background: #e8eef4; }
 
     /* ── HD NYT extras ──────────────────── */
+    .nyt-hd-topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: #fff; border-bottom: 1px solid #dfdfdf; }
+    .nyt-hd-topbar-left { display: flex; align-items: center; gap: 14px; }
+    .nyt-hd-topbar-center { display: flex; align-items: center; }
+    .nyt-hd-topbar-right { display: flex; align-items: center; }
+    .nyt-hd-menu, .nyt-hd-search-icon { display: inline-flex; cursor: pointer; color: #121212; }
+    .nyt-hd-login { font: 700 12px/1 Arial, sans-serif; letter-spacing: 0.06em; background: #666; color: #fff; padding: 7px 12px; border-radius: 2px; cursor: pointer; }
     .nyt-hd-share { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #e2e2e2; }
     .nyt-hd-share svg { width: 20px; height: 20px; stroke: #666; fill: none; cursor: pointer; }
     .nyt-hd-comments-count { margin-left: auto; font: 13px/1 Arial, sans-serif; color: #666; border: 1px solid #ddd; padding: 4px 10px; border-radius: 3px; }
