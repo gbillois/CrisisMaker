@@ -10,6 +10,8 @@
           }
           switch (stimulus.channel) {
             case 'email_internal': return this.emailInternal(f);
+            case 'email_external': return this.emailExternal(f);
+            case 'internal_memo': return this.internalMemo(f);
             case 'article_press': return this.articlePress(stimulus.template_id, f);
             case 'post_twitter': return this.twitter(f);
             case 'post_linkedin': return this.linkedin(f);
@@ -31,6 +33,8 @@
         renderHD(stimulus, f) {
           switch (stimulus.channel) {
             case 'email_internal': return this.emailInternalHD(f);
+            case 'email_external': return this.emailExternalHD(f);
+            case 'internal_memo': return this.internalMemoHD(f);
             case 'article_press': return this.articlePressHD(stimulus.template_id, f);
             case 'post_twitter': return this.twitterHD(f);
             case 'post_linkedin': return this.linkedinHD(f);
@@ -80,6 +84,49 @@
                 </div>
               </div>
             </div>
+          `;
+        },
+        emailExternal(f) {
+          return `
+            <div class="external-email">
+              <div class="external-email-topbar">
+                <strong>${tt('Email', 'E-mail')}</strong>
+                <div class="outlook-actions">${iconReply()} ${tt('Reply', 'Répondre')} ${iconForward()} ${tt('Forward', 'Transférer')}</div>
+              </div>
+              <div class="outlook-body">
+                <div class="outlook-meta">
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}<div class="outlook-subject">${escapeHtml(f.subject || '')}</div></div>
+                  <div class="outlook-row"><span>${tt('From', 'De')}</span><strong>${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;</strong></div>
+                  <div class="outlook-row"><span>${tt('To', 'À')}</span><span>${escapeHtml(f.to || '')}</span></div>
+                  ${f.cc ? `<div class="outlook-row"><span>Cc</span><span>${escapeHtml(f.cc)}</span></div>` : ''}
+                  <div class="outlook-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
+                </div>
+                <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.')}</div>
+                <div class="outlook-content">
+                  ${f.body || ''}
+                  ${f.has_attachment ? `<div class="outlook-attachment">📎 <span>${escapeHtml(f.attachment_name || 'document.pdf')}</span></div>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        },
+        internalMemo(f) {
+          const classifColors = { Confidential: '#b91c1c', Internal: '#2563eb', Restricted: '#d97706' };
+          const classifColor = classifColors[f.classification] || classifColors.Internal;
+          return `
+            <article class="internal-memo">
+              <div class="memo-header">
+                <div class="memo-title">${tt('INTERNAL MEMO', 'NOTE INTERNE')}</div>
+                ${f.classification ? `<div class="memo-classification" style="background:${classifColor};">${escapeHtml(f.classification)}</div>` : ''}
+              </div>
+              <div class="memo-meta">
+                <div class="memo-row"><span>${tt('From', 'De')}</span><strong>${escapeHtml(f.from_name || '')}</strong></div>
+                <div class="memo-row"><span>${tt('To', 'À')}</span><span>${escapeHtml(f.to || '')}</span></div>
+                <div class="memo-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
+                <div class="memo-row"><span>${tt('Subject', 'Objet')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
+              </div>
+              <div class="memo-body">${f.body || ''}</div>
+            </article>
           `;
         },
         articlePress(templateId, f) {
@@ -873,6 +920,79 @@
               <div class="sms-hd-input">
                 <div class="sms-hd-input-field">${tt('iMessage', 'iMessage')}</div>
                 <span class="sms-hd-send">↑</span>
+              </div>
+            </article>
+          `;
+        },
+        emailExternalHD(f) {
+          return `
+            <div class="external-email hd">
+              <div class="outlook-hd-ribbon">
+                <div class="outlook-hd-ribbon-tabs"><span class="active">Home</span><span>Send / Receive</span><span>Folder</span><span>View</span></div>
+                <div class="outlook-hd-ribbon-actions">
+                  <div class="outlook-hd-ribbon-group">
+                    <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre')}</div>
+                    <div class="outlook-hd-ribbon-btn">${iconForward()} ${tt('Forward', 'Transférer')}</div>
+                  </div>
+                  <div class="outlook-hd-ribbon-sep"></div>
+                  <div class="outlook-hd-ribbon-group">
+                    <div class="outlook-hd-ribbon-btn">🗑️ ${tt('Delete', 'Supprimer')}</div>
+                    <div class="outlook-hd-ribbon-btn">📁 ${tt('Move', 'Déplacer')}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="outlook-hd-layout">
+                <div class="outlook-hd-sidebar">
+                  <div class="outlook-hd-folder active">📥 ${tt('Inbox', 'Boîte de réception')} <span class="outlook-hd-badge">3</span></div>
+                  <div class="outlook-hd-folder">📤 ${tt('Sent Items', 'Éléments envoyés')}</div>
+                  <div class="outlook-hd-folder">📝 ${tt('Drafts', 'Brouillons')}</div>
+                  <div class="outlook-hd-folder">🗑️ ${tt('Deleted Items', 'Éléments supprimés')}</div>
+                  <div class="outlook-hd-folder">⚠️ ${tt('Junk Email', 'Courrier indésirable')}</div>
+                </div>
+                <div class="outlook-hd-content">
+                  <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.')}</div>
+                  <div class="outlook-hd-header">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                      ${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}
+                      <div class="outlook-subject">${escapeHtml(f.subject || '')}</div>
+                    </div>
+                    <div class="outlook-hd-sender-row">
+                      <div class="outlook-hd-avatar" style="background:${escapeAttribute(f.avatar_color || '#e67e22')};">${escapeHtml((f.from_name || 'U').charAt(0).toUpperCase())}</div>
+                      <div class="outlook-hd-sender-info">
+                        <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span> <span class="external-badge">${tt('External', 'Externe')}</span></div>
+                        <div class="outlook-hd-recipients">${tt('To', 'À')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
+                      </div>
+                      <div class="outlook-hd-date">${escapeHtml(f.date || '')}</div>
+                    </div>
+                  </div>
+                  <div class="outlook-content">
+                    ${f.body || ''}
+                    ${f.has_attachment ? `<div class="outlook-attachment outlook-hd-attachment">📎 <span>${escapeHtml(f.attachment_name || 'document.pdf')}</span><span class="outlook-hd-filesize">128 KB</span></div>` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        },
+        internalMemoHD(f) {
+          const classifColors = { Confidential: '#b91c1c', Internal: '#2563eb', Restricted: '#d97706' };
+          const classifColor = classifColors[f.classification] || classifColors.Internal;
+          return `
+            <article class="internal-memo hd">
+              <div class="memo-hd-stripe" style="background:${classifColor};"></div>
+              <div class="memo-hd-content">
+                <div class="memo-header">
+                  <div class="memo-title">${tt('INTERNAL MEMO', 'NOTE INTERNE')}</div>
+                  ${f.classification ? `<div class="memo-classification" style="background:${classifColor};">${escapeHtml(f.classification)}</div>` : ''}
+                </div>
+                <div class="memo-meta">
+                  <div class="memo-row"><span>${tt('From', 'De')}</span><strong>${escapeHtml(f.from_name || '')}</strong></div>
+                  <div class="memo-row"><span>${tt('To', 'À')}</span><span>${escapeHtml(f.to || '')}</span></div>
+                  <div class="memo-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
+                  <div class="memo-row"><span>${tt('Subject', 'Objet')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
+                </div>
+                <div class="memo-body">${f.body || ''}</div>
+                <div class="memo-hd-footer">${tt('This document is for internal use only. Distribution outside the organization is strictly prohibited.', 'Ce document est à usage interne uniquement. Toute diffusion en dehors de l\'organisation est strictement interdite.')}</div>
               </div>
             </article>
           `;
