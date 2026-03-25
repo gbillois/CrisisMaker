@@ -823,6 +823,22 @@
             </label>
           `;
         }
+        if (spec.type === 'photo_upload') {
+          const hasImage = value && String(value).startsWith('data:');
+          return `
+            <div class="field" style="grid-column:1/-1;">
+              <span style="display:block; margin-bottom:6px; font-size:0.85rem; color:var(--text-muted, #6b7280);">${escapeHtml(spec.label)}</span>
+              ${hasImage ? `<img src="${escapeAttribute(value)}" style="width:100%; max-height:180px; object-fit:cover; border-radius:6px; margin-bottom:8px; display:block;" alt="">` : ''}
+              <div style="display:flex; gap:8px; align-items:center;">
+                <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
+                  ${tt('Upload photo', 'Télécharger une photo')}
+                  <input type="file" accept="image/*" data-stimulus-photo="${stimulus.id}.${spec.key}" style="display:none;">
+                </label>
+                ${hasImage ? `<button class="btn btn-ghost" data-action="clear-photo" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">${tt('Remove', 'Supprimer')}</button>` : ''}
+              </div>
+            </div>
+          `;
+        }
         return `
           <label class="field">${escapeHtml(spec.label)}
             <input type="${spec.type}" ${bind} value="${escapeAttribute(value ?? '')}">

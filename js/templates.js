@@ -106,8 +106,8 @@
                 <h1 class="press-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="press-subheadline">${escapeHtml(f.subheadline || '')}</div>
                 <div class="press-byline"><span>${escapeHtml(f.author || '')}</span><span>${escapeHtml(f.date || '')} · ${escapeHtml(f.read_time || '')}</span></div>
-                <div class="press-photo"></div>
-                <div class="press-caption">${escapeHtml(f.image_caption || '')}</div>
+                ${f.has_photo ? `<div class="press-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo ? `<div class="press-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="press-content">${f.body || ''}</div>
               </div>
             </article>
@@ -128,8 +128,8 @@
                 <div class="nyt-category">${escapeHtml(f.category || '')}</div>
                 <h1 class="nyt-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="nyt-subheadline">${escapeHtml(f.subheadline || '')}</div>
-                <div class="press-photo nyt-photo"></div>
-                <div class="nyt-caption">${escapeHtml(f.image_caption || '')}</div>
+                ${f.has_photo ? `<div class="press-photo nyt-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo ? `<div class="nyt-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="nyt-byline">
                   <div class="nyt-author"><span>By </span>${escapeHtml(String(f.author || '').replace(/^By\s+/i, ''))}</div>
                   <div class="nyt-date-line">${escapeHtml(f.date || '')}${f.update_time ? ` · ${escapeHtml(f.update_time)}` : ''}${f.read_time ? ` · ${escapeHtml(f.read_time)}` : ''}</div>
@@ -159,8 +159,8 @@
                 </div>
                 <h1 class="faz-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="faz-subheadline">${escapeHtml(f.subheadline || '')}</div>
-                <div class="press-photo faz-photo"></div>
-                <div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>
+                ${f.has_photo ? `<div class="press-photo faz-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo ? `<div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="faz-byline"><span class="faz-author">${escapeHtml(f.author || '')}</span><span>·</span><span class="faz-datetime">${escapeHtml(f.date || '')}${f.time ? ` ${escapeHtml(f.time)}` : ''}</span></div>
                 <div class="faz-content">${f.body || ''}</div>
               </div>
@@ -183,8 +183,8 @@
                 <div class="ft-kicker-row"><div class="ft-category">${escapeHtml(f.category || '')}</div>${badge}</div>
                 <h1 class="ft-headline">${escapeHtml(f.headline || '')}</h1>
                 ${f.subheadline ? `<div class="ft-subheadline">${escapeHtml(f.subheadline)}</div>` : ''}
-                <div class="press-photo ft-photo"></div>
-                ${f.image_caption ? `<div class="ft-caption">${escapeHtml(f.image_caption)}</div>` : ''}
+                ${f.has_photo ? `<div class="press-photo ft-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo && f.image_caption ? `<div class="ft-caption">${escapeHtml(f.image_caption)}</div>` : ''}
                 <div class="ft-byline">
                   <div>
                     <div class="ft-author">${formatFtAuthor(f.author || '')}</div>
@@ -216,8 +216,8 @@
                   ${f.is_premium ? '<span class="nikkei-premium">有料会員限定</span>' : ''}
                 </div>
                 <div class="nikkei-byline">${escapeHtml(f.author || '')}</div>
-                <div class="press-photo nikkei-photo"></div>
-                ${f.image_caption ? `<div class="nikkei-caption">${escapeHtml(f.image_caption)}</div>` : ''}
+                ${f.has_photo ? `<div class="press-photo nikkei-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo && f.image_caption ? `<div class="nikkei-caption">${escapeHtml(f.image_caption)}</div>` : ''}
                 <div class="nikkei-content">${f.body || ''}</div>
                 ${tags.length ? `<div class="nikkei-tags">${tags.map(t => `<span class="nikkei-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
               </div>
@@ -445,8 +445,8 @@
                 <div class="nyt-category">${escapeHtml(f.category || '')}</div>
                 <h1 class="nyt-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="nyt-subheadline">${escapeHtml(f.subheadline || '')}</div>
-                <div class="press-photo nyt-photo"></div>
-                <div class="nyt-caption">${escapeHtml(f.image_caption || '')}</div>
+                ${f.has_photo ? `<div class="press-photo nyt-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo ? `<div class="nyt-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="nyt-byline">
                   <div class="nyt-author"><span>By </span>${escapeHtml(String(f.author || '').replace(/^By\s+/i, ''))}</div>
                   <div class="nyt-date-line">${escapeHtml(f.date || '')}${f.update_time ? ` · ${escapeHtml(f.update_time)}` : ''}${f.read_time ? ` · ${escapeHtml(f.read_time)}` : ''}</div>
@@ -494,8 +494,8 @@
                 </div>
                 <h1 class="faz-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="faz-subheadline">${escapeHtml(f.subheadline || '')}</div>
-                <div class="press-photo faz-photo"></div>
-                <div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>
+                ${f.has_photo ? `<div class="press-photo faz-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo ? `<div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="faz-byline"><span class="faz-author">${escapeHtml(f.author || '')}</span><span>·</span><span class="faz-datetime">${escapeHtml(f.date || '')}${f.time ? ` ${escapeHtml(f.time)}` : ''}</span></div>
                 <div class="faz-hd-social">${iconShare()} ${iconBookmark()} ${iconComment()}</div>
                 <div class="faz-content">${f.body || ''}</div>
@@ -531,8 +531,8 @@
                 <div class="ft-kicker-row"><div class="ft-category">${escapeHtml(f.category || '')}</div>${badge}</div>
                 <h1 class="ft-headline">${escapeHtml(f.headline || '')}</h1>
                 ${f.subheadline ? `<div class="ft-subheadline">${escapeHtml(f.subheadline)}</div>` : ''}
-                <div class="press-photo ft-photo"></div>
-                ${f.image_caption ? `<div class="ft-caption">${escapeHtml(f.image_caption)}</div>` : ''}
+                ${f.has_photo ? `<div class="press-photo ft-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo && f.image_caption ? `<div class="ft-caption">${escapeHtml(f.image_caption)}</div>` : ''}
                 <div class="ft-byline">
                   <div>
                     <div class="ft-author">${formatFtAuthor(f.author || '')}</div>
@@ -583,8 +583,8 @@
                 </div>
                 <div class="nikkei-byline">${escapeHtml(f.author || '')}</div>
                 <div class="nikkei-hd-share">${iconShare()} ${iconBookmark()} ${iconComment()}</div>
-                <div class="press-photo nikkei-photo"></div>
-                ${f.image_caption ? `<div class="nikkei-caption">${escapeHtml(f.image_caption)}</div>` : ''}
+                ${f.has_photo ? `<div class="press-photo nikkei-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo && f.image_caption ? `<div class="nikkei-caption">${escapeHtml(f.image_caption)}</div>` : ''}
                 <div class="nikkei-content">${f.body || ''}</div>
                 ${tags.length ? `<div class="nikkei-tags">${tags.map(t => `<span class="nikkei-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
               </div>
@@ -628,8 +628,8 @@
                   <button class="lm-hd-btn">${iconBookmark()} Lire plus tard</button>
                   ${iconShare()}
                 </div>
-                <div class="press-photo"></div>
-                <div class="press-caption">${escapeHtml(f.image_caption || '')}</div>
+                ${f.has_photo ? `<div class="press-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
+                ${f.has_photo ? `<div class="press-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="press-content">${f.body || ''}</div>
               </div>
             </article>

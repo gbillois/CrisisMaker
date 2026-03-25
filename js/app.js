@@ -191,6 +191,21 @@
           });
         });
 
+        document.querySelectorAll('[data-stimulus-photo]').forEach((input) => {
+          input.addEventListener('change', () => {
+            const [stimulusId, fieldName] = input.dataset.stimulusPhoto.split('.');
+            const stimulus = getStimulus(stimulusId);
+            if (!stimulus || !input.files?.[0]) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              stimulus.fields[fieldName] = e.target.result;
+              stimulus.manual_overrides[fieldName] = e.target.result;
+              App.render();
+            };
+            reader.readAsDataURL(input.files[0]);
+          });
+        });
+
         document.querySelectorAll('[data-llm-zone]').forEach((textarea) => {
           textarea.addEventListener('input', () => {
             appState.llmState[textarea.dataset.llmZone].text = textarea.value;
@@ -366,6 +381,16 @@
                 s.generated_text = {};
                 s.manual_overrides = {};
                 await autoSave();
+                App.render();
+              }
+              break;
+            }
+            case 'clear-photo': {
+              const s = getStimulus(event.currentTarget.dataset.stimulusId);
+              if (s) {
+                const fieldName = event.currentTarget.dataset.fieldName;
+                s.fields[fieldName] = '';
+                s.manual_overrides[fieldName] = '';
                 App.render();
               }
               break;

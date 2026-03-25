@@ -57,9 +57,11 @@
             body: '<p>Group X confirmed on Saturday that it is facing a major cyber incident that forced several internal applications and production services offline. Security teams are still investigating to determine the exact scope of the compromise.</p><p>According to several sources close to the matter, the company assembled a crisis cell before dawn bringing together executive leadership, IT, security, communications, and external advisers. Part of the internal coordination has now moved to backup channels.</p><p>"The absolute priority remains continuity of critical activities and protection of data," a spokesperson said. No timeline for full recovery has been announced yet.</p><p>The event highlights the persistent vulnerability of large enterprises to attack chains that combine initial compromise, lateral movement, and opportunistic encryption. Authorities could be notified quickly if personal data is confirmed to be affected.</p>',
             image_caption: 'Group X headquarters.',
             read_time: '3 min read',
-            is_premium: false
+            is_premium: false,
+            has_photo: false,
+            photo_data: ''
           },
-          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Standfirst', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('category', 'Section', 'text'), field('read_time', 'Read time', 'text'), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Standfirst', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('category', 'Section', 'text'), field('read_time', 'Read time', 'text'), field('is_premium', 'Premium article', 'checkbox'), field('has_photo', 'Show photo', 'checkbox'), field('photo_data', 'Photo', 'photo_upload'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
         },
         nyt: {
           label: 'The New York Times',
@@ -75,9 +77,11 @@
             image_caption: 'The company\'s European headquarters outside Paris. Credit: Thomas Samson/AFP',
             read_time: '5 min read',
             is_premium: false,
-            location: 'PARIS'
+            location: 'PARIS',
+            has_photo: false,
+            photo_data: ''
           },
-          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('update_time', 'Update time', 'text'), field('category', 'Category', 'text'), field('location', 'Location', 'text'), field('read_time', 'Read time', 'text'), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('update_time', 'Update time', 'text'), field('category', 'Category', 'text'), field('location', 'Location', 'text'), field('read_time', 'Read time', 'text'), field('is_premium', 'Premium article', 'checkbox'), field('has_photo', 'Show photo', 'checkbox'), field('photo_data', 'Photo', 'photo_upload'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
         },
         faz: {
           label: 'Frankfurter Allgemeine Zeitung',
@@ -93,9 +97,11 @@
             body: '<p>Ein groß angelegter Cyberangriff hat am Sonntag wesentliche Systeme des Finanzdienstleisters Group X in mehreren europäischen Ländern beeinträchtigt und damit Transaktionen, interne Steuerungsprozesse sowie Teile des Kundenservices vorübergehend lahmgelegt.</p><p>Nach Angaben aus dem Umfeld des Unternehmens arbeiten externe Forensiker und interne Spezialisten daran, die Angriffskette zu rekonstruieren. Im Mittelpunkt steht die Frage, ob die Täter vor der Verschlüsselung zunächst Daten abgeflossen ließen, um zusätzlichen Druck aufzubauen.</p><p>„Entscheidend ist nun, welche kritischen Funktionen unter Notfallbedingungen aufrechterhalten werden können und wie sauber die Trennung der betroffenen Netze tatsächlich war“, sagte eine mit dem Vorgang vertraute BSI-nahe Expertin.</p><p>Der Vorfall dürfte auch deshalb besondere Aufmerksamkeit erregen, weil mit DORA und NIS2 der regulatorische Erwartungsdruck auf Finanzunternehmen deutlich steigt. Für Investoren ist relevant, ob die Störung auf Handels- und Abwicklungsprozesse durchschlägt und wie lange die manuelle Überbrückung tragfähig bleibt.</p>',
             image_caption: 'Das Rechenzentrum der Bank in Frankfurt. Bild: dpa',
             is_faz_plus: true,
-            content_type: 'Bericht'
+            content_type: 'Bericht',
+            has_photo: false,
+            photo_data: ''
           },
-          fields: [field('kicker', 'Kicker', 'text'), field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('time', 'Time', 'text'), field('category', 'Category', 'text'), field('content_type', 'Content type', 'select', { options: ['Bericht', 'Analyse', 'Kommentar'] }), field('is_faz_plus', 'F+ article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+          fields: [field('kicker', 'Kicker', 'text'), field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('time', 'Time', 'text'), field('category', 'Category', 'text'), field('content_type', 'Content type', 'select', { options: ['Bericht', 'Analyse', 'Kommentar'] }), field('is_faz_plus', 'F+ article', 'checkbox'), field('has_photo', 'Show photo', 'checkbox'), field('photo_data', 'Photo', 'photo_upload'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
         },
         ft: {
           label: 'Financial Times',
@@ -110,9 +116,11 @@
             body: '<p>Group X, a large European financial services company, was hit by a significant cyber attack on Sunday that disrupted customer-facing services and several internal processing systems, according to people familiar with the response.</p><p>The company has moved parts of its operations on to contingency arrangements while investigators assess whether the attackers stole data before deploying ransomware. The incident has already prompted outreach from supervisors and critical suppliers.</p><p>“The market focus will be on operational resilience rather than the immediate ransom demand,” said one London-based cyber insurance adviser, noting that prolonged outages could quickly become a conduct and liquidity issue.</p><p>The episode is likely to sharpen attention on DORA implementation and on whether large institutions can sustain core processes when a compromise affects multiple jurisdictions at the same time.</p>',
             image_caption: 'Operations teams switched several processes to contingency mode on Sunday.',
             is_premium: true,
-            content_type: 'News'
+            content_type: 'News',
+            has_photo: false,
+            photo_data: ''
           },
-          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('time', 'Time', 'text'), field('category', 'Category', 'text'), field('content_type', 'Content type', 'select', { options: ['News', 'Analysis', 'Opinion', 'Exclusive'] }), field('is_premium', 'Premium article', 'checkbox'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
+          fields: [field('headline', 'Headline', 'text'), field('subheadline', 'Subheadline', 'textarea'), field('author', 'Author', 'text'), field('date', 'Date', 'text'), field('time', 'Time', 'text'), field('category', 'Category', 'text'), field('content_type', 'Content type', 'select', { options: ['News', 'Analysis', 'Opinion', 'Exclusive'] }), field('is_premium', 'Premium article', 'checkbox'), field('has_photo', 'Show photo', 'checkbox'), field('photo_data', 'Photo', 'photo_upload'), field('image_caption', 'Image caption', 'text'), field('body', 'HTML body', 'textarea')]
         },
         nikkei: {
           label: '日本経済新聞 (Nikkei)',
@@ -127,9 +135,11 @@
             body: '<p>欧州の大手金融グループX社は15日、大規模なサイバー攻撃を受け、複数国にわたる業務システムに障害が発生したと発表した。同社は外部のセキュリティ専門家と連携し、被害の全容把握を急いでいる。</p><p>関係者によると、攻撃者はランサムウエアを使用し、社内ネットワークの広範囲にわたってシステムを暗号化した模様だ。同社は重要業務を手動に切り替えて対応している。</p><p>「現時点では顧客データの流出は確認されていないが、調査を継続している」と同社の広報担当者は述べた。金融庁も状況の把握に乗り出している。</p><p>今回の事案は、欧州で施行が迫るDORA（デジタル・オペレーショナル・レジリエンス法）の観点からも注目されており、金融機関のサイバーセキュリティ対策の在り方に改めて問題を投げかけている。</p>',
             image_caption: 'X社の欧州本社（パリ近郊）',
             is_premium: false,
-            related_tags: 'サイバーセキュリティ,金融,個人情報'
+            related_tags: 'サイバーセキュリティ,金融,個人情報',
+            has_photo: false,
+            photo_data: ''
           },
-          fields: [field('headline', 'Headline (見出し)', 'text'), field('subheadline', 'Subheadline (副見出し)', 'textarea'), field('author', 'Author (記者)', 'text'), field('date', 'Date (日付)', 'text'), field('update_time', 'Update time (更新)', 'text'), field('category', 'Category (カテゴリ)', 'text'), field('is_premium', 'Premium (有料)', 'checkbox'), field('image_caption', 'Image caption (写真説明)', 'text'), field('related_tags', 'Tags (タグ, comma-separated)', 'text'), field('body', 'HTML body (本文)', 'textarea')]
+          fields: [field('headline', 'Headline (見出し)', 'text'), field('subheadline', 'Subheadline (副見出し)', 'textarea'), field('author', 'Author (記者)', 'text'), field('date', 'Date (日付)', 'text'), field('update_time', 'Update time (更新)', 'text'), field('category', 'Category (カテゴリ)', 'text'), field('is_premium', 'Premium (有料)', 'checkbox'), field('has_photo', 'Show photo (写真を表示)', 'checkbox'), field('photo_data', 'Photo (写真)', 'photo_upload'), field('image_caption', 'Image caption (写真説明)', 'text'), field('related_tags', 'Tags (タグ, comma-separated)', 'text'), field('body', 'HTML body (本文)', 'textarea')]
         }
       };
 
