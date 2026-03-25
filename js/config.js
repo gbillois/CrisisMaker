@@ -273,6 +273,36 @@
           },
           fields: [field('organization', 'Organization', 'text'), field('logo_text', 'Logo text', 'text'), field('logo_color', 'Logo color', 'text'), field('date', 'Date', 'text'), field('title', 'Title', 'text'), field('body', 'HTML body', 'textarea'), field('contact_name', 'Contact', 'text'), field('contact_email', 'Contact email', 'text'), field('contact_phone', 'Phone', 'text')]
         },
+        email_external: {
+          label: 'External email',
+          template_id: 'generic',
+          defaults: {
+            from_name: 'Marc Lefèvre',
+            from_email: 'marc.lefevre@partner.com',
+            to: 'contact@client.com',
+            cc: '',
+            subject: 'Follow-up on the reported incident',
+            date: formatLocalDateTime(new Date()),
+            body: '<p>Dear Sir or Madam,</p><p>We are reaching out regarding the incident reported earlier today. Our teams have been reviewing potential impacts on our shared infrastructure and would like to schedule a call to align on next steps.</p><p>Please confirm your availability at your earliest convenience.</p><p>Best regards,<br>Marc Lefèvre<br>Partner Security Team</p>',
+            has_attachment: false,
+            attachment_name: '',
+            importance: 'normal'
+          },
+          fields: [field('from_name', 'Sender', 'text'), field('from_email', 'Sender email', 'text'), field('to', 'To', 'text'), field('cc', 'Cc', 'text'), field('subject', 'Subject', 'text'), field('date', 'Date', 'text'), field('importance', 'Importance', 'select', { options: ['high', 'normal'] }), field('has_attachment', 'Attachment', 'checkbox'), field('attachment_name', 'Attachment name', 'text'), field('body', 'HTML body', 'textarea')]
+        },
+        internal_memo: {
+          label: 'Internal memo',
+          template_id: 'memo',
+          defaults: {
+            from_name: 'Direction Générale',
+            to: 'All employees',
+            subject: 'Internal communication - Security incident',
+            date: formatLocalDateTime(new Date()),
+            body: '<p>Following the security incident detected this morning, please be advised that precautionary measures have been activated across the organization.</p><p><strong>Key instructions:</strong></p><ul><li>Do not use personal devices on the corporate network</li><li>Report any suspicious activity to the IT helpdesk immediately</li><li>Await further instructions before resuming normal operations on affected systems</li></ul><p>A follow-up communication will be issued within the next two hours.</p>',
+            classification: 'Confidential'
+          },
+          fields: [field('from_name', 'From', 'text'), field('to', 'To', 'text'), field('subject', 'Subject', 'text'), field('date', 'Date', 'text'), field('classification', 'Classification', 'select', { options: ['Confidential', 'Internal', 'Restricted'] }), field('body', 'HTML body', 'textarea')]
+        },
         sms_notification: {
           label: 'SMS / Notification',
           template_id: 'sms',

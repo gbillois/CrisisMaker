@@ -1110,6 +1110,28 @@
     .authority-content { padding: 22px 24px 30px; color: #122438; }
     .authority-banner { border: 1px solid #ecd4d4; border-left: 4px solid #b91c1c; padding: 14px 16px; background: #fdf4f4; margin-bottom: 18px; }
 
+    /* ── External email ──────────────────── */
+    .external-email { width: 800px; font-family: "Segoe UI", Tahoma, sans-serif; border-radius: 16px; }
+    .external-email-topbar { background: #2c3e50; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .external-email-warning { background: #fff8e1; border: 1px solid #ffe082; color: #8d6e00; padding: 8px 16px; font-size: 12px; margin: 0; }
+    .external-email .outlook-body, .external-email .outlook-meta, .external-email .outlook-content { background: #fff; }
+    .external-email.hd .external-email-warning { margin: 0; border-left: none; border-right: none; }
+    .external-badge { display: inline-block; background: #fff3cd; color: #856404; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; margin-left: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ── Internal memo ──────────────────── */
+    .internal-memo { width: 700px; background: #fff; font-family: "Segoe UI", Tahoma, sans-serif; border: 1px solid #d8dce3; }
+    .memo-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 28px; border-bottom: 2px solid #1a2332; }
+    .memo-title { font-size: 18px; font-weight: 800; letter-spacing: 0.1em; color: #1a2332; }
+    .memo-classification { color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 3px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .memo-meta { padding: 18px 28px; border-bottom: 1px solid #e8ecf0; }
+    .memo-row { display: grid; grid-template-columns: 80px 1fr; gap: 10px; font-size: 13px; color: #4d5b6a; margin-bottom: 8px; }
+    .memo-row strong { color: #1d2b3a; }
+    .memo-body { padding: 24px 28px 32px; font-size: 14px; line-height: 1.7; color: #172635; }
+    .internal-memo.hd { display: grid; grid-template-columns: 6px 1fr; border: none; }
+    .memo-hd-stripe { min-height: 100%; }
+    .memo-hd-content { border: 1px solid #d8dce3; }
+    .memo-hd-footer { margin-top: 20px; padding: 14px 28px; border-top: 1px solid #e8ecf0; font-size: 11px; color: #999; font-style: italic; }
+
     .press-release { width: 700px; background: #fff; padding: 34px 42px; font-family: Merriweather, Georgia, serif; }
     .pr-logo { font-family: var(--ui-font); font-weight: 800; letter-spacing: 0.08em; font-size: 14px; }
     .pr-title { font-size: 32px; line-height: 1.2; margin: 18px 0 16px; }
