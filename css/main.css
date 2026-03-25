@@ -954,6 +954,22 @@
     .faz-hd-social svg { width: 18px; height: 18px; stroke: #666; fill: none; }
 
     /* ── HD FT extras ──────────────────── */
+    .ft-hd-ticker { display: flex; align-items: center; gap: 24px; background: #1a1a1a; padding: 6px 20px; font: 11px/1.4 'Inter', Arial, sans-serif; color: #ccc; overflow: hidden; white-space: nowrap; }
+    .ft-hd-ticker span { flex-shrink: 0; }
+    .ft-tick-up { color: #4caf50; font-style: normal; }
+    .ft-tick-down { color: #e53935; font-style: normal; }
+    .ft-tick-link { color: #fff; font-weight: 600; cursor: pointer; margin-left: auto; }
+    .ft-hd-masthead { display: flex; align-items: center; justify-content: space-between; background: #fff1e0; padding: 16px 24px; }
+    .ft-hd-masthead-left { display: flex; align-items: center; gap: 16px; color: #1a1a1a; }
+    .ft-hd-icon { display: inline-flex; cursor: pointer; }
+    .ft-hd-masthead-center { display: flex; align-items: center; }
+    .ft-hd-masthead-right { display: flex; align-items: center; gap: 16px; }
+    .ft-hd-subscribe { background: #1a1a1a; color: #fff; font: 700 12px/1 'Inter', Arial, sans-serif; padding: 8px 16px; border-radius: 2px; cursor: pointer; }
+    .ft-hd-signin { display: inline-flex; align-items: center; gap: 6px; font: 13px/1 'Inter', Arial, sans-serif; color: #1a1a1a; cursor: pointer; }
+    .ft-hd-signin svg { stroke: #1a1a1a; }
+    .ft-hd-nav-bar { display: flex; gap: 24px; background: #fff1e0; padding: 12px 24px; border-top: 1px solid #ccc1b7; border-bottom: 2px solid #ccc1b7; overflow: hidden; white-space: nowrap; }
+    .ft-hd-nav-bar span { font: 12px/1.4 'Inter', Arial, sans-serif; letter-spacing: 0.04em; color: #333; cursor: pointer; flex-shrink: 0; }
+    .ft-hd-nav-bar span.active { color: #0d7680; border-bottom: 2px solid #0d7680; padding-bottom: 10px; font-weight: 700; }
     .ft-hd-tools { display: flex; gap: 18px; padding: 12px 0; border-bottom: 1px solid #ccc1b7; font-size: 13px; color: #333; }
     .ft-hd-tools svg { width: 14px; height: 14px; stroke: currentColor; fill: none; vertical-align: -2px; }
     .ft-hd-tools div { cursor: pointer; }
