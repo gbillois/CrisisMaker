@@ -884,6 +884,84 @@
     .btn-chip-delete:hover { color: var(--danger, #dc2626); }
     .crisismaker-template-sandbox { font-family: sans-serif; color: #333; }
 
+    /* ── HD common: browser chrome ──────────────────── */
+    .hd-browser-bar, .nyt-hd-browser { display: flex; align-items: center; gap: 10px; background: #e8eaed; padding: 8px 14px; border-radius: 8px 8px 0 0; font-size: 12px; color: #555; }
+    .hd-browser-dots { display: flex; gap: 6px; }
+    .hd-browser-dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .hd-browser-dots span:nth-child(1) { background: #ff5f57; }
+    .hd-browser-dots span:nth-child(2) { background: #febc2e; }
+    .hd-browser-dots span:nth-child(3) { background: #28c840; }
+    .hd-browser-url { flex: 1; background: #fff; border-radius: 14px; padding: 5px 12px; font-size: 12px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hd .nyt-rail, .hd .lm-header, .hd .faz-header, .hd .ft-header, .hd .nikkei-header { border-radius: 0; }
+    .lm-browser { background: #f2f2f2; }
+    .faz-browser { background: #d9dde3; }
+    .ft-browser { background: #f0e5d0; }
+    .nikkei-browser { background: #e8eef4; }
+
+    /* ── HD NYT extras ──────────────────── */
+    .nyt-hd-share { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #e2e2e2; }
+    .nyt-hd-share svg { width: 20px; height: 20px; stroke: #666; fill: none; cursor: pointer; }
+    .nyt-hd-comments-count { margin-left: auto; font: 13px/1 Arial, sans-serif; color: #666; border: 1px solid #ddd; padding: 4px 10px; border-radius: 3px; }
+    .nyt-hd-footer { margin-top: 32px; padding-top: 20px; border-top: 2px solid #000; }
+    .nyt-hd-related { font: 700 12px/1.2 Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; color: #666; margin-bottom: 12px; }
+    .nyt-hd-related-items { display: flex; flex-direction: column; gap: 10px; }
+    .nyt-hd-related-item { font: 600 15px/1.3 'Playfair Display', Georgia, serif; color: #121212; padding-left: 14px; border-left: 3px solid #121212; }
+
+    /* ── HD Le Monde extras ──────────────────── */
+    .lm-hd-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+    .lm-hd-date { font-size: 12px; color: #666; }
+    .lm-hd-subscribe { font-size: 12px; font-weight: 700; color: #2a7a2a; cursor: pointer; padding: 4px 12px; border: 1px solid #2a7a2a; border-radius: 3px; }
+    .lm-hd-share-bar { display: flex; gap: 16px; padding: 8px 0; margin-top: 4px; }
+    .lm-hd-share-bar svg { width: 18px; height: 18px; stroke: #666; fill: none; cursor: pointer; }
+
+    /* ── HD FAZ extras ──────────────────── */
+    .faz-hd-actions { display: flex; gap: 14px; font-size: 13px; color: #ccc; }
+    .faz-hd-breadcrumb { font-size: 12px; color: #888; padding: 8px 30px; border-bottom: 1px solid #eee; }
+    .faz-hd-social { display: flex; gap: 14px; padding: 10px 0; margin-top: 4px; }
+    .faz-hd-social svg { width: 18px; height: 18px; stroke: #666; fill: none; }
+
+    /* ── HD FT extras ──────────────────── */
+    .ft-hd-tools { display: flex; gap: 18px; padding: 12px 0; border-bottom: 1px solid #ccc1b7; font-size: 13px; color: #333; }
+    .ft-hd-tools svg { width: 14px; height: 14px; stroke: currentColor; fill: none; vertical-align: -2px; }
+    .ft-hd-tools div { cursor: pointer; }
+
+    /* ── HD Nikkei extras ──────────────────── */
+    .nikkei-hd-top { display: flex; justify-content: space-between; align-items: center; }
+    .nikkei-hd-actions { display: flex; gap: 14px; font-size: 13px; color: #555; }
+    .nikkei-hd-subscribe { background: #005C98; color: #fff; padding: 4px 12px; border-radius: 3px; font-size: 12px; }
+    .nikkei-hd-share { display: flex; gap: 14px; padding: 8px 0; margin-top: 4px; }
+    .nikkei-hd-share svg { width: 16px; height: 16px; stroke: #888; fill: none; }
+
+    /* ── HD Outlook ──────────────────── */
+    .outlook-email.hd { padding: 0; }
+    .outlook-email.hd .outlook-topbar { display: none; }
+    .outlook-hd-ribbon { background: #f3f2f1; border-bottom: 1px solid #d6d6d6; }
+    .outlook-hd-ribbon-tabs { display: flex; gap: 0; font-size: 12px; padding: 0 12px; }
+    .outlook-hd-ribbon-tabs span { padding: 6px 14px; color: #666; cursor: pointer; }
+    .outlook-hd-ribbon-tabs span.active { color: #0078d4; border-bottom: 2px solid #0078d4; font-weight: 600; }
+    .outlook-hd-ribbon-actions { display: flex; align-items: center; gap: 4px; padding: 6px 12px; background: #fff; border-bottom: 1px solid #edebe9; }
+    .outlook-hd-ribbon-group { display: flex; gap: 4px; }
+    .outlook-hd-ribbon-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 4px; cursor: pointer; color: #333; }
+    .outlook-hd-ribbon-btn:hover { background: #e5e5e5; }
+    .outlook-hd-ribbon-btn.primary { color: #0078d4; }
+    .outlook-hd-ribbon-btn svg { width: 14px; height: 14px; }
+    .outlook-hd-ribbon-sep { width: 1px; height: 24px; background: #d6d6d6; margin: 0 6px; }
+    .outlook-hd-layout { display: grid; grid-template-columns: 200px 1fr; min-height: 500px; }
+    .outlook-hd-sidebar { background: #f3f2f1; padding: 10px 0; border-right: 1px solid #edebe9; }
+    .outlook-hd-folder { padding: 7px 16px; font-size: 13px; color: #333; cursor: pointer; display: flex; justify-content: space-between; }
+    .outlook-hd-folder.active { background: #e1effa; color: #0078d4; font-weight: 600; }
+    .outlook-hd-folder:hover { background: #e5e5e5; }
+    .outlook-hd-badge { background: #0078d4; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 8px; }
+    .outlook-hd-content { padding: 20px 24px; }
+    .outlook-hd-header { margin-bottom: 16px; }
+    .outlook-hd-sender-row { display: flex; align-items: center; gap: 12px; }
+    .outlook-hd-avatar { width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+    .outlook-hd-sender-info { flex: 1; min-width: 0; font-size: 13px; }
+    .outlook-hd-recipients { color: #666; font-size: 12px; margin-top: 2px; }
+    .outlook-hd-date { font-size: 12px; color: #666; white-space: nowrap; }
+    .outlook-hd-attachment { display: flex; align-items: center; gap: 8px; }
+    .outlook-hd-filesize { font-size: 11px; color: #999; margin-left: auto; }
+
     .reddit-page { width: 780px; background: #dae0e6; padding: 20px; font-family: 'IBM Plex Sans', 'Noto Sans', sans-serif; }
     .reddit-header { height: 48px; background: #fff; border-bottom: 1px solid #edeff1; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-radius: 8px 8px 0 0; }
     .reddit-logo { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1a1a1b; }
@@ -971,6 +1049,66 @@
     .sms-bubble { display: inline-block; background: #e5e5ea; border-radius: 18px; padding: 14px 16px; max-width: 290px; font-size: 16px; line-height: 1.4; }
     .sms-android .sms-bubble { background: #d9fdd3; font-family: Roboto, Arial, sans-serif; }
     .sms-time { color: #687483; font-size: 12px; margin-top: 8px; }
+
+    /* ── HD Twitter/X extras ──────────────────── */
+    .tweet.hd { border-radius: 0 0 18px 18px; }
+    .tweet-hd-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; font-size: 15px; font-weight: 700; border-bottom: 1px solid #eff3f4; }
+    .tweet-hd-back { font-size: 20px; color: #0f1419; cursor: pointer; }
+    .tweet-hd-follow { font-size: 13px; font-weight: 700; color: #fff; background: #0f1419; padding: 6px 16px; border-radius: 20px; cursor: pointer; flex-shrink: 0; }
+    .tweet-hd-reply-box { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid #eff3f4; }
+    .tweet-hd-reply-input { flex: 1; font-size: 14px; color: #8899a6; padding: 8px 0; }
+    .tweet-hd-reply-btn { font-size: 13px; font-weight: 700; color: #fff; background: #1da1f2; padding: 6px 16px; border-radius: 20px; opacity: 0.6; }
+
+    /* ── HD LinkedIn extras ──────────────────── */
+    .linkedin-card.hd { border-radius: 0 0 8px 8px; }
+    .li-hd-topbar { display: flex; align-items: center; gap: 12px; padding: 6px 14px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+    .li-hd-logo { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 22px; color: #0A66C2; }
+    .li-hd-search { flex: 1; font-size: 12px; color: #666; background: #eef3f8; padding: 6px 10px; border-radius: 4px; }
+    .li-hd-nav { display: flex; gap: 18px; font-size: 16px; color: #666; }
+    .li-hd-dots { font-size: 18px; color: #666; cursor: pointer; margin-left: auto; }
+
+    /* ── HD Reddit extras ──────────────────── */
+    .reddit-hd-actions { display: flex; gap: 8px; margin-left: auto; }
+    .reddit-hd-btn { font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 20px; border: 1px solid #0079D3; color: #0079D3; cursor: pointer; }
+    .reddit-hd-btn.primary { background: #0079D3; color: #fff; border-color: #0079D3; }
+    .reddit-hd-sub-banner { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: #fff; margin: 0 auto; max-width: 740px; border-radius: 4px 4px 0 0; border: 1px solid #ccc; border-bottom: none; margin-top: 14px; }
+    .reddit-hd-sub-icon { width: 48px; height: 48px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
+    .reddit-hd-sub-name { font-size: 18px; font-weight: 700; color: #1a1a1b; }
+    .reddit-hd-sub-members { font-size: 12px; color: #7c7c7c; }
+    .reddit-hd-join { margin-left: auto; font-size: 13px; font-weight: 700; color: #fff; background: #0079D3; padding: 5px 18px; border-radius: 20px; cursor: pointer; }
+
+    /* ── HD BFM extras ──────────────────── */
+    .bfm-banner.hd { position: relative; }
+    .bfm-hd-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 900; color: rgba(255,255,255,0.03); letter-spacing: 0.1em; pointer-events: none; }
+    .bfm-hd-overlay { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%, rgba(0,0,0,0.08) 100%); }
+
+    /* ── HD Authority extras ──────────────────── */
+    .authority-email.hd .authority-content { padding-top: 0; }
+    .authority-hd-severity { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #fff; font-size: 13px; margin-bottom: 16px; }
+    .authority-hd-severity-label { font-weight: 800; font-size: 16px; letter-spacing: 0.1em; }
+    .authority-hd-meta { background: #f8f8f8; border: 1px solid #eee; border-radius: 4px; padding: 12px 16px; margin: 12px 0 16px; font-size: 13px; line-height: 1.7; }
+    .authority-hd-footer { margin-top: 24px; padding-top: 14px; border-top: 1px solid #ddd; font-size: 12px; color: #888; font-style: italic; }
+
+    /* ── HD Press Release extras ──────────────────── */
+    .press-release.hd .pr-hd-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid #eee; margin-bottom: 14px; }
+    .pr-hd-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #888; text-transform: uppercase; border: 1px solid #ccc; padding: 3px 10px; border-radius: 3px; }
+    .pr-hd-divider { height: 1px; background: #eee; margin: 24px 0; }
+    .pr-hd-legal { font-size: 11px; color: #aaa; font-style: italic; margin-top: 20px; padding-top: 12px; border-top: 1px solid #eee; }
+
+    /* ── HD SMS extras ──────────────────── */
+    .sms-shell.hd { padding-top: 0; }
+    .sms-shell.hd .sms-screen { padding-top: 8px; }
+    .sms-hd-statusbar { display: flex; justify-content: space-between; padding: 6px 20px; font-size: 12px; font-weight: 600; color: #1c1c1e; }
+    .sms-hd-icons { font-size: 11px; letter-spacing: 3px; }
+    .sms-hd-nav { display: flex; align-items: center; justify-content: space-between; padding: 4px 14px 8px; border-bottom: 1px solid #d1d1d6; }
+    .sms-hd-back { font-size: 24px; color: #007AFF; cursor: pointer; }
+    .sms-hd-contact { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+    .sms-hd-contact-avatar { width: 30px; height: 30px; border-radius: 50%; background: #c7c7cc; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+    .sms-hd-info { font-size: 16px; color: #007AFF; }
+    .sms-hd-date { text-align: center; font-size: 11px; color: #8e8e93; padding: 8px 0 12px; }
+    .sms-hd-input { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid #d1d1d6; background: #f6f6f6; border-radius: 0 0 30px 30px; }
+    .sms-hd-input-field { flex: 1; padding: 8px 14px; border-radius: 18px; border: 1px solid #d1d1d6; font-size: 14px; color: #8e8e93; background: #fff; }
+    .sms-hd-send { width: 28px; height: 28px; border-radius: 50%; background: #007AFF; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
 
     .preview-toolbar {
       position: sticky;
