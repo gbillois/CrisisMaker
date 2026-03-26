@@ -10,8 +10,10 @@
       const PROVIDER_STORAGE_KEYS = {
         aiProvider: 'aiProvider',
         azureEndpoint: 'azureEndpoint',
-        azureApiKey: 'azureApiKey',
-        azureDeployment: 'azureDeployment'
+        azureApiKey: 'azureApiKey',       // legacy key - cleaned up on load
+        azureDeployment: 'azureDeployment',
+        apiKey: 'crisismaker_api_key',    // dedicated key for API key, separate from project data
+        azureApiKeyStore: 'crisismaker_azure_api_key' // dedicated key for Azure API key
       };
       const ROLES = [
         { value: 'journalist', label: 'Journalist' },
