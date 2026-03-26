@@ -55,7 +55,7 @@
             const value = fields[key];
             const placeholder = '{{' + key + '}}';
             if (rawKeys.has(key) || key.endsWith('_html')) {
-              html = html.split(placeholder).join(value ?? '');
+              html = html.split(placeholder).join(sanitizeBody(value));
             } else {
               html = html.split(placeholder).join(escapeHtml(String(value ?? '')));
             }
@@ -79,7 +79,7 @@
                   <div class="outlook-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
                 </div>
                 <div class="outlook-content">
-                  ${f.body || ''}
+                  ${sanitizeBody(f.body)}
                   ${f.has_attachment ? `<div class="outlook-attachment">📎 <span>${escapeHtml(f.attachment_name || 'piece_jointe.pdf')}</span></div>` : ''}
                 </div>
               </div>
@@ -103,7 +103,7 @@
                 </div>
                 <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.')}</div>
                 <div class="outlook-content">
-                  ${f.body || ''}
+                  ${sanitizeBody(f.body)}
                   ${f.has_attachment ? `<div class="outlook-attachment">📎 <span>${escapeHtml(f.attachment_name || 'document.pdf')}</span></div>` : ''}
                 </div>
               </div>
@@ -125,7 +125,7 @@
                 <div class="memo-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
                 <div class="memo-row"><span>${tt('Subject', 'Objet')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
               </div>
-              <div class="memo-body">${f.body || ''}</div>
+              <div class="memo-body">${sanitizeBody(f.body)}</div>
             </article>
           `;
         },
@@ -155,7 +155,7 @@
                 <div class="press-byline"><span>${escapeHtml(f.author || '')}</span><span>${escapeHtml(f.date || '')} · ${escapeHtml(f.read_time || '')}</span></div>
                 ${f.has_photo ? `<div class="press-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo ? `<div class="press-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
-                <div class="press-content">${f.body || ''}</div>
+                <div class="press-content">${sanitizeBody(f.body)}</div>
               </div>
             </article>
           `;
@@ -182,7 +182,7 @@
                   <div class="nyt-date-line">${escapeHtml(f.date || '')}${f.update_time ? ` · ${escapeHtml(f.update_time)}` : ''}${f.read_time ? ` · ${escapeHtml(f.read_time)}` : ''}</div>
                 </div>
                 <div class="nyt-actions">${iconGift()} ${iconBookmark()} ${iconComment()} ${iconShare()}</div>
-                <div class="nyt-content">${f.body || ''}</div>
+                <div class="nyt-content">${sanitizeBody(f.body)}</div>
               </div>
             </article>
           `;
@@ -209,7 +209,7 @@
                 ${f.has_photo ? `<div class="press-photo faz-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo ? `<div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="faz-byline"><span class="faz-author">${escapeHtml(f.author || '')}</span><span>·</span><span class="faz-datetime">${escapeHtml(f.date || '')}${f.time ? ` ${escapeHtml(f.time)}` : ''}</span></div>
-                <div class="faz-content">${f.body || ''}</div>
+                <div class="faz-content">${sanitizeBody(f.body)}</div>
               </div>
             </article>
           `;
@@ -239,7 +239,7 @@
                   </div>
                   <div class="ft-datetime">${escapeHtml(f.date || '')}${f.time ? ` · ${escapeHtml(f.time)}` : ''}</div>
                 </div>
-                <div class="ft-content">${f.body || ''}</div>
+                <div class="ft-content">${sanitizeBody(f.body)}</div>
               </div>
             </article>
           `;
@@ -265,7 +265,7 @@
                 <div class="nikkei-byline">${escapeHtml(f.author || '')}</div>
                 ${f.has_photo ? `<div class="press-photo nikkei-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo && f.image_caption ? `<div class="nikkei-caption">${escapeHtml(f.image_caption)}</div>` : ''}
-                <div class="nikkei-content">${f.body || ''}</div>
+                <div class="nikkei-content">${sanitizeBody(f.body)}</div>
                 ${tags.length ? `<div class="nikkei-tags">${tags.map(t => `<span class="nikkei-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
               </div>
             </article>
@@ -418,7 +418,7 @@
                   <div class="authority-banner"><strong>${tt('Severity', 'Sévérité')} : ${escapeHtml(f.severity || '')}</strong> · ${tt('Restricted distribution to recipient', 'Diffusion restreinte au destinataire')}</div>
                   <p><strong>${tt('From', 'De')} :</strong> ${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;<br><strong>${tt('To', 'À')} :</strong> ${escapeHtml(f.to || '')}<br><strong>${tt('Date', 'Date')} :</strong> ${escapeHtml(f.date || '')}</p>
                   <h2 style="margin-top:0;">${escapeHtml(f.subject || '')}</h2>
-                  <div>${f.body || ''}</div>
+                  <div>${sanitizeBody(f.body)}</div>
                 </div>
               </div>
             </article>
@@ -430,7 +430,7 @@
               <div class="pr-logo" style="color:${escapeAttribute(f.logo_color || '#003366')};">${escapeHtml(f.logo_text || '')}</div>
               <div class="pr-meta">${escapeHtml(f.date || '')}</div>
               <div class="pr-title">${escapeHtml(f.title || '')}</div>
-              <div class="pr-body">${f.body || ''}</div>
+              <div class="pr-body">${sanitizeBody(f.body)}</div>
               <div class="pr-contact">
                 <strong>${tt('Press contact', 'Contact presse')}</strong><br>
                 ${escapeHtml(f.contact_name || '')}<br>
@@ -502,7 +502,7 @@
                   <span>${iconGift()}</span><span>${iconBookmark()}</span><span>${iconComment()}</span><span>${iconShare()}</span>
                   <span class="nyt-hd-comments-count">${formatMetric(f.comments_count || 142)}</span>
                 </div>
-                <div class="nyt-content">${f.body || ''}</div>
+                <div class="nyt-content">${sanitizeBody(f.body)}</div>
                 <div class="nyt-hd-footer">
                   <div class="nyt-hd-related">${tt('Related coverage', 'Articles liés')}</div>
                   <div class="nyt-hd-related-items">
@@ -545,7 +545,7 @@
                 ${f.has_photo ? `<div class="faz-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="faz-byline"><span class="faz-author">${escapeHtml(f.author || '')}</span><span>·</span><span class="faz-datetime">${escapeHtml(f.date || '')}${f.time ? ` ${escapeHtml(f.time)}` : ''}</span></div>
                 <div class="faz-hd-social">${iconShare()} ${iconBookmark()} ${iconComment()}</div>
-                <div class="faz-content">${f.body || ''}</div>
+                <div class="faz-content">${sanitizeBody(f.body)}</div>
               </div>
             </article>
           `;
@@ -592,7 +592,7 @@
                   <div class="ft-hd-share">${iconShare()} Share</div>
                   <div class="ft-hd-print">🖨️ Print</div>
                 </div>
-                <div class="ft-content">${f.body || ''}</div>
+                <div class="ft-content">${sanitizeBody(f.body)}</div>
               </div>
             </article>
           `;
@@ -632,7 +632,7 @@
                 <div class="nikkei-hd-share">${iconShare()} ${iconBookmark()} ${iconComment()}</div>
                 ${f.has_photo ? `<div class="press-photo nikkei-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo && f.image_caption ? `<div class="nikkei-caption">${escapeHtml(f.image_caption)}</div>` : ''}
-                <div class="nikkei-content">${f.body || ''}</div>
+                <div class="nikkei-content">${sanitizeBody(f.body)}</div>
                 ${tags.length ? `<div class="nikkei-tags">${tags.map(t => `<span class="nikkei-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
               </div>
             </article>
@@ -677,7 +677,7 @@
                 </div>
                 ${f.has_photo ? `<div class="press-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo ? `<div class="press-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
-                <div class="press-content">${f.body || ''}</div>
+                <div class="press-content">${sanitizeBody(f.body)}</div>
               </div>
             </article>
           `;
@@ -865,7 +865,7 @@
                     <div><strong>${tt('Reference', 'Référence')} :</strong> ${escapeHtml(f.reference || '')}</div>
                   </div>
                   <h2 style="margin-top:0;">${escapeHtml(f.subject || '')}</h2>
-                  <div>${f.body || ''}</div>
+                  <div>${sanitizeBody(f.body)}</div>
                   <div class="authority-hd-footer">${tt('This alert is issued by CERT-FR as part of coordinated response operations.', 'Cette alerte est émise par le CERT-FR dans le cadre des opérations de réponse coordonnée.')}</div>
                 </div>
               </div>
@@ -881,7 +881,7 @@
               </div>
               <div class="pr-meta">${escapeHtml(f.date || '')}</div>
               <div class="pr-title">${escapeHtml(f.title || '')}</div>
-              <div class="pr-body">${f.body || ''}</div>
+              <div class="pr-body">${sanitizeBody(f.body)}</div>
               <div class="pr-hd-divider"></div>
               <div class="pr-contact">
                 <strong>${tt('Press contact', 'Contact presse')}</strong><br>
@@ -966,7 +966,7 @@
                     </div>
                   </div>
                   <div class="outlook-content">
-                    ${f.body || ''}
+                    ${sanitizeBody(f.body)}
                     ${f.has_attachment ? `<div class="outlook-attachment outlook-hd-attachment">📎 <span>${escapeHtml(f.attachment_name || 'document.pdf')}</span><span class="outlook-hd-filesize">128 KB</span></div>` : ''}
                   </div>
                 </div>
@@ -991,7 +991,7 @@
                   <div class="memo-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
                   <div class="memo-row"><span>${tt('Subject', 'Objet')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
                 </div>
-                <div class="memo-body">${f.body || ''}</div>
+                <div class="memo-body">${sanitizeBody(f.body)}</div>
                 <div class="memo-hd-footer">${tt('This document is for internal use only. Distribution outside the organization is strictly prohibited.', 'Ce document est à usage interne uniquement. Toute diffusion en dehors de l\'organisation est strictement interdite.')}</div>
               </div>
             </article>
@@ -1039,7 +1039,7 @@
                     </div>
                   </div>
                   <div class="outlook-content">
-                    ${f.body || ''}
+                    ${sanitizeBody(f.body)}
                     ${f.has_attachment ? `<div class="outlook-attachment outlook-hd-attachment">📎 <span>${escapeHtml(f.attachment_name || 'piece_jointe.pdf')}</span><span class="outlook-hd-filesize">128 KB</span></div>` : ''}
                   </div>
                 </div>

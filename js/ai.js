@@ -36,6 +36,13 @@
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
+            try {
+              const endpointUrl = new URL(normalizedEndpoint);
+              if (endpointUrl.protocol !== 'https:') throw new Error(tt('Azure endpoint must use HTTPS.', 'L\'endpoint Azure doit utiliser HTTPS.'));
+            } catch (urlErr) {
+              if (urlErr.message.includes('HTTPS') || urlErr.message.includes('HTTPS')) throw urlErr;
+              throw new Error(tt('Invalid Azure endpoint URL.', 'URL d\'endpoint Azure invalide.'));
+            }
             const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
