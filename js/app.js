@@ -125,7 +125,10 @@
 
         document.querySelectorAll('[data-bind]').forEach((input) => {
           input.addEventListener('change', () => {
-            setByPath(appState.scenario, input.dataset.bind, input.value);
+            let val = input.value;
+            if (input.dataset.bind === 'settings.watermark_enabled') val = (val === 'true');
+            else if (input.dataset.bind === 'settings.watermark_opacity' || input.dataset.bind === 'settings.watermark_rotation') val = Number(val);
+            setByPath(appState.scenario, input.dataset.bind, val);
             if (input.dataset.bind === 'settings.ai_provider') {
               const models = DEFAULT_MODELS[input.value];
               if (models?.length) appState.scenario.settings.ai_model = models[0];
@@ -203,6 +206,35 @@
               App.render();
             };
             reader.readAsDataURL(input.files[0]);
+          });
+        });
+
+        document.querySelectorAll('[data-stimulus-watermark]').forEach((input) => {
+          input.addEventListener('change', () => {
+            const [stimulusId, prop] = input.dataset.stimulusWatermark.split('.');
+            const stimulus = getStimulus(stimulusId);
+            if (!stimulus) return;
+            if (prop === 'override') {
+              if (input.value === 'true') {
+                const settings = appState.scenario.settings || {};
+                stimulus.watermark = {
+                  enabled: settings.watermark_enabled !== false,
+                  text: settings.watermark_text || 'EXERCISE EXERCISE EXERCISE',
+                  position_v: settings.watermark_position_v || 'middle',
+                  position_h: settings.watermark_position_h || 'center',
+                  opacity: settings.watermark_opacity ?? 50,
+                  rotation: settings.watermark_rotation ?? 0
+                };
+              } else {
+                stimulus.watermark = null;
+              }
+            } else if (stimulus.watermark) {
+              let val = input.value;
+              if (prop === 'enabled') val = (val === 'true');
+              else if (prop === 'opacity' || prop === 'rotation') val = Number(val);
+              stimulus.watermark[prop] = val;
+            }
+            App.render();
           });
         });
 
