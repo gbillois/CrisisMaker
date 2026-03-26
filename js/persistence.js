@@ -58,8 +58,11 @@
       // Level 2: localStorage (always active)
       function saveLocal(showToast = true) {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.scenario));
-          localStorage.setItem(SETTINGS_KEY, JSON.stringify(appState.scenario.settings));
+          const scenarioToSave = JSON.parse(JSON.stringify(appState.scenario));
+          scenarioToSave.settings = { ...scenarioToSave.settings, ai_api_key: '', azure_api_key: '' }; // never store keys in project data
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarioToSave));
+          const settingsToSave = { ...appState.scenario.settings, ai_api_key: '', azure_api_key: '' };
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
           persistProviderSettings(appState.scenario.settings);
           if (showToast) pushToast(tt('Scenario saved locally.', 'Scénario enregistré localement.'), 'success');
         } catch (error) {
@@ -98,18 +101,36 @@
       function loadProviderSettings() {
         // Clean up legacy separate API key storage
         localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKey);
-        return {
+        localStorage.removeItem('crisisstim_api_key');
+        const result = {
           ai_provider: localStorage.getItem(PROVIDER_STORAGE_KEYS.aiProvider) || undefined,
           azure_endpoint: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureEndpoint) || undefined,
           azure_deployment: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureDeployment) || undefined
         };
+        // Only include API keys in result if they are actually stored in dedicated keys,
+        // otherwise leave them undefined so embedded values in the scenario JSON are preserved
+        const apiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
+        if (apiKey) result.ai_api_key = apiKey;
+        const azureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
+        if (azureApiKey) result.azure_api_key = azureApiKey;
+        return result;
       }
 
       function persistProviderSettings(settings) {
         localStorage.setItem(PROVIDER_STORAGE_KEYS.aiProvider, settings.ai_provider || 'anthropic');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureEndpoint, settings.azure_endpoint || '');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureDeployment, settings.azure_deployment || '');
-        // API keys are only persisted within the main settings store, never as separate keys
+        // API keys are stored in dedicated keys, separate from project data (never exported in project files)
+        if (settings.ai_api_key) {
+          localStorage.setItem(PROVIDER_STORAGE_KEYS.apiKey, settings.ai_api_key);
+        } else {
+          localStorage.removeItem(PROVIDER_STORAGE_KEYS.apiKey);
+        }
+        if (settings.azure_api_key) {
+          localStorage.setItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore, settings.azure_api_key);
+        } else {
+          localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
+        }
       }
 
 
@@ -291,11 +312,11 @@
           const zipImport = data?.__zipImport;
           if (zipImport) delete data.__zipImport;
           appState.scenario = mergeScenario(migrateScenario(data));
-          // restore API key from localStorage (never stored in file)
-          const savedApiKey = localStorage.getItem('crisismaker_api_key') || localStorage.getItem('crisisstim_api_key');
-          if (savedApiKey && !appState.scenario.settings.ai_api_key) {
-            appState.scenario.settings.ai_api_key = savedApiKey;
-          }
+          // restore API keys from dedicated localStorage keys (never stored in project files)
+          const savedApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
+          if (savedApiKey) appState.scenario.settings.ai_api_key = savedApiKey;
+          const savedAzureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
+          if (savedAzureApiKey) appState.scenario.settings.azure_api_key = savedAzureApiKey;
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
           appState.route = 'project';
           App.render();
