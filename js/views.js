@@ -510,6 +510,9 @@
                 <label class="field">${tt('Text', 'Texte')}
                   <input type="text" data-bind="settings.watermark_text" value="${escapeAttribute(settings.watermark_text || 'EXERCISE EXERCISE EXERCISE')}">
                 </label>
+                <label class="field">${tt('Text size (pt)', 'Taille du texte (pt)')}
+                  <input type="number" min="6" max="120" step="1" data-bind="settings.watermark_text_size" value="${settings.watermark_text_size ?? 12}">
+                </label>
                 <label class="field">${tt('Vertical position', 'Position verticale')}
                   <select data-bind="settings.watermark_position_v">
                     <option value="top" ${settings.watermark_position_v === 'top' ? 'selected' : ''}>${tt('Top', 'Haut')}</option>
@@ -814,6 +817,9 @@
                 <label class="field" style="grid-column:1/-1;">${tt('Text', 'Texte')}
                   <input type="text" data-stimulus-watermark="${stimulus.id}.text" value="${escapeAttribute(wm.text || 'EXERCISE EXERCISE EXERCISE')}">
                 </label>
+                <label class="field">${tt('Text size (pt)', 'Taille du texte (pt)')}
+                  <input type="number" min="6" max="120" step="1" data-stimulus-watermark="${stimulus.id}.text_size" value="${wm.text_size ?? 12}">
+                </label>
                 <label class="field">${tt('Vertical position', 'Position verticale')}
                   <select data-stimulus-watermark="${stimulus.id}.position_v">
                     <option value="top" ${wm.position_v === 'top' ? 'selected' : ''}>${tt('Top', 'Haut')}</option>
@@ -995,6 +1001,7 @@
         return {
           enabled: settings.watermark_enabled !== false,
           text: settings.watermark_text || 'EXERCISE EXERCISE EXERCISE',
+          text_size: settings.watermark_text_size ?? 12,
           position_v: settings.watermark_position_v || 'middle',
           position_h: settings.watermark_position_h || 'center',
           opacity: settings.watermark_opacity ?? 50,
@@ -1011,7 +1018,8 @@
         const justifyContent = hMap[wm.position_h] || 'center';
         const opacity = Math.max(0, Math.min(100, Number(wm.opacity) || 50)) / 100;
         const rotation = Number(wm.rotation) || 0;
-        return `<div class="export-watermark-overlay" style="display:flex; align-items:${alignItems}; justify-content:${justifyContent};"><span class="export-watermark-text" style="opacity:${opacity}; transform:rotate(-${rotation}deg);">${escapeHtml(wm.text || '')}</span></div>`;
+        const textSize = Math.max(6, Math.min(120, Number(wm.text_size) || 12));
+        return `<div class="export-watermark-overlay" style="display:flex; align-items:${alignItems}; justify-content:${justifyContent};"><span class="export-watermark-text" style="opacity:${opacity}; transform:rotate(-${rotation}deg); font-size:${textSize}pt;">${escapeHtml(wm.text || '')}</span></div>`;
       }
 
       function renderStimulusPreview(stimulus, id = '', thumbnail = false) {
