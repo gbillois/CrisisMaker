@@ -1009,23 +1009,6 @@
     /* ── HD Outlook ──────────────────── */
     .outlook-email.hd { padding: 0; }
     .outlook-email.hd .outlook-topbar { display: none; }
-    .outlook-hd-ribbon { background: #f3f2f1; border-bottom: 1px solid #d6d6d6; }
-    .outlook-hd-ribbon-tabs { display: flex; gap: 0; font-size: 12px; padding: 0 12px; }
-    .outlook-hd-ribbon-tabs span { padding: 6px 14px; color: #666; cursor: pointer; }
-    .outlook-hd-ribbon-tabs span.active { color: #0078d4; border-bottom: 2px solid #0078d4; font-weight: 600; }
-    .outlook-hd-ribbon-actions { display: flex; align-items: center; gap: 4px; padding: 6px 12px; background: #fff; border-bottom: 1px solid #edebe9; }
-    .outlook-hd-ribbon-group { display: flex; gap: 4px; }
-    .outlook-hd-ribbon-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 4px; cursor: pointer; color: #333; }
-    .outlook-hd-ribbon-btn:hover { background: #e5e5e5; }
-    .outlook-hd-ribbon-btn.primary { color: #0078d4; }
-    .outlook-hd-ribbon-btn svg { width: 14px; height: 14px; }
-    .outlook-hd-ribbon-sep { width: 1px; height: 24px; background: #d6d6d6; margin: 0 6px; }
-    .outlook-hd-layout { display: grid; grid-template-columns: 200px 1fr; min-height: 500px; }
-    .outlook-hd-sidebar { background: #f3f2f1; padding: 10px 0; border-right: 1px solid #edebe9; }
-    .outlook-hd-folder { padding: 7px 16px; font-size: 13px; color: #333; cursor: pointer; display: flex; justify-content: space-between; }
-    .outlook-hd-folder.active { background: #e1effa; color: #0078d4; font-weight: 600; }
-    .outlook-hd-folder:hover { background: #e5e5e5; }
-    .outlook-hd-badge { background: #0078d4; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 8px; }
     .outlook-hd-content { padding: 20px 24px; }
     .outlook-hd-header { margin-bottom: 16px; }
     .outlook-hd-sender-row { display: flex; align-items: center; gap: 12px; }

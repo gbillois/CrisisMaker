@@ -927,48 +927,25 @@
         emailExternalHD(f) {
           return `
             <div class="external-email hd">
-              <div class="outlook-hd-ribbon">
-                <div class="outlook-hd-ribbon-tabs"><span class="active">Home</span><span>Send / Receive</span><span>Folder</span><span>View</span></div>
-                <div class="outlook-hd-ribbon-actions">
-                  <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre')}</div>
-                    <div class="outlook-hd-ribbon-btn">${iconForward()} ${tt('Forward', 'Transférer')}</div>
+              <div class="outlook-hd-content">
+                <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.')}</div>
+                <div class="outlook-hd-header">
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                    ${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}
+                    <div class="outlook-subject">${escapeHtml(f.subject || '')}</div>
                   </div>
-                  <div class="outlook-hd-ribbon-sep"></div>
-                  <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn">🗑️ ${tt('Delete', 'Supprimer')}</div>
-                    <div class="outlook-hd-ribbon-btn">📁 ${tt('Move', 'Déplacer')}</div>
+                  <div class="outlook-hd-sender-row">
+                    <div class="outlook-hd-avatar" style="background:${escapeAttribute(f.avatar_color || '#e67e22')};">${escapeHtml((f.from_name || 'U').charAt(0).toUpperCase())}</div>
+                    <div class="outlook-hd-sender-info">
+                      <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span> <span class="external-badge">${tt('External', 'Externe')}</span></div>
+                      <div class="outlook-hd-recipients">${tt('To', 'À')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
+                    </div>
+                    <div class="outlook-hd-date">${escapeHtml(f.date || '')}</div>
                   </div>
                 </div>
-              </div>
-              <div class="outlook-hd-layout">
-                <div class="outlook-hd-sidebar">
-                  <div class="outlook-hd-folder active">📥 ${tt('Inbox', 'Boîte de réception')} <span class="outlook-hd-badge">3</span></div>
-                  <div class="outlook-hd-folder">📤 ${tt('Sent Items', 'Éléments envoyés')}</div>
-                  <div class="outlook-hd-folder">📝 ${tt('Drafts', 'Brouillons')}</div>
-                  <div class="outlook-hd-folder">🗑️ ${tt('Deleted Items', 'Éléments supprimés')}</div>
-                  <div class="outlook-hd-folder">⚠️ ${tt('Junk Email', 'Courrier indésirable')}</div>
-                </div>
-                <div class="outlook-hd-content">
-                  <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.')}</div>
-                  <div class="outlook-hd-header">
-                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-                      ${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}
-                      <div class="outlook-subject">${escapeHtml(f.subject || '')}</div>
-                    </div>
-                    <div class="outlook-hd-sender-row">
-                      <div class="outlook-hd-avatar" style="background:${escapeAttribute(f.avatar_color || '#e67e22')};">${escapeHtml((f.from_name || 'U').charAt(0).toUpperCase())}</div>
-                      <div class="outlook-hd-sender-info">
-                        <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span> <span class="external-badge">${tt('External', 'Externe')}</span></div>
-                        <div class="outlook-hd-recipients">${tt('To', 'À')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
-                      </div>
-                      <div class="outlook-hd-date">${escapeHtml(f.date || '')}</div>
-                    </div>
-                  </div>
-                  <div class="outlook-content">
-                    ${sanitizeBody(f.body)}
-                    ${f.has_attachment ? `<div class="outlook-attachment outlook-hd-attachment">📎 <span>${escapeHtml(f.attachment_name || 'document.pdf')}</span><span class="outlook-hd-filesize">128 KB</span></div>` : ''}
-                  </div>
+                <div class="outlook-content">
+                  ${sanitizeBody(f.body)}
+                  ${f.has_attachment ? `<div class="outlook-attachment outlook-hd-attachment">📎 <span>${escapeHtml(f.attachment_name || 'document.pdf')}</span><span class="outlook-hd-filesize">128 KB</span></div>` : ''}
                 </div>
               </div>
             </div>
@@ -1000,48 +977,24 @@
         emailInternalHD(f) {
           return `
             <div class="outlook-email hd">
-              <div class="outlook-hd-ribbon">
-                <div class="outlook-hd-ribbon-tabs"><span class="active">Home</span><span>Send / Receive</span><span>Folder</span><span>View</span></div>
-                <div class="outlook-hd-ribbon-actions">
-                  <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre')}</div>
-                    <div class="outlook-hd-ribbon-btn">${iconReplyAll()} ${tt('Reply All', 'Rép. tous')}</div>
-                    <div class="outlook-hd-ribbon-btn">${iconForward()} ${tt('Forward', 'Transférer')}</div>
+              <div class="outlook-hd-content">
+                <div class="outlook-hd-header">
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                    ${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}
+                    <div class="outlook-subject">${escapeHtml(f.subject || '')}</div>
                   </div>
-                  <div class="outlook-hd-ribbon-sep"></div>
-                  <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn">🗑️ ${tt('Delete', 'Supprimer')}</div>
-                    <div class="outlook-hd-ribbon-btn">📁 ${tt('Move', 'Déplacer')}</div>
+                  <div class="outlook-hd-sender-row">
+                    <div class="outlook-hd-avatar" style="background:${escapeAttribute(f.avatar_color || '#0078d4')};">${escapeHtml((f.from_name || 'U').charAt(0).toUpperCase())}</div>
+                    <div class="outlook-hd-sender-info">
+                      <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span></div>
+                      <div class="outlook-hd-recipients">${tt('To', 'À')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
+                    </div>
+                    <div class="outlook-hd-date">${escapeHtml(f.date || '')}</div>
                   </div>
                 </div>
-              </div>
-              <div class="outlook-hd-layout">
-                <div class="outlook-hd-sidebar">
-                  <div class="outlook-hd-folder active">📥 ${tt('Inbox', 'Boîte de réception')} <span class="outlook-hd-badge">3</span></div>
-                  <div class="outlook-hd-folder">📤 ${tt('Sent Items', 'Éléments envoyés')}</div>
-                  <div class="outlook-hd-folder">📝 ${tt('Drafts', 'Brouillons')}</div>
-                  <div class="outlook-hd-folder">🗑️ ${tt('Deleted Items', 'Éléments supprimés')}</div>
-                  <div class="outlook-hd-folder">⚠️ ${tt('Junk Email', 'Courrier indésirable')}</div>
-                </div>
-                <div class="outlook-hd-content">
-                  <div class="outlook-hd-header">
-                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-                      ${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}
-                      <div class="outlook-subject">${escapeHtml(f.subject || '')}</div>
-                    </div>
-                    <div class="outlook-hd-sender-row">
-                      <div class="outlook-hd-avatar" style="background:${escapeAttribute(f.avatar_color || '#0078d4')};">${escapeHtml((f.from_name || 'U').charAt(0).toUpperCase())}</div>
-                      <div class="outlook-hd-sender-info">
-                        <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span></div>
-                        <div class="outlook-hd-recipients">${tt('To', 'À')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
-                      </div>
-                      <div class="outlook-hd-date">${escapeHtml(f.date || '')}</div>
-                    </div>
-                  </div>
-                  <div class="outlook-content">
-                    ${sanitizeBody(f.body)}
-                    ${f.has_attachment ? `<div class="outlook-attachment outlook-hd-attachment">📎 <span>${escapeHtml(f.attachment_name || 'piece_jointe.pdf')}</span><span class="outlook-hd-filesize">128 KB</span></div>` : ''}
-                  </div>
+                <div class="outlook-content">
+                  ${sanitizeBody(f.body)}
+                  ${f.has_attachment ? `<div class="outlook-attachment outlook-hd-attachment">📎 <span>${escapeHtml(f.attachment_name || 'piece_jointe.pdf')}</span><span class="outlook-hd-filesize">128 KB</span></div>` : ''}
                 </div>
               </div>
             </div>
