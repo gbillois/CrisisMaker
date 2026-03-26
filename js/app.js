@@ -220,8 +220,8 @@
                 stimulus.watermark = {
                   enabled: settings.watermark_enabled !== false,
                   text: settings.watermark_text || 'EXERCISE EXERCISE EXERCISE',
-                  text_size: settings.watermark_text_size ?? 12,
-                  position_v: settings.watermark_position_v || 'middle',
+                  text_size: settings.watermark_text_size ?? 16,
+                  position_v: settings.watermark_position_v || 'top',
                   position_h: settings.watermark_position_h || 'center',
                   opacity: settings.watermark_opacity ?? 50,
                   rotation: settings.watermark_rotation ?? 0

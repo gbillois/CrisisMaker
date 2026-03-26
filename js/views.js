@@ -511,7 +511,7 @@
                   <input type="text" data-bind="settings.watermark_text" value="${escapeAttribute(settings.watermark_text || 'EXERCISE EXERCISE EXERCISE')}">
                 </label>
                 <label class="field">${tt('Text size (pt)', 'Taille du texte (pt)')}
-                  <input type="number" min="6" max="120" step="1" data-bind="settings.watermark_text_size" value="${settings.watermark_text_size ?? 12}">
+                  <input type="number" min="6" max="120" step="1" data-bind="settings.watermark_text_size" value="${settings.watermark_text_size ?? 16}">
                 </label>
                 <label class="field">${tt('Vertical position', 'Position verticale')}
                   <select data-bind="settings.watermark_position_v">
@@ -779,8 +779,6 @@
             <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true">${tt('Delete', 'Supprimer')}</button>
           </div>
 
-          ${renderStimulusWatermarkControls(stimulus)}
-
           <div style="margin-top:16px;">
             ${renderLLMConfigBlock('stimulus', tt(
               'Ex: "A Le Monde article about the attack by journalist Jean Dupont, at H+2. Alarming but factual, mentioning impact on 2 million customers."',
@@ -791,6 +789,8 @@
           <div class="field-grid" style="margin-top:16px;">
             ${library.fields.map((spec) => renderFieldControl(stimulus, spec)).join('')}
           </div>
+
+          ${renderStimulusWatermarkControls(stimulus)}
         `;
       }
 
@@ -798,9 +798,9 @@
         const wm = stimulus.watermark || {};
         const hasOverride = stimulus.watermark !== null;
         return `
-          <details class="watermark-override-details" style="margin-top:16px;" ${hasOverride ? 'open' : ''}>
-            <summary style="cursor:pointer; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Watermark override', 'Filigrane personnalisé')}</summary>
-            <div class="field-grid cols-2" style="margin-top:10px;">
+          <div style="margin-top:16px; border:1px solid var(--border, #e5e7eb); border-radius:8px; padding:14px 16px;">
+            <p style="margin:0 0 10px; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Watermark override', 'Filigrane personnalisé')}</p>
+            <div class="field-grid cols-2">
               <label class="field">${tt('Override watermark', 'Personnaliser le filigrane')}
                 <select data-stimulus-watermark="${stimulus.id}.override">
                   <option value="false" ${!hasOverride ? 'selected' : ''}>${tt('Use global settings', 'Utiliser les réglages globaux')}</option>
@@ -818,12 +818,12 @@
                   <input type="text" data-stimulus-watermark="${stimulus.id}.text" value="${escapeAttribute(wm.text || 'EXERCISE EXERCISE EXERCISE')}">
                 </label>
                 <label class="field">${tt('Text size (pt)', 'Taille du texte (pt)')}
-                  <input type="number" min="6" max="120" step="1" data-stimulus-watermark="${stimulus.id}.text_size" value="${wm.text_size ?? 12}">
+                  <input type="number" min="6" max="120" step="1" data-stimulus-watermark="${stimulus.id}.text_size" value="${wm.text_size ?? 16}">
                 </label>
                 <label class="field">${tt('Vertical position', 'Position verticale')}
                   <select data-stimulus-watermark="${stimulus.id}.position_v">
-                    <option value="top" ${wm.position_v === 'top' ? 'selected' : ''}>${tt('Top', 'Haut')}</option>
-                    <option value="middle" ${wm.position_v === 'middle' || !wm.position_v ? 'selected' : ''}>${tt('Middle', 'Milieu')}</option>
+                    <option value="top" ${wm.position_v === 'top' || !wm.position_v ? 'selected' : ''}>${tt('Top', 'Haut')}</option>
+                    <option value="middle" ${wm.position_v === 'middle' ? 'selected' : ''}>${tt('Middle', 'Milieu')}</option>
                     <option value="bottom" ${wm.position_v === 'bottom' ? 'selected' : ''}>${tt('Bottom', 'Bas')}</option>
                   </select>
                 </label>
@@ -848,7 +848,7 @@
                 </label>
               ` : ''}
             </div>
-          </details>
+          </div>
         `;
       }
 
@@ -1001,8 +1001,8 @@
         return {
           enabled: settings.watermark_enabled !== false,
           text: settings.watermark_text || 'EXERCISE EXERCISE EXERCISE',
-          text_size: settings.watermark_text_size ?? 12,
-          position_v: settings.watermark_position_v || 'middle',
+          text_size: settings.watermark_text_size ?? 16,
+          position_v: settings.watermark_position_v || 'top',
           position_h: settings.watermark_position_h || 'center',
           opacity: settings.watermark_opacity ?? 50,
           rotation: settings.watermark_rotation ?? 0
@@ -1018,7 +1018,7 @@
         const justifyContent = hMap[wm.position_h] || 'center';
         const opacity = Math.max(0, Math.min(100, Number(wm.opacity) || 50)) / 100;
         const rotation = Number(wm.rotation) || 0;
-        const textSize = Math.max(6, Math.min(120, Number(wm.text_size) || 12));
+        const textSize = Math.max(6, Math.min(120, Number(wm.text_size) || 16));
         return `<div class="export-watermark-overlay" style="display:flex; align-items:${alignItems}; justify-content:${justifyContent};"><span class="export-watermark-text" style="opacity:${opacity}; transform:rotate(-${rotation}deg); font-size:${textSize}pt;">${escapeHtml(wm.text || '')}</span></div>`;
       }
 
