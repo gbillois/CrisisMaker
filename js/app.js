@@ -127,7 +127,7 @@
           input.addEventListener('change', () => {
             let val = input.value;
             if (input.dataset.bind === 'settings.watermark_enabled') val = (val === 'true');
-            else if (input.dataset.bind === 'settings.watermark_opacity' || input.dataset.bind === 'settings.watermark_rotation') val = Number(val);
+            else if (input.dataset.bind === 'settings.watermark_opacity' || input.dataset.bind === 'settings.watermark_rotation' || input.dataset.bind === 'settings.watermark_text_size') val = Number(val);
             setByPath(appState.scenario, input.dataset.bind, val);
             if (input.dataset.bind === 'settings.ai_provider') {
               const models = DEFAULT_MODELS[input.value];
@@ -220,6 +220,7 @@
                 stimulus.watermark = {
                   enabled: settings.watermark_enabled !== false,
                   text: settings.watermark_text || 'EXERCISE EXERCISE EXERCISE',
+                  text_size: settings.watermark_text_size ?? 12,
                   position_v: settings.watermark_position_v || 'middle',
                   position_h: settings.watermark_position_h || 'center',
                   opacity: settings.watermark_opacity ?? 50,
@@ -231,7 +232,7 @@
             } else if (stimulus.watermark) {
               let val = input.value;
               if (prop === 'enabled') val = (val === 'true');
-              else if (prop === 'opacity' || prop === 'rotation') val = Number(val);
+              else if (prop === 'opacity' || prop === 'rotation' || prop === 'text_size') val = Number(val);
               stimulus.watermark[prop] = val;
             }
             App.render();

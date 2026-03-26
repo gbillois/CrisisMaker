@@ -73,7 +73,7 @@
           actors,
           stimuli: [],
           custom_templates: [],
-          settings: { language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_position_v: 'middle', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0 }
+          settings: { language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 12, watermark_position_v: 'middle', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0 }
         };
         const samples = [
           makeStimulus('email_internal', actors[1].id, 0),
@@ -221,6 +221,7 @@
           if (!raw.settings.watermark_position_h) raw.settings.watermark_position_h = 'center';
           if (raw.settings.watermark_opacity === undefined) raw.settings.watermark_opacity = 50;
           if (raw.settings.watermark_rotation === undefined) raw.settings.watermark_rotation = 0;
+          if (raw.settings.watermark_text_size === undefined) raw.settings.watermark_text_size = 12;
         }
         // Add custom_templates array
         if (!Array.isArray(raw.custom_templates)) raw.custom_templates = [];
