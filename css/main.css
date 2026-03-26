@@ -1736,3 +1736,23 @@
     .carousel-thumb-label span {
       color: var(--muted);
     }
+
+    /* Export watermark overlay */
+    .export-watermark-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      overflow: hidden;
+    }
+    .export-watermark-text {
+      font-size: clamp(18px, 4vw, 48px);
+      font-weight: 900;
+      color: #dc2626;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      user-select: none;
+      padding: 12px 24px;
+      text-align: center;
+    }

@@ -73,7 +73,7 @@
           actors,
           stimuli: [],
           custom_templates: [],
-          settings: { language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd' }
+          settings: { language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_position_v: 'middle', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0 }
         };
         const samples = [
           makeStimulus('email_internal', actors[1].id, 0),
@@ -124,6 +124,7 @@
           fields: deepClone(template.defaults),
           generated_text: {},
           manual_overrides: {},
+          watermark: null,
           history: []
         };
       }
@@ -185,6 +186,7 @@
           fields: { ...deepClone(library.defaults), ...(stimulus.fields || {}) },
           generated_text: stimulus.generated_text || {},
           manual_overrides: stimulus.manual_overrides || {},
+          watermark: stimulus.watermark || null,
           history: stimulus.history || []
         };
       }
@@ -213,6 +215,12 @@
           if (!raw.settings.max_versions) raw.settings.max_versions = 3;
           if (!raw.settings.auto_save_interval_seconds) raw.settings.auto_save_interval_seconds = 30;
           if (!raw.settings.template_quality) raw.settings.template_quality = 'hd';
+          if (raw.settings.watermark_enabled === undefined) raw.settings.watermark_enabled = true;
+          if (!raw.settings.watermark_text) raw.settings.watermark_text = 'EXERCISE EXERCISE EXERCISE';
+          if (!raw.settings.watermark_position_v) raw.settings.watermark_position_v = 'middle';
+          if (!raw.settings.watermark_position_h) raw.settings.watermark_position_h = 'center';
+          if (raw.settings.watermark_opacity === undefined) raw.settings.watermark_opacity = 50;
+          if (raw.settings.watermark_rotation === undefined) raw.settings.watermark_rotation = 0;
         }
         // Add custom_templates array
         if (!Array.isArray(raw.custom_templates)) raw.custom_templates = [];

@@ -499,6 +499,47 @@
               ${(isOpenAI || isAzure) ? `<p class="helper">${tt('The OpenAI model dropdown is a curated list of current general-purpose chat-compatible model IDs. Azure availability still depends on your deployed model and region.', 'La liste déroulante OpenAI propose une sélection de modèles généralistes récents compatibles chat. La disponibilité dans Azure dépend toujours de votre déploiement et de votre région.')}</p>` : ''}
             </article>
             <article class="card">
+              <div class="section-header"><h3>${tt('Export watermark', 'Filigrane d\'export')}</h3></div>
+              <div class="field-grid cols-2">
+                <label class="field">${tt('Watermark enabled', 'Filigrane activé')}
+                  <select data-bind="settings.watermark_enabled">
+                    <option value="true" ${settings.watermark_enabled !== false ? 'selected' : ''}>${tt('Yes', 'Oui')}</option>
+                    <option value="false" ${settings.watermark_enabled === false ? 'selected' : ''}>${tt('No', 'Non')}</option>
+                  </select>
+                </label>
+                <label class="field">${tt('Text', 'Texte')}
+                  <input type="text" data-bind="settings.watermark_text" value="${escapeAttribute(settings.watermark_text || 'EXERCISE EXERCISE EXERCISE')}">
+                </label>
+                <label class="field">${tt('Vertical position', 'Position verticale')}
+                  <select data-bind="settings.watermark_position_v">
+                    <option value="top" ${settings.watermark_position_v === 'top' ? 'selected' : ''}>${tt('Top', 'Haut')}</option>
+                    <option value="middle" ${settings.watermark_position_v === 'middle' ? 'selected' : ''}>${tt('Middle', 'Milieu')}</option>
+                    <option value="bottom" ${settings.watermark_position_v === 'bottom' ? 'selected' : ''}>${tt('Bottom', 'Bas')}</option>
+                  </select>
+                </label>
+                <label class="field">${tt('Horizontal position', 'Position horizontale')}
+                  <select data-bind="settings.watermark_position_h">
+                    <option value="left" ${settings.watermark_position_h === 'left' ? 'selected' : ''}>${tt('Left', 'Gauche')}</option>
+                    <option value="center" ${settings.watermark_position_h === 'center' ? 'selected' : ''}>${tt('Center', 'Centre')}</option>
+                    <option value="right" ${settings.watermark_position_h === 'right' ? 'selected' : ''}>${tt('Right', 'Droite')}</option>
+                  </select>
+                </label>
+                <label class="field">${tt('Opacity (%)', 'Opacité (%)')}
+                  <input type="number" min="0" max="100" step="5" data-bind="settings.watermark_opacity" value="${settings.watermark_opacity ?? 50}">
+                </label>
+                <label class="field">${tt('Rotation', 'Rotation')}
+                  <select data-bind="settings.watermark_rotation">
+                    <option value="0" ${String(settings.watermark_rotation) === '0' ? 'selected' : ''}>0°</option>
+                    <option value="45" ${String(settings.watermark_rotation) === '45' ? 'selected' : ''}>45°</option>
+                    <option value="90" ${String(settings.watermark_rotation) === '90' ? 'selected' : ''}>90°</option>
+                    <option value="135" ${String(settings.watermark_rotation) === '135' ? 'selected' : ''}>135°</option>
+                    <option value="180" ${String(settings.watermark_rotation) === '180' ? 'selected' : ''}>180°</option>
+                  </select>
+                </label>
+              </div>
+              <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported stimuli. Each stimulus can override these defaults.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages.')}</p>
+            </article>
+            <article class="card">
               <div class="section-header"><h3>${tt('Included modules', 'Modules implémentés')}</h3></div>
               <div class="tag-row">
                 <span class="tag">ScenarioManager</span>
@@ -735,6 +776,8 @@
             <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true">${tt('Delete', 'Supprimer')}</button>
           </div>
 
+          ${renderStimulusWatermarkControls(stimulus)}
+
           <div style="margin-top:16px;">
             ${renderLLMConfigBlock('stimulus', tt(
               'Ex: "A Le Monde article about the attack by journalist Jean Dupont, at H+2. Alarming but factual, mentioning impact on 2 million customers."',
@@ -745,6 +788,61 @@
           <div class="field-grid" style="margin-top:16px;">
             ${library.fields.map((spec) => renderFieldControl(stimulus, spec)).join('')}
           </div>
+        `;
+      }
+
+      function renderStimulusWatermarkControls(stimulus) {
+        const wm = stimulus.watermark || {};
+        const hasOverride = stimulus.watermark !== null;
+        return `
+          <details class="watermark-override-details" style="margin-top:16px;" ${hasOverride ? 'open' : ''}>
+            <summary style="cursor:pointer; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Watermark override', 'Filigrane personnalisé')}</summary>
+            <div class="field-grid cols-2" style="margin-top:10px;">
+              <label class="field">${tt('Override watermark', 'Personnaliser le filigrane')}
+                <select data-stimulus-watermark="${stimulus.id}.override">
+                  <option value="false" ${!hasOverride ? 'selected' : ''}>${tt('Use global settings', 'Utiliser les réglages globaux')}</option>
+                  <option value="true" ${hasOverride ? 'selected' : ''}>${tt('Custom for this stimulus', 'Personnalisé pour ce stimulus')}</option>
+                </select>
+              </label>
+              ${hasOverride ? `
+                <label class="field">${tt('Enabled', 'Activé')}
+                  <select data-stimulus-watermark="${stimulus.id}.enabled">
+                    <option value="true" ${wm.enabled !== false ? 'selected' : ''}>${tt('Yes', 'Oui')}</option>
+                    <option value="false" ${wm.enabled === false ? 'selected' : ''}>${tt('No', 'Non')}</option>
+                  </select>
+                </label>
+                <label class="field" style="grid-column:1/-1;">${tt('Text', 'Texte')}
+                  <input type="text" data-stimulus-watermark="${stimulus.id}.text" value="${escapeAttribute(wm.text || 'EXERCISE EXERCISE EXERCISE')}">
+                </label>
+                <label class="field">${tt('Vertical position', 'Position verticale')}
+                  <select data-stimulus-watermark="${stimulus.id}.position_v">
+                    <option value="top" ${wm.position_v === 'top' ? 'selected' : ''}>${tt('Top', 'Haut')}</option>
+                    <option value="middle" ${wm.position_v === 'middle' || !wm.position_v ? 'selected' : ''}>${tt('Middle', 'Milieu')}</option>
+                    <option value="bottom" ${wm.position_v === 'bottom' ? 'selected' : ''}>${tt('Bottom', 'Bas')}</option>
+                  </select>
+                </label>
+                <label class="field">${tt('Horizontal position', 'Position horizontale')}
+                  <select data-stimulus-watermark="${stimulus.id}.position_h">
+                    <option value="left" ${wm.position_h === 'left' ? 'selected' : ''}>${tt('Left', 'Gauche')}</option>
+                    <option value="center" ${wm.position_h === 'center' || !wm.position_h ? 'selected' : ''}>${tt('Center', 'Centre')}</option>
+                    <option value="right" ${wm.position_h === 'right' ? 'selected' : ''}>${tt('Right', 'Droite')}</option>
+                  </select>
+                </label>
+                <label class="field">${tt('Opacity (%)', 'Opacité (%)')}
+                  <input type="number" min="0" max="100" step="5" data-stimulus-watermark="${stimulus.id}.opacity" value="${wm.opacity ?? 50}">
+                </label>
+                <label class="field">${tt('Rotation', 'Rotation')}
+                  <select data-stimulus-watermark="${stimulus.id}.rotation">
+                    <option value="0" ${String(wm.rotation || 0) === '0' ? 'selected' : ''}>0°</option>
+                    <option value="45" ${String(wm.rotation || 0) === '45' ? 'selected' : ''}>45°</option>
+                    <option value="90" ${String(wm.rotation || 0) === '90' ? 'selected' : ''}>90°</option>
+                    <option value="135" ${String(wm.rotation || 0) === '135' ? 'selected' : ''}>135°</option>
+                    <option value="180" ${String(wm.rotation || 0) === '180' ? 'selected' : ''}>180°</option>
+                  </select>
+                </label>
+              ` : ''}
+            </div>
+          </details>
         `;
       }
 
@@ -891,10 +989,36 @@
         `;
       }
 
+      function resolveWatermarkConfig(stimulus) {
+        const settings = appState.scenario?.settings || {};
+        if (stimulus.watermark) return stimulus.watermark;
+        return {
+          enabled: settings.watermark_enabled !== false,
+          text: settings.watermark_text || 'EXERCISE EXERCISE EXERCISE',
+          position_v: settings.watermark_position_v || 'middle',
+          position_h: settings.watermark_position_h || 'center',
+          opacity: settings.watermark_opacity ?? 50,
+          rotation: settings.watermark_rotation ?? 0
+        };
+      }
+
+      function renderWatermarkOverlay(stimulus) {
+        const wm = resolveWatermarkConfig(stimulus);
+        if (!wm.enabled) return '';
+        const vMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+        const hMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+        const alignItems = vMap[wm.position_v] || 'center';
+        const justifyContent = hMap[wm.position_h] || 'center';
+        const opacity = Math.max(0, Math.min(100, Number(wm.opacity) || 50)) / 100;
+        const rotation = Number(wm.rotation) || 0;
+        return `<div class="export-watermark-overlay" style="display:flex; align-items:${alignItems}; justify-content:${justifyContent};"><span class="export-watermark-text" style="opacity:${opacity}; transform:rotate(-${rotation}deg);">${escapeHtml(wm.text || '')}</span></div>`;
+      }
+
       function renderStimulusPreview(stimulus, id = '', thumbnail = false) {
         const wrapperId = id || `render-${stimulus.id}`;
         const body = TemplateEngine.render(stimulus, getActor(stimulus.actor_id), appState.scenario);
-        return `<div id="${wrapperId}" class="render-frame" style="transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center;">${body}</div>`;
+        const watermark = renderWatermarkOverlay(stimulus);
+        return `<div id="${wrapperId}" class="render-frame" style="position:relative; transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center;">${body}${watermark}</div>`;
       }
 
       function renderHistoryModal(stimulus) {
