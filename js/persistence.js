@@ -96,10 +96,11 @@
       }
 
       function loadProviderSettings() {
+        // Clean up legacy separate API key storage
+        localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKey);
         return {
           ai_provider: localStorage.getItem(PROVIDER_STORAGE_KEYS.aiProvider) || undefined,
           azure_endpoint: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureEndpoint) || undefined,
-          azure_api_key: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKey) || undefined,
           azure_deployment: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureDeployment) || undefined
         };
       }
@@ -107,8 +108,8 @@
       function persistProviderSettings(settings) {
         localStorage.setItem(PROVIDER_STORAGE_KEYS.aiProvider, settings.ai_provider || 'anthropic');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureEndpoint, settings.azure_endpoint || '');
-        localStorage.setItem(PROVIDER_STORAGE_KEYS.azureApiKey, settings.azure_api_key || '');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureDeployment, settings.azure_deployment || '');
+        // API keys are only persisted within the main settings store, never as separate keys
       }
 
 
@@ -185,7 +186,7 @@
           ];
           if (fields.reference) headers.push(line('X-Reference', fields.reference));
           if (fields.has_attachment && fields.attachment_name) headers.push(line('X-Attachment-Placeholder', fields.attachment_name));
-          const body = this.normalizeEmailBody(fields.body || '');
+          const body = this.normalizeEmailBody(sanitizeBody(fields.body));
           return `${headers.join('\r\n')}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${body}`;
         },
         formatMailbox(name, email) {
@@ -206,7 +207,9 @@
 
 
       async function saveScenarioToFile() {
-        const json = JSON.stringify(appState.scenario, null, 2);
+        const exportData = JSON.parse(JSON.stringify(appState.scenario));
+        exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '' };
+        const json = JSON.stringify(exportData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_${new Date().toISOString().slice(0, 10)}.json`);
         pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.'), 'success');

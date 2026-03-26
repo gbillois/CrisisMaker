@@ -279,13 +279,20 @@
         if (data.channel && !CHANNEL_META[data.channel]) {
           errors.push(tt(`Unknown channel "${data.channel}".`, `Canal inconnu "${data.channel}".`));
         }
-        // Sanitize CSS: no @import, no url()
-        if (data.render_css && (/url\s*\(/i.test(data.render_css) || /@import/i.test(data.render_css))) {
-          errors.push(tt('render_css must not contain url() or @import.', 'render_css ne doit pas contenir url() ou @import.'));
+        // Sanitize CSS: no @import, no url(), no expression(), no behavior
+        if (data.render_css && (/url\s*\(/i.test(data.render_css) || /@import/i.test(data.render_css) || /expression\s*\(/i.test(data.render_css) || /behavior\s*:/i.test(data.render_css) || /-moz-binding\s*:/i.test(data.render_css))) {
+          errors.push(tt('render_css must not contain url(), @import, expression(), behavior, or -moz-binding.', 'render_css ne doit pas contenir url(), @import, expression(), behavior ou -moz-binding.'));
         }
-        // Sanitize HTML: no <script>, no on* handlers, no <iframe>
-        if (data.render_html && (/<script/i.test(data.render_html) || /\bon\w+\s*=/i.test(data.render_html) || /<iframe/i.test(data.render_html))) {
-          errors.push(tt('render_html contains forbidden elements (script, iframe, or event handlers).', 'render_html contient des éléments interdits (script, iframe ou gestionnaires d\'événements).'));
+        // Sanitize HTML: no dangerous elements or attributes
+        if (data.render_html) {
+          const forbidden = [
+            /<script[\s>\/]/i, /<iframe[\s>\/]/i, /<object[\s>\/]/i, /<embed[\s>\/]/i,
+            /<link[\s>\/]/i, /<meta[\s>\/]/i, /<base[\s>\/]/i, /<form[\s>\/]/i,
+            /\bon\w+\s*=/i, /javascript\s*:/i, /data\s*:\s*text\/html/i
+          ];
+          if (forbidden.some(rx => rx.test(data.render_html))) {
+            errors.push(tt('render_html contains forbidden elements (script, iframe, object, embed, link, meta, base, form, event handlers, or javascript: URLs).', 'render_html contient des éléments interdits (script, iframe, object, embed, link, meta, base, form, gestionnaires d\'événements ou URLs javascript:).'));
+          }
         }
         return errors;
       }

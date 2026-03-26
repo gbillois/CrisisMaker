@@ -3,9 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src https://api.anthropic.com https://api.openai.com https://*.openai.azure.com https://*.cognitiveservices.azure.com; form-action 'none'; base-uri 'none'; frame-ancestors 'none';">
   <title>CrisisMaker by Wavestone - Crisis exercise studio</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Local-first: place html-to-image.min.js and jszip.min.js in js/lib/ for offline/standalone use -->
+  <script src="js/lib/html-to-image.min.js"></script>
+  <script src="js/lib/jszip.min.js"></script>
+  <!-- CDN fallback if local libs are missing (requires internet) -->
+  <script src="js/lib-fallback.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=UnifrakturMaguntia&family=Libre+Baskerville:wght@400;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;700&family=Noto+Sans:wght@400;700&family=DM+Serif+Display&family=Lora:wght@400;700&family=Source+Sans+3:wght@400;600;700&family=Merriweather:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">

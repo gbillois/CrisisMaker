@@ -755,8 +755,10 @@
       }
 
       function setByPath(target, path, value) {
+        const BLOCKED = new Set(['__proto__', 'constructor', 'prototype']);
         const parts = path.split('.');
         const last = parts.pop();
+        if (BLOCKED.has(last) || parts.some(p => BLOCKED.has(p))) return;
         let ref = target;
         parts.forEach((part) => { ref = ref[part]; });
         ref[last] = value;
@@ -905,6 +907,25 @@
         return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
       function escapeAttribute(value) { return escapeHtml(value).replace(/`/g, '&#96;'); }
+
+      function sanitizeBody(html) {
+        const raw = String(html ?? '');
+        if (!raw) return '';
+        return raw
+          .replace(/<script[\s>][\s\S]*?<\/script\s*>/gi, '')
+          .replace(/<script[\s>\/][^>]*>/gi, '')
+          .replace(/<iframe[\s>][\s\S]*?<\/iframe\s*>/gi, '')
+          .replace(/<iframe[\s>\/][^>]*>/gi, '')
+          .replace(/<object[\s>][\s\S]*?<\/object\s*>/gi, '')
+          .replace(/<embed[\s>\/][^>]*>/gi, '')
+          .replace(/<link[\s>\/][^>]*>/gi, '')
+          .replace(/<form[\s>][\s\S]*?<\/form\s*>/gi, '')
+          .replace(/<meta[\s>\/][^>]*>/gi, '')
+          .replace(/<base[\s>\/][^>]*>/gi, '')
+          .replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+          .replace(/javascript\s*:/gi, 'about:invalid')
+          .replace(/data\s*:\s*text\/html/gi, 'about:invalid');
+      }
 
       function iconReply() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"></path></svg>'; }
       function iconGift() { return '<svg viewBox="0 0 24 24"><path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"></path><path d="M2 7h20v5H2z"></path><path d="M12 21V7"></path><path d="M12 7H8.5a2.5 2.5 0 1 1 0-5c2.2 0 3.5 2.1 3.5 5z"></path><path d="M12 7h3.5a2.5 2.5 0 1 0 0-5c-2.2 0-3.5 2.1-3.5 5z"></path></svg>'; }
