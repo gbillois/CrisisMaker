@@ -779,8 +779,6 @@
             <button class="btn btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true">${tt('Delete', 'Supprimer')}</button>
           </div>
 
-          ${renderStimulusWatermarkControls(stimulus)}
-
           <div style="margin-top:16px;">
             ${renderLLMConfigBlock('stimulus', tt(
               'Ex: "A Le Monde article about the attack by journalist Jean Dupont, at H+2. Alarming but factual, mentioning impact on 2 million customers."',
@@ -791,6 +789,8 @@
           <div class="field-grid" style="margin-top:16px;">
             ${library.fields.map((spec) => renderFieldControl(stimulus, spec)).join('')}
           </div>
+
+          ${renderStimulusWatermarkControls(stimulus)}
         `;
       }
 
