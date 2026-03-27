@@ -543,18 +543,6 @@
               <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported stimuli. Each stimulus can override these defaults.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages.')}</p>
             </article>
             <article class="card">
-              <div class="section-header"><h3>${tt('AI-generated content metadata', 'Métadonnées de contenu généré par IA')}</h3></div>
-              <div class="field-grid cols-2">
-                <label class="field">${tt('Embed AI metadata in PNG', 'Intégrer les métadonnées IA dans les PNG')}
-                  <select data-bind="settings.png_ai_metadata">
-                    <option value="true" ${settings.png_ai_metadata !== false ? 'selected' : ''}>${tt('Yes', 'Oui')}</option>
-                    <option value="false" ${settings.png_ai_metadata === false ? 'selected' : ''}>${tt('No', 'Non')}</option>
-                  </select>
-                </label>
-              </div>
-              <p class="helper" style="margin-top:14px;">${tt('When enabled, exported PNG files include standard metadata identifying the content as AI-generated: PNG tEXt chunks (Software, Source, Comment) and XMP/IPTC DigitalSourceType (trainedAlgorithmicMedia). These tags are machine-readable and follow the IPTC standard for AI-generated content.', 'Lorsque cette option est activée, les fichiers PNG exportés incluent des métadonnées standard identifiant le contenu comme généré par IA : chunks PNG tEXt (Software, Source, Comment) et XMP/IPTC DigitalSourceType (trainedAlgorithmicMedia). Ces tags sont lisibles par les machines et suivent le standard IPTC pour le contenu généré par IA.')}</p>
-            </article>
-            <article class="card">
               <div class="section-header"><h3>${tt('Included modules', 'Modules implémentés')}</h3></div>
               <div class="tag-row">
                 <span class="tag">ScenarioManager</span>

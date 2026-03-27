@@ -284,7 +284,7 @@
           }
           try {
             let dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
-            if (appState.scenario?.settings?.png_ai_metadata !== false) dataUrl = PngMetadata.injectMetadata(dataUrl);
+            dataUrl = PngMetadata.injectMetadata(dataUrl);
             this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
             pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
           } finally {
@@ -312,7 +312,7 @@
             sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
             const node = sandbox.firstElementChild;
             let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
-            if (appState.scenario?.settings?.png_ai_metadata !== false) dataUrl = PngMetadata.injectMetadata(dataUrl);
+            dataUrl = PngMetadata.injectMetadata(dataUrl);
             zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
           }
           document.body.removeChild(sandbox);
