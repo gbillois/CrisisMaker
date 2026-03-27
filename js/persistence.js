@@ -293,11 +293,11 @@
         },
         async exportRawEmail(stimulus) {
           if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.'));
-          if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email stimuli can be exported as .msg.', 'Seuls les stimuli e-mail peuvent être exportés en .msg.'));
+          if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email stimuli can be exported as .eml.', 'Seuls les stimuli e-mail peuvent être exportés en .eml.'));
           const content = this.buildRawEmailContent(stimulus);
-          const blob = new Blob([content], { type: 'application/vnd.ms-outlook' });
+          const blob = new Blob([content], { type: 'message/rfc822' });
           downloadBlob(blob, this.filenameForRawEmail(stimulus));
-          pushToast(tt('Email exported as .msg.', 'E-mail exporté en .msg.'), 'success');
+          pushToast(tt('Email exported as .eml.', 'E-mail exporté en .eml.'), 'success');
         },
         async exportAll() {
           const zip = new JSZip();
@@ -326,7 +326,7 @@
         },
         filenameForRawEmail(stimulus) {
           const actor = getActor(stimulus.actor_id);
-          return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${slugify(stimulus.fields.subject || stimulus.channel)}_${slugify(actor?.name || 'actor')}.msg`;
+          return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${slugify(stimulus.fields.subject || stimulus.channel)}_${slugify(actor?.name || 'actor')}.eml`;
         },
         isEmailStimulus(stimulus) {
           return Boolean(stimulus?.channel && String(stimulus.channel).startsWith('email_'));
