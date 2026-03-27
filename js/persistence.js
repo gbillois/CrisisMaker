@@ -134,6 +134,143 @@
       }
 
 
+      // ── PNG AI metadata injection ──────────────────────────────────────
+      // Embeds tEXt chunks and XMP/IPTC DigitalSourceType into a PNG data URL.
+      const PngMetadata = (() => {
+        // CRC32 lookup table (PNG uses CRC32/ISO 3309)
+        const crcTable = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+          let c = n;
+          for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+          crcTable[n] = c;
+        }
+        function crc32(bytes) {
+          let crc = 0xFFFFFFFF;
+          for (let i = 0; i < bytes.length; i++) crc = crcTable[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+          return (crc ^ 0xFFFFFFFF) >>> 0;
+        }
+
+        function makeTextChunk(keyword, text) {
+          const encoder = new TextEncoder();
+          const kwBytes = encoder.encode(keyword);
+          const txtBytes = encoder.encode(text);
+          // tEXt: keyword + 0x00 + text
+          const data = new Uint8Array(kwBytes.length + 1 + txtBytes.length);
+          data.set(kwBytes, 0);
+          data[kwBytes.length] = 0;
+          data.set(txtBytes, kwBytes.length + 1);
+          return buildChunk('tEXt', data);
+        }
+
+        function makeItxtChunk(keyword, text) {
+          const encoder = new TextEncoder();
+          const kwBytes = encoder.encode(keyword);
+          const txtBytes = encoder.encode(text);
+          // iTXt: keyword + 0x00 + compressionFlag(0) + compressionMethod(0) + languageTag + 0x00 + translatedKeyword + 0x00 + text
+          const data = new Uint8Array(kwBytes.length + 1 + 2 + 1 + 1 + txtBytes.length);
+          let offset = 0;
+          data.set(kwBytes, offset); offset += kwBytes.length;
+          data[offset++] = 0; // null separator
+          data[offset++] = 0; // compression flag (no compression)
+          data[offset++] = 0; // compression method
+          data[offset++] = 0; // empty language tag + null separator
+          data[offset++] = 0; // empty translated keyword + null separator
+          data.set(txtBytes, offset);
+          return buildChunk('iTXt', data);
+        }
+
+        function buildChunk(type, data) {
+          const encoder = new TextEncoder();
+          const typeBytes = encoder.encode(type);
+          const chunk = new Uint8Array(4 + 4 + data.length + 4);
+          // Length (4 bytes, big-endian)
+          const len = data.length;
+          chunk[0] = (len >>> 24) & 0xFF;
+          chunk[1] = (len >>> 16) & 0xFF;
+          chunk[2] = (len >>> 8) & 0xFF;
+          chunk[3] = len & 0xFF;
+          // Type (4 bytes)
+          chunk.set(typeBytes, 4);
+          // Data
+          chunk.set(data, 8);
+          // CRC over type + data
+          const crcInput = new Uint8Array(4 + data.length);
+          crcInput.set(typeBytes, 0);
+          crcInput.set(data, 4);
+          const crcVal = crc32(crcInput);
+          const crcOffset = 8 + data.length;
+          chunk[crcOffset] = (crcVal >>> 24) & 0xFF;
+          chunk[crcOffset + 1] = (crcVal >>> 16) & 0xFF;
+          chunk[crcOffset + 2] = (crcVal >>> 8) & 0xFF;
+          chunk[crcOffset + 3] = crcVal & 0xFF;
+          return chunk;
+        }
+
+        const XMP_TEMPLATE = `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/"
+      xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/">
+      <dc:description>
+        <rdf:Alt><rdf:li xml:lang="x-default">AI-generated crisis exercise stimulus created with CrisisMaker by Wavestone</rdf:li></rdf:Alt>
+      </dc:description>
+      <Iptc4xmpExt:DigitalSourceType>http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia</Iptc4xmpExt:DigitalSourceType>
+      <photoshop:Credit>CrisisMaker by Wavestone</photoshop:Credit>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`;
+
+        function injectMetadata(dataUrl) {
+          // Decode base64 PNG from data URL
+          const base64 = dataUrl.split(',')[1];
+          const binaryStr = atob(base64);
+          const original = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) original[i] = binaryStr.charCodeAt(i);
+
+          // Find IEND chunk (last 12 bytes: length(4) + "IEND"(4) + CRC(4))
+          // Search backwards for "IEND"
+          let iendPos = -1;
+          for (let i = original.length - 12; i >= 8; i--) {
+            if (original[i + 4] === 0x49 && original[i + 5] === 0x45 && original[i + 6] === 0x4E && original[i + 7] === 0x44) {
+              iendPos = i;
+              break;
+            }
+          }
+          if (iendPos < 0) return dataUrl; // malformed PNG, return as-is
+
+          // Build metadata chunks
+          const chunks = [
+            makeTextChunk('Software', 'CrisisMaker by Wavestone'),
+            makeTextChunk('Source', 'CrisisMaker - AI-generated crisis exercise stimulus'),
+            makeTextChunk('Comment', 'This image was generated using artificial intelligence for crisis exercise simulation purposes.'),
+            makeItxtChunk('XML:com.adobe.xmp', XMP_TEMPLATE)
+          ];
+
+          // Calculate total size of new chunks
+          const totalNewBytes = chunks.reduce((sum, c) => sum + c.length, 0);
+
+          // Build new PNG: [before IEND] + [metadata chunks] + [IEND]
+          const result = new Uint8Array(original.length + totalNewBytes);
+          result.set(original.subarray(0, iendPos), 0);
+          let writePos = iendPos;
+          for (const chunk of chunks) {
+            result.set(chunk, writePos);
+            writePos += chunk.length;
+          }
+          result.set(original.subarray(iendPos), writePos);
+
+          // Re-encode to data URL
+          let binary = '';
+          for (let i = 0; i < result.length; i++) binary += String.fromCharCode(result[i]);
+          return 'data:image/png;base64,' + btoa(binary);
+        }
+
+        return { injectMetadata };
+      })();
+
       const ExportEngine = {
         async exportStimulus(stimulus) {
           let element = document.getElementById(`render-${stimulus.id}`) || document.getElementById('fullscreen-preview');
@@ -146,7 +283,8 @@
             element = sandbox.firstElementChild;
           }
           try {
-            const dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+            let dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+            dataUrl = PngMetadata.injectMetadata(dataUrl);
             this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
             pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
           } finally {
@@ -173,7 +311,8 @@
           for (const stimulus of stimuli) {
             sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
             const node = sandbox.firstElementChild;
-            const dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+            let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+            dataUrl = PngMetadata.injectMetadata(dataUrl);
             zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
           }
           document.body.removeChild(sandbox);

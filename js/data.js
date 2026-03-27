@@ -222,6 +222,7 @@
           if (raw.settings.watermark_opacity === undefined) raw.settings.watermark_opacity = 50;
           if (raw.settings.watermark_rotation === undefined) raw.settings.watermark_rotation = 0;
           if (raw.settings.watermark_text_size === undefined) raw.settings.watermark_text_size = 16;
+
         }
         // Add custom_templates array
         if (!Array.isArray(raw.custom_templates)) raw.custom_templates = [];
