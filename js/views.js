@@ -401,7 +401,7 @@
               <div class="library-card-actions">
                 <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt('Edit', 'Éditer')}">✏️</button>
                 <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer')}">⧉</button>
-                ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-xs" data-action="export-msg" data-stimulus-id="${stimulus.id}" title="${tt('Export .msg file', 'Exporter le fichier .msg')}">✉️</button>` : ''}
+                ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-xs" data-action="export-msg" data-stimulus-id="${stimulus.id}" title="${tt('Export .eml file', 'Exporter le fichier .eml')}">✉️</button>` : ''}
                 <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG')}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['export-png'] ? '…' : '⤓'}</button>
                 <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true" title="${tt('Delete', 'Supprimer')}">✕</button>
               </div>
@@ -882,7 +882,7 @@
                 <div class="resize-handle resize-handle-vertical" data-resize-handle="stimulus-modal-width" role="separator" aria-orientation="vertical" aria-label="${tt('Resize editor and preview', 'Redimensionner l\'éditeur et la prévisualisation')}"></div>
                 <div class="stimulus-modal-right">
                   <div class="preview-toolbar-inline">
-                    ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .msg', 'Exporter .msg')}</button>` : ''}
+                    ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .eml', 'Exporter .eml')}</button>` : ''}
                     <button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG'), tt('Exporting…', 'Export en cours…'))}</button>
                   </div>
                   <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
@@ -969,7 +969,7 @@
                 <button class="btn btn-secondary" data-action="preview-prev">← ${tt('Previous', 'Précédent')}</button>
                 <button class="btn btn-secondary" data-action="preview-next">${tt('Next', 'Suivant')} →</button>
                 <button class="btn btn-primary" data-action="goto-stimuli" data-stimulus-id="${current.id}">${tt('Edit', 'Éditer')}</button>
-                ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .msg file', 'Exporter le fichier .msg')}</button>` : ''}
+                ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .eml file', 'Exporter le fichier .eml')}</button>` : ''}
                 <button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG'), tt('Exporting…', 'Export en cours…'))}</button>
               </div>
             </article>
