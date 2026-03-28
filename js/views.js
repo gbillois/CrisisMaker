@@ -183,9 +183,10 @@
                   <p>${vc.subtitle}</p>
                 </div>
                 <div class="status-pills">
-                  <span class="pill">${appState.scenario.stimuli.length} ${tt('injects', 'injects')}</span>
+                  <span class="pill pill-project">${escapeHtml(appState.scenario.name || tt('Untitled', 'Sans titre'))}</span>
                   <span class="pill">${appState.scenario.actors.length} ${tt('actors', 'acteurs')}</span>
-                  <span class="pill">${renderProviderSummary(appState.scenario.settings)}</span>
+                  <span class="pill">${appState.scenario.stimuli.length} ${tt('stimuli', 'stimuli')}</span>
+                  <span class="pill ${isLLMAvailable() ? 'pill-ai-live' : 'pill-ai-off'}">${isLLMAvailable() ? tt('AI - Live', 'IA - Active') : tt('AI - Disconnected', 'IA - Déconnectée')}</span>
                 </div>
               </section>` : ''}
               ${renderCurrentView()}
@@ -345,82 +346,34 @@
         const s = appState.scenario;
         const llmAvailable = isLLMAvailable();
         const hasStimuliOrConfig = s.stimuli.length > 0 || s.client.name || s.scenario.summary;
-        if (!hasStimuliOrConfig) {
-          return `
-            <section class="grid project-welcome" style="max-width:960px; margin: 28px auto;">
-              <div class="hero-card">
-                <div class="hero-copy">
-                  <span class="hero-kicker">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span>
-                  <h1>${tt('Accelerate crisis exercises inject creation.', 'Accélérez la création d\'injects pour les exercices de crise.')}</h1>
-                  <p>${tt('A streamlined studio to prepare scenarios, generate realistic injects, and export polished deliverables for facilitation teams.', 'Un studio fluide pour préparer les scénarios, générer des injects réalistes et exporter des livrables prêts pour l\'animation.')}</p>
-                </div>
-                <div class="hero-stats">
-                  <div class="hero-stat"><strong>${tt('Stand alone or AI powered', 'Autonome ou propulsé par l\'IA')}</strong><span>${llmAvailable ? tt('AI connected — generation-ready setup', 'IA connectée — configuration prête pour la génération') : tt('Depending on your requirements and confidentiality needs', 'Selon vos besoins et vos contraintes de confidentialité')}</span></div>
-                </div>
-              </div>
+        const lastSavedStr = s.updated_at
+          ? new Date(s.updated_at).toLocaleString()
+          : tt('Not saved yet', 'Pas encore sauvegardé');
 
-              <div class="welcome-block">
-                <h3 class="welcome-block-title">${tt('Project', 'Projet')}</h3>
-                <div class="grid cols-4" style="gap:16px;">
-                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="new-scenario">
-                    <div style="font-size:1.75rem; margin-bottom:10px;">➕</div>
-                    <strong>${tt('New', 'Nouveau')}</strong>
-                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Start from scratch', 'Partir de zéro')}</p>
-                  </article>
-                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="load-json">
-                    <div style="font-size:1.75rem; margin-bottom:10px;">📂</div>
-                    <strong>${tt('Open', 'Ouvrir')}</strong>
-                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">.json / .crisismaker.json / .zip</p>
-                  </article>
-                  <article class="card ${!llmAvailable ? 'card-disabled' : ''}" style="text-align:center; cursor:${llmAvailable ? 'pointer' : 'not-allowed'}; padding:24px 16px;" ${llmAvailable ? 'data-action="import-chronogram-ia"' : `title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité'))}"`}>
-                    <div style="font-size:1.75rem; margin-bottom:10px;">📊</div>
-                    <strong>${tt('Import existing timeline', 'Importer une chronologie')}</strong>
-                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('AI-powered Excel import', 'Import Excel par IA')}</p>
-                  </article>
-                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="load-example">
-                    <div style="font-size:1.75rem; margin-bottom:10px;">🎯</div>
-                    <strong>${tt('Example', 'Exemple')}</strong>
-                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Load a sample scenario', 'Charger un scénario exemple')}</p>
-                  </article>
-                </div>
-              </div>
-
-              <div class="welcome-block" style="margin-top:8px;">
-                <h3 class="welcome-block-title">${tt('Save & Export', 'Sauvegarder & Exporter')}</h3>
-                <div class="grid cols-3" style="gap:16px;">
-                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="save-local">
-                    <div style="font-size:1.75rem; margin-bottom:10px;">💾</div>
-                    <strong>${tt('Save locally', 'Sauvegarder localement')}</strong>
-                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Browser storage + file', 'Stockage navigateur + fichier')}</p>
-                  </article>
-                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="save-json">
-                    <div style="font-size:1.75rem; margin-bottom:10px;">⇩</div>
-                    <strong>${tt('Export text content', 'Exporter le contenu texte')}</strong>
-                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Download as .json', 'Télécharger en .json')}</p>
-                  </article>
-                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="export-all">
-                    <div style="font-size:1.75rem; margin-bottom:10px;">🗜️</div>
-                    <strong>${tt('Export all injects', 'Exporter tous les injects')}</strong>
-                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Download as .zip', 'Télécharger en .zip')}</p>
-                  </article>
-                </div>
-              </div>
-            </section>
-          `;
-        }
         return `
           <section class="grid" style="max-width:800px;">
             <article class="card">
-              <div class="section-header">
-                <h3>${escapeHtml(s.name)}</h3>
+              <div class="section-header" style="margin-bottom:10px;">
+                <span style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);">${tt('Current crisis project', 'Projet de crise actuel')}</span>
+                <h3 style="margin:4px 0 0;">${escapeHtml(s.name || tt('Untitled project', 'Projet sans titre'))}</h3>
               </div>
-              <div class="field-grid cols-3" style="font-size:0.9rem; color:var(--muted);">
-                <div><strong>${tt('Client', 'Client')}:</strong> ${escapeHtml(s.client.name || '—')}</div>
-                <div><strong>${tt('Sector', 'Secteur')}:</strong> ${escapeHtml(s.client.sector || '—')}</div>
-                <div><strong>${tt('Scenario', 'Scénario')}:</strong> ${escapeHtml(s.scenario.type || '—')}</div>
-                <div><strong>${tt('Actors', 'Acteurs')}:</strong> ${s.actors.length}</div>
-                <div><strong>${tt('Injects', 'Injects')}:</strong> ${s.stimuli.length}</div>
-                <div><strong>${tt('Start', 'Début')}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : '—')}</div>
+              ${hasStimuliOrConfig ? `
+                <div class="field-grid cols-3" style="font-size:0.9rem; color:var(--muted); margin-bottom:10px;">
+                  <div><strong>${tt('Client', 'Client')}:</strong> ${escapeHtml(s.client.name || '—')}</div>
+                  <div><strong>${tt('Sector', 'Secteur')}:</strong> ${escapeHtml(s.client.sector || '—')}</div>
+                  <div><strong>${tt('Scenario', 'Scénario')}:</strong> ${escapeHtml(s.scenario.type || '—')}</div>
+                  <div><strong>${tt('Actors', 'Acteurs')}:</strong> ${s.actors.length}</div>
+                  <div><strong>${tt('Stimuli', 'Stimuli')}:</strong> ${s.stimuli.length}</div>
+                  <div><strong>${tt('Start', 'Début')}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : '—')}</div>
+                </div>
+              ` : `
+                <div style="margin:8px 0 14px;">
+                  <p class="subtle" style="margin:0 0 12px;">${tt('No scenario configured yet. Define the client, crisis context and actors to get started.', 'Aucun scénario configuré. Définissez le client, le contexte de crise et les acteurs pour commencer.')}</p>
+                  <button class="btn btn-primary" data-action="nav-scenario">${tt('Configure the scenario', 'Configurer le scénario')} →</button>
+                </div>
+              `}
+              <div style="font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); padding-top:8px; margin-top:4px;">
+                ${tt('Last saved locally:', 'Dernière sauvegarde locale :')} <strong>${escapeHtml(lastSavedStr)}</strong>
               </div>
             </article>
 
@@ -437,7 +390,7 @@
                   <strong>${tt('Open', 'Ouvrir')}</strong>
                   <p class="subtle" style="font-size:0.85rem; margin-top:4px;">.json / .crisismaker.json / .zip</p>
                 </article>
-                <article class="card ${!isLLMAvailable() ? 'card-disabled' : ''}" style="text-align:center; cursor:${isLLMAvailable() ? 'pointer' : 'not-allowed'}; padding:20px 16px;" ${isLLMAvailable() ? 'data-action="import-chronogram-ia"' : `title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité'))}"`}>
+                <article class="card ${!llmAvailable ? 'card-disabled' : ''}" style="text-align:center; cursor:${llmAvailable ? 'pointer' : 'not-allowed'}; padding:20px 16px;" ${llmAvailable ? 'data-action="import-chronogram-ia"' : `title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité'))}"`}>
                   <div style="font-size:1.5rem; margin-bottom:8px;">📊</div>
                   <strong>${tt('Import existing timeline', 'Importer une chronologie')}</strong>
                   <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('AI-powered Excel import', 'Import Excel par IA')}</p>
@@ -469,12 +422,6 @@
                   <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .zip', 'Télécharger en .zip')}</p>
                 </article>
               </div>
-            </div>
-
-            <div class="actions" style="margin-top:16px;">
-              <button class="btn btn-primary" data-action="nav-scenario">${tt('Edit scenario', 'Éditer le scénario')} →</button>
-              <button class="btn btn-primary" data-action="nav-stimuli">${tt('Edit timeline', 'Éditer la timeline')} →</button>
-              <button class="btn btn-danger" style="margin-left:auto;" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
             </div>
           </section>
         `;
