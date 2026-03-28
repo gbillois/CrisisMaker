@@ -586,7 +586,7 @@
     .stimuli-workspace {
       display: grid;
       grid-template-rows: auto auto;
-      gap: 0;
+      gap: 16px;
       font-size: 0.94rem;
     }
     .stimuli-timeline-panel {
@@ -595,6 +595,13 @@
     }
     .stimuli-timeline-panel .section-header {
       margin-bottom: 12px;
+    }
+    .stimuli-table-card {
+      display: flex;
+      flex-direction: column;
+    }
+    .stimuli-table-card .section-header {
+      margin-bottom: 8px;
     }
     .resize-handle {
       position: relative;
@@ -1857,8 +1864,7 @@
 
     /* ── Stimuli timeline table ── */
     .stimuli-table-panel {
-      background: var(--surface-alt);
-      border-top: 1px solid var(--border);
+      overflow-x: auto;
     }
     .stimuli-table {
       width: 100%;
@@ -1922,7 +1928,11 @@
     .stimuli-table-actions {
       white-space: nowrap;
       display: flex;
-      gap: 4px;
+      gap: 3px;
+    }
+    .stimuli-table-actions .btn[disabled] {
+      opacity: 0.3;
+      pointer-events: none;
     }
 
     /* Export watermark overlay */

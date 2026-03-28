@@ -498,7 +498,32 @@
             }
             case 'duplicate-stimulus': duplicateStimulus(event.currentTarget.dataset.stimulusId); break;
             case 'delete-stimulus': deleteStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.confirm === 'true'); break;
-            case 'sort-stimuli': sortStimuli(); App.render(); break;
+            case 'move-stimulus-up': {
+              const sorted = getSortedStimuli();
+              const idx = sorted.findIndex(s => s.id === event.currentTarget.dataset.stimulusId);
+              if (idx > 0) {
+                const current = getStimulus(sorted[idx].id);
+                const above = getStimulus(sorted[idx - 1].id);
+                const tempTime = current.timestamp_offset_minutes;
+                current.timestamp_offset_minutes = above.timestamp_offset_minutes;
+                above.timestamp_offset_minutes = tempTime;
+                await autoSave(); App.render();
+              }
+              break;
+            }
+            case 'move-stimulus-down': {
+              const sorted = getSortedStimuli();
+              const idx = sorted.findIndex(s => s.id === event.currentTarget.dataset.stimulusId);
+              if (idx >= 0 && idx < sorted.length - 1) {
+                const current = getStimulus(sorted[idx].id);
+                const below = getStimulus(sorted[idx + 1].id);
+                const tempTime = current.timestamp_offset_minutes;
+                current.timestamp_offset_minutes = below.timestamp_offset_minutes;
+                below.timestamp_offset_minutes = tempTime;
+                await autoSave(); App.render();
+              }
+              break;
+            }
             case 'timeline-zoom-in': appState.ui.timelineZoom = Math.min(3.0, (appState.ui.timelineZoom || 1.0) + 0.25); App.render(); break;
             case 'timeline-zoom-out': appState.ui.timelineZoom = Math.max(0.5, (appState.ui.timelineZoom || 1.0) - 0.25); App.render(); break;
             case 'expand-library-card': {
@@ -1108,9 +1133,7 @@
       function bindStimuliSplitters() {
         const workspace = document.querySelector('[data-stimuli-workspace]');
         if (!workspace) return;
-        const timelineHandle = workspace.querySelector('[data-resize-handle="timeline-height"]');
         const panelHandle = workspace.querySelector('[data-resize-handle="editor-width"]');
-        if (timelineHandle) timelineHandle.addEventListener('pointerdown', (event) => startStimuliResize(event, 'timeline-height', workspace));
         if (panelHandle) panelHandle.addEventListener('pointerdown', (event) => startStimuliResize(event, 'editor-width', workspace));
 
         // Pinch-to-zoom on timeline
