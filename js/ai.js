@@ -369,7 +369,7 @@ Stimulus format:
               break;
             case 'post_reddit': {
               const subreddit = stimulus.fields.subreddit || 'r/cybersecurity';
-              const redditLanguage = /^r\/(france|francais|cybersecurite)$/i.test(subreddit) ? 'French' : 'English';
+              const redditLanguage = /^r\/(france|francais|cybersecurite)$/i.test(subreddit) ? 'French' : /^r\/(de|deutsch|germany|netzpolitik|sicherheit)$/i.test(subreddit) ? 'German' : ((() => { const l = scenario.settings.inject_language || scenario.settings.language || 'en'; return { fr: 'French', de: 'German', en: 'English', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[l] || 'English'; })());
               const postType = stimulus.fields.link_url ? 'link' : 'text';
               result = {
                 systemPrompt: `Generate a realistic Reddit post for ${subreddit} about a cyber security incident. Scenario: ${common.scenarioSummary}. Event: ${eventDescription}. Simulated author: ${common.actorName}, ${common.actorTitle}. Post type: ${postType}. Instructions: catchy but informative title, ${postType === 'text' ? '100-300 words of authentic Reddit-style HTML body with community-specific tone, optional technical acronyms, questions or field observations.' : 'no body text, title should summarise the linked article.'} Pick a relevant post flair such as Breaking News, Threat Intel, Discussion or Incident Response. Language must be ${redditLanguage}. If a top comment is needed, include an informal complementary comment with author and flair. Never mention this is an exercise. Reply only with JSON containing title, body, post_flair, top_comment.`,

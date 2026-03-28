@@ -31,7 +31,7 @@
         { value: 'it', label: 'Italiano' }, { value: 'pt', label: 'Português' },
         { value: 'nl', label: 'Nederlands' }, { value: 'ja', label: '日本語' }, { value: 'zh', label: '中文' }
       ];
-      const TIMEZONES = ['Europe/Paris', 'UTC', 'Europe/London', 'America/New_York'];
+      const TIMEZONES = ['Europe/Paris', 'Europe/Berlin', 'UTC', 'Europe/London', 'America/New_York'];
       const CHANNEL_META = {
         email_internal: { label: 'Internal email', color: '#2563eb', category: 'Email' },
         email_external: { label: 'External email', color: '#3b82f6', category: 'Email' },
