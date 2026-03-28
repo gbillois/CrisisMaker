@@ -7,7 +7,7 @@
               : tt('Please enter an Anthropic API key before testing the connection.', 'Veuillez saisir une clé API Anthropic avant de tester la connexion.', 'Bitte geben Sie einen Anthropic-API-Schlüssel ein, bevor Sie die Verbindung testen.'));
           }
           if (ai_provider === 'azure_openai') {
-            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt(‘Please provide the Azure endpoint, API key, and deployment name before testing the connection.’, ‘Veuillez renseigner l\’endpoint, la clé API et le déploiement Azure avant de tester la connexion.’, ‘Bitte geben Sie den Azure-Endpunkt, den API-Schlüssel und den Bereitstellungsnamen an, bevor Sie die Verbindung testen.’));
+            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Please provide the Azure endpoint, API key, and deployment name before testing the connection.', 'Veuillez renseigner l\'endpoint, la clé API et le déploiement Azure avant de tester la connexion.', 'Bitte geben Sie den Azure-Endpunkt, den API-Schlüssel und den Bereitstellungsnamen an, bevor Sie die Verbindung testen.'));
           }
           const prompt = 'Reply only with a JSON object {"ok": true, "message": "valid connection"}';
           return this.generate('settings_test', prompt, null, true);
@@ -321,7 +321,7 @@ Stimulus format:
           return JSON.parse(trimmed);
         } catch (err) {
           const match = trimmed.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-          if (!match) throw new Error(tt(‘LLM response was not valid JSON.’, ‘La réponse du LLM n\’était pas un JSON valide.’, ‘LLM-Antwort war kein gültiges JSON.’));
+          if (!match) throw new Error(tt('LLM response was not valid JSON.', 'La réponse du LLM n\'était pas un JSON valide.', 'LLM-Antwort war kein gültiges JSON.'));
           return JSON.parse(match[0]);
         }
       }

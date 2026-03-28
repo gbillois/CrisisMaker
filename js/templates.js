@@ -371,10 +371,10 @@
                   <div class="li-date">${escapeHtml(f.date || '')} · 🌐</div>
                 </div>
               </div>
-              <div class="li-text">${escapeHtml(trimmed)}${showMore ? `<div class="li-see-more">${tt(‘…see more’, ‘…voir plus’, ‘…mehr anzeigen’)}</div>` : ‘’}</div>
-              <div class="li-stats"><span>${reactions}</span><span>${formatMetric(f.reactions_count)} ${tt(‘reactions’, ‘réactions’, ‘Reaktionen’)} · ${formatMetric(f.comments_count)} ${tt(‘comments’, ‘commentaires’, ‘Kommentare’)} · ${formatMetric(f.reposts_count)} ${tt(‘reposts’, ‘republications’, ‘Reposts’)}</span></div>
+              <div class="li-text">${escapeHtml(trimmed)}${showMore ? `<div class="li-see-more">${tt('…see more', '…voir plus', '…mehr anzeigen')}</div>` : ''}</div>
+              <div class="li-stats"><span>${reactions}</span><span>${formatMetric(f.reactions_count)} ${tt('reactions', 'réactions', 'Reaktionen')} · ${formatMetric(f.comments_count)} ${tt('comments', 'commentaires', 'Kommentare')} · ${formatMetric(f.reposts_count)} ${tt('reposts', 'republications', 'Reposts')}</span></div>
               <div class="li-divider"></div>
-              <div class="li-actions"><strong>${tt(‘Like’, ‘J’aime’, ‘Gefällt mir’)}</strong><strong>${tt(‘Comment’, ‘Commenter’, ‘Kommentieren’)}</strong><strong>${tt(‘Repost’, ‘Republier’, ‘Reposten’)}</strong><strong>${tt(‘Send’, ‘Envoyer’, ‘Senden’)}</strong></div>
+              <div class="li-actions"><strong>${tt('Like', "J'aime", 'Gefällt mir')}</strong><strong>${tt('Comment', 'Commenter', 'Kommentieren')}</strong><strong>${tt('Repost', 'Republier', 'Reposten')}</strong><strong>${tt('Send', 'Envoyer', 'Senden')}</strong></div>
             </article>
           `;
         },
@@ -448,7 +448,7 @@
                 <div style="display:flex; justify-content:flex-start;">
                   <div>
                     <div class="sms-bubble">${escapeHtml(f.text || '')}</div>
-                    <div class="sms-time">${tt(‘Today’, ‘Aujourd’hui’, ‘Heute’)} ${escapeHtml(f.time || ‘’)}</div>
+                    <div class="sms-time">${tt('Today', "Aujourd'hui", 'Heute')} ${escapeHtml(f.time || '')}</div>
                   </div>
                 </div>
               </div>
