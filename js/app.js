@@ -458,7 +458,7 @@
               if (s) { const cycle = ['draft', 'ready', 'sent']; s.status = cycle[(cycle.indexOf(s.status) + 1) % cycle.length]; await autoSave(); App.render(); }
               break;
             }
-            case 'edit-in-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.route = 'stimuli'; App.render(); break;
+            case 'edit-in-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.stimulusModalId = event.currentTarget.dataset.stimulusId; appState.route = 'stimuli'; App.render(); break;
             case 'show-history': {
               appState.historyModalStimulusId = event.currentTarget.dataset.stimulusId;
               App.render();
