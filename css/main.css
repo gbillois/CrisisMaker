@@ -847,6 +847,7 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
+    .mobile-preview-toggle { display: none; }
     @media (max-width: 768px) {
       .modal-box-stimulus {
         width: 100vw;
@@ -872,6 +873,18 @@
       }
       .stimulus-modal-right {
         display: none;
+      }
+      /* When mobile preview is active, swap panels */
+      .modal-body-stimulus.mobile-preview-active .stimulus-modal-left {
+        display: none;
+      }
+      .modal-body-stimulus.mobile-preview-active .stimulus-modal-right {
+        display: flex;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .mobile-preview-toggle {
+        display: inline-flex;
       }
       .modal-box-stimulus .modal-header {
         flex-wrap: wrap;

@@ -1023,12 +1023,13 @@
                   </div>
                 </div>
                 <div class="actions">
+                  <button class="btn btn-secondary mobile-preview-toggle" data-action="toggle-mobile-preview">${appState.ui?.mobilePreviewVisible ? tt('Editor', 'Éditeur', 'Editor') : tt('Preview', 'Aperçu', 'Vorschau')}</button>
                   ${(stimulus.history?.length > 0) ? `<button class="btn btn-secondary" data-action="show-history" data-stimulus-id="${stimulus.id}">${tt('History', 'Historique', 'Verlauf')} (${stimulus.history.length})</button>` : ''}
                   <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer', 'Duplizieren')}</button>
                   <button class="btn btn-secondary" data-action="close-stimulus-modal">✕</button>
                 </div>
               </div>
-              <div class="modal-body-stimulus" data-stimulus-modal-body style="--stimulus-modal-editor-width:${editorWidth}%; --stimulus-modal-preview-width:${100 - editorWidth}%;">
+              <div class="modal-body-stimulus${appState.ui?.mobilePreviewVisible ? ' mobile-preview-active' : ''}" data-stimulus-modal-body style="--stimulus-modal-editor-width:${editorWidth}%; --stimulus-modal-preview-width:${100 - editorWidth}%;">
                 <div class="stimulus-modal-left">
                   ${renderStimulusEditorModal(stimulus)}
                 </div>

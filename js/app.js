@@ -476,6 +476,12 @@
             }
             case 'close-stimulus-modal': {
               appState.stimulusModalId = null;
+              appState.ui.mobilePreviewVisible = false;
+              App.render();
+              break;
+            }
+            case 'toggle-mobile-preview': {
+              appState.ui.mobilePreviewVisible = !appState.ui.mobilePreviewVisible;
               App.render();
               break;
             }
