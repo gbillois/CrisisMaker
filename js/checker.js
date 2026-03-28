@@ -887,6 +887,13 @@ ${serialized}`;
 
       // ─── Render: Axes tabs + detail ───────────────────────────────────────────────
 
+      function getAxisLabel(axis, i) {
+        if (!axis.title) return tt('Axis', 'Axe') + ' ' + (axis.id || (i + 1));
+        // Titles from AI are bilingual: "French part / English part"
+        const parts = axis.title.split(' / ');
+        return isFrenchUI() ? parts[0] : (parts[1] || parts[0]);
+      }
+
       function renderCheckerAxes(result) {
         const axes = result.axes;
         if (!axes || !axes.length) return '';
@@ -904,7 +911,7 @@ ${serialized}`;
               ${axes.map((axis, i) => `
                 <button class="checker-axis-tab ${i === activeIdx ? 'active' : ''} checker-axis-${axis.verdict || 'acceptable'}"
                         data-action="checker-select-axis" data-axis-index="${i}">
-                  ${verdictIcons[axis.verdict] || '⚠️'} ${tt('Axis', 'Axe')} ${axis.id || (i + 1)}
+                  ${verdictIcons[axis.verdict] || '⚠️'} ${escapeHtml(getAxisLabel(axis, i))}
                 </button>
               `).join('')}
             </div>
