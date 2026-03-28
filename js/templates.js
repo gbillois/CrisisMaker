@@ -427,7 +427,7 @@
         pressRelease(f) {
           return `
             <article class="press-release">
-              <div class="pr-logo" style="color:${escapeAttribute(f.logo_color || '#003366')};">${escapeHtml(f.logo_text || '')}</div>
+              ${f.has_logo && f.logo_image ? `<img class="pr-logo-img" src="${f.logo_image}" alt="${escapeAttribute(f.logo_text || '')}" />` : `<div class="pr-logo" style="color:${escapeAttribute(f.logo_color || '#003366')};">${escapeHtml(f.logo_text || '')}</div>`}
               <div class="pr-meta">${escapeHtml(f.date || '')}</div>
               <div class="pr-title">${escapeHtml(f.title || '')}</div>
               <div class="pr-body">${sanitizeBody(f.body)}</div>
@@ -876,7 +876,7 @@
           return `
             <article class="press-release hd">
               <div class="pr-hd-header">
-                <div class="pr-logo" style="color:${escapeAttribute(f.logo_color || '#003366')};">${escapeHtml(f.logo_text || '')}</div>
+                ${f.has_logo && f.logo_image ? `<img class="pr-logo-img" src="${f.logo_image}" alt="${escapeAttribute(f.logo_text || '')}" />` : `<div class="pr-logo" style="color:${escapeAttribute(f.logo_color || '#003366')};">${escapeHtml(f.logo_text || '')}</div>`}
                 <div class="pr-hd-badge">${tt('PRESS RELEASE', 'COMMUNIQUÉ DE PRESSE')}</div>
               </div>
               <div class="pr-meta">${escapeHtml(f.date || '')}</div>
