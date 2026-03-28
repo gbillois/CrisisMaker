@@ -451,7 +451,12 @@
         try {
           const zipImport = data?.__zipImport;
           if (zipImport) delete data.__zipImport;
-          appState.scenario = mergeScenario(migrateScenario(data));
+          const migrated = migrateScenario(data);
+          // Pre-sync custom templates so normalizeStimulus can find them during merge
+          if (Array.isArray(migrated.custom_templates)) {
+            appState.scenario.custom_templates = migrated.custom_templates;
+          }
+          appState.scenario = mergeScenario(migrated);
           // restore API keys from dedicated localStorage keys (never stored in project files)
           const savedApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
           if (savedApiKey) appState.scenario.settings.ai_api_key = savedApiKey;
@@ -459,6 +464,7 @@
           if (savedAzureApiKey) appState.scenario.settings.azure_api_key = savedAzureApiKey;
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
           appState.route = 'project';
+          appState.launchScreenOpen = false;
           App.render();
           pushToast(tt('Scenario loaded successfully.', 'Scénario chargé avec succès.'), 'success');
           if (zipImport?.imageCount) {

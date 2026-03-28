@@ -346,6 +346,7 @@
               appState.scenario = emptyScenario();
               appState.selectedStimulusId = null;
               appState.route = 'project';
+              appState.launchScreenOpen = false;
               App.render();
               pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.'), 'success');
               break;
@@ -354,6 +355,7 @@
               appState.scenario = defaultScenario();
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
               appState.route = 'project';
+              appState.launchScreenOpen = false;
               App.render();
               pushToast(tt('Example scenario loaded.', 'Scénario exemple chargé.'), 'success');
               break;
@@ -364,9 +366,7 @@
               });
               break;
             case 'load-json':
-              await withActionProgress(action, async () => {
-                await loadScenarioFromFile();
-              });
+              await loadScenarioFromFile();
               break;
             case 'export-all':
               await withActionProgress(action, async () => {
