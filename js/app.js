@@ -347,6 +347,7 @@
               appState.scenario = emptyScenario();
               appState.selectedStimulusId = null;
               appState.route = 'project';
+              appState.launchScreenOpen = false;
               App.render();
               pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.', 'Neues Szenario initialisiert.'), 'success');
               break;
@@ -355,6 +356,7 @@
               appState.scenario = defaultScenario();
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
               appState.route = 'project';
+              appState.launchScreenOpen = false;
               App.render();
               pushToast(tt('Example scenario loaded.', 'Scénario exemple chargé.', 'Beispielszenario geladen.'), 'success');
               break;
@@ -365,9 +367,7 @@
               });
               break;
             case 'load-json':
-              await withActionProgress(action, async () => {
-                await loadScenarioFromFile();
-              });
+              await loadScenarioFromFile();
               break;
             case 'export-all':
               await withActionProgress(action, async () => {
@@ -1014,9 +1014,15 @@
         const stimulus = getStimulus(stimulusId);
         if (!stimulus) return;
         if (stimulus.generation_mode === 'manual') return; // respect manual mode
-        pushToast(tt('Generation in progress…', 'Génération en cours…', 'Generierung läuft…'), 'success');
-        const guided = stimulus.generation_mode === 'ai_guided' ? stimulus.generation_prompt : null;
-        const generated = await AITextGenerator.generateForStimulus(stimulus, fieldName, guided);
+        appState.ui.generatingField = { stimulusId, fieldName };
+        App.render();
+        let generated;
+        try {
+          const guided = stimulus.generation_mode === 'ai_guided' ? stimulus.generation_prompt : null;
+          generated = await AITextGenerator.generateForStimulus(stimulus, fieldName, guided);
+        } finally {
+          appState.ui.generatingField = null;
+        }
         // Build the new fields state (merge generated into current for field-level regen)
         const newFields = deepClone(stimulus.fields);
         Object.entries(generated).forEach(([key, value]) => {
