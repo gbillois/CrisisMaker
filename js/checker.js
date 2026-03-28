@@ -206,6 +206,8 @@
         return `
           <section class="grid" style="max-width:960px; margin: 0 auto;">
             ${cs.parsedData ? renderCheckerImported() : renderCheckerDropZone()}
+            ${cs.parsedData ? renderCheckerAnalyzeButton() : ''}
+            ${cs.parsedData ? renderCheckerResults() : ''}
           </section>
         `;
       }
@@ -447,4 +449,450 @@
           activeAxisTab: 0
         };
         App.render();
+      }
+
+      // ─── Render: Analyze button ─────────────────────────────────────────────────
+
+      function renderCheckerAnalyzeButton() {
+        const cs = appState.checkerState;
+        if (cs.analysisResult || cs.analysisLoading) return '';
+        const llmOk = isLLMAvailable();
+        return `
+          <div style="text-align:center; margin: 8px 0;">
+            <button class="btn btn-primary" data-action="checker-analyze"
+                    ${!llmOk ? 'disabled' : ''}
+                    ${!llmOk ? `title="${escapeAttribute(tt('API key required. Configure in Settings.', 'Clé API requise. Configurez dans les Paramètres.'))}"` : ''}>
+              ${tt('Analyze Chronogram', 'Analyser le chronogramme')}
+            </button>
+          </div>
+        `;
+      }
+
+      // ─── Phase 2: LLM Analysis ───────────────────────────────────────────────────
+
+      // ─── Serialization ────────────────────────────────────────────────────────────
+
+      function checkerSerializeChronogram() {
+        const cs = appState.checkerState;
+        const pd = cs.parsedData;
+        const mapping = cs.columnMapping;
+        if (!pd) return '';
+
+        const colKeys = Object.keys(CHECKER_COLUMN_PATTERNS);
+        const detectedCols = colKeys.filter(k => mapping[k] !== null);
+        const missingCols = colKeys.filter(k => mapping[k] === null);
+
+        let lines = [];
+        const headerLine = 'LINE | ' + colKeys.map(k => CHECKER_COLUMN_LABELS[k]().toUpperCase()).join(' | ');
+        lines.push(headerLine);
+
+        let truncated = false;
+        const maxContentLen = pd.rows.length > 500 ? 150 : 500;
+        if (pd.rows.length > 500) truncated = true;
+
+        for (let i = 0; i < pd.rows.length; i++) {
+          const row = pd.rows[i];
+          const cells = colKeys.map(k => {
+            const idx = mapping[k];
+            if (idx === null) return '—';
+            let val = String(row[idx] || '').trim();
+            if (val.length > maxContentLen) val = val.substring(0, maxContentLen) + '…';
+            return val;
+          });
+          lines.push(`${i + 1} | ${cells.join(' | ')}`);
+        }
+
+        const serialized = `CHRONOGRAM DATA
+Total lines: ${pd.rows.length}
+Columns detected: ${detectedCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none'}
+Columns missing: ${missingCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none'}
+
+${lines.join('\n')}`;
+
+        return { serialized, detectedCols, missingCols, truncated };
+      }
+
+      // ─── Analysis prompt ──────────────────────────────────────────────────────────
+
+      function checkerBuildPrompt(serialized, detectedCols, missingCols, concise = false) {
+        const detectedStr = detectedCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none';
+        const missingStr = missingCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none';
+
+        const conciseNote = concise ? '\nSois plus concis dans tes constats. / Be more concise in your findings.\n' : '';
+
+        return `Tu es un expert senior en gestion de crise et en conception d'exercices de crise. On te fournit un chronogramme d'exercice de crise sous forme de tableau. Chaque ligne représente un stimulus ou un événement du scénario.
+You are a senior expert in crisis management and crisis exercise design. You are provided with a crisis exercise chronogram in tabular form. Each line represents a stimulus or scenario event.
+
+Les colonnes disponibles sont / Available columns: ${detectedStr}
+Les colonnes manquantes sont / Missing columns: ${missingStr}
+${conciseNote}
+Analyse le chronogramme selon les 5 axes ci-dessous. Pour chaque axe, produis :
+1. Un verdict synthétique : satisfactory, acceptable, ou insufficient
+2. La liste des constats positifs et négatifs, avec référence aux lignes concernées
+3. Des recommandations concrètes pour corriger les défauts identifiés
+
+Analyze the chronogram according to the 5 axes below. For each axis, produce:
+1. A synthetic verdict: satisfactory, acceptable, or insufficient
+2. The list of positive and negative findings, with reference to the relevant lines
+3. Concrete recommendations to fix identified issues
+
+---
+
+AXE 1 : COMPLÉTUDE DE L'EXERCICE / EXERCISE COMPLETENESS
+
+Couverture thématique — les grandes dimensions d'une crise sont-elles représentées ?
+Thematic coverage — are the major dimensions of a crisis represented?
+- Opérationnel / technique (Operational / technical)
+- Communication interne (Internal communication)
+- Communication externe (médias, réseaux sociaux) (External communication — media, social media)
+- Juridique / réglementaire (notifications, conformité) (Legal / regulatory — notifications, compliance)
+- RH / social (impact collaborateurs, partenaires sociaux) (HR / social — employee impact, social partners)
+- Continuité d'activité (PCA/PRA, bascule, mode dégradé) (Business continuity — BCP/DRP, failover, degraded mode)
+- Relations avec les autorités (régulateur, forces de l'ordre, ANSSI/CERT national) (Relations with authorities — regulator, law enforcement, national CERT)
+- Parties prenantes externes (clients, fournisseurs, partenaires) (External stakeholders — clients, suppliers, partners)
+- Financier / assurance (Financial / insurance)
+
+Représentation des acteurs — toutes les catégories attendues apparaissent-elles comme émetteurs ou destinataires ?
+Actor representation — do all expected categories appear as senders or recipients?
+- Direction générale / COMEX (Senior management / COMEX)
+- Cellule de crise décisionnelle (Decision-making crisis cell)
+- Cellule de crise opérationnelle (Operational crisis cell)
+- Communication / relations presse (Communication / press relations)
+- Direction juridique (Legal department)
+- Métiers directement impactés (Directly impacted business units)
+- DSI / équipes techniques / SOC / CERT (IT / technical teams / SOC / CERT)
+- Prestataires critiques (Critical service providers)
+- Régulateurs / autorités (Regulators / authorities)
+
+Couverture des livrables — le scénario pousse-t-il les joueurs à produire :
+Deliverables coverage — does the scenario push players to produce:
+- Communiqué de presse ou éléments de langage (Press release or talking points)
+- Notification réglementaire (CNIL, ANSSI, autorité sectorielle) (Regulatory notification)
+- Point de situation structuré (Structured situation report)
+- Décision d'activation PCA/PRA (BCP/DRP activation decision)
+- Tenue d'une main courante (Maintaining a log / chronolog)
+- Communication interne (Internal communication)
+
+Diversité des canaux — le scénario utilise-t-il une variété de canaux ?
+Channel diversity — does the scenario use a variety of channels (email, call, alert, media, social media, messaging)?
+
+---
+
+AXE 2 : COHÉRENCE NARRATIVE / NARRATIVE COHERENCE
+
+Structure en phases — les grandes phases sont-elles présentes et ordonnées logiquement ?
+Phase structure — are the main phases present and logically ordered?
+- Détection / signaux faibles (Detection / early warning signs)
+- Alerte et mobilisation (Alert and mobilization)
+- Gestion à chaud / réponse (Hot management / response)
+- Stabilisation / reprise de contrôle (Stabilization / recovery)
+- Démobilisation / clôture (Demobilization / closure)
+
+Enchaînement causal — chaque événement découle-t-il logiquement du précédent ? (Causal chaining — does each event logically follow from the previous one?)
+Progression de la gravité — la montée en puissance est-elle progressive ? (Severity progression — is the escalation gradual?)
+Durée — la durée totale est-elle cohérente avec le type de crise simulée ? (Duration — is the total duration consistent with the type of crisis simulated?)
+Richesse scénaristique — le scénario comporte-t-il au moins un dilemme décisionnel, un rebondissement, une phase d'incertitude ? (Scenario richness — does the scenario include at least one decision dilemma, a twist, a phase of uncertainty?)
+Cohérence factuelle interne — les éléments factuels sont-ils cohérents d'un stimulus à l'autre ? (Internal factual consistency — are factual elements consistent from one stimulus to another?)
+
+---
+
+AXE 3 : COHÉRENCE DES STIMULI / STIMULUS COHERENCE
+
+Complétude des métadonnées — chaque stimulus a-t-il un émetteur, un destinataire, un canal, un horodatage ? (Metadata completeness — does each stimulus have a sender, recipient, channel, timestamp?)
+Logique informationnelle / Information logic:
+- Un destinataire ne reçoit jamais une information qu'il est censé ignorer à ce stade (A recipient never receives information they are supposed to ignore at this stage)
+- Un stimulus de réponse n'arrive pas avant son stimulus déclencheur (A response stimulus does not arrive before its trigger stimulus)
+- Les délais de propagation sont réalistes (Propagation delays are realistic)
+Cohérence factuelle inter-stimuli — pas de contradiction entre deux stimuli (Inter-stimuli factual consistency — no contradiction between stimuli)
+Stimuli conditionnels — les stimuli dépendant d'une décision joueur sont-ils marqués ? (Conditional stimuli — are stimuli depending on player decisions marked?)
+
+---
+
+AXE 4 : RYTHME ET CHARGE PAR CELLULE / PACE AND WORKLOAD PER CELL
+
+Continuité d'engagement — chaque cellule reçoit-elle des stimuli à intervalles suffisants ? Identifier les temps morts > 15 minutes. (Engagement continuity — does each cell receive stimuli at sufficient intervals? Identify gaps > 15 minutes.)
+Gestion de la charge — y a-t-il des pics excessifs (> 3 stimuli en 5 min pour une cellule) ? (Workload management — are there excessive peaks?)
+Dynamique — le rythme comporte-t-il des accélérations et des respirations ? (Dynamics — does the pace include accelerations and breathers?)
+Produire un tableau synthétique : nombre de stimuli par cellule et par phase. (Produce a summary table: number of stimuli per cell and per phase.)
+
+---
+
+AXE 5 : GESTION DES ALÉAS ET FLEXIBILITÉ / CONTINGENCY MANAGEMENT AND FLEXIBILITY
+
+Des injects alternatifs sont-ils prévus si les joueurs prennent une direction inattendue ? (Are alternative injects planned if players take an unexpected direction?)
+Un mécanisme de "coup de pouce" existe-t-il si une cellule est bloquée ? (Does a "nudge" mechanism exist if a cell is stuck?)
+Des stimuli de recadrage sont-ils prévus pour ramener le jeu sur les rails ? (Are reframing stimuli planned to bring the game back on track?)
+Le scénario prévoit-il un mécanisme d'arrêt anticipé ? (Does the scenario provide an early stop mechanism?)
+
+---
+
+FORMAT DE SORTIE / OUTPUT FORMAT
+
+Réponds UNIQUEMENT avec un objet JSON valide / Reply ONLY with a valid JSON object:
+
+{
+  "summary": "Synthèse globale en 3-4 phrases / Global summary in 3-4 sentences",
+  "maturity": "first_draft | advanced_draft | ready_to_play",
+  "axes": [
+    {
+      "id": 1,
+      "title": "Complétude de l'exercice / Exercise Completeness",
+      "verdict": "satisfactory | acceptable | insufficient",
+      "positive": ["constat positif 1 / positive finding 1", "constat positif 2"],
+      "negative": ["constat négatif 1 (lignes X-Y) / negative finding 1 (lines X-Y)", "constat négatif 2"],
+      "recommendations": ["recommandation 1 / recommendation 1", "recommandation 2"]
+    }
+  ],
+  "priority_actions": ["action prioritaire 1 / priority action 1", "action prioritaire 2", "action prioritaire 3"],
+  "stimuli_per_cell_per_phase": {
+    "cell_name_1": {"phase_1": 0, "phase_2": 0},
+    "cell_name_2": {"phase_1": 0, "phase_2": 0}
+  }
+}
+
+${serialized}`;
+      }
+
+      // ─── Run analysis ─────────────────────────────────────────────────────────────
+
+      async function checkerRunAnalysis() {
+        const cs = appState.checkerState;
+        if (!cs.parsedData || cs.analysisLoading) return;
+
+        cs.analysisLoading = true;
+        cs.analysisError = null;
+        cs.analysisResult = null;
+        cs._rawResponse = null;
+        App.render();
+
+        try {
+          const { serialized, detectedCols, missingCols, truncated } = checkerSerializeChronogram();
+          if (truncated) {
+            pushToast(tt(
+              'Large chronogram detected. Content was summarized for analysis.',
+              'Chronogramme volumineux détecté. Le contenu a été résumé pour l\'analyse.'
+            ), 'info');
+          }
+
+          const prompt = checkerBuildPrompt(serialized, detectedCols, missingCols, false);
+          let result;
+          try {
+            result = await AITextGenerator.generate('checker_analysis', prompt, 'Reply in strict JSON.', true, 8000);
+          } catch (firstErr) {
+            // Retry with lower max_tokens and concise instruction
+            const concisePrompt = checkerBuildPrompt(serialized, detectedCols, missingCols, true);
+            result = await AITextGenerator.generate('checker_analysis', concisePrompt, 'Reply in strict JSON.', true, 4096);
+          }
+
+          cs.analysisResult = result;
+          cs.analysisLoading = false;
+          cs.activeAxisTab = 0;
+          App.render();
+          pushToast(tt('Analysis complete.', 'Analyse terminée.'), 'success');
+        } catch (err) {
+          cs.analysisLoading = false;
+          cs.analysisError = err.message;
+          App.render();
+        }
+      }
+
+      // ─── Render: Results section ──────────────────────────────────────────────────
+
+      function renderCheckerResults() {
+        const cs = appState.checkerState;
+
+        if (cs.analysisLoading) {
+          return `
+            <article class="card checker-loading">
+              <div style="display:flex; align-items:center; gap:12px; justify-content:center; padding:32px;">
+                <span class="checker-spinner"></span>
+                <span>${tt('Analyzing… (this may take 30-60s)', 'Analyse en cours… (cela peut prendre 30-60s)')}</span>
+              </div>
+            </article>
+          `;
+        }
+
+        if (cs.analysisError) {
+          return `
+            <article class="card">
+              <div class="checker-error-msg">
+                <strong>${tt('Analysis failed', 'Échec de l\'analyse')}</strong>: ${escapeHtml(cs.analysisError)}
+              </div>
+              <div class="actions" style="margin-top:12px;">
+                <button class="btn btn-primary" data-action="checker-analyze">${tt('Retry', 'Réessayer')}</button>
+              </div>
+              ${cs._rawResponse ? `<details style="margin-top:12px;"><summary>${tt('Raw response', 'Réponse brute')}</summary><pre class="checker-raw-response">${escapeHtml(cs._rawResponse)}</pre></details>` : ''}
+            </article>
+          `;
+        }
+
+        if (!cs.analysisResult) return '';
+
+        const r = cs.analysisResult;
+        return `
+          <article class="card checker-results">
+            <div class="section-header" style="margin-bottom:16px;">
+              <h3>${tt('Analysis Results', 'Résultats de l\'analyse')}</h3>
+              <div class="actions">
+                <button class="btn btn-secondary" data-action="checker-analyze">${tt('Re-analyze', 'Ré-analyser')}</button>
+              </div>
+            </div>
+
+            ${renderCheckerSummary(r)}
+            ${renderCheckerPriorityActions(r)}
+            ${renderCheckerAxes(r)}
+            ${renderCheckerHeatmap(r)}
+          </article>
+        `;
+      }
+
+      // ─── Render: Summary block ────────────────────────────────────────────────────
+
+      function renderCheckerSummary(result) {
+        const maturity = result.maturity || 'first_draft';
+        const maturityConfig = {
+          first_draft:    { label: tt('First Draft', 'Premier brouillon'), cls: 'maturity-red' },
+          advanced_draft: { label: tt('Advanced Draft', 'Brouillon avancé'), cls: 'maturity-orange' },
+          ready_to_play:  { label: tt('Ready to Play', 'Prêt à jouer'), cls: 'maturity-green' }
+        };
+        const mc = maturityConfig[maturity] || maturityConfig.first_draft;
+
+        return `
+          <div class="checker-summary">
+            <div class="checker-maturity-badge ${mc.cls}">${mc.label}</div>
+            <p>${escapeHtml(result.summary || '')}</p>
+          </div>
+        `;
+      }
+
+      // ─── Render: Priority actions ─────────────────────────────────────────────────
+
+      function renderCheckerPriorityActions(result) {
+        const actions = result.priority_actions;
+        if (!actions || !actions.length) return '';
+        return `
+          <div class="checker-priority-actions">
+            <h4>${tt('Priority Actions', 'Actions prioritaires')}</h4>
+            <ol>
+              ${actions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+            </ol>
+          </div>
+        `;
+      }
+
+      // ─── Render: Axes tabs + detail ───────────────────────────────────────────────
+
+      function renderCheckerAxes(result) {
+        const axes = result.axes;
+        if (!axes || !axes.length) return '';
+
+        const activeIdx = appState.checkerState.activeAxisTab;
+        const verdictIcons = {
+          satisfactory: '✅',
+          acceptable: '⚠️',
+          insufficient: '❌'
+        };
+
+        return `
+          <div class="checker-axes">
+            <div class="checker-axes-tabs">
+              ${axes.map((axis, i) => `
+                <button class="checker-axis-tab ${i === activeIdx ? 'active' : ''} checker-axis-${axis.verdict || 'acceptable'}"
+                        data-action="checker-select-axis" data-axis-index="${i}">
+                  ${verdictIcons[axis.verdict] || '⚠️'} ${tt('Axis', 'Axe')} ${axis.id || (i + 1)}
+                </button>
+              `).join('')}
+            </div>
+            ${renderCheckerAxisDetail(axes[activeIdx] || axes[0])}
+          </div>
+        `;
+      }
+
+      function renderCheckerAxisDetail(axis) {
+        if (!axis) return '';
+        const verdictIcons = { satisfactory: '✅', acceptable: '⚠️', insufficient: '❌' };
+        return `
+          <div class="checker-axis-detail">
+            <h4>${escapeHtml(axis.title || '')} ${verdictIcons[axis.verdict] || ''}</h4>
+
+            ${(axis.positive && axis.positive.length) ? `
+              <div class="checker-findings-group">
+                ${axis.positive.map(f => `<div class="checker-finding checker-finding-positive"><span class="checker-finding-icon">✓</span> ${escapeHtml(f)}</div>`).join('')}
+              </div>
+            ` : ''}
+
+            ${(axis.negative && axis.negative.length) ? `
+              <div class="checker-findings-group">
+                ${axis.negative.map(f => `<div class="checker-finding checker-finding-negative"><span class="checker-finding-icon">✗</span> ${escapeHtml(f)}</div>`).join('')}
+              </div>
+            ` : ''}
+
+            ${(axis.recommendations && axis.recommendations.length) ? `
+              <div class="checker-findings-group">
+                <h5>${tt('Recommendations', 'Recommandations')}</h5>
+                ${axis.recommendations.map(r => `<div class="checker-finding checker-recommendation"><span class="checker-finding-icon">→</span> ${escapeHtml(r)}</div>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      // ─── Render: Heatmap (stimuli distribution) ───────────────────────────────────
+
+      function renderCheckerHeatmap(result) {
+        const data = result.stimuli_per_cell_per_phase;
+        if (!data || !Object.keys(data).length) return '';
+
+        const cells = Object.keys(data);
+        const phaseSet = new Set();
+        cells.forEach(c => Object.keys(data[c]).forEach(p => phaseSet.add(p)));
+        const phases = [...phaseSet];
+
+        return `
+          <div class="checker-heatmap-section">
+            <h4>${tt('Stimuli Distribution', 'Distribution des stimuli')}</h4>
+            <div class="checker-heatmap-wrap">
+              <table class="checker-heatmap">
+                <thead>
+                  <tr>
+                    <th>${tt('Cell', 'Cellule')}</th>
+                    ${phases.map(p => `<th>${escapeHtml(p)}</th>`).join('')}
+                    <th><strong>${tt('Total', 'Total')}</strong></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${cells.map(cell => {
+                    const rowTotal = phases.reduce((sum, p) => sum + (data[cell][p] || 0), 0);
+                    return `
+                      <tr>
+                        <td class="checker-heatmap-cell-name">${escapeHtml(cell)}</td>
+                        ${phases.map(p => {
+                          const v = data[cell][p] || 0;
+                          return `<td class="checker-heatmap-cell" style="background:${checkerHeatmapColor(v)}">${v}</td>`;
+                        }).join('')}
+                        <td class="checker-heatmap-total"><strong>${rowTotal}</strong></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                  <tr class="checker-heatmap-totals-row">
+                    <td><strong>${tt('Total', 'Total')}</strong></td>
+                    ${phases.map(p => {
+                      const colTotal = cells.reduce((sum, c) => sum + (data[c][p] || 0), 0);
+                      return `<td class="checker-heatmap-total"><strong>${colTotal}</strong></td>`;
+                    }).join('')}
+                    <td class="checker-heatmap-total"><strong>${cells.reduce((sum, c) => sum + phases.reduce((s, p) => s + (data[c][p] || 0), 0), 0)}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function checkerHeatmapColor(value) {
+        if (value === 0) return '#f0f0f0';
+        if (value <= 2) return '#c8e6c9';
+        if (value <= 4) return '#66bb6a';
+        if (value <= 7) return '#ffa726';
+        return '#ef5350';
       }

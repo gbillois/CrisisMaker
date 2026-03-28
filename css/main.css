@@ -2097,3 +2097,137 @@
       font-size: 0.82rem;
       color: var(--warning);
     }
+
+    /* Analysis loading spinner */
+    .checker-spinner {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: checker-spin 0.7s linear infinite;
+    }
+    @keyframes checker-spin { to { transform: rotate(360deg); } }
+    .checker-loading { text-align: center; color: var(--muted); }
+
+    /* Results */
+    .checker-results { }
+
+    /* Summary */
+    .checker-summary {
+      padding: 16px;
+      background: var(--surface-alt);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+    }
+    .checker-summary p { margin: 10px 0 0; font-size: 0.9rem; line-height: 1.55; }
+    .checker-maturity-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .maturity-red { background: #FECACA; color: #991B1B; }
+    .maturity-orange { background: #FED7AA; color: #92400E; }
+    .maturity-green { background: #BBF7D0; color: #166534; }
+
+    /* Priority actions */
+    .checker-priority-actions {
+      padding: 14px 18px;
+      background: #FFF7ED;
+      border: 1px solid #FED7AA;
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+    }
+    .checker-priority-actions h4 { margin: 0 0 10px; font-size: 0.9rem; color: #92400E; }
+    .checker-priority-actions ol { margin: 0; padding-left: 20px; }
+    .checker-priority-actions li { font-size: 0.85rem; margin-bottom: 4px; line-height: 1.45; }
+
+    /* Axes tabs */
+    .checker-axes { margin-bottom: 16px; }
+    .checker-axes-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .checker-axis-tab {
+      padding: 7px 14px;
+      font-size: 0.82rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .checker-axis-tab:hover { border-color: var(--primary); }
+    .checker-axis-tab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* Axis detail */
+    .checker-axis-detail {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+    }
+    .checker-axis-detail h4 { margin: 0 0 14px; font-size: 0.95rem; }
+    .checker-axis-detail h5 { margin: 12px 0 6px; font-size: 0.85rem; color: var(--primary); }
+    .checker-findings-group { margin-bottom: 10px; }
+    .checker-finding {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    .checker-finding-icon { flex-shrink: 0; font-weight: 700; width: 16px; text-align: center; }
+    .checker-finding-positive .checker-finding-icon { color: var(--success); }
+    .checker-finding-negative .checker-finding-icon { color: #DC2626; }
+    .checker-recommendation .checker-finding-icon { color: var(--primary); }
+
+    /* Heatmap */
+    .checker-heatmap-section { margin-bottom: 16px; }
+    .checker-heatmap-section h4 { margin: 0 0 10px; font-size: 0.9rem; }
+    .checker-heatmap-wrap { overflow-x: auto; }
+    .checker-heatmap {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .checker-heatmap th,
+    .checker-heatmap td {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+    }
+    .checker-heatmap th {
+      background: var(--surface-alt);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .checker-heatmap-cell { font-weight: 500; min-width: 50px; }
+    .checker-heatmap-cell-name { text-align: left; font-weight: 500; white-space: nowrap; }
+    .checker-heatmap-total { font-weight: 700; background: var(--surface-alt) !important; }
+    .checker-heatmap-totals-row td { background: var(--surface-alt); }
+
+    /* Raw response fallback */
+    .checker-raw-response {
+      padding: 12px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }

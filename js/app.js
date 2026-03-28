@@ -371,6 +371,14 @@
             case 'checker-clear-file':
               checkerClearFile();
               break;
+            case 'checker-analyze':
+              checkerRunAnalysis();
+              break;
+            case 'checker-select-axis': {
+              const idx = parseInt(event.currentTarget.dataset.axisIndex, 10);
+              if (!isNaN(idx)) { appState.checkerState.activeAxisTab = idx; App.render(); }
+              break;
+            }
             case 'test-connection': {
               const provider = appState.scenario.settings.ai_provider;
               appState.connectionTest = {
