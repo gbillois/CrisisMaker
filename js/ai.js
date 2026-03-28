@@ -29,6 +29,84 @@
           const promptInfo = PromptBuilder.forStimulus(stimulus, actor, appState.scenario, fieldName, guidedPrompt);
           return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt);
         },
+        async generateStreaming(channel, systemPrompt, userPrompt = null, onChunk = null, maxTokens = 2000) {
+          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
+
+          const readSSE = async (response, extractDelta) => {
+            if (!response.ok) {
+              const errData = await response.json().catch(() => ({}));
+              throw new Error(errData.error?.message || `HTTP ${response.status}`);
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullText = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop();
+              for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const data = line.slice(6).trim();
+                if (!data || data === '[DONE]') continue;
+                try {
+                  const event = JSON.parse(data);
+                  if (event.type === 'error') throw new Error(event.error?.message || 'Stream error');
+                  const delta = extractDelta(event);
+                  if (delta) {
+                    fullText += delta;
+                    if (onChunk) onChunk(delta);
+                  }
+                } catch (e) {
+                  if (e.message === 'Stream error' || e.message?.startsWith('HTTP')) throw e;
+                }
+              }
+            }
+            return fullText;
+          };
+
+          if (ai_provider === 'anthropic') {
+            if (!ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.'));
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': ai_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+              body: JSON.stringify({ model: ai_model, max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
+            });
+            const fullText = await readSSE(response, (event) => {
+              if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') return event.delta.text;
+              return null;
+            });
+            return parseLLMJson(fullText);
+          }
+
+          if (ai_provider === 'openai') {
+            if (!ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.'));
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
+              body: JSON.stringify({ model: ai_model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
+            });
+            const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
+            return parseLLMJson(fullText);
+          }
+
+          if (ai_provider === 'azure_openai') {
+            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.'));
+            const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
+            const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
+              body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
+            });
+            const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
+            return parseLLMJson(fullText);
+          }
+
+          throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`));
+        },
+
         async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000) {
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.'));

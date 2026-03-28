@@ -40,22 +40,34 @@
 
         // ── LLM call with retry ──
 
-        async callLLMWithRetry(systemPrompt, userPrompt, maxRetries = 2, maxTokens = 8192) {
+        async callLLMWithRetry(systemPrompt, userPrompt, maxRetries = 2, maxTokens = 8192, onLog = null) {
           for (let attempt = 0; attempt <= maxRetries; attempt++) {
             try {
-              const result = await AITextGenerator.generate(
-                'chronogram_import',
-                systemPrompt,
-                userPrompt,
-                true,
-                maxTokens
-              );
+              let result;
+              if (onLog) {
+                result = await AITextGenerator.generateStreaming(
+                  'chronogram_import',
+                  systemPrompt,
+                  userPrompt,
+                  (chunk) => onLog({ type: 'chunk', text: chunk }),
+                  maxTokens
+                );
+              } else {
+                result = await AITextGenerator.generate(
+                  'chronogram_import',
+                  systemPrompt,
+                  userPrompt,
+                  true,
+                  maxTokens
+                );
+              }
               if (!result || typeof result !== 'object') {
                 throw new Error(tt('LLM response was not valid JSON.', 'La réponse du LLM n\'était pas un JSON valide.'));
               }
               return result;
             } catch (err) {
               if (attempt === maxRetries) {
+                if (onLog) onLog({ type: 'error', message: err.message });
                 throw new Error(
                   tt(
                     `AI import failed after ${maxRetries + 1} attempts. Last error: ${err.message}`,
@@ -128,11 +140,11 @@ Réponds UNIQUEMENT avec un objet JSON valide (pas de markdown, pas de commentai
           return prompt;
         },
 
-        async callLLM_Step1(excelData, userContext) {
-          return this.callLLMWithRetry(
-            this.step1SystemPrompt(),
-            this.step1UserPrompt(excelData, userContext)
-          );
+        async callLLM_Step1(excelData, userContext, onLog = null) {
+          const sysPrompt = this.step1SystemPrompt();
+          const usrPrompt = this.step1UserPrompt(excelData, userContext);
+          if (onLog) onLog({ type: 'start', stepNum: 1, stepLabel: tt('Step 1 — Analyze file structure', 'Étape 1 — Analyser la structure du fichier'), userPromptPreview: usrPrompt.slice(0, 400) });
+          return this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 8192, onLog);
         },
 
         // ── Step 2: Extraction & classification ──
@@ -233,7 +245,7 @@ DONNÉES (lignes ${startIdx} à ${endIdx}) :\n`;
           return prompt;
         },
 
-        async callLLM_Step2_Batched(allRows, structureAnalysis, updateProgress) {
+        async callLLM_Step2_Batched(allRows, structureAnalysis, updateProgress, onLog = null) {
           const firstDataRow = structureAnalysis.first_data_row_index || 0;
           const skipRows = new Set(structureAnalysis.meta_rows_to_skip || []);
           const dataRows = [];
@@ -263,10 +275,11 @@ DONNÉES (lignes ${startIdx} à ${endIdx}) :\n`;
               );
             }
 
-            const result = await this.callLLMWithRetry(
-              this.step2SystemPrompt(),
-              this.step2UserPrompt(allRows, structureAnalysis, startIdx, endIdx, prevLastRows)
-            );
+            const sysPrompt = this.step2SystemPrompt();
+            const usrPrompt = this.step2UserPrompt(allRows, structureAnalysis, startIdx, endIdx, prevLastRows);
+            if (onLog) onLog({ type: 'start', stepNum: 2, stepLabel: tt(`Step 2 — Extract stimuli (batch ${b + 1}/${batches.length})`, `Étape 2 — Extraction stimuli (lot ${b + 1}/${batches.length})`), userPromptPreview: usrPrompt.slice(0, 400) });
+
+            const result = await this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 8192, onLog);
 
             const items = Array.isArray(result) ? result : (result.rows || result.stimuli || []);
             allExtracted.push(...items);
@@ -375,13 +388,11 @@ OPTIONS :
 Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec content_complete=false, génère un contenu complet et réaliste. Pour les stimuli avec content_complete=true, conserve le contenu original tel quel. Réponds avec le JSON demandé.`;
         },
 
-        async callLLM_Step3(extractedStimuli, structureAnalysis, projectData) {
-          return this.callLLMWithRetry(
-            this.step3SystemPrompt(),
-            this.step3UserPrompt(extractedStimuli, structureAnalysis, projectData),
-            2,
-            16384
-          );
+        async callLLM_Step3(extractedStimuli, structureAnalysis, projectData, onLog = null) {
+          const sysPrompt = this.step3SystemPrompt();
+          const usrPrompt = this.step3UserPrompt(extractedStimuli, structureAnalysis, projectData);
+          if (onLog) onLog({ type: 'start', stepNum: 3, stepLabel: tt('Step 3 — Generate CrisisStim objects', 'Étape 3 — Générer les objets CrisisStim'), userPromptPreview: usrPrompt.slice(0, 400) });
+          return this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 16384, onLog);
         },
 
         // ── Validation ──
@@ -501,7 +512,7 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
 
         // ── Main orchestrator ──
 
-        async importChronogramIA(file, options, updateProgress) {
+        async importChronogramIA(file, options, updateProgress, onLog = null) {
           const { createActors, detectImplicit, mainSheet, userContext } = options;
 
           // 1. Read Excel
@@ -515,7 +526,7 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
             tt('Step 1: Analyzing file structure...', 'Étape 1 : Analyse de la structure du fichier...'),
             ''
           );
-          const structureAnalysis = await this.callLLM_Step1(excelData, userContext);
+          const structureAnalysis = await this.callLLM_Step1(excelData, userContext, onLog);
 
           const sheetName = mainSheet || structureAnalysis.main_sheet || this.detectMainSheet(workbook.SheetNames);
           const mainSheetData = excelData.sheets[sheetName];
@@ -542,7 +553,8 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
             (detail) => updateProgress(2, 3,
               tt('Step 2: Extracting and classifying stimuli...', 'Étape 2 : Extraction et classification des stimuli...'),
               detail
-            )
+            ),
+            onLog
           );
 
           // Filter implicit if option disabled
@@ -562,7 +574,8 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
           const crisisStimImport = await this.callLLM_Step3(
             stimuliToConvert,
             structureAnalysis,
-            appState.scenario
+            appState.scenario,
+            onLog
           );
 
           // Post-validation

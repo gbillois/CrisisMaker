@@ -683,18 +683,42 @@
               });
               state.phase = 'progress';
               state.progress = { step: 1, totalSteps: 3, message: '', details: '' };
+              state.llmLogs = [];
               state.error = null;
               App.render();
               // Run pipeline async
               (async () => {
                 try {
+                  const onLog = (entry) => {
+                    const logs = appState.chronogramImport?.llmLogs;
+                    if (!logs) return;
+                    if (entry.type === 'start') {
+                      logs.push({ id: Date.now(), stepNum: entry.stepNum, stepLabel: entry.stepLabel, userPromptPreview: entry.userPromptPreview, responseText: '', status: 'streaming' });
+                      App.render();
+                      setTimeout(() => { const p = document.getElementById('llm-stream-panel'); if (p) p.scrollTop = p.scrollHeight; }, 30);
+                    } else if (entry.type === 'chunk') {
+                      const last = logs[logs.length - 1];
+                      if (!last || last.status !== 'streaming') return;
+                      last.responseText += entry.text;
+                      const contentEl = document.getElementById('llm-stream-content');
+                      if (contentEl) contentEl.innerHTML = renderLLMLogs(logs);
+                      const panel = document.getElementById('llm-stream-panel');
+                      if (panel) panel.scrollTop = panel.scrollHeight;
+                    } else if (entry.type === 'done' || entry.type === 'error') {
+                      const last = logs[logs.length - 1];
+                      if (last) last.status = entry.type;
+                      App.render();
+                      setTimeout(() => { const p = document.getElementById('llm-stream-panel'); if (p) p.scrollTop = p.scrollHeight; }, 30);
+                    }
+                  };
                   const result = await ChronogramImport.importChronogramIA(
                     state.file,
                     state.options,
                     (step, totalSteps, message, details) => {
                       state.progress = { step, totalSteps, message, details };
                       App.render();
-                    }
+                    },
+                    onLog
                   );
                   state.result = result;
                   const autonomy = appState.chronogramImportAutonomy;
