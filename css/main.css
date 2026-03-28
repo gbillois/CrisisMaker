@@ -539,7 +539,8 @@
     .timeline {
       position: relative;
       padding: 14px 0 0;
-      overflow: auto;
+      overflow-x: auto;
+      overflow-y: hidden;
       min-height: 0;
       flex: 1;
     }
