@@ -208,6 +208,7 @@
             ${cs.parsedData ? renderCheckerImported() : renderCheckerDropZone()}
             ${cs.parsedData ? renderCheckerAnalyzeButton() : ''}
             ${cs.parsedData ? renderCheckerResults() : ''}
+            ${renderCheckerChecklist()}
           </section>
         `;
       }
@@ -385,6 +386,9 @@
             checkerSwitchSheet(sheetName);
           });
         });
+
+        // Checklist events
+        bindCheckerChecklistEvents();
       }
 
       // ─── File handling ────────────────────────────────────────────────────────────
@@ -413,6 +417,9 @@
           appState.checkerState.analysisResult = null;
           appState.checkerState.analysisError = null;
           appState.checkerState.checklist = {};
+
+          // Load persisted checklist for this file
+          checkerLoadChecklist();
 
           App.render();
           pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`), 'success');
@@ -734,6 +741,7 @@ ${serialized}`;
             <div class="section-header" style="margin-bottom:16px;">
               <h3>${tt('Analysis Results', 'Résultats de l\'analyse')}</h3>
               <div class="actions">
+                <button class="btn btn-secondary" data-action="checker-export-report">${tt('Export Report', 'Exporter le rapport')}</button>
                 <button class="btn btn-secondary" data-action="checker-analyze">${tt('Re-analyze', 'Ré-analyser')}</button>
               </div>
             </div>
@@ -895,4 +903,295 @@ ${serialized}`;
         if (value <= 4) return '#66bb6a';
         if (value <= 7) return '#ffa726';
         return '#ef5350';
+      }
+
+      // ─── Phase 3: Checklist + Export ──────────────────────────────────────────────
+
+      // ─── Checklist data ───────────────────────────────────────────────────────────
+
+      function checkerGetChecklistCategories() {
+        return [
+          {
+            key: 'playability',
+            title: tt('Playability & Operational Feasibility', 'Jouabilité et faisabilité opérationnelle'),
+            items: [
+              tt('The number of stimuli is compatible with the size of the animation team',
+                 'Le nombre de stimuli est compatible avec la taille de l\'équipe d\'animation'),
+              tt('Animation roles are clearly assigned (who sends what, who plays which external role)',
+                 'Les rôles d\'animation sont clairement répartis (qui envoie quoi, qui joue quel rôle externe)'),
+              tt('Supporting materials are ready and consistent (fake articles, fake tweets, fake emails, notification templates)',
+                 'Les supports sont prêts et cohérents (faux articles, faux tweets, faux mails, templates de notification)'),
+              tt('Required tools are identified and available (room, phones, collaborative tools, chronolog)',
+                 'Les outils nécessaires sont identifiés et disponibles (salle, téléphones, outils collaboratifs, main courante)'),
+              tt('Instructions for facilitators are sufficiently precise',
+                 'Les consignes pour les animateurs/facilitateurs sont suffisamment précises')
+            ]
+          },
+          {
+            key: 'observation',
+            title: tt('Observation & Evaluation Framework', 'Dispositif d\'observation et d\'évaluation'),
+            items: [
+              tt('Observers are positioned in each cell',
+                 'Des observateurs sont positionnés dans chaque cellule'),
+              tt('An observation grid is provided with measurable criteria (reaction time, decision quality, coordination, communication)',
+                 'Une grille d\'observation est fournie avec des critères mesurables (temps de réaction, qualité des décisions, coordination, communication)'),
+              tt('Mandatory checkpoints (key decisions, expected escalations) are identified',
+                 'Les points de passage obligés (décisions clés, escalades attendues) sont identifiés'),
+              tt('The after-action review process is planned (hot debrief, cold debrief, questionnaire)',
+                 'Le dispositif RETEX est prévu (hot debrief, cold debrief, questionnaire)')
+            ]
+          },
+          {
+            key: 'realism',
+            title: tt('Realism & Credibility of Materials', 'Réalisme et crédibilité des supports'),
+            items: [
+              tt('Stimuli are written in a style consistent with their supposed sender',
+                 'Les stimuli sont rédigés dans un style cohérent avec leur émetteur supposé'),
+              tt('Factual elements (names, dates, figures, geography) are consistent with each other',
+                 'Les éléments factuels (noms, dates, chiffres, géographie) sont cohérents entre eux'),
+              tt('Fake media/social media content is visually credible',
+                 'Les faux contenus médias/réseaux sociaux sont visuellement crédibles'),
+              tt('Regulatory or contractual references mentioned are correct',
+                 'Les références réglementaires ou contractuelles mentionnées sont correctes')
+            ]
+          }
+        ];
+      }
+
+      // ─── Checklist persistence ────────────────────────────────────────────────────
+
+      function checkerChecklistKey() {
+        const cs = appState.checkerState;
+        const name = cs.file ? cs.file.name : '_default';
+        // Simple string hash
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+        }
+        return `crisis_checker_checklist_${Math.abs(hash)}`;
+      }
+
+      function checkerLoadChecklist() {
+        try {
+          const key = checkerChecklistKey();
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            appState.checkerState.checklist = JSON.parse(stored);
+          }
+        } catch (e) { /* ignore parse errors */ }
+      }
+
+      function checkerSaveChecklist() {
+        try {
+          const key = checkerChecklistKey();
+          localStorage.setItem(key, JSON.stringify(appState.checkerState.checklist));
+        } catch (e) { /* ignore quota errors */ }
+      }
+
+      // ─── Render: Checklist ────────────────────────────────────────────────────────
+
+      function renderCheckerChecklist() {
+        const cs = appState.checkerState;
+        const categories = checkerGetChecklistCategories();
+        const cl = cs.checklist || {};
+        const checked = cl.checked || {};
+        const customItems = cl.customItems || {};
+
+        // Count totals
+        let totalItems = 0;
+        let checkedCount = 0;
+        categories.forEach(cat => {
+          const customs = customItems[cat.key] || [];
+          const allItems = [...cat.items, ...customs];
+          totalItems += allItems.length;
+          allItems.forEach((_, i) => { if (checked[`${cat.key}_${i}`]) checkedCount++; });
+        });
+
+        const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
+        const allDone = totalItems > 0 && checkedCount === totalItems;
+
+        return `
+          <article class="card checker-checklist">
+            <div class="section-header" style="margin-bottom:16px;">
+              <h3>${tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »')}</h3>
+              ${allDone ? `<span class="checker-maturity-badge maturity-green">${tt('Ready to Play', 'Prêt à jouer')} ✅</span>` : ''}
+            </div>
+
+            ${categories.map(cat => renderCheckerChecklistCategory(cat, checked, customItems)).join('')}
+
+            <div class="checker-checklist-progress">
+              <div class="checker-checklist-progress-bar">
+                <div class="checker-checklist-progress-fill" style="width:${pct}%"></div>
+              </div>
+              <span class="checker-checklist-progress-text">${tt('Progress', 'Progression')} : ${checkedCount} / ${totalItems} ${tt('items checked', 'éléments cochés')}</span>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderCheckerChecklistCategory(category, checked, customItems) {
+        const customs = customItems[category.key] || [];
+        const allItems = [...category.items, ...customs];
+
+        return `
+          <div class="checker-checklist-category">
+            <h4>${category.title}</h4>
+            ${allItems.map((item, i) => {
+              const key = `${category.key}_${i}`;
+              const isCustom = i >= category.items.length;
+              return `
+                <label class="checker-checklist-item">
+                  <input type="checkbox" ${checked[key] ? 'checked' : ''}
+                         data-action="checker-toggle-check" data-check-key="${key}">
+                  <span>${escapeHtml(item)}</span>
+                  ${isCustom ? `<button class="checker-remove-custom" data-action="checker-remove-custom-item" data-cat-key="${category.key}" data-custom-index="${i - category.items.length}" title="${escapeAttribute(tt('Remove', 'Supprimer'))}">✕</button>` : ''}
+                </label>
+              `;
+            }).join('')}
+            <button class="checker-add-item" data-action="checker-add-custom-item" data-cat-key="${category.key}">
+              + ${tt('Add custom item', 'Ajouter un élément')}
+            </button>
+          </div>
+        `;
+      }
+
+      // ─── Checklist event binding ──────────────────────────────────────────────────
+
+      function bindCheckerChecklistEvents() {
+        document.querySelectorAll('[data-action="checker-toggle-check"]').forEach(cb => {
+          cb.addEventListener('change', () => {
+            const key = cb.dataset.checkKey;
+            if (!appState.checkerState.checklist.checked) appState.checkerState.checklist.checked = {};
+            appState.checkerState.checklist.checked[key] = cb.checked;
+            checkerSaveChecklist();
+            App.render();
+          });
+        });
+
+        document.querySelectorAll('[data-action="checker-add-custom-item"]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const catKey = btn.dataset.catKey;
+            const text = prompt(tt('Enter custom checklist item:', 'Saisissez l\'élément personnalisé :'));
+            if (!text || !text.trim()) return;
+            if (!appState.checkerState.checklist.customItems) appState.checkerState.checklist.customItems = {};
+            if (!appState.checkerState.checklist.customItems[catKey]) appState.checkerState.checklist.customItems[catKey] = [];
+            appState.checkerState.checklist.customItems[catKey].push(text.trim());
+            checkerSaveChecklist();
+            App.render();
+          });
+        });
+
+        document.querySelectorAll('[data-action="checker-remove-custom-item"]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const catKey = btn.dataset.catKey;
+            const idx = parseInt(btn.dataset.customIndex, 10);
+            const customs = appState.checkerState.checklist.customItems?.[catKey];
+            if (customs && idx >= 0 && idx < customs.length) {
+              customs.splice(idx, 1);
+              checkerSaveChecklist();
+              App.render();
+            }
+          });
+        });
+      }
+
+      // ─── Export Markdown report ───────────────────────────────────────────────────
+
+      function checkerExportReport() {
+        const cs = appState.checkerState;
+        const r = cs.analysisResult;
+        const fileName = cs.file ? cs.file.name : 'unknown';
+        const date = new Date().toISOString().slice(0, 10);
+        const categories = checkerGetChecklistCategories();
+        const cl = cs.checklist || {};
+        const checked = cl.checked || {};
+        const customItems = cl.customItems || {};
+
+        const verdictLabels = {
+          satisfactory: '✅ Satisfactory / Satisfaisant',
+          acceptable: '⚠️ Acceptable',
+          insufficient: '❌ Insufficient / Insuffisant'
+        };
+        const maturityLabels = {
+          first_draft: 'First Draft / Premier brouillon',
+          advanced_draft: 'Advanced Draft / Brouillon avancé',
+          ready_to_play: 'Ready to Play / Prêt à jouer'
+        };
+
+        let md = `# Crisis Checker Report — ${fileName}\nGenerated: ${date}\n\n`;
+
+        if (r) {
+          md += `## Summary / Synthèse\n**Maturity / Maturité**: ${maturityLabels[r.maturity] || r.maturity}\n\n${r.summary || ''}\n\n`;
+
+          if (r.priority_actions && r.priority_actions.length) {
+            md += `## Priority Actions / Actions prioritaires\n`;
+            r.priority_actions.forEach((a, i) => { md += `${i + 1}. ${a}\n`; });
+            md += '\n';
+          }
+
+          if (r.axes) {
+            r.axes.forEach(axis => {
+              md += `## ${tt('Axis', 'Axe')} ${axis.id}: ${axis.title} — ${verdictLabels[axis.verdict] || axis.verdict}\n\n`;
+              if (axis.positive && axis.positive.length) {
+                md += `### ${tt('Positive findings', 'Constats positifs')}\n`;
+                axis.positive.forEach(f => { md += `- ✓ ${f}\n`; });
+                md += '\n';
+              }
+              if (axis.negative && axis.negative.length) {
+                md += `### ${tt('Negative findings', 'Constats négatifs')}\n`;
+                axis.negative.forEach(f => { md += `- ✗ ${f}\n`; });
+                md += '\n';
+              }
+              if (axis.recommendations && axis.recommendations.length) {
+                md += `### ${tt('Recommendations', 'Recommandations')}\n`;
+                axis.recommendations.forEach(rec => { md += `- → ${rec}\n`; });
+                md += '\n';
+              }
+            });
+          }
+
+          // Heatmap table
+          const data = r.stimuli_per_cell_per_phase;
+          if (data && Object.keys(data).length) {
+            const cells = Object.keys(data);
+            const phaseSet = new Set();
+            cells.forEach(c => Object.keys(data[c]).forEach(p => phaseSet.add(p)));
+            const phases = [...phaseSet];
+
+            md += `## ${tt('Stimuli Distribution', 'Distribution des stimuli')}\n\n`;
+            md += `| ${tt('Cell', 'Cellule')} | ${phases.join(' | ')} | Total |\n`;
+            md += `|${'----|'.repeat(phases.length + 2)}\n`;
+            cells.forEach(cell => {
+              const vals = phases.map(p => data[cell][p] || 0);
+              const total = vals.reduce((s, v) => s + v, 0);
+              md += `| ${cell} | ${vals.join(' | ')} | ${total} |\n`;
+            });
+            md += '\n';
+          }
+        }
+
+        // Checklist
+        md += `## ${tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »')}\n\n`;
+        let totalItems = 0, checkedCount = 0;
+        categories.forEach(cat => {
+          md += `### ${cat.title}\n`;
+          const customs = customItems[cat.key] || [];
+          const allItems = [...cat.items, ...customs];
+          allItems.forEach((item, i) => {
+            const key = `${cat.key}_${i}`;
+            const isChecked = !!checked[key];
+            md += `- [${isChecked ? 'x' : ' '}] ${item}\n`;
+            totalItems++;
+            if (isChecked) checkedCount++;
+          });
+          md += '\n';
+        });
+        md += `**${tt('Progress', 'Progression')}**: ${checkedCount} / ${totalItems}\n`;
+
+        // Download
+        const safeName = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+        downloadBlob(blob, `crisis_check_${safeName}_${date}.md`);
+        pushToast(tt('Report exported.', 'Rapport exporté.'), 'success');
       }

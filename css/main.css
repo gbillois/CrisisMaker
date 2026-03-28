@@ -2231,3 +2231,82 @@
       max-height: 300px;
       overflow-y: auto;
     }
+
+    /* Checklist */
+    .checker-checklist { margin-top: 0; }
+    .checker-checklist-category { margin-bottom: 18px; }
+    .checker-checklist-category h4 {
+      margin: 0 0 10px;
+      font-size: 0.9rem;
+      color: var(--primary-strong);
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .checker-checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 7px 4px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.12s;
+    }
+    .checker-checklist-item:hover { background: rgba(15, 109, 143, 0.03); }
+    .checker-checklist-item input[type="checkbox"] {
+      margin-top: 2px;
+      flex-shrink: 0;
+      accent-color: var(--success);
+      width: 16px;
+      height: 16px;
+    }
+    .checker-checklist-item span { flex: 1; }
+    .checker-remove-custom {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .checker-remove-custom:hover { color: #DC2626; background: #FEF2F2; }
+    .checker-add-item {
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.82rem;
+      padding: 6px 12px;
+      font-family: inherit;
+      margin-top: 6px;
+      transition: all 0.15s;
+    }
+    .checker-add-item:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Progress bar */
+    .checker-checklist-progress {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .checker-checklist-progress-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .checker-checklist-progress-fill {
+      height: 100%;
+      background: var(--success);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    .checker-checklist-progress-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }

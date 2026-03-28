@@ -379,6 +379,9 @@
               if (!isNaN(idx)) { appState.checkerState.activeAxisTab = idx; App.render(); }
               break;
             }
+            case 'checker-export-report':
+              checkerExportReport();
+              break;
             case 'test-connection': {
               const provider = appState.scenario.settings.ai_provider;
               appState.connectionTest = {
