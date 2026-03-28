@@ -20,7 +20,19 @@
         },
         connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' },
         chronogramImportAutonomy: 'mostly_autonomous',
-        chronogramImport: null
+        chronogramImport: null,
+        checkerState: {
+          file: null,
+          parsedData: null,
+          sheets: [],
+          selectedSheet: '',
+          columnMapping: {},
+          analysisResult: null,
+          analysisLoading: false,
+          analysisError: null,
+          checklist: {},
+          activeAxisTab: 0
+        }
       };
 
       const App = {
@@ -48,6 +60,7 @@
           });
           root.innerHTML = renderAppShell();
           bindGlobalEvents();
+          bindCheckerEvents();
           bindStimuliSplitters();
           bindStimulusModalSplitter();
           renderToasts();
@@ -376,6 +389,20 @@
             }
             case 'clear-data':
               if (confirmClearData()) clearScenarioData();
+              break;
+            case 'checker-clear-file':
+              checkerClearFile();
+              break;
+            case 'checker-analyze':
+              checkerRunAnalysis();
+              break;
+            case 'checker-select-axis': {
+              const idx = parseInt(event.currentTarget.dataset.axisIndex, 10);
+              if (!isNaN(idx)) { appState.checkerState.activeAxisTab = idx; App.render(); }
+              break;
+            }
+            case 'checker-export-report':
+              checkerExportReport();
               break;
             case 'test-connection': {
               const provider = appState.scenario.settings.ai_provider;
