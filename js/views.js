@@ -227,8 +227,8 @@
                 <p class="launch-hero-desc">${tt('A complete studio to prepare realistic scenarios, generate crisis stimuli, and export polished deliverables — all from your browser, with no server required.', 'Un studio complet pour préparer des scénarios réalistes, générer des stimuli de crise et exporter des livrables soignés — depuis votre navigateur, sans serveur requis.')}</p>
                 <div class="launch-hero-stats">
                   <div class="hero-stat">
-                    <strong>${llmAvailable ? tt('AI connected', 'IA connectée') : tt('Stand-alone', 'Autonome')}</strong>
-                    <span>${llmAvailable ? tt('Ready for AI content generation', 'Prêt pour la génération de contenu IA') : tt('Configure an AI provider in settings', 'Configurez un fournisseur IA dans les paramètres')}</span>
+                    <strong>${llmAvailable ? tt('AI powered', 'Propulsé par l\'IA') : tt('Stand-alone or AI powered', 'Autonome ou propulsé par l\'IA')}</strong>
+                    <span>${llmAvailable ? tt('Ready for AI content generation', 'Prêt pour la génération de contenu IA') : tt('Configure an API key in settings depending on your requirements', 'Configurez une clé API dans les paramètres selon vos besoins')}</span>
                   </div>
                   <div class="hero-stat">
                     <strong>${tt('Local-first', 'Local d\'abord')}</strong>
@@ -355,7 +355,7 @@
                   <p>${tt('A streamlined studio to prepare scenarios, generate realistic stimuli, and export polished deliverables for facilitation teams.', 'Un studio fluide pour préparer les scénarios, générer des stimuli réalistes et exporter des livrables prêts pour l\'animation.')}</p>
                 </div>
                 <div class="hero-stats">
-                  <div class="hero-stat"><strong>${llmAvailable ? tt('AI connected', 'IA connectée') : tt('Stand alone', 'Autonome')}</strong><span>${llmAvailable ? tt('generation-ready setup', 'configuration prête pour l\'IA') : tt('manual mode available', 'mode manuel disponible')}</span></div>
+                  <div class="hero-stat"><strong>${llmAvailable ? tt('AI powered', 'Propulsé par l\'IA') : tt('Stand-alone or AI powered', 'Autonome ou propulsé par l\'IA')}</strong><span>${llmAvailable ? tt('Ready for AI content generation', 'Prêt pour la génération de contenu IA') : tt('Configure an API key in settings depending on your requirements', 'Configurez une clé API dans les paramètres selon vos besoins')}</span></div>
                 </div>
               </div>
 
