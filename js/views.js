@@ -793,13 +793,15 @@
         const hourWidth = Math.round(108 * zoom);
         const width = Math.max(900, (Math.ceil(maxOffset / 60) + 1) * hourWidth + 120);
         const ticks = Array.from({ length: Math.ceil(maxOffset / 60) + 2 }, (_, index) => index);
-        const timelineHeight = appState.ui?.stimuliTimelineHeight || 255;
+        const stimuliCount = appState.scenario.stimuli.length;
+        const rowCount = Math.max(1, Math.min(stimuliCount, 3));
+        const autoTimelineHeight = 56 + 24 + (rowCount * 58) + 40;
         const sortedStimuli = getSortedStimuli();
         return `
-          <section class="stimuli-workspace" data-stimuli-workspace style="--stimuli-timeline-height:${timelineHeight}px;">
+          <section class="stimuli-workspace" data-stimuli-workspace>
             <article class="card stimuli-timeline-panel">
               <div class="section-header">
-                <h3>${tt('Timeline', 'Timeline', 'Zeitplan')}</h3>
+                <h3>${tt('Visual Timeline', 'Timeline visuelle', 'Visuelle Zeitleiste')}</h3>
                 <div class="actions">
                   <div class="timeline-zoom-controls">
                     <button class="btn btn-xs" data-action="timeline-zoom-out" title="${tt('Zoom out', 'Dézoomer', 'Herauszoomen')}">−</button>
@@ -807,7 +809,6 @@
                     <button class="btn btn-xs" data-action="timeline-zoom-in" title="${tt('Zoom in', 'Zoomer', 'Hineinzoomen')}">+</button>
                   </div>
                   <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add inject', '+ Ajouter un inject', '+ Inject hinzufügen')}</button>
-                  <button class="btn btn-secondary" data-action="sort-stimuli">${tt('Sort', 'Trier', 'Sortieren')}</button>
                 </div>
               </div>
               ${renderLLMConfigBlock('stimuli_batch', tt(
@@ -825,52 +826,59 @@
                 loadingLabel: tt('Generating batch…', 'Génération du lot…', 'Batch wird generiert…'),
                 successMessage: (count) => tt(`${count} inject(s) added to the timeline. Review and adjust them if needed.`, `${count} inject(s) ajouté(s) à la timeline. Vérifiez-les et ajustez-les si besoin.`, `${count} Inject(s) zum Zeitplan hinzugefügt. Überprüfen und anpassen falls nötig.`)
               })}
-              <div class="timeline" data-timeline-scroll>
+              <div class="timeline" data-timeline-scroll style="min-height:${autoTimelineHeight}px;">
                 <div class="timeline-track" style="width:${width}px;">
                   ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * hourWidth}px;">H+${tick}</div>`).join('')}
                   ${appState.scenario.stimuli.map((stimulus, index) => renderStimulusCard(stimulus, index, hourWidth)).join('')}
                 </div>
               </div>
             </article>
-            ${sortedStimuli.length > 0 ? `
-            <div class="stimuli-table-panel">
-              <table class="stimuli-table">
-                <thead>
-                  <tr>
-                    <th>${tt('Time', 'Heure', 'Uhrzeit')}</th>
-                    <th>${tt('Type', 'Type', 'Typ')}</th>
-                    <th>${tt('Name / Subject', 'Nom / Sujet', 'Name / Betreff')}</th>
-                    <th>${tt('Actor', 'Acteur', 'Akteur')}</th>
-                    <th>${tt('Status', 'Statut', 'Status')}</th>
-                    <th>${tt('Actions', 'Actions', 'Aktionen')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${sortedStimuli.map((s) => {
-                    const meta = CHANNEL_META[s.channel] || CHANNEL_META.email_internal;
-                    const actor = getActor(s.actor_id);
-                    const h = Math.floor(s.timestamp_offset_minutes / 60);
-                    const m = String(s.timestamp_offset_minutes % 60).padStart(2, '0');
-                    const titleText = s.fields?.subject || s.fields?.headline || s.fields?.title || s.fields?.text || s.name || '—';
-                    const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
-                    return `
-                      <tr class="stimuli-table-row${appState.selectedStimulusId === s.id ? ' selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}">
-                        <td class="stimuli-table-time"><strong>H+${h}:${m}</strong></td>
-                        <td class="stimuli-table-type"><span class="stimuli-table-channel-pill" style="background:${meta.color};">${escapeHtml(channelLabel(s.channel))}</span></td>
-                        <td class="stimuli-table-content">${escapeHtml(titleText.slice(0, 100))}${titleText.length > 100 ? '…' : ''}</td>
-                        <td class="stimuli-table-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}</td>
-                        <td class="stimuli-table-status"><span class="pill pill-status" style="background:${statusColors[s.status] || '#888'}; color:#fff; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${s.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut', 'Klicken zum Status ändern')}">${escapeHtml(s.status)}</span></td>
-                        <td class="stimuli-table-actions">
-                          <button class="btn btn-xs" data-action="open-stimulus-modal" data-stimulus-id="${s.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">✏️</button>
-                          <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${s.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">⧉</button>
-                          <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${s.id}" title="${tt('Export PNG', 'Exporter PNG', 'PNG exportieren')}">⤓</button>
-                        </td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>` : ''}
+            <article class="card stimuli-table-card">
+              <div class="section-header">
+                <h3>${tt('Stimuli Table', 'Tableau des stimuli', 'Stimuli-Tabelle')}</h3>
+              </div>
+              ${sortedStimuli.length > 0 ? `
+              <div class="stimuli-table-panel">
+                <table class="stimuli-table">
+                  <thead>
+                    <tr>
+                      <th>${tt('Time', 'Heure', 'Uhrzeit')}</th>
+                      <th>${tt('Type', 'Type', 'Typ')}</th>
+                      <th>${tt('Name / Subject', 'Nom / Sujet', 'Name / Betreff')}</th>
+                      <th>${tt('Actor', 'Acteur', 'Akteur')}</th>
+                      <th>${tt('Status', 'Statut', 'Status')}</th>
+                      <th>${tt('Actions', 'Actions', 'Aktionen')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${sortedStimuli.map((s, sortedIdx) => {
+                      const meta = CHANNEL_META[s.channel] || CHANNEL_META.email_internal;
+                      const actor = getActor(s.actor_id);
+                      const h = Math.floor(s.timestamp_offset_minutes / 60);
+                      const m = String(s.timestamp_offset_minutes % 60).padStart(2, '0');
+                      const titleText = s.fields?.subject || s.fields?.headline || s.fields?.title || s.fields?.text || s.name || '—';
+                      const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
+                      return `
+                        <tr class="stimuli-table-row${appState.selectedStimulusId === s.id ? ' selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}">
+                          <td class="stimuli-table-time"><strong>H+${h}:${m}</strong></td>
+                          <td class="stimuli-table-type"><span class="stimuli-table-channel-pill" style="background:${meta.color};">${escapeHtml(channelLabel(s.channel))}</span></td>
+                          <td class="stimuli-table-content">${escapeHtml(titleText.slice(0, 100))}${titleText.length > 100 ? '…' : ''}</td>
+                          <td class="stimuli-table-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}</td>
+                          <td class="stimuli-table-status"><span class="pill pill-status" style="background:${statusColors[s.status] || '#888'}; color:#fff; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${s.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut', 'Klicken zum Status ändern')}">${escapeHtml(s.status)}</span></td>
+                          <td class="stimuli-table-actions">
+                            <button class="btn btn-xs" data-action="move-stimulus-up" data-stimulus-id="${s.id}" title="${tt('Move up', 'Monter', 'Nach oben')}"${sortedIdx === 0 ? ' disabled' : ''}>↑</button>
+                            <button class="btn btn-xs" data-action="move-stimulus-down" data-stimulus-id="${s.id}" title="${tt('Move down', 'Descendre', 'Nach unten')}"${sortedIdx === sortedStimuli.length - 1 ? ' disabled' : ''}>↓</button>
+                            <button class="btn btn-xs" data-action="open-stimulus-modal" data-stimulus-id="${s.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">✏️</button>
+                            <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${s.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">⧉</button>
+                            <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${s.id}" title="${tt('Export PNG', 'Exporter PNG', 'PNG exportieren')}">💾</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>` : ''}
+            </article>
           </section>
         `;
       }
