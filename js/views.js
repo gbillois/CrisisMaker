@@ -295,7 +295,7 @@
               </div>
 
               <div class="launch-footer">
-                <span>© 2026 Wavestone &amp; Gérôme Billois — ${tt('All rights reserved.', 'Tous droits réservés.')}</span>
+                <span>© 2026 Wavestone — ${tt('All rights reserved.', 'Tous droits réservés.')}</span>
                 <a href="./LICENSE" target="_blank" rel="noopener noreferrer">${tt('View License', 'Voir la licence')}</a>
               </div>
 
