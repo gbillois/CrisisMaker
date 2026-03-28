@@ -80,29 +80,45 @@
 
       function defaultScenario() {
         const actors = [
-          { id: uid('actor'), name: 'John Carter', role: 'journalist', organization: 'Global Daily', title: 'Cybersecurity reporter', language: 'en', avatar_initials: 'JC', avatar_url: '' },
-          { id: uid('actor'), name: 'Claire Martin', role: 'internal', organization: 'StonaWave', title: 'Cyber crisis director', language: 'fr', avatar_initials: 'CM', avatar_url: '' },
-          { id: uid('actor'), name: 'CERT-FR', role: 'authority', organization: 'ANSSI', title: 'Government cyber alert and response center', language: 'fr', avatar_initials: 'CF', avatar_url: '' }
+          { id: uid('actor'), name: 'Sophie Delacroix', role: 'internal', organization: 'StonaWave', title: 'Chief Information Security Officer', language: 'fr', avatar_initials: 'SD', avatar_url: '' },
+          { id: uid('actor'), name: 'Jean-Luc Moreau', role: 'internal', organization: 'StonaWave', title: 'Chief Executive Officer', language: 'fr', avatar_initials: 'JM', avatar_url: '' },
+          { id: uid('actor'), name: 'Rachel Greenberg', role: 'journalist', organization: 'The New York Times', title: 'Cybersecurity Reporter', language: 'en', avatar_initials: 'RG', avatar_url: '' },
+          { id: uid('actor'), name: 'CERT-FR', role: 'authority', organization: 'ANSSI', title: 'Government Cyber Alert and Response Center', language: 'fr', avatar_initials: 'CF', avatar_url: '' },
+          { id: uid('actor'), name: 'David Chen', role: 'partner', organization: 'MediChem Manufacturing', title: 'VP Supply Chain Operations', language: 'en', avatar_initials: 'DC', avatar_url: '' },
+          { id: uid('actor'), name: 'PharmLeaks', role: 'attacker', organization: 'PharmLeaks Ransomware Group', title: 'Threat Actor', language: 'en', avatar_initials: 'PL', avatar_url: '' },
+          { id: uid('actor'), name: 'Elise Warren', role: 'analyst', organization: 'Delta Advisory', title: 'Senior Cybersecurity Analyst', language: 'en', avatar_initials: 'EW', avatar_url: '' },
+          { id: uid('actor'), name: 'Thomas Bergmann', role: 'internal', organization: 'StonaWave', title: 'IT Director', language: 'en', avatar_initials: 'TB', avatar_url: '' }
         ];
         const scenario = {
           id: uid('scenario'),
-          name: 'CrisisMaker - Ransomware exercise - StonaWave',
+          name: 'CrisisMaker - Ransomware exercise - StonaWave - Operation Bitter Pill',
           client: { name: 'StonaWave', sector: 'Pharmaceutical', language: 'en', logo_url: '' },
-          scenario: { type: 'Ransomware', summary: 'A ransomware attack hits the information system of StonaWave, a global pharmaceutical company. Critical manufacturing, supply chain, and clinical systems are disrupted, the press starts reporting the incident, and health authorities are alerted.', detailed_context: '', start_date: '2026-03-15T08:00', timezone: 'America/New_York' },
+          scenario: { type: 'Ransomware', summary: 'The ransomware group PharmLeaks triggers a coordinated attack against StonaWave, a global pharmaceutical company headquartered near Paris with manufacturing sites in New Jersey, Frankfurt, and Hyderabad. After gaining initial access two weeks earlier via a compromised VPN credential, the attackers moved laterally through Active Directory, mapped backup infrastructure, and deployed ransomware across manufacturing execution systems (MES), the clinical trial management system (CTMS), and ERP platforms. The encryption is triggered at 07:45 ET on Sunday when staffing is minimal. Over six hours, the crisis escalates from internal detection through partner disruption, a $25M ransom demand, international media coverage in French, English, and German, regulatory alerts from CERT-FR, and an attacker escalation threatening to publish stolen patient data.', detailed_context: '', start_date: '2026-03-15T08:00', timezone: 'America/New_York' },
           actors,
           stimuli: [],
           custom_templates: [],
           settings: { language: 'en', inject_language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0 }
         };
         const samples = [
-          makeStimulus('email_internal', actors[1].id, 0),
-          makeStimulus('article_press', actors[0].id, 120, 'lemonde'),
-          makeStimulus('article_press', actors[0].id, 125, 'nyt'),
-          makeStimulus('post_reddit', actors[0].id, 130),
-          makeStimulus('post_twitter', actors[0].id, 135),
-          makeStimulus('breaking_news_tv', actors[0].id, 165),
-          makeStimulus('email_authority', actors[2].id, 180),
-          makeStimulus('press_release', actors[1].id, 240)
+          makeStimulus('email_internal',    actors[0].id, 0),
+          makeStimulus('sms_notification',  actors[0].id, 30),
+          makeStimulus('email_external',    actors[4].id, 60),
+          makeStimulus('email_external',    actors[5].id, 90),
+          makeStimulus('post_reddit',       actors[6].id, 110),
+          makeStimulus('article_press',     actors[2].id, 130, 'lemonde'),
+          makeStimulus('post_twitter',      actors[6].id, 140),
+          makeStimulus('email_authority',   actors[3].id, 160),
+          makeStimulus('email_internal',    actors[7].id, 175),
+          makeStimulus('article_press',     actors[2].id, 195, 'nyt'),
+          makeStimulus('breaking_news_tv',  actors[2].id, 210),
+          makeStimulus('internal_memo',     actors[1].id, 240),
+          makeStimulus('email_internal',    actors[7].id, 255),
+          makeStimulus('press_release',     actors[1].id, 270),
+          makeStimulus('post_linkedin',     actors[6].id, 290),
+          makeStimulus('email_internal',    actors[7].id, 310),
+          makeStimulus('article_press',     actors[2].id, 320, 'faz'),
+          makeStimulus('sms_notification',  actors[5].id, 340),
+          makeStimulus('email_internal',    actors[0].id, 355)
         ];
         scenario.stimuli = samples;
         return scenario;
