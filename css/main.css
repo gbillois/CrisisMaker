@@ -1868,71 +1868,80 @@
       pointer-events: none;
     }
 
-    /* ── Stimuli carousel ── */
-    .stimuli-carousel-bar {
+    /* ── Stimuli timeline table ── */
+    .stimuli-table-panel {
       background: var(--surface-alt);
       border-top: 1px solid var(--border);
-      padding: 8px 12px 6px;
-      flex-shrink: 0;
-    }
-    .stimuli-carousel-track {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding-bottom: 4px;
+      overflow-y: auto;
+      max-height: 260px;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
     }
-    .stimuli-carousel-track::-webkit-scrollbar { height: 4px; }
-    .stimuli-carousel-track::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-    .carousel-thumb {
-      flex-shrink: 0;
-      width: 110px;
-      cursor: pointer;
-      border-radius: 8px;
-      border: 2px solid transparent;
-      overflow: hidden;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      background: var(--surface);
+    .stimuli-table-panel::-webkit-scrollbar { width: 6px; }
+    .stimuli-table-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .stimuli-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
     }
-    .carousel-thumb:hover {
-      border-color: var(--primary);
-      box-shadow: 0 2px 8px rgba(15, 109, 143, 0.18);
+    .stimuli-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--surface-dark);
+      color: #fff;
     }
-    .carousel-thumb.selected {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(15, 109, 143, 0.2);
-    }
-    .carousel-thumb-preview {
-      height: 72px;
-      overflow: hidden;
-      position: relative;
-      background: #fff;
-      display: flex;
-      justify-content: center;
-    }
-    .carousel-thumb-preview .render-frame {
-      pointer-events: none;
-      flex-shrink: 0;
-    }
-    .carousel-thumb-label {
-      padding: 4px 6px 5px;
-      font-size: 0.68rem;
-      line-height: 1.3;
-      background: var(--surface);
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-      overflow: hidden;
-    }
-    .carousel-thumb-label strong {
+    .stimuli-table th {
+      padding: 7px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       white-space: nowrap;
+    }
+    .stimuli-table-row {
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .stimuli-table-row:hover { background: rgba(15, 109, 143, 0.06); }
+    .stimuli-table-row.selected { background: rgba(15, 109, 143, 0.12); }
+    .stimuli-table td {
+      padding: 6px 12px;
+      vertical-align: middle;
+    }
+    .stimuli-table-time {
+      white-space: nowrap;
+      color: var(--primary-strong);
+      font-size: 0.88rem;
+      min-width: 62px;
+    }
+    .stimuli-table-channel-pill {
+      display: inline-block;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+    .stimuli-table-content {
+      color: var(--text);
+      max-width: 320px;
       overflow: hidden;
       text-overflow: ellipsis;
-      color: var(--text);
+      white-space: nowrap;
     }
-    .carousel-thumb-label span {
+    .stimuli-table-actor {
       color: var(--muted);
+      white-space: nowrap;
+    }
+    .stimuli-table-status { white-space: nowrap; }
+    .stimuli-table-actions {
+      white-space: nowrap;
+      display: flex;
+      gap: 4px;
     }
 
     /* Export watermark overlay */

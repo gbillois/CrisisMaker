@@ -844,18 +844,43 @@
               </div>
             </article>
             ${sortedStimuli.length > 0 ? `
-            <div class="stimuli-carousel-bar">
-              <div class="stimuli-carousel-track">
-                ${sortedStimuli.map((s) => `
-                  <div class="carousel-thumb ${appState.selectedStimulusId === s.id ? 'selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}" title="${escapeAttribute(channelLabel(s.channel))} H+${Math.floor(s.timestamp_offset_minutes / 60)}:${String(s.timestamp_offset_minutes % 60).padStart(2, '0')}">
-                    <div class="carousel-thumb-preview">${renderStimulusPreview(s, `thumb-carousel-${s.id}`, true)}</div>
-                    <div class="carousel-thumb-label">
-                      <strong>${escapeHtml(channelLabel(s.channel))}</strong>
-                      <span>H+${Math.floor(s.timestamp_offset_minutes / 60)}:${String(s.timestamp_offset_minutes % 60).padStart(2, '0')}</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
+            <div class="stimuli-table-panel">
+              <table class="stimuli-table">
+                <thead>
+                  <tr>
+                    <th>${tt('Time', 'Heure')}</th>
+                    <th>${tt('Type', 'Type')}</th>
+                    <th>${tt('Name / Subject', 'Nom / Sujet')}</th>
+                    <th>${tt('Actor', 'Acteur')}</th>
+                    <th>${tt('Status', 'Statut')}</th>
+                    <th>${tt('Actions', 'Actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${sortedStimuli.map((s) => {
+                    const meta = CHANNEL_META[s.channel] || CHANNEL_META.email_internal;
+                    const actor = getActor(s.actor_id);
+                    const h = Math.floor(s.timestamp_offset_minutes / 60);
+                    const m = String(s.timestamp_offset_minutes % 60).padStart(2, '0');
+                    const titleText = s.fields?.subject || s.fields?.headline || s.fields?.title || s.fields?.text || s.name || '—';
+                    const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
+                    return `
+                      <tr class="stimuli-table-row${appState.selectedStimulusId === s.id ? ' selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}">
+                        <td class="stimuli-table-time"><strong>H+${h}:${m}</strong></td>
+                        <td class="stimuli-table-type"><span class="stimuli-table-channel-pill" style="background:${meta.color};">${escapeHtml(channelLabel(s.channel))}</span></td>
+                        <td class="stimuli-table-content">${escapeHtml(titleText.slice(0, 100))}${titleText.length > 100 ? '…' : ''}</td>
+                        <td class="stimuli-table-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur'))}</td>
+                        <td class="stimuli-table-status"><span class="pill pill-status" style="background:${statusColors[s.status] || '#888'}; color:#fff; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${s.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut')}">${escapeHtml(s.status)}</span></td>
+                        <td class="stimuli-table-actions">
+                          <button class="btn btn-xs" data-action="open-stimulus-modal" data-stimulus-id="${s.id}" title="${tt('Edit', 'Éditer')}">✏️</button>
+                          <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${s.id}" title="${tt('Duplicate', 'Dupliquer')}">⧉</button>
+                          <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${s.id}" title="${tt('Export PNG', 'Exporter PNG')}">⤓</button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
             </div>` : ''}
           </section>
         `;
