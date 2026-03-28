@@ -229,7 +229,7 @@
                 <div class="launch-hero-stats">
                   <div class="hero-stat">
                     <strong>${tt('Stand alone or AI powered', 'Autonome ou propulsé par l\'IA')}</strong>
-                    <span>${llmAvailable ? tt('AI connected — ready for automatic content generation', 'IA connectée — prête pour la génération automatique de contenu') : tt('Depending on your requirements and confidentiality needs', 'Selon vos besoins et vos contraintes de confidentialité')}</span>
+                    <span>${llmAvailable ? tt('AI connected — ready for automatic content generation', 'IA connectée — prête pour la génération automatique de contenu') : tt('Depending on your requirements — configure an API key in Settings to unlock AI features', 'Selon vos besoins — configurez une clé API dans les Paramètres pour activer les fonctions IA')}</span>
                   </div>
                   <div class="hero-stat">
                     <strong>${tt('Local-first', 'Local d\'abord')}</strong>
@@ -284,17 +284,12 @@
                       <div class="launch-tip-num">3</div>
                       <span>${tt('<strong>Export your deliverables</strong> — use the Injects view to preview everything, then export a ZIP with all styled injects ready for facilitation.', '<strong>Exportez vos livrables</strong> — utilisez la vue Injects pour tout prévisualiser, puis exportez un ZIP avec tous les injects prêts pour l\'animation.')}</span>
                     </div>
-                    <div class="launch-tip">
-                      <div class="launch-tip-num launch-tip-num-accent">✦</div>
-                      <span>${tt('<strong>Tip:</strong> Configure an AI provider (Anthropic, OpenAI or Azure) in Settings to unlock automatic content generation for all inject types.', '<strong>Conseil :</strong> Configurez un fournisseur IA (Anthropic, OpenAI ou Azure) dans les Paramètres pour débloquer la génération automatique de contenu.')}</span>
-                    </div>
                   </div>
                 </div>
               </div>
 
               <div class="launch-actions">
-                <button class="btn btn-secondary" data-action="launch-start-example">${tt('Load example scenario', 'Charger un scénario exemple')}</button>
-                <button class="btn btn-primary launch-start-btn" data-action="close-launch-screen">${tt('Start using CrisisMaker', 'Commencer avec CrisisMaker')} →</button>
+                <button class="btn btn-primary launch-start-btn" data-action="close-launch-screen">${tt('Ready to start a crisis?', 'Prêt à démarrer une crise ?')} →</button>
               </div>
 
               <div class="launch-footer">
