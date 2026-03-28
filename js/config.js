@@ -266,6 +266,8 @@
             organization: 'Group X',
             logo_text: 'GROUPE X',
             logo_color: '#003366',
+            has_logo: false,
+            logo_image: '',
             date: 'Paris, March 15, 2026',
             title: 'Press release - Security incident',
             body: '<p>Group X confirms that it detected a cybersecurity incident affecting a limited portion of its information system. As soon as the event was identified, incident response measures were activated and external experts were engaged.</p><p>Teams are working to progressively restore priority services while continuing technical analysis to determine the origin and scope of the incident. At this stage, the company is maintaining essential operations using adapted procedures.</p><p>Group X is acting transparently with the competent authorities and will inform stakeholders of any significant developments.</p>',
@@ -273,7 +275,7 @@
             contact_email: 'presse@groupex.com',
             contact_phone: '+33 1 00 00 00 00'
           },
-          fields: [field('organization', 'Organization', 'text'), field('logo_text', 'Logo text', 'text'), field('logo_color', 'Logo color', 'text'), field('date', 'Date', 'text'), field('title', 'Title', 'text'), field('body', 'HTML body', 'textarea'), field('contact_name', 'Contact', 'text'), field('contact_email', 'Contact email', 'text'), field('contact_phone', 'Phone', 'text')]
+          fields: [field('organization', 'Organization', 'text'), field('logo_text', 'Logo text', 'text'), field('logo_color', 'Logo color', 'text'), field('has_logo', 'Use logo image', 'checkbox'), field('logo_image', 'Logo image', 'photo_upload'), field('date', 'Date', 'text'), field('title', 'Title', 'text'), field('body', 'HTML body', 'textarea'), field('contact_name', 'Contact', 'text'), field('contact_email', 'Contact email', 'text'), field('contact_phone', 'Phone', 'text')]
         },
         email_external: {
           label: 'External email',
