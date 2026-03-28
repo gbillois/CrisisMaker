@@ -1,52 +1,71 @@
+      function detectBrowserLanguage() {
+        const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase().slice(0, 2);
+        if (nav === 'fr') return 'fr';
+        if (nav === 'de') return 'de';
+        return 'en';
+      }
+
       function currentLanguage() {
-        return appState?.scenario?.settings?.language === 'fr' ? 'fr' : 'en';
+        const lang = appState?.scenario?.settings?.language;
+        return ['fr', 'en', 'de'].includes(lang) ? lang : 'en';
       }
 
       function isFrenchUI() {
         return currentLanguage() === 'fr';
       }
 
-      function tt(en, fr) {
-        return isFrenchUI() ? fr : en;
+      function isGermanUI() {
+        return currentLanguage() === 'de';
+      }
+
+      function tt(en, fr, de) {
+        const lang = currentLanguage();
+        if (lang === 'fr') return fr;
+        if (lang === 'de') return de !== undefined ? de : en;
+        return en;
       }
 
       function setDocumentLanguage() {
         const lang = currentLanguage();
         document.documentElement.lang = lang;
-        document.title = tt('CrisisMaker by Wavestone - Crisis exercise studio', 'CrisisMaker by Wavestone - Studio d\'exercices de crise');
+        document.title = tt(
+          'CrisisMaker by Wavestone - Crisis exercise studio',
+          'CrisisMaker by Wavestone - Studio d\'exercices de crise',
+          'CrisisMaker by Wavestone - Krisenübungs-Studio'
+        );
       }
 
       function roleLabel(value) {
         const labels = {
-          journalist: ['Journalist', 'Journaliste'],
-          authority: ['Authority', 'Autorité'],
-          client_b2b: ['B2B Client', 'Client B2B'],
-          client_b2c: ['B2C Client', 'Client B2C'],
-          internal: ['Internal', 'Interne'],
-          partner: ['Partner', 'Partenaire'],
-          attacker: ['Attacker', 'Attaquant'],
-          analyst: ['Analyst', 'Analyste']
+          journalist: ['Journalist', 'Journaliste', 'Journalist'],
+          authority: ['Authority', 'Autorité', 'Behörde'],
+          client_b2b: ['B2B Client', 'Client B2B', 'B2B-Kunde'],
+          client_b2c: ['B2C Client', 'Client B2C', 'B2C-Kunde'],
+          internal: ['Internal', 'Interne', 'Intern'],
+          partner: ['Partner', 'Partenaire', 'Partner'],
+          attacker: ['Attacker', 'Attaquant', 'Angreifer'],
+          analyst: ['Analyst', 'Analyste', 'Analyst']
         };
-        const [en, fr] = labels[value] || [value, value];
-        return tt(en, fr);
+        const [en, fr, de] = labels[value] || [value, value, value];
+        return tt(en, fr, de);
       }
 
       function channelLabel(value) {
         const labels = {
-          email_internal: ['Internal email', 'Email interne'],
-          email_external: ['External email', 'Email externe'],
-          email_authority: ['Authority email', 'Email autorité'],
-          article_press: ['Press article', 'Article de presse'],
-          breaking_news_tv: ['Breaking News TV', 'Breaking News TV'],
-          post_twitter: ['X/Twitter post', 'Post X/Twitter'],
-          post_linkedin: ['LinkedIn post', 'Post LinkedIn'],
-          post_reddit: ['Reddit post', 'Post Reddit'],
-          press_release: ['Press release', 'Communiqué de presse'],
-          sms_notification: ['SMS / Notification', 'SMS / Notification'],
-          internal_memo: ['Internal memo', 'Note interne']
+          email_internal: ['Internal email', 'Email interne', 'Interne E-Mail'],
+          email_external: ['External email', 'Email externe', 'Externe E-Mail'],
+          email_authority: ['Authority email', 'Email autorité', 'Behörden-E-Mail'],
+          article_press: ['Press article', 'Article de presse', 'Presseartikel'],
+          breaking_news_tv: ['Breaking News TV', 'Breaking News TV', 'Breaking News TV'],
+          post_twitter: ['X/Twitter post', 'Post X/Twitter', 'X/Twitter-Beitrag'],
+          post_linkedin: ['LinkedIn post', 'Post LinkedIn', 'LinkedIn-Beitrag'],
+          post_reddit: ['Reddit post', 'Post Reddit', 'Reddit-Beitrag'],
+          press_release: ['Press release', 'Communiqué de presse', 'Pressemitteilung'],
+          sms_notification: ['SMS / Notification', 'SMS / Notification', 'SMS / Benachrichtigung'],
+          internal_memo: ['Internal memo', 'Note interne', 'Internes Memo']
         };
-        const [en, fr] = labels[value] || [value, value];
-        return tt(en, fr);
+        const [en, fr, de] = labels[value] || [value, value, value];
+        return tt(en, fr, de);
       }
 
       function uid(prefix = 'id') {
@@ -73,7 +92,7 @@
           actors,
           stimuli: [],
           custom_templates: [],
-          settings: { language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0 }
+          settings: { language: 'en', inject_language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0 }
         };
         const samples = [
           makeStimulus('email_internal', actors[1].id, 0),
@@ -138,11 +157,19 @@
           try {
             scenario = mergeScenario(migrateScenario(JSON.parse(saved)));
           } catch (error) {
-            console.warn(tt('Unable to restore the saved scenario.', 'Impossible de restaurer le scénario sauvegardé.'), error);
+            console.warn('Unable to restore the saved scenario.', error);
           }
         }
         if (settings) {
           scenario.settings = { ...scenario.settings, ...settings };
+        }
+        // Auto-detect UI language from browser on first load (only when no saved preference exists)
+        if (!settings?.language && !scenario.settings.language) {
+          scenario.settings.language = detectBrowserLanguage();
+        }
+        // Default inject_language to UI language if not set
+        if (!scenario.settings.inject_language) {
+          scenario.settings.inject_language = scenario.settings.language || 'en';
         }
         scenario.settings = { ...scenario.settings, ...providerSettings };
         normalizeProviderSettingsInPlace(scenario.settings);
@@ -222,7 +249,7 @@
           if (raw.settings.watermark_opacity === undefined) raw.settings.watermark_opacity = 50;
           if (raw.settings.watermark_rotation === undefined) raw.settings.watermark_rotation = 0;
           if (raw.settings.watermark_text_size === undefined) raw.settings.watermark_text_size = 16;
-
+          if (!raw.settings.inject_language) raw.settings.inject_language = raw.settings.language || 'en';
         }
         // Add custom_templates array
         if (!Array.isArray(raw.custom_templates)) raw.custom_templates = [];
@@ -235,7 +262,7 @@
         stimulus.history.unshift({
           fields: deepClone(stimulus.fields),
           saved_at: new Date().toISOString(),
-          change_summary: changeSummary || tt('Manual edit', 'Modification manuelle')
+          change_summary: changeSummary || tt('Manual edit', 'Modification manuelle', 'Manuelle Bearbeitung')
         });
         if (stimulus.history.length > maxVersions) stimulus.history = stimulus.history.slice(0, maxVersions);
         stimulus.fields = deepClone(newFields);
@@ -245,7 +272,7 @@
       function restoreVersion(stimulus, versionIndex) {
         const version = stimulus.history[versionIndex];
         if (!version) return;
-        saveStimulus(stimulus, version.fields, tt(`Restore version from ${new Date(version.saved_at).toLocaleDateString()}`, `Restauration de la version du ${new Date(version.saved_at).toLocaleDateString()}`));
+        saveStimulus(stimulus, version.fields, tt(`Restore version from ${new Date(version.saved_at).toLocaleDateString()}`, `Restauration de la version du ${new Date(version.saved_at).toLocaleDateString()}`, `Version vom ${new Date(version.saved_at).toLocaleDateString()} wiederherstellen`));
       }
 
       function getTemplateDefinition(stimulus) {
@@ -261,20 +288,20 @@
 
       function validateCustomTemplate(data) {
         const errors = [];
-        if (!data || typeof data !== 'object') return [tt('Invalid template file.', 'Fichier template invalide.')];
-        if (data.schema_version !== '1.0') errors.push(tt('Unsupported schema_version (expected "1.0").', 'schema_version non supporté (attendu "1.0").'));
-        if (!data.template_id || typeof data.template_id !== 'string') errors.push(tt('Missing or invalid template_id.', 'template_id manquant ou invalide.'));
-        if (!data.name && !data.label) errors.push(tt('Missing name/label.', 'name/label manquant.'));
-        if (!data.render_html || typeof data.render_html !== 'string') errors.push(tt('Missing render_html.', 'render_html manquant.'));
-        if (typeof data.render_css !== 'undefined' && typeof data.render_css !== 'string') errors.push(tt('render_css must be a string.', 'render_css doit être une chaîne.'));
-        if (!Array.isArray(data.fields) || data.fields.length === 0) errors.push(tt('fields must be a non-empty array.', 'fields doit être un tableau non vide.'));
+        if (!data || typeof data !== 'object') return [tt('Invalid template file.', 'Fichier template invalide.', 'Ungültige Vorlagendatei.')];
+        if (data.schema_version !== '1.0') errors.push(tt('Unsupported schema_version (expected "1.0").', 'schema_version non supporté (attendu "1.0").', 'Nicht unterstützte schema_version (erwartet "1.0").'));
+        if (!data.template_id || typeof data.template_id !== 'string') errors.push(tt('Missing or invalid template_id.', 'template_id manquant ou invalide.', 'Fehlende oder ungültige template_id.'));
+        if (!data.name && !data.label) errors.push(tt('Missing name/label.', 'name/label manquant.', 'Fehlender name/label.'));
+        if (!data.render_html || typeof data.render_html !== 'string') errors.push(tt('Missing render_html.', 'render_html manquant.', 'Fehlende render_html.'));
+        if (typeof data.render_css !== 'undefined' && typeof data.render_css !== 'string') errors.push(tt('render_css must be a string.', 'render_css doit être une chaîne.', 'render_css muss eine Zeichenkette sein.'));
+        if (!Array.isArray(data.fields) || data.fields.length === 0) errors.push(tt('fields must be a non-empty array.', 'fields doit être un tableau non vide.', 'fields muss ein nicht leeres Array sein.'));
         else {
           const hasRequired = data.fields.some(f => f.required === true);
-          if (!hasRequired) errors.push(tt('fields must contain at least one required field.', 'fields doit contenir au moins un champ requis.'));
+          if (!hasRequired) errors.push(tt('fields must contain at least one required field.', 'fields doit contenir au moins un champ requis.', 'fields muss mindestens ein Pflichtfeld enthalten.'));
           // Check render_html contains at least one placeholder matching a declared field
           const fieldNames = data.fields.map(f => f.name || f.key).filter(Boolean);
           const hasPlaceholder = fieldNames.some(name => data.render_html.includes(`{{${name}}}`));
-          if (!hasPlaceholder) errors.push(tt('render_html must contain at least one {{field_name}} placeholder.', 'render_html doit contenir au moins un placeholder {{field_name}}.'));
+          if (!hasPlaceholder) errors.push(tt('render_html must contain at least one {{field_name}} placeholder.', 'render_html doit contenir au moins un placeholder {{field_name}}.', 'render_html muss mindestens einen {{field_name}}-Platzhalter enthalten.'));
         }
         // Collision check against native template IDs
         const nativeIds = new Set([
@@ -283,15 +310,15 @@
           ...Object.keys(CHANNEL_META)
         ]);
         if (data.template_id && nativeIds.has(data.template_id)) {
-          errors.push(tt(`template_id "${data.template_id}" collides with a built-in template.`, `template_id "${data.template_id}" entre en collision avec un template natif.`));
+          errors.push(tt(`template_id "${data.template_id}" collides with a built-in template.`, `template_id "${data.template_id}" entre en collision avec un template natif.`, `template_id "${data.template_id}" kollidiert mit einer eingebauten Vorlage.`));
         }
         // Channel must be a known channel
         if (data.channel && !CHANNEL_META[data.channel]) {
-          errors.push(tt(`Unknown channel "${data.channel}".`, `Canal inconnu "${data.channel}".`));
+          errors.push(tt(`Unknown channel "${data.channel}".`, `Canal inconnu "${data.channel}".`, `Unbekannter Kanal "${data.channel}".`));
         }
         // Sanitize CSS: no @import, no url(), no expression(), no behavior
         if (data.render_css && (/url\s*\(/i.test(data.render_css) || /@import/i.test(data.render_css) || /expression\s*\(/i.test(data.render_css) || /behavior\s*:/i.test(data.render_css) || /-moz-binding\s*:/i.test(data.render_css))) {
-          errors.push(tt('render_css must not contain url(), @import, expression(), behavior, or -moz-binding.', 'render_css ne doit pas contenir url(), @import, expression(), behavior ou -moz-binding.'));
+          errors.push(tt('render_css must not contain url(), @import, expression(), behavior, or -moz-binding.', 'render_css ne doit pas contenir url(), @import, expression(), behavior ou -moz-binding.', 'render_css darf kein url(), @import, expression(), behavior oder -moz-binding enthalten.'));
         }
         // Sanitize HTML: no dangerous elements or attributes
         if (data.render_html) {
@@ -301,7 +328,7 @@
             /\bon\w+\s*=/i, /javascript\s*:/i, /data\s*:\s*text\/html/i
           ];
           if (forbidden.some(rx => rx.test(data.render_html))) {
-            errors.push(tt('render_html contains forbidden elements (script, iframe, object, embed, link, meta, base, form, event handlers, or javascript: URLs).', 'render_html contient des éléments interdits (script, iframe, object, embed, link, meta, base, form, gestionnaires d\'événements ou URLs javascript:).'));
+            errors.push(tt('render_html contains forbidden elements (script, iframe, object, embed, link, meta, base, form, event handlers, or javascript: URLs).', 'render_html contient des éléments interdits (script, iframe, object, embed, link, meta, base, form, gestionnaires d\'événements ou URLs javascript:).', 'render_html enthält verbotene Elemente (script, iframe, object, embed, link, meta, base, form, Ereignishandler oder javascript:-URLs).'));
           }
         }
         return errors;
