@@ -266,6 +266,7 @@
 
         document.querySelectorAll('[data-action]').forEach((button) => {
           button.addEventListener('click', handleAction);
+          button.addEventListener('change', handleAction);
         });
 
         document.querySelectorAll('[data-library-filter]').forEach((select) => {
@@ -327,6 +328,12 @@
             case 'toggle-api-key': {
               const input = document.getElementById('api-key-input');
               input.type = input.type === 'password' ? 'text' : 'password';
+              break;
+            }
+            case 'set-forced-language': {
+              setForcedLanguage(event.currentTarget.value);
+              setDocumentLanguage();
+              App.render();
               break;
             }
             case 'save-local': saveLocal(); break;

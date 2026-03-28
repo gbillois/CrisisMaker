@@ -608,6 +608,15 @@
                   </select>
                   <p class="helper">${tt('Auto-detected from your browser on first load.', 'Détectée automatiquement depuis votre navigateur au premier chargement.', 'Beim ersten Laden automatisch aus Ihrem Browser erkannt.')}</p>
                 </label>
+                <label class="field">${tt('Force interface language', 'Forcer la langue de l\'interface', 'Oberflächensprache erzwingen')}
+                  <select data-action="set-forced-language">
+                    <option value="" ${!getForcedLanguage() ? 'selected' : ''}>${tt('Follow project setting', 'Suivre le paramètre du projet', 'Projekteinstellung verwenden')}</option>
+                    <option value="en" ${getForcedLanguage() === 'en' ? 'selected' : ''}>English</option>
+                    <option value="fr" ${getForcedLanguage() === 'fr' ? 'selected' : ''}>Français</option>
+                    <option value="de" ${getForcedLanguage() === 'de' ? 'selected' : ''}>Deutsch</option>
+                  </select>
+                  <p class="helper">${tt('When set, overrides the project language and persists across all projects.', 'Si défini, remplace la langue du projet et s\'applique à tous les projets.', 'Wenn gesetzt, überschreibt die Projektsprache und gilt für alle Projekte.')}</p>
+                </label>
                 <label class="field">${tt('Template rendering', 'Rendu des templates', 'Vorlagen-Rendering')}
                   <select data-bind="settings.template_quality">
                     <option value="basic" ${settings.template_quality === 'basic' ? 'selected' : ''}>Basic — ${tt('Fast, lightweight', 'Léger, rapide', 'Schnell, leichtgewichtig')}</option>

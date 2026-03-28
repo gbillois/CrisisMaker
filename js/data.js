@@ -5,7 +5,22 @@
         return 'en';
       }
 
+      function getForcedLanguage() {
+        const forced = localStorage.getItem(FORCED_LANG_KEY);
+        return ['fr', 'en', 'de'].includes(forced) ? forced : null;
+      }
+
+      function setForcedLanguage(value) {
+        if (['fr', 'en', 'de'].includes(value)) {
+          localStorage.setItem(FORCED_LANG_KEY, value);
+        } else {
+          localStorage.removeItem(FORCED_LANG_KEY);
+        }
+      }
+
       function currentLanguage() {
+        const forced = getForcedLanguage();
+        if (forced) return forced;
         const lang = appState?.scenario?.settings?.language;
         return ['fr', 'en', 'de'].includes(lang) ? lang : 'en';
       }
