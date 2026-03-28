@@ -145,6 +145,7 @@
                 ${renderNavIconButton('scenario', svgTarget(), tt('Scenario', 'Scénario'))}
                 ${renderNavIconButton('stimuli', svgPen(), tt('Stimuli', 'Stimuli'))}
                 ${renderNavIconButton('library', svgGrid(), tt('Library', 'Bibliothèque'))}
+                ${renderNavIconButton('checker', svgShieldCheck(), tt('Checker', 'Checker'))}
               </div>
               <div class="nav-topbar-center">
                 <div class="nav-brand-block"><span class="nav-brand-eyebrow">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span><span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker'))}</span></div>
@@ -200,6 +201,7 @@
       function svgTarget() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'; }
       function svgPen() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'; }
       function svgGrid() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>'; }
+      function svgShieldCheck() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>'; }
       function svgGear() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'; }
 
       function viewConfig() {
@@ -219,6 +221,10 @@
           library: {
             title: tt('Stimulus library', 'Bibliothèque de stimuli'),
             subtitle: tt('Browse, filter, and manage all stimuli in your project.', 'Parcourez, filtrez et gérez tous les stimuli de votre projet.')
+          },
+          checker: {
+            title: tt('Crisis Checker', 'Crisis Checker'),
+            subtitle: tt('Import a crisis exercise chronogram and analyze it automatically.', 'Importez un chronogramme d\'exercice de crise et analysez-le automatiquement.')
           }
         };
         return map[appState.route] || null;
@@ -229,6 +235,7 @@
         if (appState.route === 'scenario') return renderScenarioView();
         if (appState.route === 'stimuli') return renderStimuliView();
         if (appState.route === 'library') return renderLibraryView();
+        if (appState.route === 'checker') return renderCheckerView();
         return renderProjectView();
       }
 

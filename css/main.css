@@ -1952,3 +1952,148 @@
       max-height: 200px;
       overflow-y: auto;
     }
+
+    /* ─── Crisis Checker ─────────────────────────────────────────────────────── */
+
+    .checker-dropzone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 48px 32px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      text-align: center;
+    }
+    .checker-dropzone:hover,
+    .checker-dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(15, 109, 143, 0.04);
+    }
+    .checker-dropzone-icon { color: var(--muted); margin-bottom: 4px; }
+    .checker-dropzone-title { font-size: 1.05rem; font-weight: 600; color: var(--text); margin: 0; }
+    .checker-dropzone-sub { font-size: 0.88rem; color: var(--muted); margin: 0; }
+    .checker-dropzone-formats { font-size: 0.8rem; color: var(--muted); margin: 8px 0 0; opacity: 0.7; }
+
+    .checker-error-msg {
+      color: #991B1B;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 12px;
+      font-size: 0.88rem;
+    }
+
+    /* Sheet selector tabs */
+    .checker-sheet-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .checker-sheet-tab {
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .checker-sheet-tab:hover { border-color: var(--primary); color: var(--primary); }
+    .checker-sheet-tab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* Preview table */
+    .checker-preview-table-wrap {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 18px;
+    }
+    .checker-preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    .checker-preview-table th,
+    .checker-preview-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .checker-preview-table th {
+      background: var(--surface-alt);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-weight: 600;
+      color: var(--primary-strong);
+    }
+    .checker-preview-table tr:hover td { background: rgba(15, 109, 143, 0.03); }
+    .checker-row-num {
+      color: var(--muted);
+      font-size: 0.75rem;
+      width: 36px;
+      text-align: center;
+    }
+
+    /* Column mapping */
+    .checker-mapping {
+      margin-top: 8px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-alt);
+    }
+    .checker-mapping h4 { margin: 0 0 14px; font-size: 0.95rem; color: var(--primary-strong); }
+    .checker-mapping-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 10px;
+    }
+    .checker-mapping-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .checker-mapping-row label {
+      min-width: 100px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text);
+      text-align: right;
+    }
+    .checker-mapping-row select {
+      flex: 1;
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      background: #fff;
+    }
+    .checker-mapping-warn {
+      color: var(--warning);
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .checker-mapping-note {
+      margin: 12px 0 0;
+      font-size: 0.82rem;
+      color: var(--warning);
+    }
