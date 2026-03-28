@@ -58,6 +58,7 @@
       // Level 2: localStorage (always active)
       function saveLocal(showToast = true) {
         try {
+          appState.scenario.updated_at = new Date().toISOString();
           const scenarioToSave = JSON.parse(JSON.stringify(appState.scenario));
           scenarioToSave.settings = { ...scenarioToSave.settings, ai_api_key: '', azure_api_key: '' }; // never store keys in project data
           localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarioToSave));
