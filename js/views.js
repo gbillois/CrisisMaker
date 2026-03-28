@@ -29,7 +29,7 @@
         );
 
         const generateLabel = loading
-          ? (options.loadingLabel || tt('Generating…', 'Génération en cours…'))
+          ? `<span class="ai-spinner"></span>${options.loadingLabel || tt('Generating…', 'Génération en cours…')}`
           : (options.generateLabel || tt('Generate ✨', 'Générer ✨'));
         const disabledAttr = (!available || loading) ? 'disabled' : '';
         const noKeyTooltip = !available
@@ -611,7 +611,7 @@
                 </label>
               </div>
               <div class="actions" style="margin-top:18px;">
-                <button class="btn btn-primary" data-action="test-connection" ${connectionTest.status === 'testing' ? 'disabled' : ''}>${connectionTest.status === 'testing' ? tt('Testing…', 'Test en cours…') : tt('Test connection', 'Tester la connexion')}</button>
+                <button class="btn btn-primary" data-action="test-connection" ${connectionTest.status === 'testing' ? 'disabled' : ''}>${connectionTest.status === 'testing' ? `<span class="ai-spinner"></span>${tt('Testing…', 'Test en cours…')}` : tt('Test connection', 'Tester la connexion')}</button>
                 <button class="btn btn-secondary" data-action="save-local">${tt('Save locally', 'Sauvegarder localement')}</button>
               </div>
               ${statusTone ? `
@@ -1023,7 +1023,9 @@
       function renderFieldControl(stimulus, spec) {
         const value = stimulus.fields[spec.key];
         const bind = `data-stimulus-field="${stimulus.id}.${spec.key}"`;
-        const genBtn = `<div class="actions" style="margin-top:4px;"><button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}">✨ ${tt('Regenerate', 'Régénérer')}</button></div>`;
+        const _gf = appState.ui?.generatingField;
+        const _fieldGenerating = _gf && _gf.stimulusId === stimulus.id && (_gf.fieldName === spec.key || _gf.fieldName === null);
+        const genBtn = `<div class="actions" style="margin-top:4px;"><button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}" ${_fieldGenerating ? 'disabled' : ''}>${_fieldGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…')}` : `✨ ${tt('Regenerate', 'Régénérer')}`}</button></div>`;
         if (spec.type === 'textarea') {
           const content = Array.isArray(value) ? JSON.stringify(value) : String(value ?? '');
           return `
