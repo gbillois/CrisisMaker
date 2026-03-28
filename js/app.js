@@ -17,7 +17,9 @@
           timelineZoom: 1.0,
           actionLoading: {}
         },
-        connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' }
+        connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' },
+        chronogramImportAutonomy: 'mostly_autonomous',
+        chronogramImport: null
       };
 
       const App = {
@@ -615,6 +617,200 @@
             case 'llm-actor-ignore-all': {
               appState.llmState.actors.pendingActors = null;
               App.render();
+              break;
+            }
+            // ─── Chronogram Import actions ───
+            case 'import-chronogram-ia': {
+              if (!isLLMAvailable()) {
+                pushToast(tt('Configure an API key in settings first.', 'Configurez une clé API dans les paramètres d\'abord.'), 'error');
+                break;
+              }
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.xlsx,.xls';
+              input.addEventListener('change', async () => {
+                const file = input.files[0];
+                if (!file) return;
+                try {
+                  if (typeof XLSX === 'undefined') throw new Error(tt('SheetJS library not loaded. Check your internet connection.', 'Bibliothèque SheetJS non chargée. Vérifiez votre connexion internet.'));
+                  const arrayBuffer = await file.arrayBuffer();
+                  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                  const excelData = ChronogramImport.prepareExcelForLLM(workbook);
+                  appState.chronogramImport = {
+                    phase: 'config',
+                    fileName: file.name,
+                    file: file,
+                    workbook: workbook,
+                    excelData: excelData,
+                    options: {
+                      createActors: true,
+                      detectImplicit: true,
+                      mainSheet: ChronogramImport.detectMainSheet(workbook.SheetNames),
+                      userContext: ''
+                    },
+                    progress: null,
+                    result: null,
+                    error: null
+                  };
+                  App.render();
+                } catch (err) {
+                  pushToast(err.message || tt('Failed to read Excel file.', 'Impossible de lire le fichier Excel.'), 'error');
+                }
+              });
+              input.click();
+              break;
+            }
+            case 'chronogram-cancel': {
+              appState.chronogramImport = null;
+              App.render();
+              break;
+            }
+            case 'chronogram-launch-import': {
+              const state = appState.chronogramImport;
+              if (!state) break;
+              // Read options from DOM before switching phase
+              document.querySelectorAll('[data-chrono-option]').forEach(el => {
+                const key = el.dataset.chronoOption;
+                if (key === 'autonomyMode') {
+                  appState.chronogramImportAutonomy = el.value;
+                } else if (el.type === 'checkbox') {
+                  state.options[key] = el.checked;
+                } else if (el.tagName === 'SELECT') {
+                  state.options[key] = el.value;
+                } else {
+                  state.options[key] = el.value;
+                }
+              });
+              state.phase = 'progress';
+              state.progress = { step: 1, totalSteps: 3, message: '', details: '' };
+              state.error = null;
+              App.render();
+              // Run pipeline async
+              (async () => {
+                try {
+                  const result = await ChronogramImport.importChronogramIA(
+                    state.file,
+                    state.options,
+                    (step, totalSteps, message, details) => {
+                      state.progress = { step, totalSteps, message, details };
+                      App.render();
+                    }
+                  );
+                  state.result = result;
+                  const autonomy = appState.chronogramImportAutonomy;
+                  if (autonomy === 'fully_autonomous') {
+                    // Auto-apply
+                    const summary = ChronogramImport.applyImport(appState.scenario, result);
+                    state.phase = 'result';
+                    state.appliedSummary = summary;
+                    saveLocal(false);
+                    App.render();
+                    pushToast(tt(
+                      `AI import complete: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors created.`,
+                      `Import IA terminé : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs créés.`
+                    ), 'success');
+                  } else if (autonomy === 'fully_validated') {
+                    // Build validation queue: actors first, then stimuli
+                    const queue = [];
+                    (result.actors || []).forEach(a => queue.push({ ...a, _type: 'actor' }));
+                    (result.stimuli || []).forEach(s => queue.push({ ...s, _type: 'stimulus' }));
+                    state.validationQueue = queue;
+                    state.validationIndex = 0;
+                    state.acceptedItems = [];
+                    state.acceptedCount = 0;
+                    state.skippedCount = 0;
+                    state.phase = 'validation';
+                    App.render();
+                  } else {
+                    // mostly_autonomous: show result modal
+                    state.phase = 'result';
+                    App.render();
+                  }
+                } catch (err) {
+                  state.error = err.message;
+                  state.phase = 'result';
+                  App.render();
+                  pushToast(err.message, 'error');
+                }
+              })();
+              break;
+            }
+            case 'chronogram-accept-all': {
+              const state = appState.chronogramImport;
+              if (!state || !state.result) break;
+              const summary = ChronogramImport.applyImport(appState.scenario, state.result);
+              appState.chronogramImport = null;
+              saveLocal(false);
+              App.render();
+              pushToast(tt(
+                `Import applied: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors.`,
+                `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`
+              ), 'success');
+              break;
+            }
+            case 'chronogram-reject-all': {
+              appState.chronogramImport = null;
+              App.render();
+              pushToast(tt('Import cancelled.', 'Import annulé.'), 'info');
+              break;
+            }
+            case 'chronogram-modify': {
+              const state = appState.chronogramImport;
+              if (!state || !state.result) break;
+              const summary = ChronogramImport.applyImport(appState.scenario, state.result);
+              appState.chronogramImport = null;
+              appState.route = 'library';
+              saveLocal(false);
+              App.render();
+              pushToast(tt(
+                `${summary.stimuli_created} stimuli imported as drafts. Review them in the Library.`,
+                `${summary.stimuli_created} stimuli importés en brouillon. Vérifiez-les dans la Bibliothèque.`
+              ), 'success');
+              break;
+            }
+            case 'chronogram-accept-item': {
+              const state = appState.chronogramImport;
+              if (!state || !state.validationQueue) break;
+              const item = state.validationQueue[state.validationIndex];
+              if (item) {
+                if (!state.acceptedItems) state.acceptedItems = [];
+                state.acceptedItems.push(item);
+                state.acceptedCount = (state.acceptedCount || 0) + 1;
+              }
+              state.validationIndex = (state.validationIndex || 0) + 1;
+              App.render();
+              break;
+            }
+            case 'chronogram-skip-item': {
+              const state = appState.chronogramImport;
+              if (!state || !state.validationQueue) break;
+              state.skippedCount = (state.skippedCount || 0) + 1;
+              state.validationIndex = (state.validationIndex || 0) + 1;
+              App.render();
+              break;
+            }
+            case 'chronogram-finish-validation': {
+              const state = appState.chronogramImport;
+              if (!state) break;
+              const accepted = state.acceptedItems || [];
+              const acceptedActors = accepted.filter(i => i._type === 'actor');
+              const acceptedStimuli = accepted.filter(i => i._type === 'stimulus');
+              // Build a filtered import result
+              const filteredResult = {
+                actors: acceptedActors.map(a => { const { _type, ...rest } = a; return rest; }),
+                stimuli: acceptedStimuli.map(s => { const { _type, ...rest } = s; return rest; }),
+                warnings: state.result?.warnings || [],
+                skipped_rows: state.result?.skipped_rows || [],
+                synopsis: state.result?.synopsis
+              };
+              const summary = ChronogramImport.applyImport(appState.scenario, filteredResult);
+              appState.chronogramImport = null;
+              saveLocal(false);
+              App.render();
+              pushToast(tt(
+                `Import applied: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors.`,
+                `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`
+              ), 'success');
               break;
             }
             default: console.warn(tt('Unhandled action', 'Action non gérée'), action);

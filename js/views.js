@@ -183,6 +183,7 @@
             </main>
             ${appState.historyModalStimulusId ? renderHistoryModal(getStimulus(appState.historyModalStimulusId)) : ''}
             ${appState.stimulusModalId ? renderStimulusModal(getStimulus(appState.stimulusModalId)) : ''}
+            ${appState.chronogramImport ? renderChronogramImportModals() : ''}
           </div>
         `;
       }
@@ -283,6 +284,8 @@
                   <button class="btn btn-secondary" data-action="save-json" ${appState.ui?.actionLoading?.['save-json'] ? 'disabled' : ''}>${actionButtonLabel('save-json', tt('Export JSON', 'Exporter JSON') + ' ⇩', tt('Exporting JSON…', 'Export JSON en cours…'))}</button>
                   <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${actionButtonLabel('export-all', tt('Export ZIP', 'Exporter ZIP') + ' 🗜️', tt('Exporting ZIP…', 'Export ZIP en cours…'))}</button>
                   <button class="btn btn-secondary" data-action="load-json" ${appState.ui?.actionLoading?.['load-json'] ? 'disabled' : ''}>${actionButtonLabel('load-json', tt('Import', 'Importer'), tt('Importing…', 'Import en cours…'))}</button>
+                  <button class="btn btn-secondary" disabled title="${escapeAttribute(tt('Standardized format not yet defined', 'Format standardisé non encore défini'))}">${tt('Basic import', 'Import basique')} 📥</button>
+                  <button class="btn btn-secondary" data-action="import-chronogram-ia" ${!isLLMAvailable() ? `disabled title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité'))}"` : ''}>${tt('AI Import', 'Import IA')} 🤖</button>
                   <button class="btn btn-secondary" data-action="new-scenario">${tt('New', 'Nouveau')} ↺</button>
                   <button class="btn btn-danger" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
                 </div>
