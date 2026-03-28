@@ -384,13 +384,17 @@
           applyLoadedScenario(data);
           return;
         }
-        // Fallback: classic file input
+        // Fallback: classic file input (element must be in DOM for Safari/Firefox compatibility)
         await new Promise((resolve) => {
           const input = document.createElement('input');
           input.type = 'file';
           input.accept = '.json,.crisismaker.json,.crisisstim.json,.zip,application/json,application/zip';
+          input.style.display = 'none';
+          document.body.appendChild(input);
+          const cleanup = () => { if (input.parentNode) input.remove(); };
           input.addEventListener('change', (event) => {
             const file = event.target.files?.[0];
+            cleanup();
             if (!file) {
               resolve();
               return;
@@ -402,6 +406,7 @@
               })
               .finally(() => resolve());
           }, { once: true });
+          input.addEventListener('cancel', () => { cleanup(); resolve(); }, { once: true });
           input.click();
         });
       }
