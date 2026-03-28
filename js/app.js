@@ -28,6 +28,7 @@
           sheets: [],
           selectedSheet: '',
           columnMapping: {},
+          columnMappingLoading: false,
           analysisResult: null,
           analysisLoading: false,
           analysisError: null,

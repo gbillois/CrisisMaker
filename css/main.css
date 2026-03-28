@@ -2461,6 +2461,35 @@
       font-size: 0.82rem;
       color: var(--warning);
     }
+    .checker-mapping-hint {
+      margin: 8px 0 0;
+      font-size: 0.8rem;
+      color: var(--subtle);
+    }
+    .checker-mapping-ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 10px;
+      font-size: 0.78rem;
+      font-weight: normal;
+      color: var(--primary);
+      vertical-align: middle;
+    }
+    .checker-mapping-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: checker-spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    .checker-mapping-loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
 
     /* Analysis loading spinner */
     .checker-spinner {

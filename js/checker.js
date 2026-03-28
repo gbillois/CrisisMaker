@@ -193,6 +193,64 @@
         return mapping;
       }
 
+      // ─── LLM-based column detection ───────────────────────────────────────────────
+
+      async function checkerAutoDetectColumnsLLM(headers, rows) {
+        const colKeys = Object.keys(CHECKER_COLUMN_PATTERNS);
+        const colDescriptions = {
+          timestamp:   'Date/time offset of the inject (e.g. H+00:30, T+2h, heure)',
+          phase:       'Exercise phase or stage name',
+          sender:      'Who sends the stimulus (actor, entity, organization)',
+          recipient:   'Who receives the stimulus (target cell, team, player)',
+          channel:     'Communication channel (email, phone, SMS, press, social media, etc.)',
+          content:     'Main content, text, or description of the stimulus',
+          type:        'Type or category of the stimulus (e.g. inject, nudge, event)',
+          conditional: 'Whether the stimulus is conditional or branching (optional/if)',
+          theme:       'Theme, dimension, or domain of the stimulus'
+        };
+
+        const headerList = headers.map((h, i) => `[${i}] ${h}`).join('\n');
+        const sampleRows = rows.slice(0, 5).map((row, ri) => {
+          const cells = headers.map((_, ci) => String(row[ci] || '').trim().substring(0, 80));
+          return `Row ${ri + 1}: ${cells.join(' | ')}`;
+        }).join('\n');
+
+        const roleDescriptions = colKeys.map(k => `- "${k}": ${colDescriptions[k]}`).join('\n');
+
+        const systemPrompt = `You are an expert in crisis exercise chronograms (also called "chronogrammes d'exercice de crise" in French).
+Your task is to map spreadsheet column headers to specific semantic roles used in crisis exercises.
+
+Semantic roles to identify:
+${roleDescriptions}
+
+Rules:
+- Each column index can be assigned to at most ONE role
+- If no column clearly matches a role, set it to null
+- Use 0-based integer column indices
+- Respond ONLY with a valid JSON object, no explanation or markdown
+
+Response format (strict JSON):
+{"timestamp": <index|null>, "phase": <index|null>, "sender": <index|null>, "recipient": <index|null>, "channel": <index|null>, "content": <index|null>, "type": <index|null>, "conditional": <index|null>, "theme": <index|null>}`;
+
+        const userPrompt = `COLUMN HEADERS:\n${headerList}\n\nSAMPLE DATA (first rows):\n${sampleRows}`;
+
+        const result = await AITextGenerator.generate('checker_column_mapping', systemPrompt, userPrompt, true, 500);
+
+        // Validate result: ensure indices are in range and not duplicated
+        const mapping = {};
+        const usedIndices = new Set();
+        for (const key of colKeys) {
+          const val = result[key];
+          if (val !== null && val !== undefined && Number.isInteger(val) && val >= 0 && val < headers.length && !usedIndices.has(val)) {
+            mapping[key] = val;
+            usedIndices.add(val);
+          } else {
+            mapping[key] = null;
+          }
+        }
+        return mapping;
+      }
+
       // ─── Column letter helper ─────────────────────────────────────────────────────
 
       function checkerColLetter(index) {
@@ -438,11 +496,15 @@
 
         const notDetected = tt('— Not detected —', '— Non détecté —');
         const hasMissing = Object.values(mapping).some(v => v === null);
+        const isLoading = cs.columnMappingLoading;
 
         return `
           <div class="checker-mapping">
-            <h4>${tt('Column Mapping', 'Correspondance des colonnes')}</h4>
-            <div class="checker-mapping-grid">
+            <h4>
+              ${tt('Column Mapping', 'Correspondance des colonnes')}
+              ${isLoading ? `<span class="checker-mapping-ai-badge"><span class="checker-mapping-spinner"></span>${tt('AI detecting…', 'Détection IA en cours…')}</span>` : ''}
+            </h4>
+            <div class="checker-mapping-grid${isLoading ? ' checker-mapping-loading' : ''}">
               ${Object.keys(CHECKER_COLUMN_PATTERNS).map(colKey => {
                 const val = mapping[colKey];
                 const label = CHECKER_COLUMN_LABELS[colKey]();
@@ -450,16 +512,17 @@
                 return `
                   <div class="checker-mapping-row">
                     <label>${label}:</label>
-                    <select data-action="checker-update-mapping" data-col-key="${colKey}">
+                    <select data-action="checker-update-mapping" data-col-key="${colKey}"${isLoading ? ' disabled' : ''}>
                       <option value="-1" ${isMissing ? 'selected' : ''}>${notDetected}</option>
                       ${pd.headers.map((h, i) => `<option value="${i}" ${val === i ? 'selected' : ''}>${tt('Column', 'Colonne')} ${checkerColLetter(i)} — "${escapeHtml(h)}"</option>`).join('')}
                     </select>
-                    ${isMissing ? '<span class="checker-mapping-warn" title="' + escapeAttribute(tt('Not detected', 'Non détecté')) + '">⚠</span>' : ''}
+                    ${isMissing && !isLoading ? '<span class="checker-mapping-warn" title="' + escapeAttribute(tt('Not detected', 'Non détecté')) + '">⚠</span>' : ''}
                   </div>
                 `;
               }).join('')}
             </div>
-            ${hasMissing ? `<p class="checker-mapping-note">${tt('⚠ Missing columns will be flagged in the analysis.', '⚠ Les colonnes manquantes seront signalées dans l\'analyse.')}</p>` : ''}
+            ${hasMissing && !isLoading ? `<p class="checker-mapping-note">${tt('⚠ Missing columns will be flagged in the analysis.', '⚠ Les colonnes manquantes seront signalées dans l\'analyse.')}</p>` : ''}
+            ${!isLoading ? `<p class="checker-mapping-hint">${tt('You can adjust the mapping manually using the dropdowns above.', 'Vous pouvez ajuster la correspondance manuellement via les menus ci-dessus.')}</p>` : ''}
           </div>
         `;
       }
@@ -530,13 +593,13 @@
         try {
           appState.checkerState._fileError = null;
           const result = await checkerParseFile(file);
-          const mapping = checkerAutoDetectColumns(result.headers);
 
           appState.checkerState.file = { name: file.name, size: file.size, type: file.type };
           appState.checkerState.parsedData = { headers: result.headers, rows: result.rows, workbook: result.workbook, isPptx: !!result.isPptx };
           appState.checkerState.sheets = result.sheets;
           appState.checkerState.selectedSheet = result.selectedSheet;
-          appState.checkerState.columnMapping = mapping;
+          appState.checkerState.columnMapping = checkerAutoDetectColumns(result.headers);
+          appState.checkerState.columnMappingLoading = false;
           appState.checkerState.analysisResult = null;
           appState.checkerState.analysisError = null;
           appState.checkerState.checklist = {};
@@ -544,8 +607,22 @@
           // Load persisted checklist for this file
           checkerLoadChecklist();
 
-          App.render();
-          pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`), 'success');
+          if (isLLMAvailable()) {
+            appState.checkerState.columnMappingLoading = true;
+            App.render();
+            pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`), 'success');
+            try {
+              const llmMapping = await checkerAutoDetectColumnsLLM(result.headers, result.rows);
+              appState.checkerState.columnMapping = llmMapping;
+            } catch (_llmErr) {
+              // Keep regex fallback silently
+            }
+            appState.checkerState.columnMappingLoading = false;
+            App.render();
+          } else {
+            App.render();
+            pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`), 'success');
+          }
         } catch (err) {
           appState.checkerState._fileError = err.message;
           App.render();
@@ -560,9 +637,23 @@
         cs.parsedData.headers = sheetData.headers;
         cs.parsedData.rows = sheetData.rows;
         cs.columnMapping = checkerAutoDetectColumns(sheetData.headers);
+        cs.columnMappingLoading = false;
         cs.analysisResult = null;
         cs.analysisError = null;
-        App.render();
+
+        if (isLLMAvailable()) {
+          cs.columnMappingLoading = true;
+          App.render();
+          checkerAutoDetectColumnsLLM(sheetData.headers, sheetData.rows)
+            .then(llmMapping => { appState.checkerState.columnMapping = llmMapping; })
+            .catch(() => { /* Keep regex fallback silently */ })
+            .finally(() => {
+              appState.checkerState.columnMappingLoading = false;
+              App.render();
+            });
+        } else {
+          App.render();
+        }
       }
 
       function checkerClearFile() {
@@ -574,6 +665,7 @@
           sheets: [],
           selectedSheet: '',
           columnMapping: {},
+          columnMappingLoading: false,
           analysisResult: null,
           analysisLoading: false,
           analysisError: null,
