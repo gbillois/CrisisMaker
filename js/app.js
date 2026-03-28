@@ -416,6 +416,9 @@
             case 'checker-export-report':
               checkerExportReport();
               break;
+            case 'checker-export-report-docx':
+              checkerExportReportDocx();
+              break;
             case 'test-connection': {
               const provider = appState.scenario.settings.ai_provider;
               appState.connectionTest = {

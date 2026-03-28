@@ -1033,7 +1033,8 @@ ${serialized}`;
             <div class="section-header" style="margin-bottom:16px;">
               <h3>${tt('Analysis Results', 'Résultats de l\'analyse')}</h3>
               <div class="actions">
-                <button class="btn btn-secondary" data-action="checker-export-report">${tt('Export Report', 'Exporter le rapport')}</button>
+                <button class="btn btn-secondary" data-action="checker-export-report">${tt('Export .md', 'Exporter .md')}</button>
+                <button class="btn btn-secondary" data-action="checker-export-report-docx">${tt('Export .docx', 'Exporter .docx')}</button>
                 <button class="btn btn-secondary" data-action="checker-analyze">${tt('Re-analyze', 'Ré-analyser')}</button>
               </div>
             </div>
@@ -1496,4 +1497,284 @@ ${serialized}`;
         const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
         downloadBlob(blob, `crisis_check_${safeName}_${date}.md`);
         pushToast(tt('Report exported.', 'Rapport exporté.'), 'success');
+      }
+
+      // ─── Export DOCX report ───────────────────────────────────────────────────
+
+      function checkerExportReportDocx() {
+        const cs = appState.checkerState;
+        const r = cs.analysisResult;
+        const mode = cs.mode || 'file';
+        const fileName = mode === 'scenario'
+          ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel'))
+          : (cs.file ? cs.file.name : 'unknown');
+        const date = new Date().toISOString().slice(0, 10);
+        const categories = checkerGetChecklistCategories();
+        const cl = cs.checklist || {};
+        const checked = cl.checked || {};
+        const customItems = cl.customItems || {};
+
+        const verdictLabels = {
+          satisfactory: 'Satisfactory / Satisfaisant',
+          acceptable: 'Acceptable',
+          insufficient: 'Insufficient / Insuffisant'
+        };
+        const maturityLabels = {
+          first_draft: 'First Draft / Premier brouillon',
+          advanced_draft: 'Advanced Draft / Brouillon avancé',
+          ready_to_play: 'Ready to Play / Prêt à jouer'
+        };
+
+        function esc(str) {
+          return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+        }
+
+        function run(text, bold, color) {
+          const rPr = (bold || color)
+            ? `<w:rPr>${bold ? '<w:b/>' : ''}${color ? `<w:color w:val="${color}"/>` : ''}</w:rPr>`
+            : '';
+          return `<w:r>${rPr}<w:t xml:space="preserve">${esc(text)}</w:t></w:r>`;
+        }
+
+        function para(text, style) {
+          const pPr = style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : '';
+          if (!text) return `<w:p>${pPr}</w:p>`;
+          return `<w:p>${pPr}${run(text)}</w:p>`;
+        }
+
+        function boldPara(label, value, style) {
+          const pPr = style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : '';
+          return `<w:p>${pPr}${run(label, true)}${run(value)}</w:p>`;
+        }
+
+        function listPara(text, numId) {
+          return `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="${numId}"/></w:numPr></w:pPr>${run(text)}</w:p>`;
+        }
+
+        function tableCell(text, isHeader) {
+          const shd = isHeader ? '<w:shd w:val="clear" w:color="auto" w:fill="1F3864"/>' : '';
+          const jc = isHeader ? '<w:jc w:val="center"/>' : '';
+          const runXml = isHeader ? run(text, true, 'FFFFFF') : run(text);
+          return `<w:tc><w:tcPr><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:left w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:right w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/></w:tcBorders>${shd}</w:tcPr><w:p>${jc ? `<w:pPr>${jc}</w:pPr>` : ''}${runXml}</w:p></w:tc>`;
+        }
+
+        function tableRow(cells, isHeader) {
+          return `<w:tr>${cells.map(c => tableCell(c, isHeader)).join('')}</w:tr>`;
+        }
+
+        const body = [];
+
+        body.push(para(`Crisis Checker Report — ${fileName}`, 'CrisisTitle'));
+        body.push(para(`Generated: ${date}`, 'CrisisSubtitle'));
+        body.push(para(''));
+
+        if (r) {
+          body.push(para(tt('Summary', 'Synthèse'), 'Heading1'));
+          body.push(boldPara('Maturity / Maturité: ', maturityLabels[r.maturity] || r.maturity));
+          if (r.summary) body.push(para(r.summary));
+          body.push(para(''));
+
+          if (r.priority_actions && r.priority_actions.length) {
+            body.push(para(tt('Priority Actions', 'Actions prioritaires'), 'Heading1'));
+            r.priority_actions.forEach(a => body.push(listPara(a, 2)));
+            body.push(para(''));
+          }
+
+          if (r.axes) {
+            r.axes.forEach(axis => {
+              body.push(para(`${tt('Axis', 'Axe')} ${axis.id}: ${axis.title} — ${verdictLabels[axis.verdict] || axis.verdict}`, 'Heading1'));
+              if (axis.positive && axis.positive.length) {
+                body.push(para(tt('Positive findings', 'Constats positifs'), 'Heading2'));
+                axis.positive.forEach(f => body.push(listPara(`✓ ${f}`, 1)));
+              }
+              if (axis.negative && axis.negative.length) {
+                body.push(para(tt('Negative findings', 'Constats négatifs'), 'Heading2'));
+                axis.negative.forEach(f => body.push(listPara(`✗ ${f}`, 1)));
+              }
+              if (axis.recommendations && axis.recommendations.length) {
+                body.push(para(tt('Recommendations', 'Recommandations'), 'Heading2'));
+                axis.recommendations.forEach(rec => body.push(listPara(`→ ${rec}`, 1)));
+              }
+              body.push(para(''));
+            });
+          }
+
+          const data = r.stimuli_per_cell_per_phase;
+          if (data && Object.keys(data).length) {
+            body.push(para(tt('Stimuli Distribution', 'Distribution des stimuli'), 'Heading1'));
+            const cells = Object.keys(data);
+            const phaseSet = new Set();
+            cells.forEach(c => Object.keys(data[c]).forEach(p => phaseSet.add(p)));
+            const phases = [...phaseSet];
+            const rows = [];
+            rows.push(tableRow([tt('Cell', 'Cellule'), ...phases, 'Total'], true));
+            cells.forEach(cell => {
+              const vals = phases.map(p => String(data[cell][p] || 0));
+              const total = vals.reduce((s, v) => s + parseInt(v, 10), 0);
+              rows.push(tableRow([cell, ...vals, String(total)], false));
+            });
+            body.push(`<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="0" w:type="auto"/></w:tblPr>${rows.join('')}</w:tbl>`);
+            body.push(para(''));
+          }
+        }
+
+        body.push(para(tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »'), 'Heading1'));
+        let totalItems = 0, checkedCount = 0;
+        categories.forEach(cat => {
+          body.push(para(cat.title, 'Heading2'));
+          const customs = customItems[cat.key] || [];
+          const allItems = [...cat.items, ...customs];
+          allItems.forEach((item, i) => {
+            const key = `${cat.key}_${i}`;
+            const isChecked = !!checked[key];
+            body.push(listPara(`${isChecked ? '☑' : '☐'} ${item}`, 1));
+            totalItems++;
+            if (isChecked) checkedCount++;
+          });
+        });
+        body.push(para(''));
+        body.push(boldPara(`${tt('Progress', 'Progression')}: `, `${checkedCount} / ${totalItems}`));
+
+        const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${body.join('\n    ')}
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+        const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault>
+      <w:rPr>
+        <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
+        <w:sz w:val="22"/>
+      </w:rPr>
+    </w:rPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:pPr><w:spacing w:after="160" w:line="259" w:lineRule="auto"/></w:pPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="CrisisTitle">
+    <w:name w:val="CrisisTitle"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:jc w:val="center"/><w:spacing w:before="240" w:after="80"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="52"/><w:color w:val="1F3864"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="CrisisSubtitle">
+    <w:name w:val="CrisisSubtitle"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:jc w:val="center"/><w:spacing w:before="80" w:after="320"/></w:pPr>
+    <w:rPr><w:i/><w:sz w:val="24"/><w:color w:val="595959"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:pPr><w:spacing w:before="480" w:after="120"/><w:keepNext/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="32"/><w:color w:val="1F3864"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2">
+    <w:name w:val="heading 2"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:pPr><w:spacing w:before="240" w:after="80"/><w:keepNext/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="26"/><w:color w:val="2E74B5"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="ListParagraph">
+    <w:name w:val="List Paragraph"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:ind w:left="720"/><w:spacing w:after="80"/></w:pPr>
+  </w:style>
+  <w:style w:type="table" w:styleId="TableGrid">
+    <w:name w:val="Table Grid"/>
+    <w:tblPr>
+      <w:tblBorders>
+        <w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+      </w:tblBorders>
+    </w:tblPr>
+  </w:style>
+</w:styles>`;
+
+        const numberingXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:abstractNum w:abstractNumId="0">
+    <w:lvl w:ilvl="0">
+      <w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/>
+      <w:lvlJc w:val="left"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr>
+    </w:lvl>
+  </w:abstractNum>
+  <w:abstractNum w:abstractNumId="1">
+    <w:lvl w:ilvl="0">
+      <w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/>
+      <w:lvlJc w:val="left"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr>
+    </w:lvl>
+  </w:abstractNum>
+  <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
+  <w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num>
+</w:numbering>`;
+
+        const zip = new JSZip();
+
+        zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>`);
+
+        zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>`);
+
+        const wordFolder = zip.folder('word');
+        wordFolder.file('document.xml', documentXml);
+        wordFolder.file('styles.xml', stylesXml);
+        wordFolder.file('numbering.xml', numberingXml);
+        wordFolder.folder('_rels').file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
+</Relationships>`);
+
+        const docProps = zip.folder('docProps');
+        docProps.file('core.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>Crisis Checker Report — ${esc(fileName)}</dc:title>
+  <dc:creator>CrisisMaker by Wavestone</dc:creator>
+  <dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created>
+</cp:coreProperties>`);
+        docProps.file('app.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
+  <Application>CrisisMaker by Wavestone</Application>
+</Properties>`);
+
+        zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+          .then(blob => {
+            const safeName = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
+            downloadBlob(blob, `crisis_check_${safeName}_${date}.docx`);
+            pushToast(tt('Report exported.', 'Rapport exporté.'), 'success');
+          });
       }
