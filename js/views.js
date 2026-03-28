@@ -676,6 +676,9 @@
               <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported injects. Each inject can override these defaults.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages.', 'Das Wasserzeichen wird über alle exportierten Injects gelegt. Jeder Inject kann diese Standardeinstellungen überschreiben.')}</p>
             </article>
           </section>
+          <div style="padding:18px 0 4px;">
+            <button class="btn btn-secondary" data-action="load-json" style="width:100%;">${tt('Open (.json or .zip)', 'Ouvrir (.json ou .zip)', 'Öffnen (.json oder .zip)')}</button>
+          </div>
         `;
       }
 
