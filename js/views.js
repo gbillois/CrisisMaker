@@ -670,36 +670,6 @@
               </div>
               <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported injects. Each inject can override these defaults.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages.')}</p>
             </article>
-            <article class="card">
-              <div class="section-header"><h3>${tt('Included modules', 'Modules implémentés')}</h3></div>
-              <div class="tag-row">
-                <span class="tag">ScenarioManager</span>
-                <span class="tag">StimulusEditor</span>
-                <span class="tag">TemplateEngine</span>
-                <span class="tag">AITextGenerator</span>
-                <span class="tag">ExportEngine</span>
-                <span class="tag">UIRouter</span>
-              </div>
-              <p class="subtle" style="margin-top:18px;">${tt("The application runs serverless in a single HTML file. External dependencies are loaded via CDN for PNG and ZIP exports.", "L'application fonctionne sans serveur dans un seul fichier HTML. Les dépendances externes sont chargées via CDN pour les exports PNG et ZIP.")}</p>
-              <div class="field-grid" style="margin-top:20px;">
-                <div class="card" style="padding:16px; background:var(--surface-alt); box-shadow:none;">
-                  <h4>${tt('Generation tips', 'Conseils de génération')}</h4>
-                  <ul class="helper">
-                    <li>${tt('Use a precise scenario summary to get consistent injects.', 'Utilisez un résumé de scénario précis pour obtenir des stimuli cohérents.')}</li>
-                    <li>${tt('Add multiple actors to vary perspectives.', 'Renseignez plusieurs acteurs pour varier les points de vue.')}</li>
-                    <li>${tt("Manual editing remains available after generation for every field.", "L'édition manuelle reste possible après génération sur chaque champ.")}</li>
-                  </ul>
-                </div>
-                <div class="card" style="padding:16px; background:var(--surface-alt); box-shadow:none;">
-                  <h4>${tt('Quick validation', 'Validation rapide')}</h4>
-                  <ul class="helper">
-                    <li>${tt('High-resolution PNG export (pixelRatio 2).', 'Export PNG en haute résolution (pixelRatio 2).')}</li>
-                    <li>${tt('Autosave every 30 seconds.', 'Auto-sauvegarde toutes les 30 secondes.')}</li>
-                    <li>${tt('Full scenario import/export in JSON.', 'Import / export complet du scénario en JSON.')}</li>
-                  </ul>
-                </div>
-              </div>
-            </article>
           </section>
         `;
       }
