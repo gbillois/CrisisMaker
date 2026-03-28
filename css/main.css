@@ -2503,6 +2503,33 @@
     }
     @keyframes checker-spin { to { transform: rotate(360deg); } }
     .checker-loading { color: var(--muted); }
+
+    /* Generic AI loading spinner — white variant for dark buttons */
+    .ai-spinner {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: checker-spin 0.7s linear infinite;
+      flex-shrink: 0;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    /* Primary-color variant for light/ghost buttons */
+    .ai-spinner-primary {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: checker-spin 0.7s linear infinite;
+      flex-shrink: 0;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
     .checker-progress-layout {
       display: flex;
       gap: 20px;
