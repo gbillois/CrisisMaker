@@ -93,6 +93,33 @@
         `;
       }
 
+      // ── LLM Log Renderer (used by progress modal + live DOM updates) ──
+
+      function renderLLMLogs(logs) {
+        if (!logs || logs.length === 0) {
+          return `<div class="llm-stream-empty">${tt('Waiting for first LLM call\u2026', 'En attente du premier appel LLM\u2026')}</div>`;
+        }
+        return logs.map(entry => {
+          const isStreaming = entry.status === 'streaming';
+          const isError = entry.status === 'error';
+          const responseDisplay = entry.responseText
+            ? (entry.responseText.length > 3000 ? '\u2026' + entry.responseText.slice(-3000) : entry.responseText)
+            : '';
+          const cursor = isStreaming ? '<span class="llm-stream-cursor"></span>' : '';
+          const assistantCls = isError ? 'error' : 'assistant';
+          const assistantLabel = isError
+            ? tt('Error', 'Erreur')
+            : (isStreaming ? tt('Assistant (streaming\u2026)', 'Assistant (streaming\u2026)') : tt('Assistant', 'Assistant'));
+          return `
+            <div class="llm-log-entry">
+              <div class="llm-role-label">\uD83E\uDDD1 ${escapeHtml(entry.stepLabel)}</div>
+              <div class="llm-bubble user">${escapeHtml(entry.userPromptPreview || '')}${(entry.userPromptPreview || '').length >= 400 ? '\u2026' : ''}</div>
+              <div class="llm-role-label">\uD83E\uDD16 ${assistantLabel}</div>
+              <div class="llm-bubble ${assistantCls}">${escapeHtml(responseDisplay)}${cursor}</div>
+            </div>`;
+        }).join('');
+      }
+
       // ── Progress Modal ──
 
       function renderChronogramProgressModal() {
@@ -109,32 +136,43 @@
 
         return `
           <div class="modal-backdrop">
-            <div class="modal-box chronogram-modal" >
+            <div class="modal-box chronogram-modal chronogram-progress-wide">
               <div class="modal-header">
                 <h3>${tt('AI Import in progress...', 'Import IA en cours...')}</h3>
               </div>
-              <div class="chronogram-modal-body">
-                <div class="chronogram-progress-bar-container">
-                  <div class="chronogram-progress-bar" style="width: ${pct}%"></div>
-                </div>
-                <div class="chronogram-progress-label">${tt('Step', 'Étape')} ${p.step}/${p.totalSteps}</div>
+              <div class="chronogram-modal-body chronogram-progress-layout">
 
-                <div class="chronogram-steps-list">
-                  ${steps.map((label, i) => {
-                    const stepNum = i + 1;
-                    let icon = '○';
-                    let cls = 'pending';
-                    if (stepNum < p.step) { icon = '✅'; cls = 'done'; }
-                    else if (stepNum === p.step) { icon = '🔄'; cls = 'active'; }
-                    return `<div class="chronogram-step ${cls}">
-                      <span class="chronogram-step-icon">${icon}</span>
-                      <span class="chronogram-step-label">${label}</span>
-                    </div>
-                    ${stepNum === p.step && p.details ? `<div class="chronogram-step-details subtle">${escapeHtml(p.details)}</div>` : ''}`;
-                  }).join('')}
+                <div class="chronogram-progress-left">
+                  <div class="chronogram-progress-bar-container">
+                    <div class="chronogram-progress-bar" style="width: ${pct}%"></div>
+                  </div>
+                  <div class="chronogram-progress-label">${tt('Step', 'Étape')} ${p.step}/${p.totalSteps}</div>
+
+                  <div class="chronogram-steps-list">
+                    ${steps.map((label, i) => {
+                      const stepNum = i + 1;
+                      let icon = '○';
+                      let cls = 'pending';
+                      if (stepNum < p.step) { icon = '✅'; cls = 'done'; }
+                      else if (stepNum === p.step) { icon = '🔄'; cls = 'active'; }
+                      return `<div class="chronogram-step ${cls}">
+                        <span class="chronogram-step-icon">${icon}</span>
+                        <span class="chronogram-step-label">${label}</span>
+                      </div>
+                      ${stepNum === p.step && p.details ? `<div class="chronogram-step-details subtle">${escapeHtml(p.details)}</div>` : ''}`;
+                    }).join('')}
+                  </div>
+
+                  ${state.error ? `<div class="chronogram-error-banner">${escapeHtml(state.error)}</div>` : ''}
                 </div>
 
-                ${state.error ? `<div class="chronogram-error-banner">${escapeHtml(state.error)}</div>` : ''}
+                <div class="chronogram-progress-right">
+                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct')}</div>
+                  <div class="llm-stream-panel" id="llm-stream-panel">
+                    <div id="llm-stream-content">${renderLLMLogs(state.llmLogs || [])}</div>
+                  </div>
+                </div>
+
               </div>
               <div class="chronogram-modal-footer">
                 <button class="btn btn-secondary" data-action="chronogram-cancel">${tt('Cancel', 'Annuler')}</button>
