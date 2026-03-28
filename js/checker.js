@@ -696,6 +696,7 @@ Response format (strict JSON):
               ${tt('Stress-test the timeline', 'Stress-tester la timeline', 'Stresstest der Timeline')}
             </button>
             ${!llmOk ? '</span>' : ''}
+            ${!llmOk ? `<div class="subtle" style="font-size:0.85rem; margin-top:6px; color:var(--muted-color, #888);">${tt('Configure an API key in Settings to use this feature.', 'Configurez une clé API dans les Paramètres pour utiliser cette fonctionnalité.', 'Konfigurieren Sie einen API-Schlüssel in den Einstellungen, um diese Funktion zu nutzen.')}</div>` : ''}
           </div>
         `;
       }
