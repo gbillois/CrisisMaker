@@ -52,7 +52,7 @@
                   </label>
                   <label class="chronogram-checkbox">
                     <input type="checkbox" data-chrono-option="detectImplicit" ${state.options.detectImplicit ? 'checked' : ''}>
-                    ${tt('Detect and create implicit stimuli (attachments, social posts...)', 'Détecter et créer les stimuli implicites (PJ, posts réseaux sociaux...)')}
+                    ${tt('Detect and create implicit injects (attachments, social posts...)', 'Détecter et créer les stimuli implicites (PJ, posts réseaux sociaux...)')}
                   </label>
                 </div>
 
@@ -130,7 +130,7 @@
 
         const steps = [
           tt('Step 1: Analyze file structure', 'Étape 1 : Analyse de la structure du fichier'),
-          tt('Step 2: Extract and classify stimuli', 'Étape 2 : Extraction et classification des stimuli'),
+          tt('Step 2: Extract and classify injects', 'Étape 2 : Extraction et classification des stimuli'),
           tt('Step 3: Generate CrisisStim objects', 'Étape 3 : Génération des objets CrisisStim')
         ];
 
@@ -213,8 +213,8 @@
                   <h4>${tt('Summary', 'Résumé')}</h4>
                   <ul>
                     <li>${totalRows} ${tt('rows analyzed in chronogram', 'lignes analysées dans le chronogramme')}</li>
-                    <li><strong>${stimuli.filter(s => !s.is_implicit).length}</strong> ${tt('main stimuli created', 'stimuli principaux créés')}</li>
-                    ${implicit.length > 0 ? `<li><strong>${implicit.length}</strong> ${tt('implicit stimuli detected and created', 'stimuli implicites détectés et créés')}</li>` : ''}
+                    <li><strong>${stimuli.filter(s => !s.is_implicit).length}</strong> ${tt('main injects created', 'stimuli principaux créés')}</li>
+                    ${implicit.length > 0 ? `<li><strong>${implicit.length}</strong> ${tt('implicit injects detected and created', 'stimuli implicites détectés et créés')}</li>` : ''}
                     <li><strong>${actors.length}</strong> ${tt('actors created', 'acteurs créés')}</li>
                     ${skipped.length > 0 ? `<li>${skipped.length} ${tt('rows skipped (DEBEX/FINEX, meta-animation)', 'lignes ignorées (DEBEX/FINEX, méta-animation)')}</li>` : ''}
                   </ul>
@@ -222,7 +222,7 @@
 
                 ${implicit.length > 0 ? `
                 <div class="chronogram-result-section">
-                  <h4>${tt('Implicit stimuli detected', 'Stimuli implicites détectés')}</h4>
+                  <h4>${tt('Implicit injects detected', 'Stimuli implicites détectés')}</h4>
                   <ul class="chronogram-implicit-list">
                     ${implicit.slice(0, 10).map(s => `<li>
                       <span class="pill" style="background:${CHANNEL_META[s.channel]?.color || '#888'}; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${channelLabel(s.channel)}</span>

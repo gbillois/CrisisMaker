@@ -143,8 +143,8 @@
               <div class="nav-topbar-left">
                 ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet'))}
                 ${renderNavIconButton('scenario', svgTarget(), tt('Scenario', 'Scénario'))}
-                ${renderNavIconButton('stimuli', svgPen(), tt('Stimuli', 'Stimuli'))}
-                ${renderNavIconButton('library', svgGrid(), tt('Library', 'Bibliothèque'))}
+                ${renderNavIconButton('stimuli', svgPen(), tt('Timeline', 'Stimuli'))}
+                ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Bibliothèque'))}
               </div>
               <div class="nav-topbar-center">
                 <div class="nav-brand-block"><span class="nav-brand-eyebrow">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span><span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker'))}</span></div>
@@ -177,7 +177,7 @@
                   <p>${vc.subtitle}</p>
                 </div>
                 <div class="status-pills">
-                  <span class="pill">${appState.scenario.stimuli.length} ${tt('stimuli', 'stimuli')}</span>
+                  <span class="pill">${appState.scenario.stimuli.length} ${tt('injects', 'stimuli')}</span>
                   <span class="pill">${appState.scenario.actors.length} ${tt('actors', 'acteurs')}</span>
                   <span class="pill">${renderProviderSummary(appState.scenario.settings)}</span>
                 </div>
@@ -217,12 +217,12 @@
             subtitle: tt('Define the client, context, and actors involved in the exercise.', 'Définissez le client, le contexte et les acteurs impliqués dans l\'exercice.')
           },
           stimuli: {
-            title: tt('Stimuli editor', 'Éditeur de stimuli'),
-            subtitle: tt('Create realistic stimuli and generate their content with AI.', 'Créez des stimuli réalistes et générez leur contenu avec l\'IA.')
+            title: tt('Timeline', 'Éditeur de stimuli'),
+            subtitle: tt('Create realistic injects and generate their content with AI.', 'Créez des stimuli réalistes et générez leur contenu avec l\'IA.')
           },
           library: {
-            title: tt('Stimulus library', 'Bibliothèque de stimuli'),
-            subtitle: tt('Browse, filter, and manage all stimuli in your project.', 'Parcourez, filtrez et gérez tous les stimuli de votre projet.')
+            title: tt('Injects', 'Bibliothèque de stimuli'),
+            subtitle: tt('Browse, filter, and manage all injects in your project.', 'Parcourez, filtrez et gérez tous les stimuli de votre projet.')
           }
         };
         return map[appState.route] || null;
@@ -246,8 +246,8 @@
               <div class="hero-card">
                 <div class="hero-copy">
                   <span class="hero-kicker">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span>
-                  <h1>${tt('Accelerate crisis exercises stimulus creation.', 'Accélérez la création de stimuli pour les exercices de crise.')}</h1>
-                  <p>${tt('A streamlined studio to prepare scenarios, generate realistic stimuli, and export polished deliverables for facilitation teams.', 'Un studio fluide pour préparer les scénarios, générer des stimuli réalistes et exporter des livrables prêts pour l\'animation.')}</p>
+                  <h1>${tt('Accelerate crisis exercises inject creation.', 'Accélérez la création de stimuli pour les exercices de crise.')}</h1>
+                  <p>${tt('A streamlined studio to prepare scenarios, generate realistic injects, and export polished deliverables for facilitation teams.', 'Un studio fluide pour préparer les scénarios, générer des stimuli réalistes et exporter des livrables prêts pour l\'animation.')}</p>
                 </div>
                 <div class="hero-stats">
                   <div class="hero-stat"><strong>${llmAvailable ? tt('AI connected', 'IA connectée') : tt('Stand alone', 'Autonome')}</strong><span>${llmAvailable ? tt('generation-ready setup', 'configuration prête pour l\'IA') : tt('manual mode available', 'mode manuel disponible')}</span></div>
@@ -295,7 +295,7 @@
                   </article>
                   <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="export-all">
                     <div style="font-size:1.75rem; margin-bottom:10px;">🗜️</div>
-                    <strong>${tt('Export all stimuli', 'Exporter tous les stimuli')}</strong>
+                    <strong>${tt('Export all injects', 'Exporter tous les stimuli')}</strong>
                     <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Download as .zip', 'Télécharger en .zip')}</p>
                   </article>
                 </div>
@@ -314,7 +314,7 @@
                 <div><strong>${tt('Sector', 'Secteur')}:</strong> ${escapeHtml(s.client.sector || '—')}</div>
                 <div><strong>${tt('Scenario', 'Scénario')}:</strong> ${escapeHtml(s.scenario.type || '—')}</div>
                 <div><strong>${tt('Actors', 'Acteurs')}:</strong> ${s.actors.length}</div>
-                <div><strong>${tt('Stimuli', 'Stimuli')}:</strong> ${s.stimuli.length}</div>
+                <div><strong>${tt('Injects', 'Stimuli')}:</strong> ${s.stimuli.length}</div>
                 <div><strong>${tt('Start', 'Début')}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : '—')}</div>
               </div>
             </article>
@@ -368,7 +368,7 @@
 
             <div class="actions" style="margin-top:16px;">
               <button class="btn btn-primary" data-action="nav-scenario">${tt('Edit scenario', 'Éditer le scénario')} →</button>
-              <button class="btn btn-primary" data-action="nav-stimuli">${tt('Edit stimuli', 'Éditer les stimuli')} →</button>
+              <button class="btn btn-primary" data-action="nav-stimuli">${tt('Edit injects', 'Éditer les stimuli')} →</button>
               <button class="btn btn-danger" style="margin-left:auto;" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
             </div>
           </section>
@@ -379,8 +379,8 @@
         const allStimuli = getSortedStimuli();
         if (!allStimuli.length) {
           return `<section class="grid" style="max-width:600px; margin: 60px auto; text-align:center;">
-            <p class="subtle">${tt('No stimuli yet. Create some in the Stimuli view.', 'Aucun stimulus encore. Créez-en dans la vue Stimuli.')}</p>
-            <button class="btn btn-primary" data-action="nav-stimuli">${tt('Go to Stimuli', 'Aller aux Stimuli')}</button>
+            <p class="subtle">${tt('No injects yet. Create some in the Timeline view.', 'Aucun stimulus encore. Créez-en dans la vue Stimuli.')}</p>
+            <button class="btn btn-primary" data-action="nav-stimuli">${tt('Go to Timeline', 'Aller aux Stimuli')}</button>
           </section>`;
         }
         const f = appState.libraryFilter;
@@ -419,7 +419,8 @@
                 <option value="channel" ${f.sort === 'channel' ? 'selected' : ''}>${tt('Sort: channel', 'Tri : type')}</option>
                 <option value="actor" ${f.sort === 'actor' ? 'selected' : ''}>${tt('Sort: actor', 'Tri : acteur')}</option>
               </select>
-              <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('stimuli', 'stimuli')}</span>
+              <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('injects', 'stimuli')}</span>
+              <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add inject', '+ Ajouter un stimulus')}</button>
               <button class="btn btn-secondary" data-action="export-all">${tt('Export ZIP', 'Exporter ZIP')}</button>
               <button class="btn btn-secondary" data-action="import-custom-template">${tt('Import template', 'Importer un template')}</button>
             </div>
@@ -611,7 +612,7 @@
                   </select>
                 </label>
               </div>
-              <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported stimuli. Each stimulus can override these defaults.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages.')}</p>
+              <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported injects. Each inject can override these defaults.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages.')}</p>
             </article>
             <article class="card">
               <div class="section-header"><h3>${tt('Included modules', 'Modules implémentés')}</h3></div>
@@ -628,7 +629,7 @@
                 <div class="card" style="padding:16px; background:var(--surface-alt); box-shadow:none;">
                   <h4>${tt('Generation tips', 'Conseils de génération')}</h4>
                   <ul class="helper">
-                    <li>${tt('Use a precise scenario summary to get consistent stimuli.', 'Utilisez un résumé de scénario précis pour obtenir des stimuli cohérents.')}</li>
+                    <li>${tt('Use a precise scenario summary to get consistent injects.', 'Utilisez un résumé de scénario précis pour obtenir des stimuli cohérents.')}</li>
                     <li>${tt('Add multiple actors to vary perspectives.', 'Renseignez plusieurs acteurs pour varier les points de vue.')}</li>
                     <li>${tt("Manual editing remains available after generation for every field.", "L'édition manuelle reste possible après génération sur chaque champ.")}</li>
                   </ul>
@@ -705,7 +706,7 @@
               <div class="section-header">
                 <div>
                   <h3>${tt('Simulated actors', 'Acteurs simulés')}</h3>
-                  <p class="subtle">${tt('Actors available to sign or emit stimuli.', 'Acteurs disponibles pour signer ou émettre les stimuli.')}</p>
+                  <p class="subtle">${tt('Actors available to sign or emit injects.', 'Acteurs disponibles pour signer ou émettre les stimuli.')}</p>
                 </div>
                 <div class="actions">
                   <button class="btn btn-secondary" data-action="generate-sample-actors">${tt('Generate sample actors', 'Générer des acteurs types')}</button>
@@ -766,7 +767,7 @@
                     <span class="timeline-zoom-label">${Math.round(zoom * 100)}%</span>
                     <button class="btn btn-xs" data-action="timeline-zoom-in" title="${tt('Zoom in', 'Zoomer')}">+</button>
                   </div>
-                  <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add stimulus', '+ Ajouter un stimulus')}</button>
+                  <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add inject', '+ Ajouter un stimulus')}</button>
                   <button class="btn btn-secondary" data-action="sort-stimuli">${tt('Sort', 'Trier')}</button>
                 </div>
               </div>
@@ -781,7 +782,7 @@
                 ),
                 generateLabel: tt('Generate batch ✨', 'Générer le lot ✨'),
                 loadingLabel: tt('Generating batch…', 'Génération du lot…'),
-                successMessage: (count) => tt(`${count} stimulus/stimuli added to the timeline. Review and adjust them if needed.`, `${count} stimulus ajouté(s) à la timeline. Vérifiez-les et ajustez-les si besoin.`)
+                successMessage: (count) => tt(`${count} inject(s) added to the timeline. Review and adjust them if needed.`, `${count} stimulus ajouté(s) à la timeline. Vérifiez-les et ajustez-les si besoin.`)
               })}
               <div class="timeline" data-timeline-scroll>
                 <div class="timeline-track" style="width:${width}px;">
@@ -828,10 +829,10 @@
         const actorOptions = appState.scenario.actors.map((actor) => `<option value="${actor.id}" ${stimulus.actor_id === actor.id ? 'selected' : ''}>${escapeHtml(actor.name)} — ${escapeHtml(actor.title)}</option>`).join('');
         return `
           <div class="field-grid cols-2">
-            <label class="field" style="grid-column:1/-1;">${tt('Stimulus name', 'Nom du stimulus')}
-              <input type="text" data-stimulus-bind="${stimulus.id}.name" value="${escapeAttribute(stimulus.name || '')}" placeholder="${tt('Give this stimulus a name…', 'Donnez un nom à ce stimulus…')}">
+            <label class="field" style="grid-column:1/-1;">${tt('Inject name', 'Nom du stimulus')}
+              <input type="text" data-stimulus-bind="${stimulus.id}.name" value="${escapeAttribute(stimulus.name || '')}" placeholder="${tt('Give this inject a name…', 'Donnez un nom à ce stimulus…')}">
             </label>
-            <label class="field">${tt('Stimuli type', 'Type de stimulus')}
+            <label class="field">${tt('Inject type', 'Type de stimulus')}
               <select data-stimulus-bind="${stimulus.id}.channel">${Object.entries(CHANNEL_META).map(([channel]) => `<option value="${channel}" ${stimulus.channel === channel ? 'selected' : ''}>${channelLabel(channel)}</option>`).join('')}</select>
             </label>
             ${stimulus.channel === 'article_press' ? `<label class="field">${tt('Press template', 'Template presse')}
@@ -875,7 +876,7 @@
               <label class="field">${tt('Override watermark', 'Personnaliser le filigrane')}
                 <select data-stimulus-watermark="${stimulus.id}.override">
                   <option value="false" ${!hasOverride ? 'selected' : ''}>${tt('Use global settings', 'Utiliser les réglages globaux')}</option>
-                  <option value="true" ${hasOverride ? 'selected' : ''}>${tt('Custom for this stimulus', 'Personnalisé pour ce stimulus')}</option>
+                  <option value="true" ${hasOverride ? 'selected' : ''}>${tt('Custom for this inject', 'Personnalisé pour ce stimulus')}</option>
                 </select>
               </label>
               ${hasOverride ? `
@@ -1025,7 +1026,7 @@
       function renderPreviewView() {
         const stimuli = getSortedStimuli();
         if (!stimuli.length) {
-          return `<article class="card"><p class="subtle">${tt('No stimulus to preview.', 'Aucun stimulus à prévisualiser.')}</p></article>`;
+          return `<article class="card"><p class="subtle">${tt('No inject to preview.', 'Aucun stimulus à prévisualiser.')}</p></article>`;
         }
         const index = Math.min(appState.slideshowIndex, stimuli.length - 1);
         const current = stimuli[index];
@@ -1048,7 +1049,7 @@
               <div class="preview-stage">${renderStimulusPreview(current, 'fullscreen-preview')}</div>
             </article>
             <article class="card">
-              <div class="section-header"><h3>${tt('Stimulus slideshow', 'Diaporama de stimuli')}</h3></div>
+              <div class="section-header"><h3>${tt('Inject slideshow', 'Diaporama de stimuli')}</h3></div>
               <div class="thumb-grid">
                 ${stimuli.map((stimulus, idx) => `
                   <div class="thumb-card">

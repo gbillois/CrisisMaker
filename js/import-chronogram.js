@@ -277,7 +277,7 @@ DONNÉES (lignes ${startIdx} à ${endIdx}) :\n`;
 
             const sysPrompt = this.step2SystemPrompt();
             const usrPrompt = this.step2UserPrompt(allRows, structureAnalysis, startIdx, endIdx, prevLastRows);
-            if (onLog) onLog({ type: 'start', stepNum: 2, stepLabel: tt(`Step 2 — Extract stimuli (batch ${b + 1}/${batches.length})`, `Étape 2 — Extraction stimuli (lot ${b + 1}/${batches.length})`), userPromptPreview: usrPrompt.slice(0, 400) });
+            if (onLog) onLog({ type: 'start', stepNum: 2, stepLabel: tt(`Step 2 — Extract injects (batch ${b + 1}/${batches.length})`, `Étape 2 — Extraction stimuli (lot ${b + 1}/${batches.length})`), userPromptPreview: usrPrompt.slice(0, 400) });
 
             const result = await this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 8192, onLog);
 
@@ -461,7 +461,7 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
 
             projectData.stimuli.push({
               id: realId,
-              name: stim.generation_prompt || stim.fields?.subject || stim.fields?.headline || stim.fields?.text || tt('Imported stimulus', 'Stimulus importé'),
+              name: stim.generation_prompt || stim.fields?.subject || stim.fields?.headline || stim.fields?.text || tt('Imported inject', 'Stimulus importé'),
               channel: stim.channel || 'email_internal',
               template_id: stim.template_id || 'outlook',
               actor_id: realActorId,
@@ -544,14 +544,14 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
 
           // 3. Step 2: Extract stimuli
           updateProgress(2, 3,
-            tt('Step 2: Extracting and classifying stimuli...', 'Étape 2 : Extraction et classification des stimuli...'),
+            tt('Step 2: Extracting and classifying injects...', 'Étape 2 : Extraction et classification des stimuli...'),
             ''
           );
           const extractedStimuli = await this.callLLM_Step2_Batched(
             mainSheetData.all_rows,
             structureAnalysis,
             (detail) => updateProgress(2, 3,
-              tt('Step 2: Extracting and classifying stimuli...', 'Étape 2 : Extraction et classification des stimuli...'),
+              tt('Step 2: Extracting and classifying injects...', 'Étape 2 : Extraction et classification des stimuli...'),
               detail
             ),
             onLog

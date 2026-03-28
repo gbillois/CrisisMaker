@@ -286,14 +286,14 @@
             let dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
             dataUrl = PngMetadata.injectMetadata(dataUrl);
             this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
-            pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
+            pushToast(tt('Inject exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
           } finally {
             if (sandbox) document.body.removeChild(sandbox);
           }
         },
         async exportRawEmail(stimulus) {
-          if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.'));
-          if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email stimuli can be exported as .eml.', 'Seuls les stimuli e-mail peuvent être exportés en .eml.'));
+          if (!stimulus) throw new Error(tt('No inject selected.', 'Aucun stimulus sélectionné.'));
+          if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email injects can be exported as .eml.', 'Seuls les stimuli e-mail peuvent être exportés en .eml.'));
           const content = this.buildRawEmailContent(stimulus);
           const blob = new Blob([content], { type: 'message/rfc822' });
           downloadBlob(blob, this.filenameForRawEmail(stimulus));
@@ -302,7 +302,7 @@
         async exportAll() {
           const zip = new JSZip();
           const stimuli = getSortedStimuli();
-          if (!stimuli.length) throw new Error(tt('No stimulus to export.', 'Aucun stimulus à exporter.'));
+          if (!stimuli.length) throw new Error(tt('No inject to export.', 'Aucun stimulus à exporter.'));
           const sandbox = document.createElement('div');
           sandbox.style.position = 'fixed';
           sandbox.style.left = '-99999px';

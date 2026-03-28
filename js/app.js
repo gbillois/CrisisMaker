@@ -270,7 +270,7 @@
 
       function confirmClearData() {
         return window.confirm(tt(
-          'Clear all current scenario data? This will remove actors, stimuli, and browser autosave for this project.',
+          'Clear all current scenario data? This will remove actors, injects, and browser autosave for this project.',
           'Effacer toutes les données du scénario en cours ? Cela supprimera les acteurs, les stimuli et la sauvegarde navigateur de ce projet.'
         ));
       }
@@ -738,7 +738,7 @@
                     saveLocal(false);
                     App.render();
                     pushToast(tt(
-                      `AI import complete: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors created.`,
+                      `AI import complete: ${summary.stimuli_created} injects, ${summary.actors_created} actors created.`,
                       `Import IA terminé : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs créés.`
                     ), 'success');
                   } else if (autonomy === 'fully_validated') {
@@ -775,7 +775,7 @@
               saveLocal(false);
               App.render();
               pushToast(tt(
-                `Import applied: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors.`,
+                `Import applied: ${summary.stimuli_created} injects, ${summary.actors_created} actors.`,
                 `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`
               ), 'success');
               break;
@@ -795,7 +795,7 @@
               saveLocal(false);
               App.render();
               pushToast(tt(
-                `${summary.stimuli_created} stimuli imported as drafts. Review them in the Library.`,
+                `${summary.stimuli_created} injects imported as drafts. Review them in the Injects view.`,
                 `${summary.stimuli_created} stimuli importés en brouillon. Vérifiez-les dans la Bibliothèque.`
               ), 'success');
               break;
@@ -840,7 +840,7 @@
               saveLocal(false);
               App.render();
               pushToast(tt(
-                `Import applied: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors.`,
+                `Import applied: ${summary.stimuli_created} injects, ${summary.actors_created} actors.`,
                 `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`
               ), 'success');
               break;
@@ -922,7 +922,7 @@
         if (requireConfirm) {
           const s = getStimulus(stimulusId);
           const label = s ? (s.fields.subject || s.fields.headline || s.fields.title || channelLabel(s.channel)) : '';
-          const msg = tt(`Delete this stimulus?\n"${label}"`, `Supprimer ce stimulus ?\n"${label}"`);
+          const msg = tt(`Delete this inject?\n"${label}"`, `Supprimer ce stimulus ?\n"${label}"`);
           if (!window.confirm(msg)) return;
         }
         appState.scenario.stimuli = appState.scenario.stimuli.filter((stimulus) => stimulus.id !== stimulusId);
@@ -1277,7 +1277,7 @@
         });
         appState.selectedStimulusId = appState.scenario.stimuli[appState.scenario.stimuli.length - 1]?.id || null;
         if (validConfigs.length > 0) {
-          pushToast(tt(`${validConfigs.length} stimuli added to timeline.`, `${validConfigs.length} stimuli ajoutés à la timeline.`), 'success');
+          pushToast(tt(`${validConfigs.length} injects added to timeline.`, `${validConfigs.length} stimuli ajoutés à la timeline.`), 'success');
         }
         return validConfigs.length;
       }
