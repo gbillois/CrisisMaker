@@ -203,13 +203,136 @@
 
       function renderCheckerView() {
         const cs = appState.checkerState;
+        const mode = cs.mode || 'file';
+        const hasData = mode === 'scenario'
+          ? (appState.scenario.stimuli || []).length > 0
+          : !!cs.parsedData;
+
         return `
           <section class="grid" style="max-width:960px; margin: 0 auto;">
-            ${cs.parsedData ? renderCheckerImported() : renderCheckerDropZone()}
-            ${cs.parsedData ? renderCheckerAnalyzeButton() : ''}
-            ${cs.parsedData ? renderCheckerResults() : ''}
+            ${renderCheckerModeSelector()}
+            ${mode === 'scenario'
+              ? renderCheckerScenarioSummary()
+              : (cs.parsedData ? renderCheckerImported() : renderCheckerDropZone())}
+            ${hasData ? renderCheckerAnalyzeButton() : ''}
+            ${renderCheckerResults()}
             ${renderCheckerChecklist()}
           </section>
+        `;
+      }
+
+      // ─── Render: Mode Selector ────────────────────────────────────────────────────
+
+      function renderCheckerModeSelector() {
+        const cs = appState.checkerState;
+        const mode = cs.mode || 'file';
+        const stimuliCount = (appState.scenario.stimuli || []).length;
+
+        return `
+          <article class="card" style="padding:12px 16px;">
+            <div class="checker-mode-selector">
+              <button class="checker-mode-btn ${mode === 'scenario' ? 'active' : ''}"
+                      data-action="checker-set-mode" data-mode="scenario">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+                <span>
+                  <span class="checker-mode-btn-title">${tt('Current Scenario', 'Scénario actuel')}</span>
+                  <span class="checker-mode-btn-sub">${stimuliCount
+                    ? tt(`${stimuliCount} stimuli loaded`, `${stimuliCount} stimuli chargés`)
+                    : tt('No stimuli yet', 'Aucun stimulus pour l\'instant')}</span>
+                </span>
+              </button>
+              <button class="checker-mode-btn ${mode === 'file' ? 'active' : ''}"
+                      data-action="checker-set-mode" data-mode="file">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span>
+                  <span class="checker-mode-btn-title">${tt('Upload Timeline File', 'Importer un fichier timeline')}</span>
+                  <span class="checker-mode-btn-sub">${tt('.xlsx, .xls, .pptx', '.xlsx, .xls, .pptx')}</span>
+                </span>
+              </button>
+            </div>
+          </article>
+        `;
+      }
+
+      // ─── Render: Current Scenario Summary ────────────────────────────────────────
+
+      function renderCheckerScenarioSummary() {
+        const sc = appState.scenario;
+        const stimuli = [...(sc.stimuli || [])].sort((a, b) =>
+          (a.timestamp_offset_minutes || 0) - (b.timestamp_offset_minutes || 0));
+        const actors = sc.actors || [];
+
+        if (!stimuli.length) {
+          return `
+            <article class="card">
+              <div style="text-align:center; padding:28px 0;">
+                <p style="color:var(--muted); font-size:0.9rem;">${tt(
+                  'No stimuli in the current scenario. Add stimuli in the Timeline tab first.',
+                  'Aucun stimulus dans le scénario actuel. Ajoutez des stimuli dans l\'onglet Chronogramme d\'abord.'
+                )}</p>
+              </div>
+            </article>
+          `;
+        }
+
+        const actorMap = {};
+        actors.forEach(a => { actorMap[a.id] = a; });
+
+        const channels = [...new Set(stimuli.map(s => s.channel))];
+        const maxOffset = Math.max(...stimuli.map(s => s.timestamp_offset_minutes || 0));
+        const durationH = (maxOffset / 60).toFixed(1).replace(/\.0$/, '');
+
+        const maxPreview = 8;
+        const previewStimuli = stimuli.slice(0, maxPreview);
+
+        return `
+          <article class="card">
+            <div class="section-header" style="margin-bottom:14px;">
+              <div>
+                <h3 style="margin:0 0 4px;">${escapeHtml(sc.name || tt('Untitled Scenario', 'Scénario sans titre'))}</h3>
+                ${sc.scenario.type ? `<span class="badge badge-outline" style="font-size:0.8rem;">${escapeHtml(sc.scenario.type)}</span>` : ''}
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+              <span class="checker-stat-pill"><strong>${stimuli.length}</strong>&nbsp;${tt('stimuli', 'stimuli')}</span>
+              <span class="checker-stat-pill"><strong>${actors.length}</strong>&nbsp;${tt('actors', 'acteurs')}</span>
+              <span class="checker-stat-pill"><strong>${channels.length}</strong>&nbsp;${tt('channels', 'canaux')}</span>
+              <span class="checker-stat-pill"><strong>${durationH}h</strong>&nbsp;${tt('duration', 'durée')}</span>
+            </div>
+            ${sc.scenario.summary ? `<p style="font-size:0.88rem; color:var(--muted); margin:0 0 14px;">${escapeHtml(sc.scenario.summary)}</p>` : ''}
+            <div class="checker-preview-table-wrap">
+              <table class="checker-preview-table">
+                <thead><tr>
+                  <th class="checker-row-num">#</th>
+                  <th>${tt('Time', 'Heure')}</th>
+                  <th>${tt('Channel', 'Canal')}</th>
+                  <th>${tt('Actor', 'Acteur')}</th>
+                  <th>${tt('Content', 'Contenu')}</th>
+                </tr></thead>
+                <tbody>
+                  ${previewStimuli.map((s, i) => {
+                    const actor = actorMap[s.actor_id];
+                    const mins = s.timestamp_offset_minutes || 0;
+                    const h = Math.floor(mins / 60);
+                    const m = mins % 60;
+                    const tLabel = `H+${h}${m ? ':' + String(m).padStart(2, '0') : ''}`;
+                    const content = s.name
+                      || s.fields?.subject || s.fields?.headline
+                      || s.fields?.breaking_headline || s.fields?.tweet_text
+                      || s.fields?.post_text || s.fields?.content_text || '—';
+                    return `<tr>
+                      <td class="checker-row-num">${i + 1}</td>
+                      <td><code style="font-size:0.8rem;">${escapeHtml(tLabel)}</code></td>
+                      <td>${escapeHtml(channelLabel(s.channel))}</td>
+                      <td>${actor ? escapeHtml(actor.name) : '—'}</td>
+                      <td title="${escapeAttribute(String(content))}">${escapeHtml(String(content).substring(0, 80))}${String(content).length > 80 ? '…' : ''}</td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+              ${stimuli.length > maxPreview ? `<p style="text-align:center; margin-top:8px; font-size:0.82rem; color:var(--muted);">${tt(`Showing ${maxPreview} of ${stimuli.length} stimuli`, `Affichage de ${maxPreview} sur ${stimuli.length} stimuli`)}</p>` : ''}
+            </div>
+          </article>
         `;
       }
 
@@ -443,7 +566,9 @@
       }
 
       function checkerClearFile() {
+        const currentMode = appState.checkerState.mode || 'file';
         appState.checkerState = {
+          mode: currentMode,
           file: null,
           parsedData: null,
           sheets: [],
@@ -508,6 +633,71 @@
       // ─── Phase 2: LLM Analysis ───────────────────────────────────────────────────
 
       // ─── Serialization ────────────────────────────────────────────────────────────
+
+      function checkerSerializeScenario() {
+        const sc = appState.scenario;
+        const stimuli = [...(sc.stimuli || [])].sort((a, b) =>
+          (a.timestamp_offset_minutes || 0) - (b.timestamp_offset_minutes || 0));
+        const actors = sc.actors || [];
+        if (!stimuli.length) return null;
+
+        const actorMap = {};
+        actors.forEach(a => { actorMap[a.id] = a; });
+
+        const maxOffset = Math.max(...stimuli.map(s => s.timestamp_offset_minutes || 0));
+        const phaseCount = Math.max(2, Math.min(5, Math.ceil(maxOffset / 120)));
+        const phaseSize = maxOffset > 0 ? maxOffset / phaseCount : 60;
+
+        const getPhase = (mins) => {
+          if (maxOffset === 0) return 'Phase 1';
+          return `Phase ${Math.min(phaseCount, Math.floor(mins / phaseSize) + 1)}`;
+        };
+
+        const colKeys = ['timestamp', 'phase', 'sender', 'channel', 'content', 'type'];
+        const header = 'LINE | ' + colKeys.map(k => CHECKER_COLUMN_LABELS[k]().toUpperCase()).join(' | ');
+        const lines = [header];
+
+        stimuli.forEach((s, i) => {
+          const mins = s.timestamp_offset_minutes || 0;
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          const timestamp = `H+${h}${m ? ':' + String(m).padStart(2, '0') : ''}`;
+          const phase = getPhase(mins);
+          const actor = actorMap[s.actor_id];
+          const sender = actor
+            ? `${actor.name} (${roleLabel(actor.role)})`
+            : (s.source_label || '—');
+          const channel = channelLabel(s.channel);
+          const content = s.name
+            || s.fields?.subject || s.fields?.headline
+            || s.fields?.breaking_headline || s.fields?.tweet_text
+            || s.fields?.post_text || s.fields?.content_text || '—';
+          const type = s.channel || '—';
+          lines.push(`${i + 1} | ${[timestamp, phase, sender, channel, String(content).substring(0, 300), type].join(' | ')}`);
+        });
+
+        const actorList = actors.map(a =>
+          `- ${a.name} (${roleLabel(a.role)}, ${a.organization || ''})`
+        ).join('\n');
+
+        const serialized = `SCENARIO: ${sc.name || 'Untitled'}
+TYPE: ${sc.scenario?.type || '—'}
+CLIENT: ${sc.client?.name || '—'} (${sc.client?.sector || '—'})
+CONTEXT: ${sc.scenario?.summary || '—'}
+DURATION: H+0 to H+${Math.round(maxOffset / 60)}h (${stimuli.length} stimuli)
+
+ACTORS (${actors.length}):
+${actorList || 'None'}
+
+CHRONOGRAM DATA
+Total stimuli: ${stimuli.length}
+
+${lines.join('\n')}`;
+
+        const detectedCols = colKeys;
+        const missingCols = ['recipient', 'conditional', 'theme'];
+        return { serialized, detectedCols, missingCols, truncated: false };
+      }
 
       function checkerSerializeChronogram() {
         const cs = appState.checkerState;
@@ -694,7 +884,10 @@ ${serialized}`;
 
       async function checkerRunAnalysis() {
         const cs = appState.checkerState;
-        if (!cs.parsedData || cs.analysisLoading) return;
+        const mode = cs.mode || 'file';
+        if (cs.analysisLoading) return;
+        if (mode === 'file' && !cs.parsedData) return;
+        if (mode === 'scenario' && !(appState.scenario.stimuli || []).length) return;
 
         cs.analysisLoading = true;
         cs.analysisError = null;
@@ -733,7 +926,9 @@ ${serialized}`;
         };
 
         try {
-          const { serialized, detectedCols, missingCols, truncated } = checkerSerializeChronogram();
+          const { serialized, detectedCols, missingCols, truncated } = mode === 'scenario'
+            ? checkerSerializeScenario()
+            : checkerSerializeChronogram();
           if (truncated) {
             pushToast(tt(
               'Large chronogram detected. Content was summarized for analysis.',
@@ -1198,7 +1393,10 @@ ${serialized}`;
       function checkerExportReport() {
         const cs = appState.checkerState;
         const r = cs.analysisResult;
-        const fileName = cs.file ? cs.file.name : 'unknown';
+        const mode = cs.mode || 'file';
+        const fileName = mode === 'scenario'
+          ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel'))
+          : (cs.file ? cs.file.name : 'unknown');
         const date = new Date().toISOString().slice(0, 10);
         const categories = checkerGetChecklistCategories();
         const cl = cs.checklist || {};

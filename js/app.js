@@ -22,6 +22,7 @@
         chronogramImportAutonomy: 'mostly_autonomous',
         chronogramImport: null,
         checkerState: {
+          mode: 'file',
           file: null,
           parsedData: null,
           sheets: [],
@@ -386,6 +387,17 @@
             case 'clear-data':
               if (confirmClearData()) clearScenarioData();
               break;
+            case 'checker-set-mode': {
+              const newMode = event.currentTarget.dataset.mode;
+              if (newMode && appState.checkerState.mode !== newMode) {
+                appState.checkerState.mode = newMode;
+                appState.checkerState.analysisResult = null;
+                appState.checkerState.analysisError = null;
+                appState.checkerState.llmLogs = [];
+                App.render();
+              }
+              break;
+            }
             case 'checker-clear-file':
               checkerClearFile();
               break;
