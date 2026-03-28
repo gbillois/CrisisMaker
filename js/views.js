@@ -266,6 +266,11 @@
                       <strong>${tt('Injects', 'Injects')}</strong>
                       <p>${tt('Browse, filter and preview all injects. Export them as styled images or download the complete package as a ZIP.', 'Parcourez, filtrez et prévisualisez tous les injects. Exportez-les en images ou téléchargez le package complet en ZIP.')}</p>
                     </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgShieldCheck()}</div>
+                      <strong>${tt('Crisis Checker', 'Crisis Checker')}</strong>
+                      <p>${tt('Audit any crisis exercise chronogram — import an .xlsx, .xls or .pptx file (or use your current scenario) and let the AI analyze coverage, pacing, actor balance and realism, then export a quality report.', 'Auditez n\'importe quel chronogramme — importez un fichier .xlsx, .xls ou .pptx (ou utilisez votre scénario actuel) et laissez l\'IA analyser la couverture, le rythme, l\'équilibre des acteurs et le réalisme, puis exportez un rapport qualité.')}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -283,6 +288,10 @@
                     <div class="launch-tip">
                       <div class="launch-tip-num">3</div>
                       <span>${tt('<strong>Export your deliverables</strong> — use the Injects view to preview everything, then export a ZIP with all styled injects ready for facilitation.', '<strong>Exportez vos livrables</strong> — utilisez la vue Injects pour tout prévisualiser, puis exportez un ZIP avec tous les injects prêts pour l\'animation.')}</span>
+                    </div>
+                    <div class="launch-tip">
+                      <div class="launch-tip-num">★</div>
+                      <span>${tt('<strong>Audit an existing timeline</strong> — open the Crisis Checker tab to import a chronogram file or analyze your current scenario with AI: get a quality score, heatmaps, and an actionable checklist.', '<strong>Auditez une timeline existante</strong> — ouvrez l\'onglet Crisis Checker pour importer un chronogramme ou analyser votre scénario actuel avec l\'IA : obtenez un score qualité, des heatmaps et une checklist actionnable.')}</span>
                     </div>
                   </div>
                 </div>
