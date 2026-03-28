@@ -318,11 +318,19 @@
             case 'nav-stimuli': appState.route = 'stimuli'; App.render(); break;
             case 'nav-library': appState.route = 'library'; App.render(); break;
             case 'new-scenario': {
+              appState.scenario = emptyScenario();
+              appState.selectedStimulusId = null;
+              appState.route = 'project';
+              App.render();
+              pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.'), 'success');
+              break;
+            }
+            case 'load-example': {
               appState.scenario = defaultScenario();
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
               appState.route = 'project';
               App.render();
-              pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.'), 'success');
+              pushToast(tt('Example scenario loaded.', 'Scénario exemple chargé.'), 'success');
               break;
             }
             case 'save-json':

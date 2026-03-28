@@ -151,6 +151,9 @@
               </div>
               <div class="nav-topbar-right">
                 <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
+                <button class="nav-gear-btn" data-action="save-local" title="${tt('Save', 'Sauvegarder')}">
+                  ${svgSave()}
+                </button>
                 <button class="nav-gear-btn ${appState.settingsDrawerOpen ? 'active' : ''}" data-action="toggle-settings-drawer" title="${tt('Settings', 'Paramètres')}">
                   ${svgGear()}
                 </button>
@@ -201,6 +204,7 @@
       function svgPen() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'; }
       function svgGrid() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>'; }
       function svgGear() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'; }
+      function svgSave() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>'; }
 
       function viewConfig() {
         const map = {
@@ -246,30 +250,55 @@
                   <p>${tt('A streamlined studio to prepare scenarios, generate realistic stimuli, and export polished deliverables for facilitation teams.', 'Un studio fluide pour préparer les scénarios, générer des stimuli réalistes et exporter des livrables prêts pour l\'animation.')}</p>
                 </div>
                 <div class="hero-stats">
-                  <div class="hero-stat"><strong>${appState.scenario.stimuli.length}</strong><span>${tt('sample stimuli', 'stimuli exemples')}</span></div>
-                  <div class="hero-stat"><strong>${appState.scenario.actors.length}</strong><span>${tt('default actors', 'acteurs par défaut')}</span></div>
                   <div class="hero-stat"><strong>${llmAvailable ? tt('AI connected', 'IA connectée') : tt('Stand alone', 'Autonome')}</strong><span>${llmAvailable ? tt('generation-ready setup', 'configuration prête pour l\'IA') : tt('manual mode available', 'mode manuel disponible')}</span></div>
                 </div>
               </div>
-              <div class="grid cols-3" style="gap:20px;">
-                <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="new-scenario">
-                  <div style="font-size:2rem; margin-bottom:12px;">➕</div>
-                  <strong>${tt('New scenario', 'Nouveau scénario')}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt('Start from scratch', 'Partir de zéro')}</p>
-                </article>
-                <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="load-json">
-                  <div style="font-size:2rem; margin-bottom:12px;">📂</div>
-                  <strong>${tt('Open a file', 'Ouvrir un fichier')}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">.json / .crisismaker.json / .zip</p>
-                </article>
-                <article class="card" style="text-align:center; cursor:pointer; padding:28px 20px;" data-action="nav-scenario">
-                  <div style="font-size:2rem; margin-bottom:12px;">▶️</div>
-                  <strong>${tt('Continue', 'Continuer')}</strong>
-                  <p class="subtle" style="font-size:0.88rem; margin-top:6px;">${tt('Use current scenario', 'Utiliser le scénario actuel')}</p>
-                </article>
+
+              <div class="welcome-block">
+                <h3 class="welcome-block-title">${tt('Project', 'Projet')}</h3>
+                <div class="grid cols-4" style="gap:16px;">
+                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="new-scenario">
+                    <div style="font-size:1.75rem; margin-bottom:10px;">➕</div>
+                    <strong>${tt('New', 'Nouveau')}</strong>
+                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Start from scratch', 'Partir de zéro')}</p>
+                  </article>
+                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="load-json">
+                    <div style="font-size:1.75rem; margin-bottom:10px;">📂</div>
+                    <strong>${tt('Open', 'Ouvrir')}</strong>
+                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">.json / .crisismaker.json / .zip</p>
+                  </article>
+                  <article class="card ${!llmAvailable ? 'card-disabled' : ''}" style="text-align:center; cursor:${llmAvailable ? 'pointer' : 'not-allowed'}; padding:24px 16px;" ${llmAvailable ? 'data-action="import-chronogram-ia"' : `title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité'))}"`}>
+                    <div style="font-size:1.75rem; margin-bottom:10px;">📊</div>
+                    <strong>${tt('Import existing timeline', 'Importer une chronologie')}</strong>
+                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('AI-powered Excel import', 'Import Excel par IA')}</p>
+                  </article>
+                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="load-example">
+                    <div style="font-size:1.75rem; margin-bottom:10px;">🎯</div>
+                    <strong>${tt('Example', 'Exemple')}</strong>
+                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Load a sample scenario', 'Charger un scénario exemple')}</p>
+                  </article>
+                </div>
               </div>
-              <div class="actions" style="justify-content:center; margin-top:4px;">
-                <button class="btn btn-danger" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
+
+              <div class="welcome-block" style="margin-top:8px;">
+                <h3 class="welcome-block-title">${tt('Save & Export', 'Sauvegarder & Exporter')}</h3>
+                <div class="grid cols-3" style="gap:16px;">
+                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="save-local">
+                    <div style="font-size:1.75rem; margin-bottom:10px;">💾</div>
+                    <strong>${tt('Save locally', 'Sauvegarder localement')}</strong>
+                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Browser storage + file', 'Stockage navigateur + fichier')}</p>
+                  </article>
+                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="save-json">
+                    <div style="font-size:1.75rem; margin-bottom:10px;">⇩</div>
+                    <strong>${tt('Export text content', 'Exporter le contenu texte')}</strong>
+                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Download as .json', 'Télécharger en .json')}</p>
+                  </article>
+                  <article class="card" style="text-align:center; cursor:pointer; padding:24px 16px;" data-action="export-all">
+                    <div style="font-size:1.75rem; margin-bottom:10px;">🗜️</div>
+                    <strong>${tt('Export all stimuli', 'Exporter tous les stimuli')}</strong>
+                    <p class="subtle" style="font-size:0.85rem; margin-top:6px;">${tt('Download as .zip', 'Télécharger en .zip')}</p>
+                  </article>
+                </div>
               </div>
             </section>
           `;
@@ -279,16 +308,6 @@
             <article class="card">
               <div class="section-header">
                 <h3>${escapeHtml(s.name)}</h3>
-                <div class="actions">
-                  <button class="btn btn-primary" data-action="save-local">${tt('Save', 'Sauvegarder')} 💾</button>
-                  <button class="btn btn-secondary" data-action="save-json" ${appState.ui?.actionLoading?.['save-json'] ? 'disabled' : ''}>${actionButtonLabel('save-json', tt('Export JSON', 'Exporter JSON') + ' ⇩', tt('Exporting JSON…', 'Export JSON en cours…'))}</button>
-                  <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${actionButtonLabel('export-all', tt('Export ZIP', 'Exporter ZIP') + ' 🗜️', tt('Exporting ZIP…', 'Export ZIP en cours…'))}</button>
-                  <button class="btn btn-secondary" data-action="load-json" ${appState.ui?.actionLoading?.['load-json'] ? 'disabled' : ''}>${actionButtonLabel('load-json', tt('Import', 'Importer'), tt('Importing…', 'Import en cours…'))}</button>
-                  <button class="btn btn-secondary" disabled title="${escapeAttribute(tt('Standardized format not yet defined', 'Format standardisé non encore défini'))}">${tt('Basic import', 'Import basique')} 📥</button>
-                  <button class="btn btn-secondary" data-action="import-chronogram-ia" ${!isLLMAvailable() ? `disabled title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité'))}"` : ''}>${tt('AI Import', 'Import IA')} 🤖</button>
-                  <button class="btn btn-secondary" data-action="new-scenario">${tt('New', 'Nouveau')} ↺</button>
-                  <button class="btn btn-danger" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
-                </div>
               </div>
               <div class="field-grid cols-3" style="font-size:0.9rem; color:var(--muted);">
                 <div><strong>${tt('Client', 'Client')}:</strong> ${escapeHtml(s.client.name || '—')}</div>
@@ -299,9 +318,58 @@
                 <div><strong>${tt('Start', 'Début')}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : '—')}</div>
               </div>
             </article>
-            <div class="actions" style="margin-top:8px;">
+
+            <div class="welcome-block">
+              <h3 class="welcome-block-title">${tt('Project', 'Projet')}</h3>
+              <div class="grid cols-4" style="gap:16px;">
+                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="new-scenario">
+                  <div style="font-size:1.5rem; margin-bottom:8px;">➕</div>
+                  <strong>${tt('New', 'Nouveau')}</strong>
+                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Start from scratch', 'Partir de zéro')}</p>
+                </article>
+                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="load-json">
+                  <div style="font-size:1.5rem; margin-bottom:8px;">📂</div>
+                  <strong>${tt('Open', 'Ouvrir')}</strong>
+                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">.json / .crisismaker.json / .zip</p>
+                </article>
+                <article class="card ${!isLLMAvailable() ? 'card-disabled' : ''}" style="text-align:center; cursor:${isLLMAvailable() ? 'pointer' : 'not-allowed'}; padding:20px 16px;" ${isLLMAvailable() ? 'data-action="import-chronogram-ia"' : `title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité'))}"`}>
+                  <div style="font-size:1.5rem; margin-bottom:8px;">📊</div>
+                  <strong>${tt('Import existing timeline', 'Importer une chronologie')}</strong>
+                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('AI-powered Excel import', 'Import Excel par IA')}</p>
+                </article>
+                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="load-example">
+                  <div style="font-size:1.5rem; margin-bottom:8px;">🎯</div>
+                  <strong>${tt('Example', 'Exemple')}</strong>
+                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Load a sample scenario', 'Charger un scénario exemple')}</p>
+                </article>
+              </div>
+            </div>
+
+            <div class="welcome-block" style="margin-top:8px;">
+              <h3 class="welcome-block-title">${tt('Save & Export', 'Sauvegarder & Exporter')}</h3>
+              <div class="grid cols-3" style="gap:16px;">
+                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="save-local">
+                  <div style="font-size:1.5rem; margin-bottom:8px;">💾</div>
+                  <strong>${tt('Save locally', 'Sauvegarder localement')}</strong>
+                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Browser storage + file', 'Stockage navigateur + fichier')}</p>
+                </article>
+                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="save-json">
+                  <div style="font-size:1.5rem; margin-bottom:8px;">⇩</div>
+                  <strong>${tt('Export text content', 'Exporter le contenu texte')}</strong>
+                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .json', 'Télécharger en .json')}</p>
+                </article>
+                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="export-all">
+                  <div style="font-size:1.5rem; margin-bottom:8px;">🗜️</div>
+                  <strong>${tt('Export all stimuli', 'Exporter tous les stimuli')}</strong>
+                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .zip', 'Télécharger en .zip')}</p>
+                </article>
+              </div>
+            </div>
+
+            <div class="actions" style="margin-top:16px;">
               <button class="btn btn-primary" data-action="nav-scenario">${tt('Edit scenario', 'Éditer le scénario')} →</button>
               <button class="btn btn-primary" data-action="nav-stimuli">${tt('Edit stimuli', 'Éditer les stimuli')} →</button>
+              <button class="btn btn-danger" style="margin-left:auto;" data-action="clear-data">${tt('Clear data', 'Effacer les données')}</button>
             </div>
           </section>
         `;
