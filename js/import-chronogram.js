@@ -62,7 +62,7 @@
                 );
               }
               if (!result || typeof result !== 'object') {
-                throw new Error(tt('LLM response was not valid JSON.', 'La réponse du LLM n\'était pas un JSON valide.'));
+                throw new Error(tt('LLM response was not valid JSON.', 'La réponse du LLM n\'était pas un JSON valide.', 'LLM-Antwort war kein gültiges JSON.'));
               }
               return result;
             } catch (err) {
@@ -71,7 +71,8 @@
                 throw new Error(
                   tt(
                     `AI import failed after ${maxRetries + 1} attempts. Last error: ${err.message}`,
-                    `Import IA échoué après ${maxRetries + 1} tentatives. Dernière erreur : ${err.message}`
+                    `Import IA échoué après ${maxRetries + 1} tentatives. Dernière erreur : ${err.message}`,
+                    `KI-Import nach ${maxRetries + 1} Versuchen fehlgeschlagen. Letzter Fehler: ${err.message}`
                   )
                 );
               }
@@ -83,19 +84,19 @@
         // ── Step 1: Structure analysis ──
 
         step1SystemPrompt() {
-          return `Tu es un expert en exercices de gestion de crise cyber. On te fournit le contenu d'un fichier Excel de chronogramme d'exercice de crise. Ce fichier peut avoir n'importe quel format.
+          return `You are an expert in cyber crisis management exercises. You are provided with the content of an Excel chronogram file for a crisis exercise. This file may have any format.
 
-Ta mission : analyser la structure du fichier et identifier les éléments clés.
+Your mission: analyze the file structure and identify the key elements.
 
-Règles :
-- Le chronogramme principal est la feuille qui contient la séquence complète des stimuli avec horaires, émetteurs, destinataires et contenus.
-- Les feuilles de type "Role_*" ou "Aide_*" sont des vues filtrées du chronogramme principal, PAS la source de vérité.
-- Les feuilles de type "Read_me" ou "Accueil" contiennent souvent le contexte général (synopsis, rôles, objectifs).
-- La ligne de headers peut ne pas être la première ligne (il peut y avoir des lignes de titre, des lignes vides, ou des logos).
-- Les horaires peuvent être en formats variés : "9h15", "09:15", "9:15:00", datetime Excel, texte libre.
-- Certaines lignes sont des séparateurs visuels ("Début de l'exercice", "Fin de l'exercice", "Préambule"), pas des stimuli.
+Rules:
+- The main chronogram is the sheet that contains the complete sequence of stimuli with timestamps, senders, recipients, and content.
+- Sheets of type "Role_*" or "Aide_*" are filtered views of the main chronogram, NOT the source of truth.
+- Sheets of type "Read_me" or "Accueil" often contain general context (synopsis, roles, objectives).
+- The header row may not be the first row (there may be title rows, empty rows, or logos).
+- Timestamps may be in various formats: "9h15", "09:15", "9:15:00", Excel datetime, free text.
+- Some rows are visual separators ("Start of exercise", "End of exercise", "Preamble"), not stimuli.
 
-Réponds UNIQUEMENT avec un objet JSON valide (pas de markdown, pas de commentaires) :
+Reply ONLY with a valid JSON object (no markdown, no comments):
 {
   "main_sheet": "string",
   "context_sheets": ["string"],
@@ -126,66 +127,66 @@ Réponds UNIQUEMENT avec un objet JSON valide (pas de markdown, pas de commentai
         },
 
         step1UserPrompt(excelData, userContext) {
-          let prompt = `Voici le contenu du fichier Excel.\n\nNoms des feuilles : ${JSON.stringify(excelData.sheet_names)}\n\n`;
+          let prompt = `Here is the content of the Excel file.\n\nSheet names: ${JSON.stringify(excelData.sheet_names)}\n\n`;
           for (const name of excelData.sheet_names) {
             const sheet = excelData.sheets[name];
-            prompt += `=== Feuille : ${name} (${sheet.row_count} lignes) ===\n`;
+            prompt += `=== Sheet: ${name} (${sheet.row_count} rows) ===\n`;
             const preview = sheet.preview_rows.slice(0, 10);
             for (let i = 0; i < preview.length; i++) {
-              prompt += `Ligne ${i}: ${JSON.stringify(preview[i])}\n`;
+              prompt += `Row ${i}: ${JSON.stringify(preview[i])}\n`;
             }
             prompt += '\n';
           }
-          prompt += `Contexte additionnel fourni par l'utilisateur :\n${userContext || 'Aucun'}\n\nAnalyse la structure de ce fichier et réponds avec le JSON demandé.`;
+          prompt += `Additional context provided by the user:\n${userContext || 'None'}\n\nAnalyze the structure of this file and reply with the requested JSON.`;
           return prompt;
         },
 
         async callLLM_Step1(excelData, userContext, onLog = null) {
           const sysPrompt = this.step1SystemPrompt();
           const usrPrompt = this.step1UserPrompt(excelData, userContext);
-          if (onLog) onLog({ type: 'start', stepNum: 1, stepLabel: tt('Step 1 — Analyze file structure', 'Étape 1 — Analyser la structure du fichier'), userPromptPreview: usrPrompt.slice(0, 400) });
+          if (onLog) onLog({ type: 'start', stepNum: 1, stepLabel: tt('Step 1 — Analyze file structure', 'Étape 1 — Analyser la structure du fichier', 'Schritt 1 — Dateistruktur analysieren'), userPromptPreview: usrPrompt.slice(0, 400) });
           return this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 8192, onLog);
         },
 
         // ── Step 2: Extraction & classification ──
 
         step2SystemPrompt() {
-          return `Tu es un expert en exercices de gestion de crise cyber. Tu analyses les lignes d'un chronogramme d'exercice pour identifier tous les stimuli à produire, y compris les stimuli IMPLICITES.
+          return `You are an expert in cyber crisis management exercises. You analyze the rows of an exercise chronogram to identify all stimuli to produce, including IMPLICIT stimuli.
 
-STIMULI IMPLICITES : un stimulus peut en contenir d'autres de manière implicite. Exemples :
-- "Je viens de voir un post sur les réseaux sociaux qui dit que..." → 2 stimuli : l'email/appel qui rapporte l'info ET le post réseau social lui-même
-- "Vous trouverez en PJ le mail de l'attaquant" → 2 stimuli : l'email de transmission ET le mail de l'attaquant
-- "Capture d'écran du compte à rebours" dans la colonne livrables → 1 stimulus implicite supplémentaire
-- "Post publié sur les réseaux sociaux" → 1 stimulus implicite : le post original
+IMPLICIT STIMULI: one stimulus may implicitly contain others. Examples:
+- "I just saw a social media post saying that..." → 2 stimuli: the email/call reporting the info AND the social post itself
+- "Please find attached the attacker's email" → 2 stimuli: the forwarding email AND the attacker's email
+- "Screenshot of the countdown" in the deliverables column → 1 additional implicit stimulus
+- "Post published on social networks" → 1 implicit stimulus: the original post
 
-COMPLÉTUDE DU CONTENU : pour chaque stimulus, évalue si le contenu est COMPLET ou INCOMPLET.
-- COMPLET (content_complete: true) : le texte intégral du stimulus est présent (ex: corps d'email complet, texte de tweet complet). Le contenu sera utilisé tel quel.
-- INCOMPLET (content_complete: false) : seule une description/résumé est fourni (ex: "envoyer un article de presse", "le DSI envoie un message d'alerte"). Le LLM devra générer le contenu complet à l'étape suivante.
+CONTENT COMPLETENESS: for each stimulus, assess whether the content is COMPLETE or INCOMPLETE.
+- COMPLETE (content_complete: true): the full text of the stimulus is present (e.g. complete email body, full tweet text). Content will be used as-is.
+- INCOMPLETE (content_complete: false): only a description/summary is provided (e.g. "send a press article", "the CISO sends an alert message"). The LLM will generate the complete content in the next step.
 
-CANAUX DISPONIBLES dans CrisisStim :
-- email_internal : email avec chrome Outlook (communications internes)
-- email_external : email générique (communications externes)
-- email_authority : email officiel d'autorité (ANSSI, CNIL, régulateur)
-- article_press : article de journal en ligne
-- breaking_news_tv : bandeau TV info urgente
-- post_twitter : post X/Twitter
-- post_linkedin : post LinkedIn
-- press_release : communiqué de presse officiel
-- sms_notification : SMS ou notification push
-- internal_memo : note interne / mémo de service
+AVAILABLE CHANNELS in CrisisStim:
+- email_internal: email with Outlook chrome (internal communications)
+- email_external: generic email (external communications)
+- email_authority: official authority email (ANSSI, BSI, CISA, regulator)
+- article_press: online newspaper article
+- breaking_news_tv: urgent TV news banner
+- post_twitter: X/Twitter post
+- post_linkedin: LinkedIn post
+- press_release: official press release
+- sms_notification: SMS or push notification
+- internal_memo: internal note / service memo
 
-RÔLES D'ACTEURS DISPONIBLES :
+AVAILABLE ACTOR ROLES:
 - journalist, authority, client_b2b, client_b2c, internal, partner, attacker, analyst
 
-RÈGLES :
-- Les lignes de type Animation/DEBEX/FINEX sont des méta-stimuli. Classe-les avec type "meta_animation".
-- Les lignes de type Préambule/Synopsis sont des contextes. Classe-les avec type "context".
-- Pour le canal : infère-le depuis le CONTENU du stimulus, pas depuis le format du chronogramme. Un appel téléphonique sera rendu comme email_internal car CrisisStim produit des visuels statiques. Exception : si le contenu mentionne explicitement un post réseau social, un article de presse, un SMS, etc., utilise le canal correspondant.
-- Pour l'horaire : convertis en minutes depuis le début de l'exercice (exercise_start_time).
-- Les fautes d'orthographe dans le contenu original DOIVENT être conservées telles quelles.
+RULES:
+- Rows of type Animation/DEBEX/FINEX are meta-stimuli. Classify them with type "meta_animation".
+- Rows of type Preamble/Synopsis are context. Classify them with type "context".
+- For channel: infer from the CONTENT of the stimulus, not from the chronogram format. A phone call will be rendered as email_internal since CrisisStim produces static visuals. Exception: if the content explicitly mentions a social media post, press article, SMS, etc., use the corresponding channel.
+- For timestamp: convert to minutes from the start of the exercise (exercise_start_time).
+- Spelling mistakes in the original content MUST be preserved as-is.
 
-Réponds UNIQUEMENT avec un tableau JSON (pas de markdown, pas de commentaires).
-Chaque élément du tableau :
+Reply ONLY with a JSON array (no markdown, no comments).
+Each element of the array:
 {
   "source_row": number,
   "source_number": number_or_null,
@@ -218,30 +219,30 @@ Chaque élément du tableau :
             .map(([k, v]) => `${k} (col ${v})`)
             .join(', ');
 
-          let prompt = `CONTEXTE DU FICHIER :
-- Synopsis : ${structureAnalysis.synopsis || 'Non disponible'}
-- Type de scénario : ${structureAnalysis.scenario_type || 'Non précisé'}
-- Heure de début de l'exercice : ${structureAnalysis.exercise_start_time || '00:00'}
-- Rôles identifiés : ${JSON.stringify(structureAnalysis.roles_identified || [])}
+          let prompt = `FILE CONTEXT:
+- Synopsis: ${structureAnalysis.synopsis || 'Not available'}
+- Scenario type: ${structureAnalysis.scenario_type || 'Not specified'}
+- Exercise start time: ${structureAnalysis.exercise_start_time || '00:00'}
+- Identified roles: ${JSON.stringify(structureAnalysis.roles_identified || [])}
 
-STRUCTURE DU CHRONOGRAMME :
-- Feuille : ${structureAnalysis.main_sheet}
-- Colonnes : ${colDesc}
+CHRONOGRAM STRUCTURE:
+- Sheet: ${structureAnalysis.main_sheet}
+- Columns: ${colDesc}
 
-DONNÉES (lignes ${startIdx} à ${endIdx}) :\n`;
+DATA (rows ${startIdx} to ${endIdx}):\n`;
 
           for (let i = startIdx; i <= endIdx && i < rows.length; i++) {
-            prompt += `Ligne ${i}: ${JSON.stringify(rows[i])}\n`;
+            prompt += `Row ${i}: ${JSON.stringify(rows[i])}\n`;
           }
 
           if (prevBatchLastRows && prevBatchLastRows.length > 0) {
-            prompt += `\nCONTEXTE DE CONTINUITÉ (dernières lignes du batch précédent) :\n`;
+            prompt += `\nCONTINUITY CONTEXT (last rows from previous batch):\n`;
             for (const row of prevBatchLastRows) {
               prompt += `${JSON.stringify(row)}\n`;
             }
           }
 
-          prompt += `\nExtrais et classifie tous les stimuli. Réponds avec le JSON demandé.`;
+          prompt += `\nExtract and classify all stimuli. Reply with the requested JSON.`;
           return prompt;
         },
 
@@ -270,14 +271,15 @@ DONNÉES (lignes ${startIdx} à ${endIdx}) :\n`;
               updateProgress(
                 tt(
                   `Extracting stimuli... batch ${b + 1}/${batches.length}`,
-                  `Extraction des stimuli... lot ${b + 1}/${batches.length}`
+                  `Extraction des stimuli... lot ${b + 1}/${batches.length}`,
+                  `Stimuli werden extrahiert... Batch ${b + 1}/${batches.length}`
                 )
               );
             }
 
             const sysPrompt = this.step2SystemPrompt();
             const usrPrompt = this.step2UserPrompt(allRows, structureAnalysis, startIdx, endIdx, prevLastRows);
-            if (onLog) onLog({ type: 'start', stepNum: 2, stepLabel: tt(`Step 2 — Extract stimuli (batch ${b + 1}/${batches.length})`, `Étape 2 — Extraction stimuli (lot ${b + 1}/${batches.length})`), userPromptPreview: usrPrompt.slice(0, 400) });
+            if (onLog) onLog({ type: 'start', stepNum: 2, stepLabel: tt(`Step 2 — Extract stimuli (batch ${b + 1}/${batches.length})`, `Étape 2 — Extraction stimuli (lot ${b + 1}/${batches.length})`, `Schritt 2 — Stimuli extrahieren (Batch ${b + 1}/${batches.length})`), userPromptPreview: usrPrompt.slice(0, 400) });
 
             const result = await this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 8192, onLog);
 
@@ -291,15 +293,19 @@ DONNÉES (lignes ${startIdx} à ${endIdx}) :\n`;
         // ── Step 3: CrisisStim mapping ──
 
         step3SystemPrompt() {
-          return `Tu es un expert CrisisStim. Tu convertis des stimuli extraits d'un chronogramme en objets CrisisStim complets, prêts à être insérés dans un projet.
+          const uiLang = currentLanguage();
+          const respondInLang = { en: 'English', fr: 'French', de: 'German' }[uiLang] || 'English';
+          const injectLang = appState?.scenario?.settings?.inject_language || appState?.scenario?.settings?.language || 'en';
+          const injectLangName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[injectLang] || 'English';
+          return `You are a CrisisStim expert. You convert stimuli extracted from a chronogram into complete CrisisStim objects ready to be inserted into a project.
 
-MODÈLE DE DONNÉES CRISISSTIM :
+CRISISSTIM DATA MODEL:
 
-Un stimulus CrisisStim a la structure suivante :
+A CrisisStim stimulus has the following structure:
 {
-  "id": "string (placeholder, sera remplacé)",
+  "id": "string (placeholder, will be replaced)",
   "channel": "email_internal | email_external | email_authority | article_press | breaking_news_tv | post_twitter | post_linkedin | press_release | sms_notification | internal_memo",
-  "template_id": "voir mapping ci-dessous",
+  "template_id": "see mapping below",
   "actor_id": "string (placeholder)",
   "timestamp_offset_minutes": number,
   "status": "draft",
@@ -308,11 +314,11 @@ Un stimulus CrisisStim a la structure suivante :
   "fields": { ... }
 }
 
-MAPPING CHANNEL → TEMPLATE_ID :
+CHANNEL → TEMPLATE_ID MAPPING:
 - email_internal → "outlook"
 - email_external → "generic"
-- email_authority → "anssi" (FR) | "generic"
-- article_press → "lemonde" (FR) | "nyt" (EN) | "generic_press"
+- email_authority → "anssi" (FR) | "bsi" (DE) | "generic"
+- article_press → "lemonde" (FR) | "nyt" (EN) | "faz" (DE) | "generic_press"
 - breaking_news_tv → "bfm" (FR) | "cnn" (EN)
 - post_twitter → "twitter"
 - post_linkedin → "linkedin"
@@ -320,49 +326,51 @@ MAPPING CHANNEL → TEMPLATE_ID :
 - sms_notification → "iphone"
 - internal_memo → "generic"
 
-CHAMPS PAR TEMPLATE :
+FIELDS BY TEMPLATE:
 
-email_internal (outlook) :
+email_internal (outlook):
   from_name, from_email, to, cc, subject, date, body, has_attachment, attachment_name, importance
 
-email_external (generic) :
+email_external (generic):
   from_name, from_email, to, cc, subject, date, body, has_attachment, attachment_name, importance
 
-email_authority (anssi) :
+email_authority (anssi):
   reference, from_name, from_email, to, subject, date, body, severity
 
-post_twitter (twitter) :
+post_twitter (twitter):
   display_name, handle, text, date, retweets, likes, verified, verified_type, avatar_initials, avatar_color, quotes, views, replies
 
-post_linkedin (linkedin) :
+post_linkedin (linkedin):
   display_name, title, avatar_initials, avatar_color, text, date, reactions_count, comments_count, reposts_count
 
-article_press (all) :
+article_press (all):
   headline, subheadline, author, date, category, body, image_caption, read_time
 
-breaking_news_tv (bfm/cnn) :
+breaking_news_tv (bfm/cnn):
   headline, subline, ticker, time, category
 
-press_release (generic) :
+press_release (generic):
   organization, logo_text, logo_color, date, title, body, contact_name, contact_email, contact_phone
 
-sms_notification :
+sms_notification:
   sender, text, time, device
 
-internal_memo :
+internal_memo:
   from_name, to, date, subject, classification, body
 
-COMPLÉTUDE DU CONTENU :
-- Si le champ "content_complete" est true : le champ "body"/"text" des fields doit reprendre le contenu ORIGINAL du chronogramme, tel quel, y compris les fautes d'orthographe intentionnelles. NE PAS résumer.
-- Si le champ "content_complete" est false : GÉNÈRE un contenu complet et réaliste pour le stimulus, cohérent avec le synopsis, le canal, l'émetteur et le contexte. Invente des détails crédibles. Le contenu doit être assez long et réaliste pour une simulation d'exercice de crise.
-- Pour les stimuli implicites (posts réseaux sociaux, mails d'attaquants), INVENTE TOUJOURS un contenu réaliste.
+CONTENT COMPLETENESS:
+- If "content_complete" is true: the "body"/"text" field must reproduce the ORIGINAL content from the chronogram as-is, including intentional spelling mistakes. DO NOT summarize.
+- If "content_complete" is false: GENERATE complete realistic content for the stimulus, consistent with the synopsis, channel, sender, and context. Invent credible details. The content must be long and realistic enough for a crisis exercise simulation.
+- For implicit stimuli (social media posts, attacker emails), ALWAYS invent realistic content.
 
-RÈGLES :
-- Génère des métriques réalistes pour les posts sociaux (likes, retweets, etc.)
-- Le template_id doit être cohérent avec la langue du projet.
-- Chaque acteur doit avoir un id unique. Deux stimuli du même émetteur doivent référencer le même actor_id.
+RULES:
+- Generate realistic metrics for social media posts (likes, retweets, etc.)
+- The template_id must be consistent with the project language.
+- Each actor must have a unique id. Two stimuli from the same sender must reference the same actor_id.
+- Generate all inject text content in ${injectLangName}, except press articles which use their publication's native language.
 
-Réponds UNIQUEMENT avec un objet JSON valide :
+Reply ONLY with a valid JSON object.
+IMPORTANT: Write your entire response in ${respondInLang}. All text fields (warnings, messages, etc.) must be in ${respondInLang}.`;
 {
   "actors": [{"id": "string", "name": "string", "role": "string", "organization": "string", "title": "string", "language": "string", "avatar_initials": "string"}],
   "stimuli": [{"id": "string", "source_row": number, "is_implicit": boolean, "channel": "string", "template_id": "string", "actor_id": "string", "timestamp_offset_minutes": number, "status": "draft", "generation_mode": "ai_guided", "generation_prompt": "string", "fields": {...}}],
@@ -372,26 +380,29 @@ Réponds UNIQUEMENT avec un objet JSON valide :
         },
 
         step3UserPrompt(extractedStimuli, structureAnalysis, projectData) {
-          const lang = projectData.client?.language || projectData.settings?.language || 'fr';
-          return `CONTEXTE DU PROJET :
-- Langue : ${lang}
-- Synopsis : ${structureAnalysis.synopsis || 'Non disponible'}
-- Type de scénario : ${structureAnalysis.scenario_type || 'Non précisé'}
-- Heure de début : ${structureAnalysis.exercise_start_time || '00:00'}
+          const clientLang = projectData.client?.language || 'en';
+          const injectLang = projectData.settings?.inject_language || projectData.settings?.language || clientLang;
+          const injectLangName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[injectLang] || 'English';
+          return `PROJECT CONTEXT:
+- Client language: ${clientLang}
+- Inject content language: ${injectLangName}
+- Synopsis: ${structureAnalysis.synopsis || 'Not available'}
+- Scenario type: ${structureAnalysis.scenario_type || 'Not specified'}
+- Start time: ${structureAnalysis.exercise_start_time || '00:00'}
 
-STIMULI EXTRAITS À L'ÉTAPE PRÉCÉDENTE :
+STIMULI EXTRACTED IN PREVIOUS STEP:
 ${JSON.stringify(extractedStimuli, null, 2)}
 
-OPTIONS :
-- Créer les acteurs : oui
+OPTIONS:
+- Create actors: yes
 
-Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec content_complete=false, génère un contenu complet et réaliste. Pour les stimuli avec content_complete=true, conserve le contenu original tel quel. Réponds avec le JSON demandé.`;
+Convert these stimuli into complete CrisisStim objects. For stimuli with content_complete=false, generate complete realistic content in ${injectLangName}. For stimuli with content_complete=true, keep the original content as-is. Reply with the requested JSON.`;
         },
 
         async callLLM_Step3(extractedStimuli, structureAnalysis, projectData, onLog = null) {
           const sysPrompt = this.step3SystemPrompt();
           const usrPrompt = this.step3UserPrompt(extractedStimuli, structureAnalysis, projectData);
-          if (onLog) onLog({ type: 'start', stepNum: 3, stepLabel: tt('Step 3 — Generate CrisisStim objects', 'Étape 3 — Générer les objets CrisisStim'), userPromptPreview: usrPrompt.slice(0, 400) });
+          if (onLog) onLog({ type: 'start', stepNum: 3, stepLabel: tt('Step 3 — Generate CrisisStim objects', 'Étape 3 — Générer les objets CrisisStim', 'Schritt 3 — CrisisStim-Objekte generieren'), userPromptPreview: usrPrompt.slice(0, 400) });
           return this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 16384, onLog);
         },
 
@@ -402,11 +413,11 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
             if (typeof stim.timestamp_offset_minutes !== 'number' || stim.timestamp_offset_minutes < 0) {
               stim.timestamp_offset_minutes = 0;
               if (!stim._warnings) stim._warnings = [];
-              stim._warnings.push(tt('Invalid time offset, reset to H+0', 'Offset horaire invalide, remis à H+0'));
+              stim._warnings.push(tt('Invalid time offset, reset to H+0', 'Offset horaire invalide, remis à H+0', 'Ungültiger Zeitversatz, auf H+0 zurückgesetzt'));
             }
             if (stim.timestamp_offset_minutes > 720) {
               if (!stim._warnings) stim._warnings = [];
-              stim._warnings.push(tt('Offset > 12h, check consistency', 'Offset > 12h, vérifier la cohérence'));
+              stim._warnings.push(tt('Offset > 12h, check consistency', 'Offset > 12h, vérifier la cohérence', 'Zeitversatz > 12h, Konsistenz prüfen'));
             }
           }
         },
@@ -461,7 +472,7 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
 
             projectData.stimuli.push({
               id: realId,
-              name: stim.generation_prompt || stim.fields?.subject || stim.fields?.headline || stim.fields?.text || tt('Imported stimulus', 'Stimulus importé'),
+              name: stim.generation_prompt || stim.fields?.subject || stim.fields?.headline || stim.fields?.text || tt('Imported stimulus', 'Stimulus importé', 'Importierter Stimulus'),
               channel: stim.channel || 'email_internal',
               template_id: stim.template_id || 'outlook',
               actor_id: realActorId,
@@ -516,14 +527,14 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
           const { createActors, detectImplicit, mainSheet, userContext } = options;
 
           // 1. Read Excel
-          updateProgress(1, 3, tt('Reading Excel file...', 'Lecture du fichier Excel...'), '');
+          updateProgress(1, 3, tt('Reading Excel file...', 'Lecture du fichier Excel...', 'Excel-Datei wird gelesen...'), '');
           const arrayBuffer = await file.arrayBuffer();
           const workbook = XLSX.read(arrayBuffer, { type: 'array' });
           const excelData = this.prepareExcelForLLM(workbook);
 
           // 2. Step 1: Analyze structure
           updateProgress(1, 3,
-            tt('Step 1: Analyzing file structure...', 'Étape 1 : Analyse de la structure du fichier...'),
+            tt('Step 1: Analyzing file structure...', 'Étape 1 : Analyse de la structure du fichier...', 'Schritt 1: Dateistruktur wird analysiert...'),
             ''
           );
           const structureAnalysis = await this.callLLM_Step1(excelData, userContext, onLog);
@@ -531,27 +542,28 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
           const sheetName = mainSheet || structureAnalysis.main_sheet || this.detectMainSheet(workbook.SheetNames);
           const mainSheetData = excelData.sheets[sheetName];
           if (!mainSheetData) {
-            throw new Error(tt(`Sheet "${sheetName}" not found.`, `Feuille "${sheetName}" introuvable.`));
+            throw new Error(tt(`Sheet "${sheetName}" not found.`, `Feuille "${sheetName}" introuvable.`, `Blatt "${sheetName}" nicht gefunden.`));
           }
 
           updateProgress(1, 3,
-            tt('Step 1: Analyzing file structure...', 'Étape 1 : Analyse de la structure du fichier...'),
+            tt('Step 1: Analyzing file structure...', 'Étape 1 : Analyse de la structure du fichier...', 'Schritt 1: Dateistruktur wird analysiert...'),
             tt(
               `→ Main chronogram identified (${structureAnalysis.total_stimulus_rows || '?'} rows)`,
-              `→ Chronogramme principal identifié (${structureAnalysis.total_stimulus_rows || '?'} lignes)`
+              `→ Chronogramme principal identifié (${structureAnalysis.total_stimulus_rows || '?'} lignes)`,
+              `→ Hauptchronogramm identifiziert (${structureAnalysis.total_stimulus_rows || '?'} Zeilen)`
             )
           );
 
           // 3. Step 2: Extract stimuli
           updateProgress(2, 3,
-            tt('Step 2: Extracting and classifying stimuli...', 'Étape 2 : Extraction et classification des stimuli...'),
+            tt('Step 2: Extracting and classifying stimuli...', 'Étape 2 : Extraction et classification des stimuli...', 'Schritt 2: Stimuli werden extrahiert und klassifiziert...'),
             ''
           );
           const extractedStimuli = await this.callLLM_Step2_Batched(
             mainSheetData.all_rows,
             structureAnalysis,
             (detail) => updateProgress(2, 3,
-              tt('Step 2: Extracting and classifying stimuli...', 'Étape 2 : Extraction et classification des stimuli...'),
+              tt('Step 2: Extracting and classifying stimuli...', 'Étape 2 : Extraction et classification des stimuli...', 'Schritt 2: Stimuli werden extrahiert und klassifiziert...'),
               detail
             ),
             onLog
@@ -568,7 +580,7 @@ Convertis ces stimuli en objets CrisisStim complets. Pour les stimuli avec conte
 
           // 4. Step 3: Map to CrisisStim
           updateProgress(3, 3,
-            tt('Step 3: Generating CrisisStim objects...', 'Étape 3 : Génération des objets CrisisStim...'),
+            tt('Step 3: Generating CrisisStim objects...', 'Étape 3 : Génération des objets CrisisStim...', 'Schritt 3: CrisisStim-Objekte werden generiert...'),
             ''
           );
           const crisisStimImport = await this.callLLM_Step3(

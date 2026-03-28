@@ -65,12 +65,12 @@
           const settingsToSave = { ...appState.scenario.settings, ai_api_key: '', azure_api_key: '' };
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
           persistProviderSettings(appState.scenario.settings);
-          if (showToast) pushToast(tt('Scenario saved locally.', 'Scénario enregistré localement.'), 'success');
+          if (showToast) pushToast(tt('Scenario saved locally.', 'Scénario enregistré localement.', 'Szenario lokal gespeichert.'), 'success');
         } catch (error) {
           if (error.name === 'QuotaExceededError') {
-            pushToast(tt('Browser storage full. Export your project as JSON.', 'Stockage navigateur plein. Exportez votre projet en JSON.'), 'error');
+            pushToast(tt('Browser storage full. Export your project as JSON.', 'Stockage navigateur plein. Exportez votre projet en JSON.', 'Browserspeicher voll. Exportieren Sie Ihr Projekt als JSON.'), 'error');
           } else {
-            pushToast(tt(`Local save failed: ${error.message}`, `Échec de la sauvegarde locale : ${error.message}`), 'error');
+            pushToast(tt(`Local save failed: ${error.message}`, `Échec de la sauvegarde locale : ${error.message}`, `Lokales Speichern fehlgeschlagen: ${error.message}`), 'error');
           }
         }
       }
@@ -88,8 +88,8 @@
         if (!el) return;
         const now = new Date();
         const msg = _fileHandle
-          ? tt(`Saved (file + browser)`, `Sauvegardé (fichier + navigateur)`)
-          : tt(`Saved (browser)`, `Sauvegardé (navigateur)`);
+          ? tt(`Saved (file + browser)`, `Sauvegardé (fichier + navigateur)`, `Gespeichert (Datei + Browser)`)
+          : tt(`Saved (browser)`, `Sauvegardé (navigateur)`, `Gespeichert (Browser)`);
         el.textContent = msg;
         el.title = now.toLocaleTimeString();
       }
@@ -287,23 +287,23 @@
             let dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
             dataUrl = PngMetadata.injectMetadata(dataUrl);
             this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
-            pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.'), 'success');
+            pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.', 'Stimulus als PNG exportiert.'), 'success');
           } finally {
             if (sandbox) document.body.removeChild(sandbox);
           }
         },
         async exportRawEmail(stimulus) {
-          if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.'));
-          if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email stimuli can be exported as .eml.', 'Seuls les stimuli e-mail peuvent être exportés en .eml.'));
+          if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.', 'Kein Stimulus ausgewählt.'));
+          if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email stimuli can be exported as .eml.', 'Seuls les stimuli e-mail peuvent être exportés en .eml.', 'Nur E-Mail-Stimuli können als .eml exportiert werden.'));
           const content = this.buildRawEmailContent(stimulus);
           const blob = new Blob([content], { type: 'message/rfc822' });
           downloadBlob(blob, this.filenameForRawEmail(stimulus));
-          pushToast(tt('Email exported as .eml.', 'E-mail exporté en .eml.'), 'success');
+          pushToast(tt('Email exported as .eml.', 'E-mail exporté en .eml.', 'E-Mail als .eml exportiert.'), 'success');
         },
         async exportAll() {
           const zip = new JSZip();
           const stimuli = getSortedStimuli();
-          if (!stimuli.length) throw new Error(tt('No stimulus to export.', 'Aucun stimulus à exporter.'));
+          if (!stimuli.length) throw new Error(tt('No stimulus to export.', 'Aucun stimulus à exporter.', 'Kein Stimulus zum Exportieren vorhanden.'));
           const sandbox = document.createElement('div');
           sandbox.style.position = 'fixed';
           sandbox.style.left = '-99999px';
@@ -319,7 +319,7 @@
           document.body.removeChild(sandbox);
           const blob = await zip.generateAsync({ type: 'blob' });
           downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_exports.zip`);
-          pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.'), 'success');
+          pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
         },
         filenameForStimulus(stimulus) {
           const actor = getActor(stimulus.actor_id);
@@ -373,7 +373,7 @@
         const json = JSON.stringify(exportData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_${new Date().toISOString().slice(0, 10)}.json`);
-        pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.'), 'success');
+        pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.', 'Szenario als JSON exportiert.'), 'success');
       }
 
       async function loadScenarioFromFile() {
@@ -398,7 +398,7 @@
             parseProjectFile(file)
               .then((data) => applyLoadedScenario(data))
               .catch((error) => {
-                pushToast(tt(`Import failed: ${error.message}`, `Import échoué : ${error.message}`), 'error');
+                pushToast(tt(`Import failed: ${error.message}`, `Import échoué : ${error.message}`, `Importieren fehlgeschlagen: ${error.message}`), 'error');
               })
               .finally(() => resolve());
           }, { once: true });
@@ -412,24 +412,24 @@
         try {
           return JSON.parse(await file.text());
         } catch (error) {
-          throw new Error(tt(`Invalid JSON file: ${error.message}`, `Fichier JSON invalide : ${error.message}`));
+          throw new Error(tt(`Invalid JSON file: ${error.message}`, `Fichier JSON invalide : ${error.message}`, `Ungültige JSON-Datei: ${error.message}`));
         }
       }
 
       async function parseProjectZip(file) {
         if (typeof JSZip === 'undefined') {
-          throw new Error(tt('ZIP support is not available.', 'Le support ZIP est indisponible.'));
+          throw new Error(tt('ZIP support is not available.', 'Le support ZIP est indisponible.', 'ZIP-Unterstützung ist nicht verfügbar.'));
         }
         let zip;
         try {
           zip = await JSZip.loadAsync(file);
         } catch (error) {
-          throw new Error(tt(`Invalid ZIP file: ${error.message}`, `Fichier ZIP invalide : ${error.message}`));
+          throw new Error(tt(`Invalid ZIP file: ${error.message}`, `Fichier ZIP invalide : ${error.message}`, `Ungültige ZIP-Datei: ${error.message}`));
         }
 
         const entries = Object.values(zip.files).filter((entry) => !entry.dir && /\.json$/i.test(entry.name));
         if (!entries.length) {
-          throw new Error(tt('No JSON project found in ZIP.', 'Aucun projet JSON trouvé dans le ZIP.'));
+          throw new Error(tt('No JSON project found in ZIP.', 'Aucun projet JSON trouvé dans le ZIP.', 'Kein JSON-Projekt in der ZIP-Datei gefunden.'));
         }
 
         const preferred = entries.find((entry) => /\.(crisismaker|crisisstim)\.json$/i.test(entry.name)) || entries[0];
@@ -443,7 +443,7 @@
           };
           return parsed;
         } catch (error) {
-          throw new Error(tt(`Invalid JSON in ZIP: ${error.message}`, `JSON invalide dans le ZIP : ${error.message}`));
+          throw new Error(tt(`Invalid JSON in ZIP: ${error.message}`, `JSON invalide dans le ZIP : ${error.message}`, `Ungültiges JSON in der ZIP-Datei: ${error.message}`));
         }
       }
 
@@ -460,19 +460,20 @@
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
           appState.route = 'project';
           App.render();
-          pushToast(tt('Scenario loaded successfully.', 'Scénario chargé avec succès.'), 'success');
+          pushToast(tt('Scenario loaded successfully.', 'Scénario chargé avec succès.', 'Szenario erfolgreich geladen.'), 'success');
           if (zipImport?.imageCount) {
             const sample = zipImport.imageNames.length ? ` (${zipImport.imageNames.join(', ')})` : '';
             pushToast(
               tt(
                 `${zipImport.imageCount} rendered image(s) found in the ZIP${sample}. Stimulus previews are regenerated from project data after import.`,
-                `${zipImport.imageCount} image(s) rendue(s) trouvée(s) dans le ZIP${sample}. Les aperçus sont régénérés à partir des données du projet après import.`
+                `${zipImport.imageCount} image(s) rendue(s) trouvée(s) dans le ZIP${sample}. Les aperçus sont régénérés à partir des données du projet après import.`,
+                `${zipImport.imageCount} gerenderte(s) Bild(er) in der ZIP-Datei gefunden${sample}. Stimulus-Vorschauen werden nach dem Import aus den Projektdaten neu generiert.`
               ),
               'info'
             );
           }
         } catch (error) {
-          pushToast(tt(`Load failed: ${error.message}`, `Chargement échoué : ${error.message}`), 'error');
+          pushToast(tt(`Load failed: ${error.message}`, `Chargement échoué : ${error.message}`, `Laden fehlgeschlagen: ${error.message}`), 'error');
         }
       }
 

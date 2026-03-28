@@ -3,11 +3,11 @@
           const { ai_provider, ai_api_key, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (['anthropic', 'openai'].includes(ai_provider) && !ai_api_key) {
             throw new Error(ai_provider === 'openai'
-              ? tt('Please enter an OpenAI API key before testing the connection.', 'Veuillez saisir une clé API OpenAI avant de tester la connexion.')
-              : tt('Please enter an Anthropic API key before testing the connection.', 'Veuillez saisir une clé API Anthropic avant de tester la connexion.'));
+              ? tt('Please enter an OpenAI API key before testing the connection.', 'Veuillez saisir une clé API OpenAI avant de tester la connexion.', 'Bitte geben Sie einen OpenAI-API-Schlüssel ein, bevor Sie die Verbindung testen.')
+              : tt('Please enter an Anthropic API key before testing the connection.', 'Veuillez saisir une clé API Anthropic avant de tester la connexion.', 'Bitte geben Sie einen Anthropic-API-Schlüssel ein, bevor Sie die Verbindung testen.'));
           }
           if (ai_provider === 'azure_openai') {
-            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Please provide the Azure endpoint, API key, and deployment name before testing the connection.', 'Veuillez renseigner l’endpoint, la clé API et le déploiement Azure avant de tester la connexion.'));
+            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt(‘Please provide the Azure endpoint, API key, and deployment name before testing the connection.’, ‘Veuillez renseigner l\’endpoint, la clé API et le déploiement Azure avant de tester la connexion.’, ‘Bitte geben Sie den Azure-Endpunkt, den API-Schlüssel und den Bereitstellungsnamen an, bevor Sie die Verbindung testen.’));
           }
           const prompt = 'Reply only with a JSON object {"ok": true, "message": "valid connection"}';
           return this.generate('settings_test', prompt, null, true);
@@ -68,7 +68,7 @@
           };
 
           if (ai_provider === 'anthropic') {
-            if (!ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.'));
+            if (!ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
             const response = await fetch('https://api.anthropic.com/v1/messages', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'x-api-key': ai_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
@@ -82,7 +82,7 @@
           }
 
           if (ai_provider === 'openai') {
-            if (!ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.'));
+            if (!ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
@@ -93,7 +93,7 @@
           }
 
           if (ai_provider === 'azure_openai') {
-            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.'));
+            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
             const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
               method: 'POST',
@@ -104,22 +104,22 @@
             return parseLLMJson(fullText);
           }
 
-          throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`));
+          throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));
         },
 
         async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000) {
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
-          if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.'));
-          if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.'));
+          if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
+          if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
           if (ai_provider === 'azure_openai') {
-            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.'));
+            if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
             try {
               const endpointUrl = new URL(normalizedEndpoint);
-              if (endpointUrl.protocol !== 'https:') throw new Error(tt('Azure endpoint must use HTTPS.', 'L\'endpoint Azure doit utiliser HTTPS.'));
+              if (endpointUrl.protocol !== 'https:') throw new Error(tt('Azure endpoint must use HTTPS.', 'L\'endpoint Azure doit utiliser HTTPS.', 'Der Azure-Endpunkt muss HTTPS verwenden.'));
             } catch (urlErr) {
               if (urlErr.message.includes('HTTPS') || urlErr.message.includes('HTTPS')) throw urlErr;
-              throw new Error(tt('Invalid Azure endpoint URL.', 'URL d\'endpoint Azure invalide.'));
+              throw new Error(tt('Invalid Azure endpoint URL.', 'URL d\'endpoint Azure invalide.', 'Ungültige Azure-Endpunkt-URL.'));
             }
             const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
               method: 'POST',
@@ -129,9 +129,9 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error?.message || 'Erreur API Azure OpenAI');
             const content = data.choices?.[0]?.message?.content;
-            if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.'));
+            if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.', 'Leere Azure-OpenAI-Antwort.'));
             const parsed = parseLLMJson(content);
-            if (!quiet) pushToast(tt('Content generated with Azure OpenAI.', 'Contenu généré avec Azure OpenAI.'), 'success');
+            if (!quiet) pushToast(tt('Content generated with Azure OpenAI.', 'Contenu généré avec Azure OpenAI.', 'Inhalt mit Azure OpenAI generiert.'), 'success');
             return parsed;
           }
           if (ai_provider === 'anthropic') {
@@ -144,7 +144,7 @@
             if (!response.ok) throw new Error(data.error?.message || 'Erreur API Anthropic');
             const text = data.content?.[0]?.text || '{}';
             const parsed = parseLLMJson(text);
-            if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.'), 'success');
+            if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');
             return parsed;
           }
           if (ai_provider === 'openai') {
@@ -159,133 +159,138 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error?.message || 'OpenAI API error');
             const content = data.choices?.[0]?.message?.content;
-            if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.'));
+            if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.', 'Leere OpenAI-Antwort.'));
             const parsed = parseLLMJson(content);
-            if (!quiet) pushToast(tt('Content generated with OpenAI.', 'Contenu généré avec OpenAI.'), 'success');
+            if (!quiet) pushToast(tt('Content generated with OpenAI.', 'Contenu généré avec OpenAI.', 'Inhalt mit OpenAI generiert.'), 'success');
             return parsed;
           }
-          throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`));
+          throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));
         }
       };
 
       const LLMConfigPrompts = {
         scenario(userInput) {
           const today = new Date().toISOString().slice(0, 10);
+          const injectLang = appState?.scenario?.settings?.inject_language || appState?.scenario?.settings?.language || 'en';
+          const injectLangName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[injectLang] || 'English';
           return {
-            systemPrompt: `Tu es un assistant spécialisé dans la préparation d'exercices de crise cybersécurité.
-L'utilisateur décrit un scénario en langage naturel. Tu dois extraire et structurer les informations pour configurer l'exercice.
+            systemPrompt: `You are an assistant specialized in preparing cybersecurity crisis exercises.
+The user describes a scenario in natural language. Extract and structure the information to configure the exercise.
 
-CONSIGNES :
-- Extrais toutes les informations mentionnées par l'utilisateur
-- Pour les informations NON mentionnées, INVENTE des valeurs réalistes et cohérentes avec le contexte décrit
-- Le champ "summary" doit être un résumé professionnel de 3-5 phrases du scénario
-- Le champ "detailed_context" doit développer avec des détails techniques plausibles (vecteur d'attaque, systèmes affectés, chronologie)
-- La langue du client doit correspondre au pays/contexte mentionné (entreprise française → "fr", entreprise allemande → "de", etc.)
-- Si aucune date n'est mentionnée, utilise la date du jour (${today})
-- Si aucun fuseau horaire n'est mentionné, déduis-le du pays
+INSTRUCTIONS:
+- Extract all information mentioned by the user
+- For information NOT mentioned, INVENT realistic values consistent with the described context
+- The "summary" field must be a professional 3-5 sentence summary of the scenario
+- The "detailed_context" field must elaborate with plausible technical details (attack vector, affected systems, timeline)
+- The client language must match the mentioned country/context (French company → "fr", German company → "de", etc.)
+- If no date is mentioned, use today's date (${today})
+- If no timezone is mentioned, infer it from the country
+- Generate the "summary" and "detailed_context" text fields in ${injectLangName}
 
-Réponds UNIQUEMENT avec un objet JSON respectant exactement cette structure :
+Reply ONLY with a JSON object following exactly this structure:
 {
   "client": {
-    "name": "Nom de l'organisation",
+    "name": "Organization name",
     "sector": "Banking | Energy | Healthcare | Transport | Industry | Telecom | Retail | Public sector | Other",
     "language": "fr | en | de | es | it | pt | nl | ja | zh"
   },
   "scenario": {
     "type": "Ransomware | Data Breach | Supply Chain | DDoS | Insider Threat | Other",
-    "summary": "Résumé professionnel de 3-5 phrases",
-    "detailed_context": "Contexte détaillé avec informations techniques plausibles (1-2 paragraphes)",
+    "summary": "Professional 3-5 sentence summary",
+    "detailed_context": "Detailed context with plausible technical information (1-2 paragraphs)",
     "start_date": "2026-03-15T08:00:00",
     "timezone": "Europe/Paris"
   }
 }`,
-            userPrompt: `DESCRIPTION DE L'UTILISATEUR :\n${userInput}`
+            userPrompt: `USER DESCRIPTION:\n${userInput}`
           };
         },
         actors(userInput, scenario) {
           return {
-            systemPrompt: `Tu es un assistant spécialisé dans la préparation d'exercices de crise cybersécurité.
-L'utilisateur décrit les acteurs qu'il souhaite pour son exercice. Tu dois générer une liste d'acteurs structurée.
+            systemPrompt: `You are an assistant specialized in preparing cybersecurity crisis exercises.
+The user describes the actors they want for their exercise. Generate a structured list of actors.
 
-CONTEXTE DU SCÉNARIO :
-- Client : ${scenario.client.name} (${scenario.client.sector}), langue : ${scenario.client.language}
-- Scénario : ${scenario.scenario.summary}
-- Type : ${scenario.scenario.type}
+SCENARIO CONTEXT:
+- Client: ${scenario.client.name} (${scenario.client.sector}), language: ${scenario.client.language}
+- Scenario: ${scenario.scenario.summary}
+- Type: ${scenario.scenario.type}
 
-CONSIGNES :
-- Génère les acteurs décrits par l'utilisateur avec des noms fictifs réalistes
-- Pour les détails NON mentionnés (noms, titres exacts, organisations), INVENTE des valeurs réalistes et cohérentes
-- Si l'utilisateur demande vaguement "des journalistes" ou "des acteurs réalistes", crée un jeu complet et équilibré d'au moins 6 acteurs
-- Chaque acteur doit avoir un nom cohérent avec sa langue/pays
-- La langue de chaque acteur correspond à sa zone d'activité
+INSTRUCTIONS:
+- Generate the actors described by the user with realistic fictional names
+- For details NOT mentioned (exact names, titles, organizations), INVENT realistic and consistent values
+- If the user vaguely asks for "journalists" or "realistic actors", create a complete and balanced set of at least 6 actors
+- Each actor must have a name consistent with their language/country
+- Each actor's language corresponds to their area of activity
 
-Réponds UNIQUEMENT avec un tableau JSON :
+Reply ONLY with a JSON array:
 [
   {
-    "name": "Prénom Nom",
+    "name": "First Last",
     "role": "journalist | authority | client_b2b | client_b2c | internal | partner | attacker | analyst",
-    "organization": "Nom de l'organisation",
-    "title": "Titre / fonction",
+    "organization": "Organization name",
+    "title": "Title / function",
     "language": "fr | en | de | es | it"
   }
 ]`,
-            userPrompt: `DESCRIPTION DES ACTEURS :\n${userInput}`
+            userPrompt: `ACTOR DESCRIPTION:\n${userInput}`
           };
         },
         stimulus(userInput, scenario, actors) {
           const actorsList = actors.map((a) => ({ name: a.name, role: a.role, organization: a.organization, language: a.language }));
+          const injectLang = scenario.settings?.inject_language || scenario.settings?.language || 'en';
+          const injectLangName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[injectLang] || 'English';
           return {
-            systemPrompt: `Tu es un assistant spécialisé dans la préparation d'exercices de crise cybersécurité.
-L'utilisateur décrit un ou plusieurs stimuli (messages de crise). Tu dois extraire la configuration ET générer le contenu.
+            systemPrompt: `You are an assistant specialized in preparing cybersecurity crisis exercises.
+The user describes one or more stimuli (crisis messages). Extract the configuration AND generate the content.
 
-CONTEXTE DU SCÉNARIO :
-- Client : ${scenario.client.name} (${scenario.client.sector}), langue : ${scenario.client.language}
-- Scénario : ${scenario.scenario.summary}
-- Contexte détaillé : ${scenario.scenario.detailed_context || 'Non renseigné'}
-- Acteurs disponibles : ${JSON.stringify(actorsList)}
+SCENARIO CONTEXT:
+- Client: ${scenario.client.name} (${scenario.client.sector}), language: ${scenario.client.language}
+- Scenario: ${scenario.scenario.summary}
+- Detailed context: ${scenario.scenario.detailed_context || 'Not provided'}
+- Available actors: ${JSON.stringify(actorsList)}
 
-TEMPLATES DISPONIBLES :
-- article_press : lemonde, nyt, faz, ft
-- email_internal : outlook
-- email_external : generic
-- email_authority : anssi
-- post_twitter : twitter
-- post_linkedin : linkedin
-- post_reddit : reddit
-- breaking_news_tv : bfm
-- press_release : generic_pr
-- sms_notification : sms
-- internal_memo : memo
+AVAILABLE TEMPLATES:
+- article_press: lemonde, nyt, faz, ft
+- email_internal: outlook
+- email_external: generic
+- email_authority: anssi
+- post_twitter: twitter
+- post_linkedin: linkedin
+- post_reddit: reddit
+- breaking_news_tv: bfm
+- press_release: generic_pr
+- sms_notification: sms
+- internal_memo: memo
 
-CONSIGNES :
-- Détermine le canal et le template les plus adaptés à la description
-- Si un acteur est mentionné ou correspond à la description, mets son nom dans actor_id (le code fera la résolution)
-- Pour la position timeline, interprète "H+2" comme 120 minutes, "H+30" comme 30, etc. Si non mentionné, utilise 0
-- Si l'utilisateur demande un lot ("crée 30 stimuli…" avec des catégories), retourne EXACTEMENT le nombre demandé et répartis les timestamps de façon crédible si aucun horaire précis n'est donné
-- Pour les stimuli externes ("client", "regulator", "press", etc.), alterne les acteurs/sources pour refléter la répartition demandée
-- Génère le contenu des champs dans la LANGUE NATIVE DU MÉDIA
-- Règle stricte média presse : si template_id = "lemonde", tout le contenu textuel doit être en français ; si template_id = "nyt", tout le contenu textuel doit être en anglais
-- Pour les informations NON mentionnées, INVENTE des détails réalistes cohérents
-- Le champ generation_mode doit être "ai_guided"
-- Si l'utilisateur décrit PLUSIEURS stimuli, retourne un TABLEAU JSON d'objets. Si UN SEUL stimulus, retourne un objet unique.
+INSTRUCTIONS:
+- Determine the most suitable channel and template for the description
+- If an actor is mentioned or matches the description, put their name in actor_id (the code will resolve it)
+- For timeline position, interpret "H+2" as 120 minutes, "H+30" as 30, etc. If not mentioned, use 0
+- If the user requests a batch ("create 30 stimuli…" with categories), return EXACTLY the requested number and distribute timestamps credibly if no precise schedule is given
+- For external stimuli ("client", "regulator", "press", etc.), alternate actors/sources to reflect the requested distribution
+- Generate field content in ${injectLangName} by default, EXCEPT press articles which must use their publication's native language
+- Strict press media rule: template_id = "lemonde" → all text content in French; "nyt" → English; "faz" → German; "ft" → British English; "nikkei" → Japanese
+- For information NOT mentioned, INVENT realistic coherent details
+- The generation_mode field must be "ai_guided"
+- If the user describes MULTIPLE stimuli, return a JSON ARRAY of objects. If ONE stimulus, return a single object.
 
-COHÉRENCE DES AUTEURS/ÉMETTEURS selon le canal :
-- article_press / breaking_news_tv : l'auteur/journaliste doit avoir un nom de journaliste réaliste (ex: "Par Marie Dupont" pour Le Monde)
-- email_internal / internal_memo : from_name doit être un prénom+nom d'employé interne, from_email avec domaine de l'organisation cliente
-- email_authority : from_name doit être un organisme officiel (ANSSI, CERT-FR, CNIL…)
-- post_twitter / post_linkedin / post_reddit : display_name et handle cohérents avec le rôle de l'acteur
-- press_release : logo_text et contact_name cohérents avec l'organisation émettrice
-- sms_notification : sender court et reconnaissable (ex: "BANQUE-ALERT")
+AUTHOR/SENDER CONSISTENCY by channel:
+- article_press / breaking_news_tv: author/journalist must have a realistic journalist name (e.g. "By John Smith" for NYT)
+- email_internal / internal_memo: from_name must be an internal employee first+last name, from_email with client organization domain
+- email_authority: from_name must be an official body (ANSSI, CERT-FR, BSI, CISA…)
+- post_twitter / post_linkedin / post_reddit: display_name and handle consistent with actor role
+- press_release: logo_text and contact_name consistent with the issuing organization
+- sms_notification: short recognizable sender (e.g. "BANK-ALERT")
 
-CHAMPS À REMPLIR DANS "fields" selon le canal (génère un contenu réaliste et complet) :
-- email_internal: subject, from_name, from_email, to, body (HTML avec <p> et <strong>), date, importance ("normal"|"high")
+FIELDS TO FILL IN "fields" by channel (generate realistic complete content):
+- email_internal: subject, from_name, from_email, to, body (HTML with <p> and <strong>), date, importance ("normal"|"high")
 - email_external: subject, from_name, from_email, to, body (HTML), date
 - email_authority: subject, from_name, from_email, to, body (HTML), severity ("critical"|"high"|"medium"), reference, date
-- article_press (lemonde): headline, subheadline, author, date, category, body (HTML 3-4 paragraphes), image_caption, read_time — langue obligatoire : français
-- article_press (nyt): headline, subheadline, author, date, category, body (HTML), image_caption, read_time, location — language required: English
-- article_press (faz): kicker, headline, subheadline, author, date, category, body (HTML), image_caption, content_type
-- article_press (ft): headline, subheadline, author, date, category, body (HTML), image_caption, content_type
-- post_twitter: text (≤280 car.), display_name, handle, date, verified (true|false), replies, retweets, likes, views
+- article_press (lemonde): headline, subheadline, author, date, category, body (HTML 3-4 paragraphs), image_caption, read_time — required language: French
+- article_press (nyt): headline, subheadline, author, date, category, body (HTML), image_caption, read_time, location — required language: English
+- article_press (faz): kicker, headline, subheadline, author, date, category, body (HTML), image_caption, content_type — required language: German
+- article_press (ft): headline, subheadline, author, date, category, body (HTML), image_caption, content_type — required language: British English
+- post_twitter: text (≤280 chars), display_name, handle, date, verified (true|false), replies, retweets, likes, views
 - post_linkedin: text, display_name, title, date, reactions_count, comments_count
 - post_reddit: title, body (HTML), subreddit, author, date, upvotes, comments_count
 - breaking_news_tv: headline, subline, category, time, ticker
@@ -293,30 +298,30 @@ CHAMPS À REMPLIR DANS "fields" selon le canal (génère un contenu réaliste et
 - sms_notification: sender, text, time
 - internal_memo: subject, from_name, to, body (HTML), date
 
-Format d'un stimulus :
+Stimulus format:
 {
   "channel": "article_press | email_internal | post_twitter | ...",
   "template_id": "lemonde | nyt | outlook | twitter | ...",
-  "actor_id": "nom de l'acteur ou null",
-  "source_label": "label si pas d'acteur",
+  "actor_id": "actor name or null",
+  "source_label": "label if no actor",
   "timestamp_offset_minutes": 120,
   "generation_mode": "ai_guided",
-  "generation_prompt": "description originale de l'utilisateur",
-  "fields": { /* tous les champs du canal remplis avec contenu réaliste */ }
+  "generation_prompt": "original user description",
+  "fields": { /* all channel fields filled with realistic content */ }
 }`,
-            userPrompt: `DESCRIPTION DU STIMULUS :\n${userInput}`
+            userPrompt: `STIMULUS DESCRIPTION:\n${userInput}`
           };
         }
       };
 
       function parseLLMJson(text) {
         const trimmed = String(text || '').trim();
-        if (!trimmed) throw new Error(tt('LLM response was empty.', 'La réponse du LLM était vide.'));
+        if (!trimmed) throw new Error(tt('LLM response was empty.', 'La réponse du LLM était vide.', 'LLM-Antwort war leer.'));
         try {
           return JSON.parse(trimmed);
         } catch (err) {
           const match = trimmed.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-          if (!match) throw new Error(tt('LLM response was not valid JSON.', 'La réponse du LLM n’était pas un JSON valide.'));
+          if (!match) throw new Error(tt(‘LLM response was not valid JSON.’, ‘La réponse du LLM n\’était pas un JSON valide.’, ‘LLM-Antwort war kein gültiges JSON.’));
           return JSON.parse(match[0]);
         }
       }
@@ -329,7 +334,7 @@ Format d'un stimulus :
             actorName: actor?.name || 'Spokesperson',
             actorTitle: actor?.title || 'Lead',
             actorRole: actor?.role || 'internal',
-            language: scenario.settings.language === 'fr' ? 'French' : 'English'
+            language: (() => { const l = scenario.settings.inject_language || scenario.settings.language || 'en'; return { fr: 'French', de: 'German', en: 'English', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[l] || 'English'; })()
           };
           const eventDescription = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || 'New development in the cyber crisis';
           const guidedSuffix = guidedPrompt ? ` Additional instruction from the operator: ${guidedPrompt}` : '';

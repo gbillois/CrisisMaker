@@ -26,7 +26,7 @@
                 t => t.template_id === stimulus.template_id || t.template_id === stimulus.channel
               );
               if (customTpl) return this.renderCustom(customTpl, f);
-              return `<div class="card">${tt('Template not implemented for', 'Template non implémenté pour')} ${escapeHtml(stimulus.channel)}.</div>`;
+              return `<div class="card">${tt('Template not implemented for', 'Template non implémenté pour', 'Vorlage nicht implementiert für')} ${escapeHtml(stimulus.channel)}.</div>`;
             }
           }
         },
@@ -68,15 +68,15 @@
             <div class="outlook-email">
               <div class="outlook-topbar">
                 <strong>Outlook</strong>
-                <div class="outlook-actions">${iconReply()} ${tt('Reply', 'Répondre')} ${iconReplyAll()} ${tt('Reply all', 'Répondre à tous')} ${iconForward()} ${tt('Forward', 'Transférer')}</div>
+                <div class="outlook-actions">${iconReply()} ${tt('Reply', 'Répondre', 'Antworten')} ${iconReplyAll()} ${tt('Reply all', 'Répondre à tous', 'Allen antworten')} ${iconForward()} ${tt('Forward', 'Transférer', 'Weiterleiten')}</div>
               </div>
               <div class="outlook-body">
                 <div class="outlook-meta">
                   <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}<div class="outlook-subject">${escapeHtml(f.subject || '')}</div></div>
-                  <div class="outlook-row"><span>${tt('From', 'De')}</span><strong>${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;</strong></div>
-                  <div class="outlook-row"><span>${tt('To', 'À')}</span><span>${escapeHtml(f.to || '')}</span></div>
+                  <div class="outlook-row"><span>${tt('From', 'De', 'Von')}</span><strong>${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;</strong></div>
+                  <div class="outlook-row"><span>${tt('To', 'À', 'An')}</span><span>${escapeHtml(f.to || '')}</span></div>
                   <div class="outlook-row"><span>Cc</span><span>${escapeHtml(f.cc || '')}</span></div>
-                  <div class="outlook-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
+                  <div class="outlook-row"><span>${tt('Date', 'Date', 'Datum')}</span><span>${escapeHtml(f.date || '')}</span></div>
                 </div>
                 <div class="outlook-content">
                   ${sanitizeBody(f.body)}
@@ -90,18 +90,18 @@
           return `
             <div class="external-email">
               <div class="external-email-topbar">
-                <strong>${tt('Email', 'E-mail')}</strong>
-                <div class="outlook-actions">${iconReply()} ${tt('Reply', 'Répondre')} ${iconForward()} ${tt('Forward', 'Transférer')}</div>
+                <strong>${tt('Email', 'E-mail', 'E-Mail')}</strong>
+                <div class="outlook-actions">${iconReply()} ${tt('Reply', 'Répondre', 'Antworten')} ${iconForward()} ${tt('Forward', 'Transférer', 'Weiterleiten')}</div>
               </div>
               <div class="outlook-body">
                 <div class="outlook-meta">
                   <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}<div class="outlook-subject">${escapeHtml(f.subject || '')}</div></div>
-                  <div class="outlook-row"><span>${tt('From', 'De')}</span><strong>${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;</strong></div>
-                  <div class="outlook-row"><span>${tt('To', 'À')}</span><span>${escapeHtml(f.to || '')}</span></div>
+                  <div class="outlook-row"><span>${tt('From', 'De', 'Von')}</span><strong>${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;</strong></div>
+                  <div class="outlook-row"><span>${tt('To', 'À', 'An')}</span><span>${escapeHtml(f.to || '')}</span></div>
                   ${f.cc ? `<div class="outlook-row"><span>Cc</span><span>${escapeHtml(f.cc)}</span></div>` : ''}
-                  <div class="outlook-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
+                  <div class="outlook-row"><span>${tt('Date', 'Date', 'Datum')}</span><span>${escapeHtml(f.date || '')}</span></div>
                 </div>
-                <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.')}</div>
+                <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.', 'Diese Nachricht wurde von außerhalb der Organisation gesendet. Seien Sie vorsichtig mit Links und Anhängen.')}</div>
                 <div class="outlook-content">
                   ${sanitizeBody(f.body)}
                   ${f.has_attachment ? `<div class="outlook-attachment">📎 <span>${escapeHtml(f.attachment_name || 'document.pdf')}</span></div>` : ''}
@@ -116,14 +116,14 @@
           return `
             <article class="internal-memo">
               <div class="memo-header">
-                <div class="memo-title">${tt('INTERNAL MEMO', 'NOTE INTERNE')}</div>
+                <div class="memo-title">${tt('INTERNAL MEMO', 'NOTE INTERNE', 'INTERNES MEMO')}</div>
                 ${f.classification ? `<div class="memo-classification" style="background:${classifColor};">${escapeHtml(f.classification)}</div>` : ''}
               </div>
               <div class="memo-meta">
-                <div class="memo-row"><span>${tt('From', 'De')}</span><strong>${escapeHtml(f.from_name || '')}</strong></div>
-                <div class="memo-row"><span>${tt('To', 'À')}</span><span>${escapeHtml(f.to || '')}</span></div>
-                <div class="memo-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
-                <div class="memo-row"><span>${tt('Subject', 'Objet')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
+                <div class="memo-row"><span>${tt('From', 'De', 'Von')}</span><strong>${escapeHtml(f.from_name || '')}</strong></div>
+                <div class="memo-row"><span>${tt('To', 'À', 'An')}</span><span>${escapeHtml(f.to || '')}</span></div>
+                <div class="memo-row"><span>${tt('Date', 'Date', 'Datum')}</span><span>${escapeHtml(f.date || '')}</span></div>
+                <div class="memo-row"><span>${tt('Subject', 'Objet', 'Betreff')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
               </div>
               <div class="memo-body">${sanitizeBody(f.body)}</div>
             </article>
@@ -145,9 +145,9 @@
             <article class="press-article lm-article">
               <div class="lm-header">
                 <div class="lm-logo">Le Monde</div>
-                <div class="lm-nav"><span>${tt('Politics', 'Politique')}</span><span>${tt('World', 'International')}</span><span>${tt('Business', 'Économie')}</span><span>Pixels</span><span>${tt('Culture', 'Culture')}</span><span>${tt('Opinions', 'Opinions')}</span></div>
+                <div class="lm-nav"><span>${tt('Politics', 'Politique', 'Politik')}</span><span>${tt('World', 'International', 'International')}</span><span>${tt('Business', 'Économie', 'Wirtschaft')}</span><span>Pixels</span><span>${tt('Culture', 'Culture', 'Kultur')}</span><span>${tt('Opinions', 'Opinions', 'Meinungen')}</span></div>
               </div>
-              ${f.is_premium ? `<div class="lm-premium">${tt('Subscribers only — full article', 'Réservé aux abonnés — lecture intégrale')}</div>` : ''}
+              ${f.is_premium ? `<div class="lm-premium">${tt('Subscribers only — full article', 'Réservé aux abonnés — lecture intégrale', 'Nur für Abonnenten — vollständiger Artikel')}</div>` : ''}
               <div class="press-body">
                 <div class="press-category">${escapeHtml(f.category || '')}</div>
                 <h1 class="press-headline">${escapeHtml(f.headline || '')}</h1>
@@ -371,10 +371,10 @@
                   <div class="li-date">${escapeHtml(f.date || '')} · 🌐</div>
                 </div>
               </div>
-              <div class="li-text">${escapeHtml(trimmed)}${showMore ? `<div class="li-see-more">${tt('…see more', '…voir plus')}</div>` : ''}</div>
-              <div class="li-stats"><span>${reactions}</span><span>${formatMetric(f.reactions_count)} ${tt('reactions', 'réactions')} · ${formatMetric(f.comments_count)} ${tt('comments', 'commentaires')} · ${formatMetric(f.reposts_count)} ${tt('reposts', 'republications')}</span></div>
+              <div class="li-text">${escapeHtml(trimmed)}${showMore ? `<div class="li-see-more">${tt(‘…see more’, ‘…voir plus’, ‘…mehr anzeigen’)}</div>` : ‘’}</div>
+              <div class="li-stats"><span>${reactions}</span><span>${formatMetric(f.reactions_count)} ${tt(‘reactions’, ‘réactions’, ‘Reaktionen’)} · ${formatMetric(f.comments_count)} ${tt(‘comments’, ‘commentaires’, ‘Kommentare’)} · ${formatMetric(f.reposts_count)} ${tt(‘reposts’, ‘republications’, ‘Reposts’)}</span></div>
               <div class="li-divider"></div>
-              <div class="li-actions"><strong>${tt('Like', 'J’aime')}</strong><strong>${tt('Comment', 'Commenter')}</strong><strong>${tt('Repost', 'Republier')}</strong><strong>${tt('Send', 'Envoyer')}</strong></div>
+              <div class="li-actions"><strong>${tt(‘Like’, ‘J’aime’, ‘Gefällt mir’)}</strong><strong>${tt(‘Comment’, ‘Commenter’, ‘Kommentieren’)}</strong><strong>${tt(‘Repost’, ‘Republier’, ‘Reposten’)}</strong><strong>${tt(‘Send’, ‘Envoyer’, ‘Senden’)}</strong></div>
             </article>
           `;
         },
@@ -409,14 +409,14 @@
                     <div class="rf-logo"></div>
                     <div>
                       <strong>ANSSI · CERT-FR</strong><br>
-                      <span class="subtle">${tt('Official cybersecurity alert', 'Alerte officielle cybersécurité')}</span>
+                      <span class="subtle">${tt('Official cybersecurity alert', 'Alerte officielle cybersécurité', 'Offizielle Cybersicherheitswarnung')}</span>
                     </div>
                   </div>
                   <div class="mono">${escapeHtml(f.reference || '')}</div>
                 </div>
                 <div class="authority-content">
-                  <div class="authority-banner"><strong>${tt('Severity', 'Sévérité')} : ${escapeHtml(f.severity || '')}</strong> · ${tt('Restricted distribution to recipient', 'Diffusion restreinte au destinataire')}</div>
-                  <p><strong>${tt('From', 'De')} :</strong> ${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;<br><strong>${tt('To', 'À')} :</strong> ${escapeHtml(f.to || '')}<br><strong>${tt('Date', 'Date')} :</strong> ${escapeHtml(f.date || '')}</p>
+                  <div class="authority-banner"><strong>${tt('Severity', 'Sévérité', 'Schweregrad')} : ${escapeHtml(f.severity || '')}</strong> · ${tt('Restricted distribution to recipient', 'Diffusion restreinte au destinataire', 'Eingeschränkte Weitergabe an Empfänger')}</div>
+                  <p><strong>${tt('From', 'De', 'Von')} :</strong> ${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;<br><strong>${tt('To', 'À', 'An')} :</strong> ${escapeHtml(f.to || '')}<br><strong>${tt('Date', 'Date', 'Datum')} :</strong> ${escapeHtml(f.date || '')}</p>
                   <h2 style="margin-top:0;">${escapeHtml(f.subject || '')}</h2>
                   <div>${sanitizeBody(f.body)}</div>
                 </div>
@@ -432,7 +432,7 @@
               <div class="pr-title">${escapeHtml(f.title || '')}</div>
               <div class="pr-body">${sanitizeBody(f.body)}</div>
               <div class="pr-contact">
-                <strong>${tt('Press contact', 'Contact presse')}</strong><br>
+                <strong>${tt('Press contact', 'Contact presse', 'Pressekontakt')}</strong><br>
                 ${escapeHtml(f.contact_name || '')}<br>
                 ${escapeHtml(f.contact_email || '')}<br>
                 ${escapeHtml(f.contact_phone || '')}
@@ -448,7 +448,7 @@
                 <div style="display:flex; justify-content:flex-start;">
                   <div>
                     <div class="sms-bubble">${escapeHtml(f.text || '')}</div>
-                    <div class="sms-time">${tt('Today', 'Aujourd’hui')} ${escapeHtml(f.time || '')}</div>
+                    <div class="sms-time">${tt(‘Today’, ‘Aujourd’hui’, ‘Heute’)} ${escapeHtml(f.time || ‘’)}</div>
                   </div>
                 </div>
               </div>
@@ -504,10 +504,10 @@
                 </div>
                 <div class="nyt-content">${sanitizeBody(f.body)}</div>
                 <div class="nyt-hd-footer">
-                  <div class="nyt-hd-related">${tt('Related coverage', 'Articles liés')}</div>
+                  <div class="nyt-hd-related">${tt('Related coverage', 'Articles liés', 'Verwandte Berichte')}</div>
                   <div class="nyt-hd-related-items">
-                    <div class="nyt-hd-related-item">${tt('Cybersecurity experts say attacks are escalating', 'Les experts en cybersécurité alertent sur l\'escalade des attaques')}</div>
-                    <div class="nyt-hd-related-item">${tt('European regulators push for stricter cyber rules', 'Les régulateurs européens poussent pour des règles cyber plus strictes')}</div>
+                    <div class="nyt-hd-related-item">${tt('Cybersecurity experts say attacks are escalating', 'Les experts en cybersécurité alertent sur l\'escalade des attaques', 'Cybersicherheitsexperten warnen vor eskalierenden Angriffen')}</div>
+                    <div class="nyt-hd-related-item">${tt('European regulators push for stricter cyber rules', 'Les régulateurs européens poussent pour des règles cyber plus strictes', 'Europäische Regulierungsbehörden fordern strengere Cyber-Regeln')}</div>
                   </div>
                 </div>
               </div>
@@ -697,7 +697,7 @@
                       <div class="tweet-name">${escapeHtml(f.display_name || '')} ${f.verified ? verifiedBadge(f.verified_type) : ''}</div>
                       <div class="tweet-handle">${escapeHtml(f.handle || '')}</div>
                     </div>
-                    <div class="tweet-hd-follow">${tt('Follow', 'Suivre')}</div>
+                    <div class="tweet-hd-follow">${tt('Follow', 'Suivre', 'Folgen')}</div>
                   </div>
                   <div class="tweet-text">${escapeHtml(f.text || '')}</div>
                   <div class="tweet-meta">${escapeHtml(f.date || '')}</div>
@@ -715,8 +715,8 @@
               </div>
               <div class="tweet-hd-reply-box">
                 <div class="avatar" style="background:#657786; width:36px; height:36px; font-size:13px;">Y</div>
-                <div class="tweet-hd-reply-input">${tt('Post your reply', 'Publiez votre réponse')}</div>
-                <div class="tweet-hd-reply-btn">${tt('Reply', 'Répondre')}</div>
+                <div class="tweet-hd-reply-input">${tt('Post your reply', 'Publiez votre réponse', 'Antwort verfassen')}</div>
+                <div class="tweet-hd-reply-btn">${tt('Reply', 'Répondre', 'Antworten')}</div>
               </div>
             </article>
           `;
@@ -729,7 +729,7 @@
             <article class="linkedin-card hd">
               <div class="li-hd-topbar">
                 <div class="li-hd-logo">in</div>
-                <div class="li-hd-search">🔍 ${tt('Search', 'Rechercher')}</div>
+                <div class="li-hd-search">🔍 ${tt('Search', 'Rechercher', 'Suchen')}</div>
                 <div class="li-hd-nav"><span>🏠</span><span>👥</span><span>💼</span><span>💬</span><span>🔔</span></div>
               </div>
               <div class="li-header">
@@ -741,10 +741,10 @@
                 </div>
                 <div class="li-hd-dots">···</div>
               </div>
-              <div class="li-text">${escapeHtml(trimmed)}${showMore ? `<div class="li-see-more">${tt('…see more', '…voir plus')}</div>` : ''}</div>
-              <div class="li-stats"><span>${reactions}</span><span>${formatMetric(f.reactions_count)} ${tt('reactions', 'réactions')} · ${formatMetric(f.comments_count)} ${tt('comments', 'commentaires')} · ${formatMetric(f.reposts_count)} ${tt('reposts', 'republications')}</span></div>
+              <div class="li-text">${escapeHtml(trimmed)}${showMore ? `<div class="li-see-more">${tt('…see more', '…voir plus', '…mehr anzeigen')}</div>` : ''}</div>
+              <div class="li-stats"><span>${reactions}</span><span>${formatMetric(f.reactions_count)} ${tt('reactions', 'réactions', 'Reaktionen')} · ${formatMetric(f.comments_count)} ${tt('comments', 'commentaires', 'Kommentare')} · ${formatMetric(f.reposts_count)} ${tt('reposts', 'republications', 'Reposts')}</span></div>
               <div class="li-divider"></div>
-              <div class="li-actions"><strong>👍 ${tt('Like', "J'aime")}</strong><strong>💬 ${tt('Comment', 'Commenter')}</strong><strong>🔁 ${tt('Repost', 'Republier')}</strong><strong>📤 ${tt('Send', 'Envoyer')}</strong></div>
+              <div class="li-actions"><strong>👍 ${tt('Like', "J'aime", 'Gefällt mir')}</strong><strong>💬 ${tt('Comment', 'Commenter', 'Kommentieren')}</strong><strong>🔁 ${tt('Repost', 'Republier', 'Reposten')}</strong><strong>📤 ${tt('Send', 'Envoyer', 'Senden')}</strong></div>
             </article>
           `;
         },
@@ -837,7 +837,7 @@
         authorityHD(f) {
           const colors = { critical: '#b91c1c', high: '#d97706', medium: '#ca8a04' };
           const color = colors[f.severity] || colors.high;
-          const sevLabel = { critical: tt('CRITICAL', 'CRITIQUE'), high: tt('HIGH', 'ÉLEVÉE'), medium: tt('MEDIUM', 'MOYENNE') };
+          const sevLabel = { critical: tt('CRITICAL', 'CRITIQUE', 'KRITISCH'), high: tt('HIGH', 'ÉLEVÉE', 'HOCH'), medium: tt('MEDIUM', 'MOYENNE', 'MITTEL') };
           return `
             <article class="authority-email hd">
               <div class="authority-strip" style="background:${color};"></div>
@@ -847,26 +847,26 @@
                     <div class="rf-logo"></div>
                     <div>
                       <strong>ANSSI · CERT-FR</strong><br>
-                      <span class="subtle">${tt('Official cybersecurity alert', 'Alerte officielle cybersécurité')}</span>
+                      <span class="subtle">${tt('Official cybersecurity alert', 'Alerte officielle cybersécurité', 'Offizielle Cybersicherheitswarnung')}</span>
                     </div>
                   </div>
                   <div class="mono">${escapeHtml(f.reference || '')}</div>
                 </div>
                 <div class="authority-hd-severity" style="background:${color};">
                   <span class="authority-hd-severity-label">${sevLabel[f.severity] || 'HIGH'}</span>
-                  <span>${tt('Severity Level', 'Niveau de sévérité')}</span>
+                  <span>${tt('Severity Level', 'Niveau de sévérité', 'Schweregrad')}</span>
                 </div>
                 <div class="authority-content">
-                  <div class="authority-banner"><strong>${tt('Severity', 'Sévérité')} : ${escapeHtml(f.severity || '')}</strong> · ${tt('Restricted distribution to recipient', 'Diffusion restreinte au destinataire')}</div>
+                  <div class="authority-banner"><strong>${tt('Severity', 'Sévérité', 'Schweregrad')} : ${escapeHtml(f.severity || '')}</strong> · ${tt('Restricted distribution to recipient', 'Diffusion restreinte au destinataire', 'Eingeschränkte Weitergabe an Empfänger')}</div>
                   <div class="authority-hd-meta">
-                    <div><strong>${tt('From', 'De')} :</strong> ${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;</div>
-                    <div><strong>${tt('To', 'À')} :</strong> ${escapeHtml(f.to || '')}</div>
-                    <div><strong>${tt('Date', 'Date')} :</strong> ${escapeHtml(f.date || '')}</div>
-                    <div><strong>${tt('Reference', 'Référence')} :</strong> ${escapeHtml(f.reference || '')}</div>
+                    <div><strong>${tt('From', 'De', 'Von')} :</strong> ${escapeHtml(f.from_name || '')} &lt;${escapeHtml(f.from_email || '')}&gt;</div>
+                    <div><strong>${tt('To', 'À', 'An')} :</strong> ${escapeHtml(f.to || '')}</div>
+                    <div><strong>${tt('Date', 'Date', 'Datum')} :</strong> ${escapeHtml(f.date || '')}</div>
+                    <div><strong>${tt('Reference', 'Référence', 'Referenz')} :</strong> ${escapeHtml(f.reference || '')}</div>
                   </div>
                   <h2 style="margin-top:0;">${escapeHtml(f.subject || '')}</h2>
                   <div>${sanitizeBody(f.body)}</div>
-                  <div class="authority-hd-footer">${tt('This alert is issued by CERT-FR as part of coordinated response operations.', 'Cette alerte est émise par le CERT-FR dans le cadre des opérations de réponse coordonnée.')}</div>
+                  <div class="authority-hd-footer">${tt('This alert is issued by CERT-FR as part of coordinated response operations.', 'Cette alerte est émise par le CERT-FR dans le cadre des opérations de réponse coordonnée.', 'Diese Warnung wird vom CERT-FR im Rahmen koordinierter Reaktionsoperationen herausgegeben.')}</div>
                 </div>
               </div>
             </article>
@@ -877,19 +877,19 @@
             <article class="press-release hd">
               <div class="pr-hd-header">
                 ${f.has_logo && f.logo_image ? `<img class="pr-logo-img" src="${f.logo_image}" alt="${escapeAttribute(f.logo_text || '')}" />` : `<div class="pr-logo" style="color:${escapeAttribute(f.logo_color || '#003366')};">${escapeHtml(f.logo_text || '')}</div>`}
-                <div class="pr-hd-badge">${tt('PRESS RELEASE', 'COMMUNIQUÉ DE PRESSE')}</div>
+                <div class="pr-hd-badge">${tt('PRESS RELEASE', 'COMMUNIQUÉ DE PRESSE', 'PRESSEMITTEILUNG')}</div>
               </div>
               <div class="pr-meta">${escapeHtml(f.date || '')}</div>
               <div class="pr-title">${escapeHtml(f.title || '')}</div>
               <div class="pr-body">${sanitizeBody(f.body)}</div>
               <div class="pr-hd-divider"></div>
               <div class="pr-contact">
-                <strong>${tt('Press contact', 'Contact presse')}</strong><br>
+                <strong>${tt('Press contact', 'Contact presse', 'Pressekontakt')}</strong><br>
                 ${escapeHtml(f.contact_name || '')}<br>
                 ${escapeHtml(f.contact_email || '')}<br>
                 ${escapeHtml(f.contact_phone || '')}
               </div>
-              <div class="pr-hd-legal">${tt('This press release may contain forward-looking statements.', 'Ce communiqué peut contenir des déclarations prospectives.')}</div>
+              <div class="pr-hd-legal">${tt('This press release may contain forward-looking statements.', 'Ce communiqué peut contenir des déclarations prospectives.', 'Diese Pressemitteilung kann zukunftsgerichtete Aussagen enthalten.')}</div>
             </article>
           `;
         },
@@ -909,7 +909,7 @@
                 <span class="sms-hd-info">ⓘ</span>
               </div>
               <div class="sms-screen">
-                <div class="sms-hd-date">${tt('Today', 'Aujourd\'hui')}</div>
+                <div class="sms-hd-date">${tt('Today', 'Aujourd\'hui', 'Heute')}</div>
                 <div style="display:flex; justify-content:flex-start;">
                   <div>
                     <div class="sms-bubble">${escapeHtml(f.text || '')}</div>
@@ -918,7 +918,7 @@
                 </div>
               </div>
               <div class="sms-hd-input">
-                <div class="sms-hd-input-field">${tt('iMessage', 'iMessage')}</div>
+                <div class="sms-hd-input-field">${tt('iMessage', 'iMessage', 'iMessage')}</div>
                 <span class="sms-hd-send">↑</span>
               </div>
             </article>
@@ -931,26 +931,26 @@
                 <div class="outlook-hd-ribbon-tabs"><span class="active">Home</span><span>Send / Receive</span><span>Folder</span><span>View</span></div>
                 <div class="outlook-hd-ribbon-actions">
                   <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre')}</div>
-                    <div class="outlook-hd-ribbon-btn">${iconForward()} ${tt('Forward', 'Transférer')}</div>
+                    <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre', 'Antworten')}</div>
+                    <div class="outlook-hd-ribbon-btn">${iconForward()} ${tt('Forward', 'Transférer', 'Weiterleiten')}</div>
                   </div>
                   <div class="outlook-hd-ribbon-sep"></div>
                   <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn">🗑️ ${tt('Delete', 'Supprimer')}</div>
-                    <div class="outlook-hd-ribbon-btn">📁 ${tt('Move', 'Déplacer')}</div>
+                    <div class="outlook-hd-ribbon-btn">🗑️ ${tt('Delete', 'Supprimer', 'Löschen')}</div>
+                    <div class="outlook-hd-ribbon-btn">📁 ${tt('Move', 'Déplacer', 'Verschieben')}</div>
                   </div>
                 </div>
               </div>
               <div class="outlook-hd-layout">
                 <div class="outlook-hd-sidebar">
-                  <div class="outlook-hd-folder active">📥 ${tt('Inbox', 'Boîte de réception')} <span class="outlook-hd-badge">3</span></div>
-                  <div class="outlook-hd-folder">📤 ${tt('Sent Items', 'Éléments envoyés')}</div>
-                  <div class="outlook-hd-folder">📝 ${tt('Drafts', 'Brouillons')}</div>
-                  <div class="outlook-hd-folder">🗑️ ${tt('Deleted Items', 'Éléments supprimés')}</div>
-                  <div class="outlook-hd-folder">⚠️ ${tt('Junk Email', 'Courrier indésirable')}</div>
+                  <div class="outlook-hd-folder active">📥 ${tt('Inbox', 'Boîte de réception', 'Posteingang')} <span class="outlook-hd-badge">3</span></div>
+                  <div class="outlook-hd-folder">📤 ${tt('Sent Items', 'Éléments envoyés', 'Gesendete Elemente')}</div>
+                  <div class="outlook-hd-folder">📝 ${tt('Drafts', 'Brouillons', 'Entwürfe')}</div>
+                  <div class="outlook-hd-folder">🗑️ ${tt('Deleted Items', 'Éléments supprimés', 'Gelöschte Elemente')}</div>
+                  <div class="outlook-hd-folder">⚠️ ${tt('Junk Email', 'Courrier indésirable', 'Junk-E-Mail')}</div>
                 </div>
                 <div class="outlook-hd-content">
-                  <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.')}</div>
+                  <div class="external-email-warning">⚠️ ${tt('This message was sent from outside the organization. Be careful with links and attachments.', 'Ce message provient de l\'extérieur de l\'organisation. Soyez prudent avec les liens et pièces jointes.', 'Diese Nachricht wurde von außerhalb der Organisation gesendet. Seien Sie vorsichtig mit Links und Anhängen.')}</div>
                   <div class="outlook-hd-header">
                     <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
                       ${f.importance === 'high' ? '<span class="importance-dot">!</span>' : ''}
@@ -959,8 +959,8 @@
                     <div class="outlook-hd-sender-row">
                       <div class="outlook-hd-avatar" style="background:${escapeAttribute(f.avatar_color || '#e67e22')};">${escapeHtml((f.from_name || 'U').charAt(0).toUpperCase())}</div>
                       <div class="outlook-hd-sender-info">
-                        <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span> <span class="external-badge">${tt('External', 'Externe')}</span></div>
-                        <div class="outlook-hd-recipients">${tt('To', 'À')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
+                        <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span> <span class="external-badge">${tt('External', 'Externe', 'Extern')}</span></div>
+                        <div class="outlook-hd-recipients">${tt('To', 'À', 'An')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
                       </div>
                       <div class="outlook-hd-date">${escapeHtml(f.date || '')}</div>
                     </div>
@@ -982,17 +982,17 @@
               <div class="memo-hd-stripe" style="background:${classifColor};"></div>
               <div class="memo-hd-content">
                 <div class="memo-header">
-                  <div class="memo-title">${tt('INTERNAL MEMO', 'NOTE INTERNE')}</div>
+                  <div class="memo-title">${tt('INTERNAL MEMO', 'NOTE INTERNE', 'INTERNES MEMO')}</div>
                   ${f.classification ? `<div class="memo-classification" style="background:${classifColor};">${escapeHtml(f.classification)}</div>` : ''}
                 </div>
                 <div class="memo-meta">
-                  <div class="memo-row"><span>${tt('From', 'De')}</span><strong>${escapeHtml(f.from_name || '')}</strong></div>
-                  <div class="memo-row"><span>${tt('To', 'À')}</span><span>${escapeHtml(f.to || '')}</span></div>
-                  <div class="memo-row"><span>${tt('Date', 'Date')}</span><span>${escapeHtml(f.date || '')}</span></div>
-                  <div class="memo-row"><span>${tt('Subject', 'Objet')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
+                  <div class="memo-row"><span>${tt('From', 'De', 'Von')}</span><strong>${escapeHtml(f.from_name || '')}</strong></div>
+                  <div class="memo-row"><span>${tt('To', 'À', 'An')}</span><span>${escapeHtml(f.to || '')}</span></div>
+                  <div class="memo-row"><span>${tt('Date', 'Date', 'Datum')}</span><span>${escapeHtml(f.date || '')}</span></div>
+                  <div class="memo-row"><span>${tt('Subject', 'Objet', 'Betreff')}</span><strong>${escapeHtml(f.subject || '')}</strong></div>
                 </div>
                 <div class="memo-body">${sanitizeBody(f.body)}</div>
-                <div class="memo-hd-footer">${tt('This document is for internal use only. Distribution outside the organization is strictly prohibited.', 'Ce document est à usage interne uniquement. Toute diffusion en dehors de l\'organisation est strictement interdite.')}</div>
+                <div class="memo-hd-footer">${tt('This document is for internal use only. Distribution outside the organization is strictly prohibited.', 'Ce document est à usage interne uniquement. Toute diffusion en dehors de l\'organisation est strictement interdite.', 'Dieses Dokument ist nur für den internen Gebrauch bestimmt. Die Weitergabe außerhalb der Organisation ist strengstens untersagt.')}</div>
               </div>
             </article>
           `;
@@ -1004,24 +1004,24 @@
                 <div class="outlook-hd-ribbon-tabs"><span class="active">Home</span><span>Send / Receive</span><span>Folder</span><span>View</span></div>
                 <div class="outlook-hd-ribbon-actions">
                   <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre')}</div>
-                    <div class="outlook-hd-ribbon-btn">${iconReplyAll()} ${tt('Reply All', 'Rép. tous')}</div>
-                    <div class="outlook-hd-ribbon-btn">${iconForward()} ${tt('Forward', 'Transférer')}</div>
+                    <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre', 'Antworten')}</div>
+                    <div class="outlook-hd-ribbon-btn">${iconReplyAll()} ${tt('Reply All', 'Rép. tous', 'Allen antworten')}</div>
+                    <div class="outlook-hd-ribbon-btn">${iconForward()} ${tt('Forward', 'Transférer', 'Weiterleiten')}</div>
                   </div>
                   <div class="outlook-hd-ribbon-sep"></div>
                   <div class="outlook-hd-ribbon-group">
-                    <div class="outlook-hd-ribbon-btn">🗑️ ${tt('Delete', 'Supprimer')}</div>
-                    <div class="outlook-hd-ribbon-btn">📁 ${tt('Move', 'Déplacer')}</div>
+                    <div class="outlook-hd-ribbon-btn">🗑️ ${tt('Delete', 'Supprimer', 'Löschen')}</div>
+                    <div class="outlook-hd-ribbon-btn">📁 ${tt('Move', 'Déplacer', 'Verschieben')}</div>
                   </div>
                 </div>
               </div>
               <div class="outlook-hd-layout">
                 <div class="outlook-hd-sidebar">
-                  <div class="outlook-hd-folder active">📥 ${tt('Inbox', 'Boîte de réception')} <span class="outlook-hd-badge">3</span></div>
-                  <div class="outlook-hd-folder">📤 ${tt('Sent Items', 'Éléments envoyés')}</div>
-                  <div class="outlook-hd-folder">📝 ${tt('Drafts', 'Brouillons')}</div>
-                  <div class="outlook-hd-folder">🗑️ ${tt('Deleted Items', 'Éléments supprimés')}</div>
-                  <div class="outlook-hd-folder">⚠️ ${tt('Junk Email', 'Courrier indésirable')}</div>
+                  <div class="outlook-hd-folder active">📥 ${tt('Inbox', 'Boîte de réception', 'Posteingang')} <span class="outlook-hd-badge">3</span></div>
+                  <div class="outlook-hd-folder">📤 ${tt('Sent Items', 'Éléments envoyés', 'Gesendete Elemente')}</div>
+                  <div class="outlook-hd-folder">📝 ${tt('Drafts', 'Brouillons', 'Entwürfe')}</div>
+                  <div class="outlook-hd-folder">🗑️ ${tt('Deleted Items', 'Éléments supprimés', 'Gelöschte Elemente')}</div>
+                  <div class="outlook-hd-folder">⚠️ ${tt('Junk Email', 'Courrier indésirable', 'Junk-E-Mail')}</div>
                 </div>
                 <div class="outlook-hd-content">
                   <div class="outlook-hd-header">
@@ -1033,7 +1033,7 @@
                       <div class="outlook-hd-avatar" style="background:${escapeAttribute(f.avatar_color || '#0078d4')};">${escapeHtml((f.from_name || 'U').charAt(0).toUpperCase())}</div>
                       <div class="outlook-hd-sender-info">
                         <div><strong>${escapeHtml(f.from_name || '')}</strong> <span class="subtle">&lt;${escapeHtml(f.from_email || '')}&gt;</span></div>
-                        <div class="outlook-hd-recipients">${tt('To', 'À')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
+                        <div class="outlook-hd-recipients">${tt('To', 'À', 'An')}: ${escapeHtml(f.to || '')}${f.cc ? ` · Cc: ${escapeHtml(f.cc)}` : ''}</div>
                       </div>
                       <div class="outlook-hd-date">${escapeHtml(f.date || '')}</div>
                     </div>

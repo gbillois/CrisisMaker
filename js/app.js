@@ -88,7 +88,7 @@
             const file = event.target.files?.[0];
             if (!file) { resolve(); return; }
             if (file.size > 2 * 1024 * 1024) {
-              pushToast(tt('Template file too large (max 2 MB).', 'Fichier template trop volumineux (max 2 Mo).'), 'error');
+              pushToast(tt('Template file too large (max 2 MB).', 'Fichier template trop volumineux (max 2 Mo).', 'Vorlagendatei zu groß (max. 2 MB).'), 'error');
               resolve(); return;
             }
             try {
@@ -118,15 +118,15 @@
               }
               const existing = appState.scenario.custom_templates || [];
               if (existing.some(t => t.template_id === data.template_id)) {
-                pushToast(tt(`A custom template with id "${data.template_id}" already exists. Remove it first.`, `Un template personnalisé avec l'id "${data.template_id}" existe déjà. Supprimez-le d'abord.`), 'error');
+                pushToast(tt(`A custom template with id "${data.template_id}" already exists. Remove it first.`, `Un template personnalisé avec l'id "${data.template_id}" existe déjà. Supprimez-le d'abord.`, `Eine benutzerdefinierte Vorlage mit der ID "${data.template_id}" existiert bereits. Bitte zuerst entfernen.`), 'error');
                 resolve(); return;
               }
               appState.scenario.custom_templates = [...existing, data];
               saveLocal();
               App.render();
-              pushToast(tt(`Template "${data.name || data.label}" imported.`, `Template "${data.name || data.label}" importé.`), 'success');
+              pushToast(tt(`Template "${data.name || data.label}" imported.`, `Template "${data.name || data.label}" importé.`, `Vorlage „${data.name || data.label}" importiert.`), 'success');
             } catch (err) {
-              pushToast(tt(`Import failed: ${err.message}`, `Import échoué : ${err.message}`), 'error');
+              pushToast(tt(`Import failed: ${err.message}`, `Import échoué : ${err.message}`, `Import fehlgeschlagen: ${err.message}`), 'error');
             }
             resolve();
           }, { once: true });
@@ -288,7 +288,8 @@
       function confirmClearData() {
         return window.confirm(tt(
           'Clear all current scenario data? This will remove actors, stimuli, and browser autosave for this project.',
-          'Effacer toutes les données du scénario en cours ? Cela supprimera les acteurs, les stimuli et la sauvegarde navigateur de ce projet.'
+          'Effacer toutes les données du scénario en cours ? Cela supprimera les acteurs, les stimuli et la sauvegarde navigateur de ce projet.',
+          'Alle aktuellen Szenariodaten löschen? Dadurch werden Akteure, Stimuli und die Browser-Autospeicherung für dieses Projekt entfernt.'
         ));
       }
 
@@ -304,7 +305,7 @@
         _fileHandle = null;
         saveLocal(false);
         App.render();
-        pushToast(tt('Scenario data cleared.', 'Données du scénario effacées.'), 'success');
+        pushToast(tt('Scenario data cleared.', 'Données du scénario effacées.', 'Szenariodaten gelöscht.'), 'success');
       }
 
       async function handleAction(event) {
@@ -332,7 +333,7 @@
             case 'save-file': {
               if (_fileHandle) {
                 await writeToFile();
-                pushToast(tt('Saved to file.', 'Sauvegardé dans le fichier.'), 'success');
+                pushToast(tt('Saved to file.', 'Sauvegardé dans le fichier.', 'In Datei gespeichert.'), 'success');
               } else {
                 await saveToFileFirstTime();
                 App.render();
@@ -347,7 +348,7 @@
               appState.selectedStimulusId = null;
               appState.route = 'project';
               App.render();
-              pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.'), 'success');
+              pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.', 'Neues Szenario initialisiert.'), 'success');
               break;
             }
             case 'load-example': {
@@ -355,7 +356,7 @@
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
               appState.route = 'project';
               App.render();
-              pushToast(tt('Example scenario loaded.', 'Scénario exemple chargé.'), 'success');
+              pushToast(tt('Example scenario loaded.', 'Scénario exemple chargé.', 'Beispielszenario geladen.'), 'success');
               break;
             }
             case 'save-json':
@@ -382,7 +383,7 @@
               delete CHANNEL_META[tplId];
               saveLocal();
               App.render();
-              pushToast(tt('Custom template removed.', 'Template personnalisé supprimé.'), 'success');
+              pushToast(tt('Custom template removed.', 'Template personnalisé supprimé.', 'Benutzerdefinierte Vorlage entfernt.'), 'success');
               break;
             }
             case 'clear-data':
@@ -424,7 +425,7 @@
               const provider = appState.scenario.settings.ai_provider;
               appState.connectionTest = {
                 status: 'testing',
-                message: tt('Checking the AI connection…', 'Vérification de la connexion IA…'),
+                message: tt('Checking the AI connection…', 'Vérification de la connexion IA…', 'KI-Verbindung wird geprüft…'),
                 checkedAt: null,
                 provider
               };
@@ -433,16 +434,16 @@
                 const result = await AITextGenerator.testConnection();
                 appState.connectionTest = {
                   status: 'success',
-                  message: result?.message || tt('Connection confirmed. The provider returned a valid response.', 'Connexion confirmée. Le fournisseur a renvoyé une réponse valide.'),
+                  message: result?.message || tt('Connection confirmed. The provider returned a valid response.', 'Connexion confirmée. Le fournisseur a renvoyé une réponse valide.', 'Verbindung bestätigt. Der Anbieter hat eine gültige Antwort zurückgegeben.'),
                   checkedAt: new Date().toISOString(),
                   provider
                 };
                 App.render();
-                pushToast(tt('AI connection validated.', 'Connexion IA validée.'), 'success');
+                pushToast(tt('AI connection validated.', 'Connexion IA validée.', 'KI-Verbindung validiert.'), 'success');
               } catch (error) {
                 appState.connectionTest = {
                   status: 'error',
-                  message: error.message || tt('The AI connection test failed.', 'Le test de connexion IA a échoué.'),
+                  message: error.message || tt('The AI connection test failed.', 'Le test de connexion IA a échoué.', 'Der KI-Verbindungstest ist fehlgeschlagen.'),
                   checkedAt: new Date().toISOString(),
                   provider
                 };
@@ -676,7 +677,7 @@
               pending.forEach((actor) => addActorFromLLM(actor));
               appState.llmState.actors.pendingActors = null;
               App.render();
-              pushToast(tt('All actors added.', 'Tous les acteurs ajoutés.'), 'success');
+              pushToast(tt('All actors added.', 'Tous les acteurs ajoutés.', 'Alle Akteure hinzugefügt.'), 'success');
               break;
             }
             case 'llm-actor-ignore-all': {
@@ -687,7 +688,7 @@
             // ─── Chronogram Import actions ───
             case 'import-chronogram-ia': {
               if (!isLLMAvailable()) {
-                pushToast(tt('Configure an API key in settings first.', 'Configurez une clé API dans les paramètres d\'abord.'), 'error');
+                pushToast(tt('Configure an API key in settings first.', 'Configurez une clé API dans les paramètres d\'abord.', 'Bitte zuerst einen API-Schlüssel in den Einstellungen konfigurieren.'), 'error');
                 break;
               }
               const input = document.createElement('input');
@@ -697,7 +698,7 @@
                 const file = input.files[0];
                 if (!file) return;
                 try {
-                  if (typeof XLSX === 'undefined') throw new Error(tt('SheetJS library not loaded. Check your internet connection.', 'Bibliothèque SheetJS non chargée. Vérifiez votre connexion internet.'));
+                  if (typeof XLSX === 'undefined') throw new Error(tt('SheetJS library not loaded. Check your internet connection.', 'Bibliothèque SheetJS non chargée. Vérifiez votre connexion internet.', 'SheetJS-Bibliothek nicht geladen. Bitte Internetverbindung prüfen.'));
                   const arrayBuffer = await file.arrayBuffer();
                   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                   const excelData = ChronogramImport.prepareExcelForLLM(workbook);
@@ -719,7 +720,7 @@
                   };
                   App.render();
                 } catch (err) {
-                  pushToast(err.message || tt('Failed to read Excel file.', 'Impossible de lire le fichier Excel.'), 'error');
+                  pushToast(err.message || tt('Failed to read Excel file.', 'Impossible de lire le fichier Excel.', 'Excel-Datei konnte nicht gelesen werden.'), 'error');
                 }
               });
               input.click();
@@ -779,7 +780,7 @@
                       const indicatorText = document.getElementById('chronogram-stream-indicator-text');
                       if (indicatorText) {
                         const chars = (last.responseText || '').length;
-                        indicatorText.textContent = `${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${chars.toLocaleString()} ${tt('chars', 'car.')}`;
+                        indicatorText.textContent = `${tt('Receiving LLM response', 'Réception de la réponse LLM', 'LLM-Antwort wird empfangen')} — ${chars.toLocaleString()} ${tt('chars', 'car.', 'Zeichen')}`;
                       }
                     } else if (entry.type === 'done' || entry.type === 'error') {
                       const last = logs[logs.length - 1];
@@ -808,7 +809,8 @@
                     App.render();
                     pushToast(tt(
                       `AI import complete: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors created.`,
-                      `Import IA terminé : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs créés.`
+                      `Import IA terminé : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs créés.`,
+                      `KI-Import abgeschlossen: ${summary.stimuli_created} Stimuli, ${summary.actors_created} Akteure erstellt.`
                     ), 'success');
                   } else if (autonomy === 'fully_validated') {
                     // Build validation queue: actors first, then stimuli
@@ -845,14 +847,15 @@
               App.render();
               pushToast(tt(
                 `Import applied: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors.`,
-                `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`
+                `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`,
+                `Import angewendet: ${summary.stimuli_created} Stimuli, ${summary.actors_created} Akteure.`
               ), 'success');
               break;
             }
             case 'chronogram-reject-all': {
               appState.chronogramImport = null;
               App.render();
-              pushToast(tt('Import cancelled.', 'Import annulé.'), 'info');
+              pushToast(tt('Import cancelled.', 'Import annulé.', 'Import abgebrochen.'), 'info');
               break;
             }
             case 'chronogram-modify': {
@@ -865,7 +868,8 @@
               App.render();
               pushToast(tt(
                 `${summary.stimuli_created} stimuli imported as drafts. Review them in the Library.`,
-                `${summary.stimuli_created} stimuli importés en brouillon. Vérifiez-les dans la Bibliothèque.`
+                `${summary.stimuli_created} stimuli importés en brouillon. Vérifiez-les dans la Bibliothèque.`,
+                `${summary.stimuli_created} Stimuli als Entwürfe importiert. In der Bibliothek überprüfen.`
               ), 'success');
               break;
             }
@@ -910,11 +914,12 @@
               App.render();
               pushToast(tt(
                 `Import applied: ${summary.stimuli_created} stimuli, ${summary.actors_created} actors.`,
-                `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`
+                `Import appliqué : ${summary.stimuli_created} stimuli, ${summary.actors_created} acteurs.`,
+                `Import angewendet: ${summary.stimuli_created} Stimuli, ${summary.actors_created} Akteure.`
               ), 'success');
               break;
             }
-            default: console.warn(tt('Unhandled action', 'Action non gérée'), action);
+            default: console.warn(tt('Unhandled action', 'Action non gérée', 'Nicht behandelte Aktion'), action);
           }
         } catch (error) {
           console.error(error);
@@ -934,19 +939,19 @@
       }
 
       function addActor() {
-        appState.scenario.actors.push({ id: uid('actor'), name: tt('New actor', 'Nouvel acteur'), role: 'internal', organization: appState.scenario.client.name, title: tt('Title / role', 'Titre / fonction'), language: appState.scenario.client.language || 'en', avatar_initials: 'NA', avatar_url: '' });
+        appState.scenario.actors.push({ id: uid('actor'), name: tt('New actor', 'Nouvel acteur', 'Neuer Akteur'), role: 'internal', organization: appState.scenario.client.name, title: tt('Title / role', 'Titre / fonction', 'Titel / Funktion'), language: appState.scenario.client.language || 'en', avatar_initials: 'NA', avatar_url: '' });
         App.render();
       }
 
       function duplicateActor(actorId) {
         const actor = getActor(actorId);
         if (!actor) return;
-        appState.scenario.actors.push({ ...deepClone(actor), id: uid('actor'), name: `${actor.name} ${tt('(copy)', '(copie)')}` });
+        appState.scenario.actors.push({ ...deepClone(actor), id: uid('actor'), name: `${actor.name} ${tt('(copy)', '(copie)', '(Kopieren)')}` });
         App.render();
       }
 
       function deleteActor(actorId) {
-        if (appState.scenario.actors.length === 1) throw new Error(tt('At least one actor is required.', 'Au moins un acteur est requis.'));
+        if (appState.scenario.actors.length === 1) throw new Error(tt('At least one actor is required.', 'Au moins un acteur est requis.', 'Mindestens ein Akteur ist erforderlich.'));
         appState.scenario.actors = appState.scenario.actors.filter((actor) => actor.id !== actorId);
         appState.scenario.stimuli.forEach((stimulus) => {
           if (stimulus.actor_id === actorId) stimulus.actor_id = appState.scenario.actors[0].id;
@@ -963,7 +968,7 @@
         ];
         additions.forEach((item) => appState.scenario.actors.push({ id: uid('actor'), avatar_initials: initialsFromName(item.name), avatar_url: '', ...item, organization: item.organization.replace('Client', clientName) }));
         App.render();
-        pushToast(tt('Sample actors added.', 'Acteurs types ajoutés.'), 'success');
+        pushToast(tt('Sample actors added.', 'Acteurs types ajoutés.', 'Beispielakteure hinzugefügt.'), 'success');
       }
 
       function addStimulus() {
@@ -991,7 +996,7 @@
         if (requireConfirm) {
           const s = getStimulus(stimulusId);
           const label = s ? (s.fields.subject || s.fields.headline || s.fields.title || channelLabel(s.channel)) : '';
-          const msg = tt(`Delete this stimulus?\n"${label}"`, `Supprimer ce stimulus ?\n"${label}"`);
+          const msg = tt(`Delete this stimulus?\n"${label}"`, `Supprimer ce stimulus ?\n"${label}"`, `Diesen Stimulus löschen?\n„${label}"`);
           if (!window.confirm(msg)) return;
         }
         appState.scenario.stimuli = appState.scenario.stimuli.filter((stimulus) => stimulus.id !== stimulusId);
@@ -1009,7 +1014,7 @@
         const stimulus = getStimulus(stimulusId);
         if (!stimulus) return;
         if (stimulus.generation_mode === 'manual') return; // respect manual mode
-        pushToast(tt('Generation in progress…', 'Génération en cours…'), 'success');
+        pushToast(tt('Generation in progress…', 'Génération en cours…', 'Generierung läuft…'), 'success');
         const guided = stimulus.generation_mode === 'ai_guided' ? stimulus.generation_prompt : null;
         const generated = await AITextGenerator.generateForStimulus(stimulus, fieldName, guided);
         // Build the new fields state (merge generated into current for field-level regen)
@@ -1024,8 +1029,8 @@
         }
         // saveStimulus pushes current fields to history, then sets fields to newFields
         saveStimulus(stimulus, newFields, fieldName
-          ? tt(`AI: regenerated ${fieldName}`, `IA : régénération de ${fieldName}`)
-          : tt('AI: full generation', 'IA : génération complète'));
+          ? tt(`AI: regenerated ${fieldName}`, `IA : régénération de ${fieldName}`, `KI: ${fieldName} neu generiert`)
+          : tt('AI: full generation', 'IA : génération complète', 'KI: vollständige Generierung'));
         stimulus.status = 'ready';
         App.render();
       }
@@ -1076,12 +1081,12 @@
 
       function renderProviderSummary(settings) {
         if (settings.ai_provider === 'azure_openai') {
-          return `Azure OpenAI / ${escapeHtml(settings.azure_deployment || tt('deployment not set', 'déploiement non défini'))}`;
+          return `Azure OpenAI / ${escapeHtml(settings.azure_deployment || tt('deployment not set', 'déploiement non défini', 'Deployment nicht festgelegt'))}`;
         }
         if (settings.ai_provider === 'openai') {
-          return `OpenAI / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini'))}`;
+          return `OpenAI / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
         }
-        return `Anthropic / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini'))}`;
+        return `Anthropic / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
       }
 
       function setByPath(target, path, value) {
@@ -1292,7 +1297,7 @@
       function addActorFromLLM(actorData) {
         appState.scenario.actors.push({
           id: uid('actor'),
-          name: actorData.name || tt('New actor', 'Nouvel acteur'),
+          name: actorData.name || tt('New actor', 'Nouvel acteur', 'Neuer Akteur'),
           role: actorData.role || 'internal',
           organization: actorData.organization || appState.scenario.client.name,
           title: actorData.title || '',
@@ -1346,7 +1351,7 @@
         });
         appState.selectedStimulusId = appState.scenario.stimuli[appState.scenario.stimuli.length - 1]?.id || null;
         if (validConfigs.length > 0) {
-          pushToast(tt(`${validConfigs.length} stimuli added to timeline.`, `${validConfigs.length} stimuli ajoutés à la timeline.`), 'success');
+          pushToast(tt(`${validConfigs.length} stimuli added to timeline.`, `${validConfigs.length} stimuli ajoutés à la timeline.`, `${validConfigs.length} Stimuli zum Zeitplan hinzugefügt.`), 'success');
         }
         return validConfigs.length;
       }

@@ -27,66 +27,68 @@
           <div class="modal-backdrop">
             <div class="modal-box chronogram-modal" >
               <div class="modal-header">
-                <h3>${tt('AI Import - Chronogram', 'Import IA - Chronogramme')}</h3>
+                <h3>${tt('AI Import - Chronogram', 'Import IA - Chronogramme', 'KI-Import - Chronogramm')}</h3>
                 <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
               </div>
               <div class="chronogram-modal-body">
                 <div class="chronogram-info-grid">
-                  <div><strong>${tt('File', 'Fichier')} :</strong> ${escapeHtml(state.fileName)}</div>
-                  <div><strong>${tt('Sheets detected', 'Feuilles détectées')} :</strong> ${ed.sheet_names.length}</div>
-                  <div><strong>${tt('Estimated data rows', 'Lignes de données estimées')} :</strong> ~${totalRows}</div>
+                  <div><strong>${tt('File', 'Fichier', 'Datei')} :</strong> ${escapeHtml(state.fileName)}</div>
+                  <div><strong>${tt('Sheets detected', 'Feuilles détectées', 'Erkannte Blätter')} :</strong> ${ed.sheet_names.length}</div>
+                  <div><strong>${tt('Estimated data rows', 'Lignes de données estimées', 'Geschätzte Datenzeilen')} :</strong> ~${totalRows}</div>
                 </div>
 
                 ${hasExisting ? `<div class="chronogram-warning-banner">
                   ⚠️ ${tt(
                     'This project already has stimuli and/or actors. Existing imported content will be replaced, new content will be added.',
-                    'Ce projet contient déjà des stimuli et/ou des acteurs. Le contenu importé existant sera remplacé, le nouveau contenu sera ajouté.'
+                    'Ce projet contient déjà des stimuli et/ou des acteurs. Le contenu importé existant sera remplacé, le nouveau contenu sera ajouté.',
+                    'Dieses Projekt enthält bereits Stimuli und/oder Akteure. Vorhandene importierte Inhalte werden ersetzt, neue Inhalte werden hinzugefügt.'
                   )}
                 </div>` : ''}
 
                 <div class="chronogram-options">
-                  <h4>${tt('Options', 'Options')}</h4>
+                  <h4>${tt('Options', 'Options', 'Optionen')}</h4>
                   <label class="chronogram-checkbox">
                     <input type="checkbox" data-chrono-option="createActors" ${state.options.createActors ? 'checked' : ''}>
-                    ${tt('Automatically create actors', 'Créer automatiquement les acteurs')}
+                    ${tt('Automatically create actors', 'Créer automatiquement les acteurs', 'Akteure automatisch erstellen')}
                   </label>
                   <label class="chronogram-checkbox">
                     <input type="checkbox" data-chrono-option="detectImplicit" ${state.options.detectImplicit ? 'checked' : ''}>
-                    ${tt('Detect and create implicit stimuli (attachments, social posts...)', 'Détecter et créer les stimuli implicites (PJ, posts réseaux sociaux...)')}
+                    ${tt('Detect and create implicit stimuli (attachments, social posts...)', 'Détecter et créer les stimuli implicites (PJ, posts réseaux sociaux...)', 'Implizite Stimuli erkennen und erstellen (Anhänge, Social-Media-Posts...)')}
                   </label>
                 </div>
 
                 <div class="chronogram-field">
-                  <label>${tt('Main sheet (auto-detected)', 'Feuille principale (auto-détectée)')} :</label>
+                  <label>${tt('Main sheet (auto-detected)', 'Feuille principale (auto-détectée)', 'Hauptblatt (automatisch erkannt)')} :</label>
                   <select data-chrono-option="mainSheet">
-                    ${ed.sheet_names.map(name => `<option value="${escapeAttribute(name)}" ${name === detectedSheet ? 'selected' : ''}>${escapeHtml(name)} (${ed.sheets[name].row_count} ${tt('rows', 'lignes')})</option>`).join('')}
+                    ${ed.sheet_names.map(name => `<option value="${escapeAttribute(name)}" ${name === detectedSheet ? 'selected' : ''}>${escapeHtml(name)} (${ed.sheets[name].row_count} ${tt('rows', 'lignes', 'Zeilen')})</option>`).join('')}
                   </select>
                 </div>
 
                 <div class="chronogram-field">
-                  <label>${tt('Additional context for the LLM (optional)', 'Contexte additionnel pour le LLM (optionnel)')} :</label>
+                  <label>${tt('Additional context for the LLM (optional)', 'Contexte additionnel pour le LLM (optionnel)', 'Zusätzlicher Kontext für das LLM (optional)')} :</label>
                   <textarea data-chrono-option="userContext" rows="3" placeholder="${escapeAttribute(tt(
                     'E.g. "The client is a French bank listed on CAC40. The exercise is about a ransomware via EDR supply chain."',
-                    'Ex: "Le client est une banque française cotée au CAC40. L\'exercice porte sur un ransomware via supply chain EDR."'
+                    'Ex: "Le client est une banque française cotée au CAC40. L\'exercice porte sur un ransomware via supply chain EDR."',
+                    'Z.B. "Der Kunde ist eine französische Bank im CAC40. Die Übung behandelt einen Ransomware-Angriff über die EDR-Lieferkette."'
                   ))}">${escapeHtml(state.options.userContext || '')}</textarea>
                 </div>
 
                 <div class="chronogram-field">
-                  <label>${tt('Autonomy mode', 'Mode d\'autonomie')} :</label>
+                  <label>${tt('Autonomy mode', 'Mode d\'autonomie', 'Autonomiemodus')} :</label>
                   <select data-chrono-option="autonomyMode">
-                    <option value="fully_validated" ${autonomy === 'fully_validated' ? 'selected' : ''}>${tt('Fully validated (confirm each item)', 'Entièrement validé (confirmer chaque élément)')}</option>
-                    <option value="mostly_autonomous" ${autonomy === 'mostly_autonomous' ? 'selected' : ''}>${tt('Mostly autonomous (ask on ambiguities)', 'Principalement autonome (questions si doute)')}</option>
-                    <option value="fully_autonomous" ${autonomy === 'fully_autonomous' ? 'selected' : ''}>${tt('Fully autonomous (LLM decides all)', 'Entièrement autonome (le LLM décide tout)')}</option>
+                    <option value="fully_validated" ${autonomy === 'fully_validated' ? 'selected' : ''}>${tt('Fully validated (confirm each item)', 'Entièrement validé (confirmer chaque élément)', 'Vollständig validiert (jeden Eintrag bestätigen)')}</option>
+                    <option value="mostly_autonomous" ${autonomy === 'mostly_autonomous' ? 'selected' : ''}>${tt('Mostly autonomous (ask on ambiguities)', 'Principalement autonome (questions si doute)', 'Weitgehend autonom (Rückfragen bei Unklarheiten)')}</option>
+                    <option value="fully_autonomous" ${autonomy === 'fully_autonomous' ? 'selected' : ''}>${tt('Fully autonomous (LLM decides all)', 'Entièrement autonome (le LLM décide tout)', 'Vollständig autonom (LLM entscheidet alles)')}</option>
                   </select>
                 </div>
 
                 <div class="chronogram-estimate subtle">
-                  ⏱ ${tt('Estimate: ~3-5 API calls, ~30 seconds', 'Estimation : ~3-5 appels API, ~30 secondes')}
+                  ⏱ ${tt('Estimate: ~3-5 API calls, ~30 seconds', 'Estimation : ~3-5 appels API, ~30 secondes', 'Schätzung: ~3-5 API-Aufrufe, ~30 Sekunden')}
                 </div>
               </div>
               <div class="chronogram-modal-footer">
-                <button class="btn btn-secondary" data-action="chronogram-cancel">${tt('Cancel', 'Annuler')}</button>
-                <button class="btn btn-primary" data-action="chronogram-launch-import">${tt('Launch AI import', 'Lancer l\'import IA')}</button>
+                <button class="btn btn-secondary" data-action="chronogram-cancel">${tt('Cancel', 'Annuler', 'Abbrechen')}</button>
+                <button class="btn btn-primary" data-action="chronogram-launch-import">${tt('Launch AI import', 'Lancer l\'import IA', 'KI-Import starten')}</button>
               </div>
             </div>
           </div>
@@ -97,7 +99,7 @@
 
       function renderLLMLogs(logs) {
         if (!logs || logs.length === 0) {
-          return `<div class="llm-stream-empty">${tt('Waiting for first LLM call\u2026', 'En attente du premier appel LLM\u2026')}</div>`;
+          return `<div class="llm-stream-empty">${tt('Waiting for first LLM call\u2026', 'En attente du premier appel LLM\u2026', 'Warte auf ersten LLM-Aufruf\u2026')}</div>`;
         }
         return logs.map(entry => {
           const isStreaming = entry.status === 'streaming';
@@ -108,8 +110,8 @@
           const cursor = isStreaming ? '<span class="llm-stream-cursor"></span>' : '';
           const assistantCls = isError ? 'error' : 'assistant';
           const assistantLabel = isError
-            ? tt('Error', 'Erreur')
-            : (isStreaming ? tt('Assistant (streaming\u2026)', 'Assistant (streaming\u2026)') : tt('Assistant', 'Assistant'));
+            ? tt('Error', 'Erreur', 'Fehler')
+            : (isStreaming ? tt('Assistant (streaming\u2026)', 'Assistant (streaming\u2026)', 'Assistent (streamt\u2026)') : tt('Assistant', 'Assistant', 'Assistent'));
           return `
             <div class="llm-log-entry">
               <div class="llm-role-label">\uD83E\uDDD1 ${escapeHtml(entry.stepLabel)}</div>
@@ -130,9 +132,9 @@
         const showStream = !!state.showLLMStream;
 
         const steps = [
-          tt('Step 1: Analyze file structure', 'Étape 1 : Analyse de la structure du fichier'),
-          tt('Step 2: Extract and classify stimuli', 'Étape 2 : Extraction et classification des stimuli'),
-          tt('Step 3: Generate CrisisStim objects', 'Étape 3 : Génération des objets CrisisStim')
+          tt('Step 1: Analyze file structure', 'Étape 1 : Analyse de la structure du fichier', 'Schritt 1: Dateistruktur analysieren'),
+          tt('Step 2: Extract and classify stimuli', 'Étape 2 : Extraction et classification des stimuli', 'Schritt 2: Stimuli extrahieren und klassifizieren'),
+          tt('Step 3: Generate CrisisStim objects', 'Étape 3 : Génération des objets CrisisStim', 'Schritt 3: CrisisStim-Objekte generieren')
         ];
 
         // Streaming advancement indicator: count chars from the last streaming log entry
@@ -144,9 +146,9 @@
           <div class="modal-backdrop">
             <div class="modal-box chronogram-modal ${showStream ? 'chronogram-progress-wide' : ''}">
               <div class="modal-header">
-                <h3>${tt('AI Import in progress...', 'Import IA en cours...')}</h3>
+                <h3>${tt('AI Import in progress...', 'Import IA en cours...', 'KI-Import läuft...')}</h3>
                 <button class="btn btn-secondary btn-sm" data-action="chronogram-toggle-llm-stream">
-                  ${showStream ? tt('Hide LLM stream', 'Masquer le flux LLM') : tt('Show LLM stream', 'Afficher le flux LLM')}
+                  ${showStream ? tt('Hide LLM stream', 'Masquer le flux LLM', 'LLM-Stream ausblenden') : tt('Show LLM stream', 'Afficher le flux LLM', 'LLM-Stream anzeigen')}
                 </button>
               </div>
               <div class="chronogram-modal-body ${showStream ? 'chronogram-progress-layout' : ''}">
@@ -155,7 +157,7 @@
                   <div class="chronogram-progress-bar-container">
                     <div class="chronogram-progress-bar" style="width: ${pct}%"></div>
                   </div>
-                  <div class="chronogram-progress-label">${tt('Step', 'Étape')} ${p.step}/${p.totalSteps}</div>
+                  <div class="chronogram-progress-label">${tt('Step', 'Étape', 'Schritt')} ${p.step}/${p.totalSteps}</div>
 
                   <div class="chronogram-steps-list">
                     ${steps.map((label, i) => {
@@ -167,7 +169,7 @@
                       const streamIndicator = (stepNum === p.step && isStreamingNow)
                         ? `<div class="chronogram-stream-indicator" id="chronogram-stream-indicator">
                             <span class="chronogram-stream-dot"></span>
-                            <span id="chronogram-stream-indicator-text">${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${streamedChars.toLocaleString()} ${tt('chars', 'car.')}</span>
+                            <span id="chronogram-stream-indicator-text">${tt('Receiving LLM response', 'Réception de la réponse LLM', 'LLM-Antwort wird empfangen')} — ${streamedChars.toLocaleString()} ${tt('chars', 'car.', 'Zeichen')}</span>
                            </div>`
                         : '';
                       return `<div class="chronogram-step ${cls}">
@@ -184,7 +186,7 @@
 
                 ${showStream ? `
                 <div class="chronogram-progress-right">
-                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct')}</div>
+                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct', 'LLM-Livestream')}</div>
                   <div class="llm-stream-panel" id="llm-stream-panel">
                     <div id="llm-stream-content">${renderLLMLogs(state.llmLogs || [])}</div>
                   </div>
@@ -193,7 +195,7 @@
 
               </div>
               <div class="chronogram-modal-footer">
-                <button class="btn btn-secondary" data-action="chronogram-cancel">${tt('Cancel', 'Annuler')}</button>
+                <button class="btn btn-secondary" data-action="chronogram-cancel">${tt('Cancel', 'Annuler', 'Abbrechen')}</button>
               </div>
             </div>
           </div>
@@ -219,8 +221,8 @@
             <div class="modal-box chronogram-modal chronogram-result-modal" >
               <div class="modal-header">
                 <h3>${state.error
-                  ? tt('AI Import failed', 'Import IA échoué')
-                  : tt('AI Import complete', 'Import IA terminé')}</h3>
+                  ? tt('AI Import failed', 'Import IA échoué', 'KI-Import fehlgeschlagen')
+                  : tt('AI Import complete', 'Import IA terminé', 'KI-Import abgeschlossen')}</h3>
                 <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
               </div>
               <div class="chronogram-modal-body">
@@ -228,31 +230,31 @@
 
                 ${!state.error ? `
                 <div class="chronogram-result-summary">
-                  <h4>${tt('Summary', 'Résumé')}</h4>
+                  <h4>${tt('Summary', 'Résumé', 'Zusammenfassung')}</h4>
                   <ul>
-                    <li>${totalRows} ${tt('rows analyzed in chronogram', 'lignes analysées dans le chronogramme')}</li>
-                    <li><strong>${stimuli.filter(s => !s.is_implicit).length}</strong> ${tt('main stimuli created', 'stimuli principaux créés')}</li>
-                    ${implicit.length > 0 ? `<li><strong>${implicit.length}</strong> ${tt('implicit stimuli detected and created', 'stimuli implicites détectés et créés')}</li>` : ''}
-                    <li><strong>${actors.length}</strong> ${tt('actors created', 'acteurs créés')}</li>
-                    ${skipped.length > 0 ? `<li>${skipped.length} ${tt('rows skipped (DEBEX/FINEX, meta-animation)', 'lignes ignorées (DEBEX/FINEX, méta-animation)')}</li>` : ''}
+                    <li>${totalRows} ${tt('rows analyzed in chronogram', 'lignes analysées dans le chronogramme', 'Zeilen im Chronogramm analysiert')}</li>
+                    <li><strong>${stimuli.filter(s => !s.is_implicit).length}</strong> ${tt('main stimuli created', 'stimuli principaux créés', 'Hauptstimuli erstellt')}</li>
+                    ${implicit.length > 0 ? `<li><strong>${implicit.length}</strong> ${tt('implicit stimuli detected and created', 'stimuli implicites détectés et créés', 'implizite Stimuli erkannt und erstellt')}</li>` : ''}
+                    <li><strong>${actors.length}</strong> ${tt('actors created', 'acteurs créés', 'Akteure erstellt')}</li>
+                    ${skipped.length > 0 ? `<li>${skipped.length} ${tt('rows skipped (DEBEX/FINEX, meta-animation)', 'lignes ignorées (DEBEX/FINEX, méta-animation)', 'Zeilen übersprungen (DEBEX/FINEX, Meta-Animation)')}</li>` : ''}
                   </ul>
                 </div>
 
                 ${implicit.length > 0 ? `
                 <div class="chronogram-result-section">
-                  <h4>${tt('Implicit stimuli detected', 'Stimuli implicites détectés')}</h4>
+                  <h4>${tt('Implicit stimuli detected', 'Stimuli implicites détectés', 'Implizite Stimuli erkannt')}</h4>
                   <ul class="chronogram-implicit-list">
                     ${implicit.slice(0, 10).map(s => `<li>
                       <span class="pill" style="background:${CHANNEL_META[s.channel]?.color || '#888'}; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${channelLabel(s.channel)}</span>
                       ${escapeHtml(s.generation_prompt || s.fields?.text?.slice(0, 60) || s.fields?.subject || '...')}
                     </li>`).join('')}
-                    ${implicit.length > 10 ? `<li class="subtle">+${implicit.length - 10} ${tt('more...', 'autres...')}</li>` : ''}
+                    ${implicit.length > 10 ? `<li class="subtle">+${implicit.length - 10} ${tt('more...', 'autres...', 'weitere...')}</li>` : ''}
                   </ul>
                 </div>` : ''}
 
                 ${warnings.length > 0 ? `
                 <div class="chronogram-result-section">
-                  <h4>⚠ ${tt('Warnings', 'Points d\'attention')} (${warnings.length})</h4>
+                  <h4>⚠ ${tt('Warnings', 'Points d\'attention', 'Warnungen')} (${warnings.length})</h4>
                   <ul class="chronogram-warnings-list">
                     ${warnings.map(w => `<li>${escapeHtml(w.message)}</li>`).join('')}
                   </ul>
@@ -261,11 +263,11 @@
               </div>
               <div class="chronogram-modal-footer">
                 ${state.error ? `
-                  <button class="btn btn-secondary" data-action="chronogram-cancel">${tt('Close', 'Fermer')}</button>
+                  <button class="btn btn-secondary" data-action="chronogram-cancel">${tt('Close', 'Fermer', 'Schließen')}</button>
                 ` : `
-                  <button class="btn btn-danger" data-action="chronogram-reject-all">${tt('Reject all', 'Tout rejeter')}</button>
-                  ${autonomy !== 'fully_autonomous' ? `<button class="btn btn-secondary" data-action="chronogram-modify">${tt('Modify before validation', 'Modifier avant validation')}</button>` : ''}
-                  <button class="btn btn-primary" data-action="chronogram-accept-all">${tt('Accept all', 'Tout accepter')}</button>
+                  <button class="btn btn-danger" data-action="chronogram-reject-all">${tt('Reject all', 'Tout rejeter', 'Alle ablehnen')}</button>
+                  ${autonomy !== 'fully_autonomous' ? `<button class="btn btn-secondary" data-action="chronogram-modify">${tt('Modify before validation', 'Modifier avant validation', 'Vor Validierung ändern')}</button>` : ''}
+                  <button class="btn btn-primary" data-action="chronogram-accept-all">${tt('Accept all', 'Tout accepter', 'Alle akzeptieren')}</button>
                 `}
               </div>
             </div>
@@ -286,17 +288,18 @@
             <div class="modal-backdrop">
               <div class="modal-box chronogram-modal" >
                 <div class="modal-header">
-                  <h3>${tt('Validation complete', 'Validation terminée')}</h3>
+                  <h3>${tt('Validation complete', 'Validation terminée', 'Validierung abgeschlossen')}</h3>
                   <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
                 </div>
                 <div class="chronogram-modal-body">
                   <p>${tt(
                     `${state.acceptedCount || 0} items accepted, ${state.skippedCount || 0} items skipped.`,
-                    `${state.acceptedCount || 0} éléments acceptés, ${state.skippedCount || 0} éléments ignorés.`
+                    `${state.acceptedCount || 0} éléments acceptés, ${state.skippedCount || 0} éléments ignorés.`,
+                    `${state.acceptedCount || 0} Einträge akzeptiert, ${state.skippedCount || 0} Einträge übersprungen.`
                   )}</p>
                 </div>
                 <div class="chronogram-modal-footer">
-                  <button class="btn btn-primary" data-action="chronogram-finish-validation">${tt('Finish import', 'Terminer l\'import')}</button>
+                  <button class="btn btn-primary" data-action="chronogram-finish-validation">${tt('Finish import', 'Terminer l\'import', 'Import abschließen')}</button>
                 </div>
               </div>
             </div>
@@ -311,7 +314,7 @@
           <div class="modal-backdrop">
             <div class="modal-box chronogram-modal" >
               <div class="modal-header">
-                <h3>${tt('Review item', 'Valider l\'élément')} ${idx + 1}/${queue.length}</h3>
+                <h3>${tt('Review item', 'Valider l\'élément', 'Eintrag prüfen')} ${idx + 1}/${queue.length}</h3>
               </div>
               <div class="chronogram-modal-body">
                 <div class="chronogram-progress-bar-container">
@@ -320,23 +323,23 @@
 
                 ${isActor ? `
                   <div class="chronogram-validation-card">
-                    <span class="pill" style="background:#666; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${tt('Actor', 'Acteur')}</span>
+                    <span class="pill" style="background:#666; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${tt('Actor', 'Acteur', 'Akteur')}</span>
                     <h4>${escapeHtml(item.name)}</h4>
                     <div class="chronogram-info-grid">
-                      <div><strong>${tt('Role', 'Rôle')} :</strong> ${escapeHtml(item.role || '')}</div>
-                      <div><strong>${tt('Organization', 'Organisation')} :</strong> ${escapeHtml(item.organization || '')}</div>
-                      <div><strong>${tt('Title', 'Titre')} :</strong> ${escapeHtml(item.title || '')}</div>
+                      <div><strong>${tt('Role', 'Rôle', 'Rolle')} :</strong> ${escapeHtml(item.role || '')}</div>
+                      <div><strong>${tt('Organization', 'Organisation', 'Organisation')} :</strong> ${escapeHtml(item.organization || '')}</div>
+                      <div><strong>${tt('Title', 'Titre', 'Titel')} :</strong> ${escapeHtml(item.title || '')}</div>
                     </div>
                   </div>
                 ` : `
                   <div class="chronogram-validation-card">
                     <span class="pill" style="background:${channelColor}; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${channelLabel(item.channel)}</span>
-                    ${item.is_implicit ? `<span class="pill" style="background:#f59e0b; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${tt('Implicit', 'Implicite')}</span>` : ''}
+                    ${item.is_implicit ? `<span class="pill" style="background:#f59e0b; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${tt('Implicit', 'Implicite', 'Implizit')}</span>` : ''}
                     <h4>${escapeHtml(item.generation_prompt || item.fields?.subject || item.fields?.headline || '...')}</h4>
                     <div class="chronogram-info-grid">
                       <div><strong>H+${item.timestamp_offset_minutes || 0}</strong></div>
-                      <div><strong>${tt('From', 'De')} :</strong> ${escapeHtml(item.fields?.from_name || item.fields?.display_name || item.fields?.author_name || '?')}</div>
-                      ${item.fields?.to ? `<div><strong>${tt('To', 'À')} :</strong> ${escapeHtml(item.fields.to)}</div>` : ''}
+                      <div><strong>${tt('From', 'De', 'Von')} :</strong> ${escapeHtml(item.fields?.from_name || item.fields?.display_name || item.fields?.author_name || '?')}</div>
+                      ${item.fields?.to ? `<div><strong>${tt('To', 'À', 'An')} :</strong> ${escapeHtml(item.fields.to)}</div>` : ''}
                     </div>
                     ${item.fields?.body ? `<div class="chronogram-content-preview">${escapeHtml((item.fields.body || '').slice(0, 300))}${(item.fields.body || '').length > 300 ? '...' : ''}</div>` : ''}
                     ${item.fields?.text ? `<div class="chronogram-content-preview">${escapeHtml((item.fields.text || '').slice(0, 300))}</div>` : ''}
@@ -344,8 +347,8 @@
                 `}
               </div>
               <div class="chronogram-modal-footer">
-                <button class="btn btn-secondary" data-action="chronogram-skip-item">${tt('Skip', 'Ignorer')}</button>
-                <button class="btn btn-primary" data-action="chronogram-accept-item">${tt('Accept', 'Accepter')}</button>
+                <button class="btn btn-secondary" data-action="chronogram-skip-item">${tt('Skip', 'Ignorer', 'Überspringen')}</button>
+                <button class="btn btn-primary" data-action="chronogram-accept-item">${tt('Accept', 'Accepter', 'Akzeptieren')}</button>
               </div>
             </div>
           </div>

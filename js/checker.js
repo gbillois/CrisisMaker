@@ -4,29 +4,29 @@
       // Phase 2: LLM analysis + results display
       // Phase 3: Checklist + export
 
-      // ─── Column detection patterns (FR + EN) ─────────────────────────────────────
+      // ─── Column detection patterns (FR + EN + DE) ────────────────────────────────
       const CHECKER_COLUMN_PATTERNS = {
-        timestamp: [/^h\+/i, /horodatage/i, /heure/i, /time/i, /timestamp/i, /horaire/i, /^t\+/i, /^t$/i, /^h$/i],
-        phase:     [/phase/i, /[eé]tape/i, /step/i, /^stade/i],
-        sender:    [/[eé]metteur/i, /sender/i, /^from$/i, /source/i, /exp[eé]diteur/i, /envoy/i],
-        recipient: [/destinataire/i, /recipient/i, /^to$/i, /target/i, /cellule/i, /cible/i],
-        channel:   [/canal/i, /channel/i, /medium/i, /vecteur/i, /moyen/i, /support/i, /^type\s*de\s*com/i],
-        content:   [/contenu/i, /description/i, /content/i, /texte/i, /message/i, /libell[eé]/i, /d[eé]tail/i, /objet/i],
-        type:      [/^type$/i, /nature/i, /cat[eé]gorie/i, /category/i],
-        conditional: [/conditionnel/i, /conditional/i, /^if$/i, /branch/i, /condition/i],
-        theme:     [/th[eè]me/i, /theme/i, /dimension/i, /domaine/i, /domain/i]
+        timestamp:   [/^h\+/i, /horodatage/i, /heure/i, /time/i, /timestamp/i, /horaire/i, /^t\+/i, /^t$/i, /^h$/i, /zeitstempel/i, /uhrzeit/i, /^z\+/i],
+        phase:       [/phase/i, /[eé]tape/i, /step/i, /^stade/i, /schritt/i, /stufe/i],
+        sender:      [/[eé]metteur/i, /sender/i, /^from$/i, /source/i, /exp[eé]diteur/i, /envoy/i, /absender/i, /^von$/i],
+        recipient:   [/destinataire/i, /recipient/i, /^to$/i, /target/i, /cellule/i, /cible/i, /empf[äa]nger/i, /^an$/i],
+        channel:     [/canal/i, /channel/i, /medium/i, /vecteur/i, /moyen/i, /support/i, /^type\s*de\s*com/i, /kanal/i, /kommunikationsweg/i],
+        content:     [/contenu/i, /description/i, /content/i, /texte/i, /message/i, /libell[eé]/i, /d[eé]tail/i, /objet/i, /inhalt/i, /nachricht/i, /betreff/i],
+        type:        [/^type$/i, /nature/i, /cat[eé]gorie/i, /category/i, /typ/i, /art$/i],
+        conditional: [/conditionnel/i, /conditional/i, /^if$/i, /branch/i, /condition/i, /bedingt/i, /wenn/i],
+        theme:       [/th[eè]me/i, /theme/i, /dimension/i, /domaine/i, /domain/i, /thema/i, /bereich/i]
       };
 
       const CHECKER_COLUMN_LABELS = {
-        timestamp:   () => tt('Timestamp', 'Horodatage'),
-        phase:       () => tt('Phase', 'Phase'),
-        sender:      () => tt('Sender', 'Émetteur'),
-        recipient:   () => tt('Recipient', 'Destinataire'),
-        channel:     () => tt('Channel', 'Canal'),
-        content:     () => tt('Content', 'Contenu'),
-        type:        () => tt('Type', 'Type'),
-        conditional: () => tt('Conditional', 'Conditionnel'),
-        theme:       () => tt('Theme', 'Thème')
+        timestamp:   () => tt('Timestamp', 'Horodatage', 'Zeitstempel'),
+        phase:       () => tt('Phase', 'Phase', 'Phase'),
+        sender:      () => tt('Sender', 'Émetteur', 'Absender'),
+        recipient:   () => tt('Recipient', 'Destinataire', 'Empfänger'),
+        channel:     () => tt('Channel', 'Canal', 'Kanal'),
+        content:     () => tt('Content', 'Contenu', 'Inhalt'),
+        type:        () => tt('Type', 'Type', 'Typ'),
+        conditional: () => tt('Conditional', 'Conditionnel', 'Bedingt'),
+        theme:       () => tt('Theme', 'Thème', 'Thema')
       };
 
       const CHECKER_SHEET_PATTERNS = [/chrono/i, /timeline/i, /stimuli/i, /inject/i];
@@ -42,7 +42,8 @@
         }
         throw new Error(tt(
           'Unsupported file format. Please upload .xlsx, .xls, or .pptx',
-          'Format de fichier non supporté. Veuillez importer un fichier .xlsx, .xls ou .pptx'
+          'Format de fichier non supporté. Veuillez importer un fichier .xlsx, .xls ou .pptx',
+          'Nicht unterstütztes Dateiformat. Bitte laden Sie eine .xlsx-, .xls- oder .pptx-Datei hoch'
         ));
       }
 
@@ -53,7 +54,8 @@
         if (!sheetNames.length) {
           throw new Error(tt(
             'Could not parse the file. Please check the file format and content.',
-            'Impossible de lire le fichier. Vérifiez le format et le contenu.'
+            'Impossible de lire le fichier. Vérifiez le format et le contenu.',
+            'Die Datei konnte nicht gelesen werden. Bitte überprüfen Sie Format und Inhalt.'
           ));
         }
 
@@ -119,7 +121,8 @@
         if (!allTextRows.length) {
           throw new Error(tt(
             'Could not parse the file. Please check the file format and content.',
-            'Impossible de lire le fichier. Vérifiez le format et le contenu.'
+            'Impossible de lire le fichier. Vérifiez le format et le contenu.',
+            'Die Datei konnte nicht gelesen werden. Bitte überprüfen Sie Format und Inhalt.'
           ));
         }
 
@@ -130,7 +133,7 @@
         const firstSlide = allTextRows[0];
         const headers = firstSlide.length >= 3
           ? firstSlide.map(h => String(h).trim())
-          : Array.from({ length: maxCols }, (_, i) => `${tt('Column', 'Colonne')} ${String.fromCharCode(65 + i)}`);
+          : Array.from({ length: maxCols }, (_, i) => `${tt('Column', 'Colonne', 'Spalte')} ${String.fromCharCode(65 + i)}`);
 
         const rows = (firstSlide.length >= 3 ? allTextRows.slice(1) : allTextRows)
           .map(r => {
@@ -140,8 +143,8 @@
           });
 
         return {
-          sheets: [tt('All slides', 'Toutes les slides')],
-          selectedSheet: tt('All slides', 'Toutes les slides'),
+          sheets: [tt('All slides', 'Toutes les slides', 'Alle Folien')],
+          selectedSheet: tt('All slides', 'Toutes les slides', 'Alle Folien'),
           headers,
           rows,
           workbook: null,
@@ -293,18 +296,18 @@ Response format (strict JSON):
                       data-action="checker-set-mode" data-mode="scenario">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
                 <span>
-                  <span class="checker-mode-btn-title">${tt('Current Scenario', 'Scénario actuel')}</span>
+                  <span class="checker-mode-btn-title">${tt('Current Scenario', 'Scénario actuel', 'Aktuelles Szenario')}</span>
                   <span class="checker-mode-btn-sub">${stimuliCount
-                    ? tt(`${stimuliCount} stimuli loaded`, `${stimuliCount} stimuli chargés`)
-                    : tt('No stimuli yet', 'Aucun stimulus pour l\'instant')}</span>
+                    ? tt(`${stimuliCount} stimuli loaded`, `${stimuliCount} stimuli chargés`, `${stimuliCount} Stimuli geladen`)
+                    : tt('No stimuli yet', 'Aucun stimulus pour l\'instant', 'Noch keine Stimuli')}</span>
                 </span>
               </button>
               <button class="checker-mode-btn ${mode === 'file' ? 'active' : ''}"
                       data-action="checker-set-mode" data-mode="file">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 <span>
-                  <span class="checker-mode-btn-title">${tt('Upload Timeline File', 'Importer un fichier timeline')}</span>
-                  <span class="checker-mode-btn-sub">${tt('.xlsx, .xls, .pptx', '.xlsx, .xls, .pptx')}</span>
+                  <span class="checker-mode-btn-title">${tt('Upload Timeline File', 'Importer un fichier timeline', 'Timeline-Datei hochladen')}</span>
+                  <span class="checker-mode-btn-sub">${tt('.xlsx, .xls, .pptx', '.xlsx, .xls, .pptx', '.xlsx, .xls, .pptx')}</span>
                 </span>
               </button>
             </div>
@@ -326,7 +329,8 @@ Response format (strict JSON):
               <div style="text-align:center; padding:28px 0;">
                 <p style="color:var(--muted); font-size:0.9rem;">${tt(
                   'No stimuli in the current scenario. Add stimuli in the Timeline tab first.',
-                  'Aucun stimulus dans le scénario actuel. Ajoutez des stimuli dans l\'onglet Chronogramme d\'abord.'
+                  'Aucun stimulus dans le scénario actuel. Ajoutez des stimuli dans l\'onglet Chronogramme d\'abord.',
+                  'Keine Stimuli im aktuellen Szenario. Fügen Sie zuerst Stimuli im Chronogramm-Tab hinzu.'
                 )}</p>
               </div>
             </article>
@@ -347,25 +351,25 @@ Response format (strict JSON):
           <article class="card">
             <div class="section-header" style="margin-bottom:14px;">
               <div>
-                <h3 style="margin:0 0 4px;">${escapeHtml(sc.name || tt('Untitled Scenario', 'Scénario sans titre'))}</h3>
+                <h3 style="margin:0 0 4px;">${escapeHtml(sc.name || tt('Untitled Scenario', 'Scénario sans titre', 'Unbenanntes Szenario'))}</h3>
                 ${sc.scenario.type ? `<span class="badge badge-outline" style="font-size:0.8rem;">${escapeHtml(sc.scenario.type)}</span>` : ''}
               </div>
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
-              <span class="checker-stat-pill"><strong>${stimuli.length}</strong>&nbsp;${tt('stimuli', 'stimuli')}</span>
-              <span class="checker-stat-pill"><strong>${actors.length}</strong>&nbsp;${tt('actors', 'acteurs')}</span>
-              <span class="checker-stat-pill"><strong>${channels.length}</strong>&nbsp;${tt('channels', 'canaux')}</span>
-              <span class="checker-stat-pill"><strong>${durationH}h</strong>&nbsp;${tt('duration', 'durée')}</span>
+              <span class="checker-stat-pill"><strong>${stimuli.length}</strong>&nbsp;${tt('stimuli', 'stimuli', 'Stimuli')}</span>
+              <span class="checker-stat-pill"><strong>${actors.length}</strong>&nbsp;${tt('actors', 'acteurs', 'Akteure')}</span>
+              <span class="checker-stat-pill"><strong>${channels.length}</strong>&nbsp;${tt('channels', 'canaux', 'Kanäle')}</span>
+              <span class="checker-stat-pill"><strong>${durationH}h</strong>&nbsp;${tt('duration', 'durée', 'Dauer')}</span>
             </div>
             ${sc.scenario.summary ? `<p style="font-size:0.88rem; color:var(--muted); margin:0 0 14px;">${escapeHtml(sc.scenario.summary)}</p>` : ''}
             <div class="checker-preview-table-wrap">
               <table class="checker-preview-table">
                 <thead><tr>
                   <th class="checker-row-num">#</th>
-                  <th>${tt('Time', 'Heure')}</th>
-                  <th>${tt('Channel', 'Canal')}</th>
-                  <th>${tt('Actor', 'Acteur')}</th>
-                  <th>${tt('Content', 'Contenu')}</th>
+                  <th>${tt('Time', 'Heure', 'Zeit')}</th>
+                  <th>${tt('Channel', 'Canal', 'Kanal')}</th>
+                  <th>${tt('Actor', 'Acteur', 'Akteur')}</th>
+                  <th>${tt('Content', 'Contenu', 'Inhalt')}</th>
                 </tr></thead>
                 <tbody>
                   ${previewStimuli.map((s, i) => {
@@ -388,7 +392,7 @@ Response format (strict JSON):
                   }).join('')}
                 </tbody>
               </table>
-              ${stimuli.length > maxPreview ? `<p style="text-align:center; margin-top:8px; font-size:0.82rem; color:var(--muted);">${tt(`Showing ${maxPreview} of ${stimuli.length} stimuli`, `Affichage de ${maxPreview} sur ${stimuli.length} stimuli`)}</p>` : ''}
+              ${stimuli.length > maxPreview ? `<p style="text-align:center; margin-top:8px; font-size:0.82rem; color:var(--muted);">${tt(`Showing ${maxPreview} of ${stimuli.length} stimuli`, `Affichage de ${maxPreview} sur ${stimuli.length} stimuli`, `${maxPreview} von ${stimuli.length} Stimuli angezeigt`)}</p>` : ''}
             </div>
           </article>
         `;
@@ -403,9 +407,9 @@ Response format (strict JSON):
               <div class="checker-dropzone-icon">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="12" y2="12"></line><line x1="15" y1="15" x2="12" y2="12"></line></svg>
               </div>
-              <p class="checker-dropzone-title">${tt('Drop your chronogram file here', 'Déposez votre fichier chronogramme ici')}</p>
-              <p class="checker-dropzone-sub">${tt('or click to browse', 'ou cliquez pour parcourir')}</p>
-              <p class="checker-dropzone-formats">${tt('Supported: .xlsx, .xls, .pptx', 'Formats acceptés : .xlsx, .xls, .pptx')}</p>
+              <p class="checker-dropzone-title">${tt('Drop your chronogram file here', 'Déposez votre fichier chronogramme ici', 'Chronogramm-Datei hier ablegen')}</p>
+              <p class="checker-dropzone-sub">${tt('or click to browse', 'ou cliquez pour parcourir', 'oder klicken zum Durchsuchen')}</p>
+              <p class="checker-dropzone-formats">${tt('Supported: .xlsx, .xls, .pptx', 'Formats acceptés : .xlsx, .xls, .pptx', 'Unterstützt: .xlsx, .xls, .pptx')}</p>
               <input type="file" id="checker-file-input" accept=".xlsx,.xls,.pptx" style="display:none;">
             </div>
             ${appState.checkerState._fileError ? `<p class="checker-error-msg">${escapeHtml(appState.checkerState._fileError)}</p>` : ''}
@@ -421,9 +425,9 @@ Response format (strict JSON):
         return `
           <article class="card">
             <div class="section-header" style="margin-bottom:16px;">
-              <h3>${escapeHtml(cs.file.name)} <span class="subtle" style="font-weight:normal; font-size:0.85rem;">(${pd.rows.length} ${tt('rows', 'lignes')})</span></h3>
+              <h3>${escapeHtml(cs.file.name)} <span class="subtle" style="font-weight:normal; font-size:0.85rem;">(${pd.rows.length} ${tt('rows', 'lignes', 'Zeilen')})</span></h3>
               <div class="actions">
-                <button class="btn btn-secondary" data-action="checker-clear-file">${tt('Clear', 'Effacer')} ✕</button>
+                <button class="btn btn-secondary" data-action="checker-clear-file">${tt('Clear', 'Effacer', 'Löschen')} ✕</button>
               </div>
             </div>
             ${renderCheckerSheetSelector()}
@@ -456,7 +460,7 @@ Response format (strict JSON):
         const cs = appState.checkerState;
         const pd = cs.parsedData;
         if (!pd || !pd.headers.length) {
-          return `<p class="subtle">${tt('No data found in this sheet.', 'Aucune donnée trouvée dans cet onglet.')}</p>`;
+          return `<p class="subtle">${tt('No data found in this sheet.', 'Aucune donnée trouvée dans cet onglet.', 'Keine Daten in diesem Blatt gefunden.')}</p>`;
         }
 
         const maxVisibleRows = 20;
@@ -481,7 +485,7 @@ Response format (strict JSON):
                 `).join('')}
               </tbody>
             </table>
-            ${hasMore ? `<p class="subtle" style="text-align:center; margin-top:8px; font-size:0.82rem;">${tt(`Showing ${maxVisibleRows} of ${pd.rows.length} rows. Scroll to see more.`, `Affichage de ${maxVisibleRows} sur ${pd.rows.length} lignes. Faites défiler pour voir plus.`)}</p>` : ''}
+            ${hasMore ? `<p class="subtle" style="text-align:center; margin-top:8px; font-size:0.82rem;">${tt(`Showing ${maxVisibleRows} of ${pd.rows.length} rows. Scroll to see more.`, `Affichage de ${maxVisibleRows} sur ${pd.rows.length} lignes. Faites défiler pour voir plus.`, `${maxVisibleRows} von ${pd.rows.length} Zeilen angezeigt. Scrollen für mehr.`)}</p>` : ''}
           </div>
         `;
       }
@@ -494,15 +498,15 @@ Response format (strict JSON):
         const mapping = cs.columnMapping;
         if (!pd || !pd.headers.length) return '';
 
-        const notDetected = tt('— Not detected —', '— Non détecté —');
+        const notDetected = tt('— Not detected —', '— Non détecté —', '— Nicht erkannt —');
         const hasMissing = Object.values(mapping).some(v => v === null);
         const isLoading = cs.columnMappingLoading;
 
         return `
           <div class="checker-mapping">
             <h4>
-              ${tt('Column Mapping', 'Correspondance des colonnes')}
-              ${isLoading ? `<span class="checker-mapping-ai-badge"><span class="checker-mapping-spinner"></span>${tt('AI detecting…', 'Détection IA en cours…')}</span>` : ''}
+              ${tt('Column Mapping', 'Correspondance des colonnes', 'Spaltenzuordnung')}
+              ${isLoading ? `<span class="checker-mapping-ai-badge"><span class="checker-mapping-spinner"></span>${tt('AI detecting…', 'Détection IA en cours…', 'KI erkennt…')}</span>` : ''}
             </h4>
             <div class="checker-mapping-grid${isLoading ? ' checker-mapping-loading' : ''}">
               ${Object.keys(CHECKER_COLUMN_PATTERNS).map(colKey => {
@@ -514,15 +518,15 @@ Response format (strict JSON):
                     <label>${label}:</label>
                     <select data-action="checker-update-mapping" data-col-key="${colKey}"${isLoading ? ' disabled' : ''}>
                       <option value="-1" ${isMissing ? 'selected' : ''}>${notDetected}</option>
-                      ${pd.headers.map((h, i) => `<option value="${i}" ${val === i ? 'selected' : ''}>${tt('Column', 'Colonne')} ${checkerColLetter(i)} — "${escapeHtml(h)}"</option>`).join('')}
+                      ${pd.headers.map((h, i) => `<option value="${i}" ${val === i ? 'selected' : ''}>${tt('Column', 'Colonne', 'Spalte')} ${checkerColLetter(i)} — "${escapeHtml(h)}"</option>`).join('')}
                     </select>
-                    ${isMissing && !isLoading ? '<span class="checker-mapping-warn" title="' + escapeAttribute(tt('Not detected', 'Non détecté')) + '">⚠</span>' : ''}
+                    ${isMissing && !isLoading ? '<span class="checker-mapping-warn" title="' + escapeAttribute(tt('Not detected', 'Non détecté', 'Nicht erkannt')) + '">⚠</span>' : ''}
                   </div>
                 `;
               }).join('')}
             </div>
-            ${hasMissing && !isLoading ? `<p class="checker-mapping-note">${tt('⚠ Missing columns will be flagged in the analysis.', '⚠ Les colonnes manquantes seront signalées dans l\'analyse.')}</p>` : ''}
-            ${!isLoading ? `<p class="checker-mapping-hint">${tt('You can adjust the mapping manually using the dropdowns above.', 'Vous pouvez ajuster la correspondance manuellement via les menus ci-dessus.')}</p>` : ''}
+            ${hasMissing && !isLoading ? `<p class="checker-mapping-note">${tt('⚠ Missing columns will be flagged in the analysis.', '⚠ Les colonnes manquantes seront signalées dans l\'analyse.', '⚠ Fehlende Spalten werden in der Analyse markiert.')}</p>` : ''}
+            ${!isLoading ? `<p class="checker-mapping-hint">${tt('You can adjust the mapping manually using the dropdowns above.', 'Vous pouvez ajuster la correspondance manuellement via les menus ci-dessus.', 'Sie können die Zuordnung manuell über die Dropdown-Menüs oben anpassen.')}</p>` : ''}
           </div>
         `;
       }
@@ -584,7 +588,8 @@ Response format (strict JSON):
         if (!/\.(xlsx?|pptx)$/.test(name)) {
           appState.checkerState._fileError = tt(
             'Unsupported file format. Please upload .xlsx, .xls, or .pptx',
-            'Format de fichier non supporté. Veuillez importer un fichier .xlsx, .xls ou .pptx'
+            'Format de fichier non supporté. Veuillez importer un fichier .xlsx, .xls ou .pptx',
+            'Nicht unterstütztes Dateiformat. Bitte laden Sie eine .xlsx-, .xls- oder .pptx-Datei hoch'
           );
           App.render();
           return;
@@ -610,7 +615,7 @@ Response format (strict JSON):
           if (isLLMAvailable()) {
             appState.checkerState.columnMappingLoading = true;
             App.render();
-            pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`), 'success');
+            pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`, `Datei geladen: ${file.name}`), 'success');
             try {
               const llmMapping = await checkerAutoDetectColumnsLLM(result.headers, result.rows);
               appState.checkerState.columnMapping = llmMapping;
@@ -621,7 +626,7 @@ Response format (strict JSON):
             App.render();
           } else {
             App.render();
-            pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`), 'success');
+            pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`, `Datei geladen: ${file.name}`), 'success');
           }
         } catch (err) {
           appState.checkerState._fileError = err.message;
@@ -682,13 +687,13 @@ Response format (strict JSON):
         const cs = appState.checkerState;
         if (cs.analysisResult || cs.analysisLoading) return '';
         const llmOk = isLLMAvailable();
-        const tooltip = !llmOk ? escapeAttribute(tt('Configure an API key in Settings to use this feature.', 'Configurez une clé API dans les Paramètres pour utiliser cette fonctionnalité.')) : '';
+        const tooltip = !llmOk ? escapeAttribute(tt('Configure an API key in Settings to use this feature.', 'Configurez une clé API dans les Paramètres pour utiliser cette fonctionnalité.', 'Konfigurieren Sie einen API-Schlüssel in den Einstellungen, um diese Funktion zu nutzen.')) : '';
         return `
           <div style="text-align:center; margin: 8px 0;">
             ${!llmOk ? `<span title="${tooltip}" style="display:inline-block; cursor:not-allowed;">` : ''}
             <button class="btn btn-primary" data-action="checker-analyze"
                     ${!llmOk ? 'disabled style="pointer-events:none;"' : ''}>
-              ${tt('Analyze Chronogram', 'Analyser le chronogramme')}
+              ${tt('Analyze Chronogram', 'Analyser le chronogramme', 'Chronogramm analysieren')}
             </button>
             ${!llmOk ? '</span>' : ''}
           </div>
@@ -699,7 +704,7 @@ Response format (strict JSON):
 
       function renderCheckerLLMLogs(logs) {
         if (!logs || logs.length === 0) {
-          return `<div class="llm-stream-empty">${tt('Waiting for LLM response\u2026', 'En attente de la réponse LLM\u2026')}</div>`;
+          return `<div class="llm-stream-empty">${tt('Waiting for LLM response\u2026', 'En attente de la réponse LLM\u2026', 'Warte auf LLM-Antwort\u2026')}</div>`;
         }
         return logs.map(entry => {
           const isStreaming = entry.status === 'streaming';
@@ -710,8 +715,8 @@ Response format (strict JSON):
           const cursor = isStreaming ? '<span class="llm-stream-cursor"></span>' : '';
           const assistantCls = isError ? 'error' : 'assistant';
           const assistantLabel = isError
-            ? tt('Error', 'Erreur')
-            : (isStreaming ? tt('Assistant (streaming\u2026)', 'Assistant (streaming\u2026)') : tt('Assistant', 'Assistant'));
+            ? tt('Error', 'Erreur', 'Fehler')
+            : (isStreaming ? tt('Assistant (streaming\u2026)', 'Assistant (streaming\u2026)', 'Assistent (streaming\u2026)') : tt('Assistant', 'Assistant', 'Assistent'));
           return `
             <div class="llm-log-entry">
               <div class="llm-role-label">\uD83E\uDDD1 ${escapeHtml(entry.stepLabel)}</div>
@@ -834,6 +839,8 @@ ${lines.join('\n')}`;
       // ─── Analysis prompt ──────────────────────────────────────────────────────────
 
       function checkerBuildPrompt(serialized, detectedCols, missingCols, concise = false) {
+        const uiLang = currentLanguage();
+        const respondInLang = { en: 'English', fr: 'French', de: 'German' }[uiLang] || 'English';
         const detectedStr = detectedCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none';
         const missingStr = missingCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none';
 
@@ -969,7 +976,9 @@ Réponds UNIQUEMENT avec un objet JSON valide / Reply ONLY with a valid JSON obj
   }
 }
 
-${serialized}`;
+${serialized}
+
+IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, findings, and recommendations must be in ${respondInLang}.`;
       }
 
       // ─── Run analysis ─────────────────────────────────────────────────────────────
@@ -988,7 +997,7 @@ ${serialized}`;
         cs.llmLogs = [];
         App.render();
 
-        const stepLabel = tt('Chronogram Analysis', 'Analyse du chronogramme');
+        const stepLabel = tt('Chronogram Analysis', 'Analyse du chronogramme', 'Chronogramm-Analyse');
 
         const startLog = (userPromptPreview) => {
           cs.llmLogs.push({ id: Date.now(), stepLabel, userPromptPreview, responseText: '', status: 'streaming' });
@@ -1006,7 +1015,7 @@ ${serialized}`;
             const indicatorText = document.getElementById('checker-stream-indicator-text');
             if (indicatorText) {
               const chars = (last.responseText || '').length;
-              indicatorText.textContent = `${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${chars.toLocaleString()} ${tt('chars', 'car.')}`;
+              indicatorText.textContent = `${tt('Receiving LLM response', 'Réception de la réponse LLM', 'LLM-Antwort wird empfangen')} — ${chars.toLocaleString()} ${tt('chars', 'car.', 'Zeichen')}`;
             }
           }
         };
@@ -1024,7 +1033,8 @@ ${serialized}`;
           if (truncated) {
             pushToast(tt(
               'Large chronogram detected. Content was summarized for analysis.',
-              'Chronogramme volumineux détecté. Le contenu a été résumé pour l\'analyse.'
+              'Chronogramme volumineux détecté. Le contenu a été résumé pour l\'analyse.',
+              'Großes Chronogramm erkannt. Der Inhalt wurde für die Analyse zusammengefasst.'
             ), 'info');
           }
 
@@ -1048,7 +1058,7 @@ ${serialized}`;
           cs.analysisLoading = false;
           cs.activeAxisTab = 0;
           App.render();
-          pushToast(tt('Analysis complete.', 'Analyse terminée.'), 'success');
+          pushToast(tt('Analysis complete.', 'Analyse terminée.', 'Analyse abgeschlossen.'), 'success');
         } catch (err) {
           finishLog('error');
           cs.analysisLoading = false;
@@ -1071,29 +1081,29 @@ ${serialized}`;
           return `
             <article class="card checker-loading">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <strong>${tt('Analyzing…', 'Analyse en cours…')}</strong>
+                <strong>${tt('Analyzing…', 'Analyse en cours…', 'Analyse läuft…')}</strong>
                 <button class="btn btn-secondary btn-sm" data-action="checker-toggle-llm-stream">
-                  ${showStream ? tt('Hide LLM stream', 'Masquer le flux LLM') : tt('Show LLM stream', 'Afficher le flux LLM')}
+                  ${showStream ? tt('Hide LLM stream', 'Masquer le flux LLM', 'LLM-Stream ausblenden') : tt('Show LLM stream', 'Afficher le flux LLM', 'LLM-Stream anzeigen')}
                 </button>
               </div>
               <div class="${showStream ? 'checker-progress-layout' : ''}">
                 <div class="checker-progress-left">
                   <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
                     <span class="checker-spinner"></span>
-                    <span>${tt('Analyzing chronogram across 5 quality axes', 'Analyse du chronogramme selon 5 axes qualité')}</span>
+                    <span>${tt('Analyzing chronogram across 5 quality axes', 'Analyse du chronogramme selon 5 axes qualité', 'Chronogramm nach 5 Qualitätsachsen analysieren')}</span>
                   </div>
                   ${isStreamingNow ? `
                   <div class="chronogram-stream-indicator" style="margin-bottom:12px;" id="checker-stream-indicator">
                     <span class="chronogram-stream-dot"></span>
-                    <span id="checker-stream-indicator-text">${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${streamedChars.toLocaleString()} ${tt('chars', 'car.')}</span>
+                    <span id="checker-stream-indicator-text">${tt('Receiving LLM response', 'Réception de la réponse LLM', 'LLM-Antwort wird empfangen')} — ${streamedChars.toLocaleString()} ${tt('chars', 'car.', 'Zeichen')}</span>
                   </div>` : ''}
                   <div class="subtle" style="font-size:0.85rem;">
-                    ⏱ ${tt('This may take 30–60 seconds', 'Cela peut prendre 30 à 60 secondes')}
+                    ⏱ ${tt('This may take 30–60 seconds', 'Cela peut prendre 30 à 60 secondes', 'Dies kann 30–60 Sekunden dauern')}
                   </div>
                 </div>
                 ${showStream ? `
                 <div class="checker-progress-right">
-                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct')}</div>
+                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct', 'LLM-Livestream')}</div>
                   <div class="llm-stream-panel" id="checker-llm-stream-panel">
                     <div id="checker-llm-stream-content">${renderCheckerLLMLogs(cs.llmLogs || [])}</div>
                   </div>
@@ -1107,12 +1117,12 @@ ${serialized}`;
           return `
             <article class="card">
               <div class="checker-error-msg">
-                <strong>${tt('Analysis failed', 'Échec de l\'analyse')}</strong>: ${escapeHtml(cs.analysisError)}
+                <strong>${tt('Analysis failed', 'Échec de l\'analyse', 'Analyse fehlgeschlagen')}</strong>: ${escapeHtml(cs.analysisError)}
               </div>
               <div class="actions" style="margin-top:12px;">
-                <button class="btn btn-primary" data-action="checker-analyze">${tt('Retry', 'Réessayer')}</button>
+                <button class="btn btn-primary" data-action="checker-analyze">${tt('Retry', 'Réessayer', 'Erneut versuchen')}</button>
               </div>
-              ${cs._rawResponse ? `<details style="margin-top:12px;"><summary>${tt('Raw response', 'Réponse brute')}</summary><pre class="checker-raw-response">${escapeHtml(cs._rawResponse)}</pre></details>` : ''}
+              ${cs._rawResponse ? `<details style="margin-top:12px;"><summary>${tt('Raw response', 'Réponse brute', 'Rohantwort')}</summary><pre class="checker-raw-response">${escapeHtml(cs._rawResponse)}</pre></details>` : ''}
             </article>
           `;
         }
@@ -1123,11 +1133,11 @@ ${serialized}`;
         return `
           <article class="card checker-results">
             <div class="section-header" style="margin-bottom:16px;">
-              <h3>${tt('Analysis Results', 'Résultats de l\'analyse')}</h3>
+              <h3>${tt('Analysis Results', 'Résultats de l\'analyse', 'Analyseergebnisse')}</h3>
               <div class="actions">
-                <button class="btn btn-secondary" data-action="checker-export-report">${tt('Export .md', 'Exporter .md')}</button>
-                <button class="btn btn-secondary" data-action="checker-export-report-docx">${tt('Export .docx', 'Exporter .docx')}</button>
-                <button class="btn btn-secondary" data-action="checker-analyze">${tt('Re-analyze', 'Ré-analyser')}</button>
+                <button class="btn btn-secondary" data-action="checker-export-report">${tt('Export .md', 'Exporter .md', 'Exportieren .md')}</button>
+                <button class="btn btn-secondary" data-action="checker-export-report-docx">${tt('Export .docx', 'Exporter .docx', 'Exportieren .docx')}</button>
+                <button class="btn btn-secondary" data-action="checker-analyze">${tt('Re-analyze', 'Ré-analyser', 'Erneut analysieren')}</button>
               </div>
             </div>
 
@@ -1144,9 +1154,9 @@ ${serialized}`;
       function renderCheckerSummary(result) {
         const maturity = result.maturity || 'first_draft';
         const maturityConfig = {
-          first_draft:    { label: tt('First Draft', 'Premier brouillon'), cls: 'maturity-red' },
-          advanced_draft: { label: tt('Advanced Draft', 'Brouillon avancé'), cls: 'maturity-orange' },
-          ready_to_play:  { label: tt('Ready to Play', 'Prêt à jouer'), cls: 'maturity-green' }
+          first_draft:    { label: tt('First Draft', 'Premier brouillon', 'Erster Entwurf'), cls: 'maturity-red' },
+          advanced_draft: { label: tt('Advanced Draft', 'Brouillon avancé', 'Fortgeschrittener Entwurf'), cls: 'maturity-orange' },
+          ready_to_play:  { label: tt('Ready to Play', 'Prêt à jouer', 'Spielbereit'), cls: 'maturity-green' }
         };
         const mc = maturityConfig[maturity] || maturityConfig.first_draft;
 
@@ -1165,7 +1175,7 @@ ${serialized}`;
         if (!actions || !actions.length) return '';
         return `
           <div class="checker-priority-actions">
-            <h4>${tt('Priority Actions', 'Actions prioritaires')}</h4>
+            <h4>${tt('Priority Actions', 'Actions prioritaires', 'Prioritätsmaßnahmen')}</h4>
             <ol>
               ${actions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
             </ol>
@@ -1176,7 +1186,7 @@ ${serialized}`;
       // ─── Render: Axes tabs + detail ───────────────────────────────────────────────
 
       function getAxisLabel(axis, i) {
-        if (!axis.title) return tt('Axis', 'Axe') + ' ' + (axis.id || (i + 1));
+        if (!axis.title) return tt('Axis', 'Axe', 'Achse') + ' ' + (axis.id || (i + 1));
         // Titles from AI are bilingual: "French part / English part"
         const parts = axis.title.split(' / ');
         return isFrenchUI() ? parts[0] : (parts[1] || parts[0]);
@@ -1229,7 +1239,7 @@ ${serialized}`;
 
             ${(axis.recommendations && axis.recommendations.length) ? `
               <div class="checker-findings-group">
-                <h5>${tt('Recommendations', 'Recommandations')}</h5>
+                <h5>${tt('Recommendations', 'Recommandations', 'Empfehlungen')}</h5>
                 ${axis.recommendations.map(r => `<div class="checker-finding checker-recommendation"><span class="checker-finding-icon">→</span> ${escapeHtml(r)}</div>`).join('')}
               </div>
             ` : ''}
@@ -1250,14 +1260,14 @@ ${serialized}`;
 
         return `
           <div class="checker-heatmap-section">
-            <h4>${tt('Stimuli Distribution', 'Distribution des stimuli')}</h4>
+            <h4>${tt('Stimuli Distribution', 'Distribution des stimuli', 'Stimuli-Verteilung')}</h4>
             <div class="checker-heatmap-wrap">
               <table class="checker-heatmap">
                 <thead>
                   <tr>
-                    <th>${tt('Cell', 'Cellule')}</th>
+                    <th>${tt('Cell', 'Cellule', 'Zelle')}</th>
                     ${phases.map(p => `<th>${escapeHtml(p)}</th>`).join('')}
-                    <th><strong>${tt('Total', 'Total')}</strong></th>
+                    <th><strong>${tt('Total', 'Total', 'Gesamt')}</strong></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1275,7 +1285,7 @@ ${serialized}`;
                     `;
                   }).join('')}
                   <tr class="checker-heatmap-totals-row">
-                    <td><strong>${tt('Total', 'Total')}</strong></td>
+                    <td><strong>${tt('Total', 'Total', 'Gesamt')}</strong></td>
                     ${phases.map(p => {
                       const colTotal = cells.reduce((sum, c) => sum + (data[c][p] || 0), 0);
                       return `<td class="checker-heatmap-total"><strong>${colTotal}</strong></td>`;
@@ -1305,46 +1315,59 @@ ${serialized}`;
         return [
           {
             key: 'playability',
-            title: tt('Playability & Operational Feasibility', 'Jouabilité et faisabilité opérationnelle'),
+            title: tt('Playability & Operational Feasibility', 'Jouabilité et faisabilité opérationnelle', 'Spielbarkeit und operative Machbarkeit'),
             items: [
               tt('The number of stimuli is compatible with the size of the animation team',
-                 'Le nombre de stimuli est compatible avec la taille de l\'équipe d\'animation'),
+                 'Le nombre de stimuli est compatible avec la taille de l\'équipe d\'animation',
+                 'Die Anzahl der Stimuli ist mit der Größe des Animationsteams kompatibel'),
               tt('Animation roles are clearly assigned (who sends what, who plays which external role)',
-                 'Les rôles d\'animation sont clairement répartis (qui envoie quoi, qui joue quel rôle externe)'),
+                 'Les rôles d\'animation sont clairement répartis (qui envoie quoi, qui joue quel rôle externe)',
+                 'Animationsrollen sind klar zugewiesen (wer sendet was, wer spielt welche externe Rolle)'),
               tt('Supporting materials are ready and consistent (fake articles, fake tweets, fake emails, notification templates)',
-                 'Les supports sont prêts et cohérents (faux articles, faux tweets, faux mails, templates de notification)'),
+                 'Les supports sont prêts et cohérents (faux articles, faux tweets, faux mails, templates de notification)',
+                 'Unterstützungsmaterialien sind bereit und konsistent (gefälschte Artikel, Tweets, E-Mails, Benachrichtigungsvorlagen)'),
               tt('Required tools are identified and available (room, phones, collaborative tools, chronolog)',
-                 'Les outils nécessaires sont identifiés et disponibles (salle, téléphones, outils collaboratifs, main courante)'),
+                 'Les outils nécessaires sont identifiés et disponibles (salle, téléphones, outils collaboratifs, main courante)',
+                 'Erforderliche Tools sind identifiziert und verfügbar (Raum, Telefone, Kollaborationstools, Chronolog)'),
               tt('Instructions for facilitators are sufficiently precise',
-                 'Les consignes pour les animateurs/facilitateurs sont suffisamment précises')
+                 'Les consignes pour les animateurs/facilitateurs sont suffisamment précises',
+                 'Anweisungen für Moderatoren sind ausreichend präzise')
             ]
           },
           {
             key: 'observation',
-            title: tt('Observation & Evaluation Framework', 'Dispositif d\'observation et d\'évaluation'),
+            title: tt('Observation & Evaluation Framework', 'Dispositif d\'observation et d\'évaluation', 'Beobachtungs- und Bewertungsrahmen'),
             items: [
               tt('Observers are positioned in each cell',
-                 'Des observateurs sont positionnés dans chaque cellule'),
+                 'Des observateurs sont positionnés dans chaque cellule',
+                 'Beobachter sind in jeder Zelle positioniert'),
               tt('An observation grid is provided with measurable criteria (reaction time, decision quality, coordination, communication)',
-                 'Une grille d\'observation est fournie avec des critères mesurables (temps de réaction, qualité des décisions, coordination, communication)'),
+                 'Une grille d\'observation est fournie avec des critères mesurables (temps de réaction, qualité des décisions, coordination, communication)',
+                 'Ein Beobachtungsraster mit messbaren Kriterien ist vorhanden (Reaktionszeit, Entscheidungsqualität, Koordination, Kommunikation)'),
               tt('Mandatory checkpoints (key decisions, expected escalations) are identified',
-                 'Les points de passage obligés (décisions clés, escalades attendues) sont identifiés'),
+                 'Les points de passage obligés (décisions clés, escalades attendues) sont identifiés',
+                 'Pflichtprüfpunkte (Schlüsselentscheidungen, erwartete Eskalationen) sind identifiziert'),
               tt('The after-action review process is planned (hot debrief, cold debrief, questionnaire)',
-                 'Le dispositif RETEX est prévu (hot debrief, cold debrief, questionnaire)')
+                 'Le dispositif RETEX est prévu (hot debrief, cold debrief, questionnaire)',
+                 'Der Nachbesprechungsprozess ist geplant (Hot-Debrief, Cold-Debrief, Fragebogen)')
             ]
           },
           {
             key: 'realism',
-            title: tt('Realism & Credibility of Materials', 'Réalisme et crédibilité des supports'),
+            title: tt('Realism & Credibility of Materials', 'Réalisme et crédibilité des supports', 'Realismus und Glaubwürdigkeit der Materialien'),
             items: [
               tt('Stimuli are written in a style consistent with their supposed sender',
-                 'Les stimuli sont rédigés dans un style cohérent avec leur émetteur supposé'),
+                 'Les stimuli sont rédigés dans un style cohérent avec leur émetteur supposé',
+                 'Stimuli sind in einem dem angeblichen Absender entsprechenden Stil verfasst'),
               tt('Factual elements (names, dates, figures, geography) are consistent with each other',
-                 'Les éléments factuels (noms, dates, chiffres, géographie) sont cohérents entre eux'),
+                 'Les éléments factuels (noms, dates, chiffres, géographie) sont cohérents entre eux',
+                 'Faktische Elemente (Namen, Daten, Zahlen, Geografie) sind untereinander konsistent'),
               tt('Fake media/social media content is visually credible',
-                 'Les faux contenus médias/réseaux sociaux sont visuellement crédibles'),
+                 'Les faux contenus médias/réseaux sociaux sont visuellement crédibles',
+                 'Gefälschte Medien-/Social-Media-Inhalte sind visuell glaubwürdig'),
               tt('Regulatory or contractual references mentioned are correct',
-                 'Les références réglementaires ou contractuelles mentionnées sont correctes')
+                 'Les références réglementaires ou contractuelles mentionnées sont correctes',
+                 'Genannte regulatorische oder vertragliche Referenzen sind korrekt')
             ]
           }
         ];
@@ -1405,8 +1428,8 @@ ${serialized}`;
         return `
           <article class="card checker-checklist">
             <div class="section-header" style="margin-bottom:16px;">
-              <h3>${tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »')}</h3>
-              ${allDone ? `<span class="checker-maturity-badge maturity-green">${tt('Ready to Play', 'Prêt à jouer')} ✅</span>` : ''}
+              <h3>${tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »', 'Spielbereit-Checkliste')}</h3>
+              ${allDone ? `<span class="checker-maturity-badge maturity-green">${tt('Ready to Play', 'Prêt à jouer', 'Spielbereit')} ✅</span>` : ''}
             </div>
 
             ${categories.map(cat => renderCheckerChecklistCategory(cat, checked, customItems)).join('')}
@@ -1415,7 +1438,7 @@ ${serialized}`;
               <div class="checker-checklist-progress-bar">
                 <div class="checker-checklist-progress-fill" style="width:${pct}%"></div>
               </div>
-              <span class="checker-checklist-progress-text">${tt('Progress', 'Progression')} : ${checkedCount} / ${totalItems} ${tt('items checked', 'éléments cochés')}</span>
+              <span class="checker-checklist-progress-text">${tt('Progress', 'Progression', 'Fortschritt')} : ${checkedCount} / ${totalItems} ${tt('items checked', 'éléments cochés', 'Elemente geprüft')}</span>
             </div>
           </article>
         `;
@@ -1436,12 +1459,12 @@ ${serialized}`;
                   <input type="checkbox" ${checked[key] ? 'checked' : ''}
                          data-action="checker-toggle-check" data-check-key="${key}">
                   <span>${escapeHtml(item)}</span>
-                  ${isCustom ? `<button class="checker-remove-custom" data-action="checker-remove-custom-item" data-cat-key="${category.key}" data-custom-index="${i - category.items.length}" title="${escapeAttribute(tt('Remove', 'Supprimer'))}">✕</button>` : ''}
+                  ${isCustom ? `<button class="checker-remove-custom" data-action="checker-remove-custom-item" data-cat-key="${category.key}" data-custom-index="${i - category.items.length}" title="${escapeAttribute(tt('Remove', 'Supprimer', 'Entfernen'))}">✕</button>` : ''}
                 </label>
               `;
             }).join('')}
             <button class="checker-add-item" data-action="checker-add-custom-item" data-cat-key="${category.key}">
-              + ${tt('Add custom item', 'Ajouter un élément')}
+              + ${tt('Add custom item', 'Ajouter un élément', 'Eigenes Element hinzufügen')}
             </button>
           </div>
         `;
@@ -1463,7 +1486,7 @@ ${serialized}`;
         document.querySelectorAll('[data-action="checker-add-custom-item"]').forEach(btn => {
           btn.addEventListener('click', () => {
             const catKey = btn.dataset.catKey;
-            const text = prompt(tt('Enter custom checklist item:', 'Saisissez l\'élément personnalisé :'));
+            const text = prompt(tt('Enter custom checklist item:', 'Saisissez l\'élément personnalisé :', 'Eigenes Listenelement eingeben:'));
             if (!text || !text.trim()) return;
             if (!appState.checkerState.checklist.customItems) appState.checkerState.checklist.customItems = {};
             if (!appState.checkerState.checklist.customItems[catKey]) appState.checkerState.checklist.customItems[catKey] = [];
@@ -1495,7 +1518,7 @@ ${serialized}`;
         const r = cs.analysisResult;
         const mode = cs.mode || 'file';
         const fileName = mode === 'scenario'
-          ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel'))
+          ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel', 'Aktuelles Szenario'))
           : (cs.file ? cs.file.name : 'unknown');
         const date = new Date().toISOString().slice(0, 10);
         const categories = checkerGetChecklistCategories();
@@ -1527,19 +1550,19 @@ ${serialized}`;
 
           if (r.axes) {
             r.axes.forEach(axis => {
-              md += `## ${tt('Axis', 'Axe')} ${axis.id}: ${axis.title} — ${verdictLabels[axis.verdict] || axis.verdict}\n\n`;
+              md += `## ${tt('Axis', 'Axe', 'Achse')} ${axis.id}: ${axis.title} — ${verdictLabels[axis.verdict] || axis.verdict}\n\n`;
               if (axis.positive && axis.positive.length) {
-                md += `### ${tt('Positive findings', 'Constats positifs')}\n`;
+                md += `### ${tt('Positive findings', 'Constats positifs', 'Positive Befunde')}\n`;
                 axis.positive.forEach(f => { md += `- ✓ ${f}\n`; });
                 md += '\n';
               }
               if (axis.negative && axis.negative.length) {
-                md += `### ${tt('Negative findings', 'Constats négatifs')}\n`;
+                md += `### ${tt('Negative findings', 'Constats négatifs', 'Negative Befunde')}\n`;
                 axis.negative.forEach(f => { md += `- ✗ ${f}\n`; });
                 md += '\n';
               }
               if (axis.recommendations && axis.recommendations.length) {
-                md += `### ${tt('Recommendations', 'Recommandations')}\n`;
+                md += `### ${tt('Recommendations', 'Recommandations', 'Empfehlungen')}\n`;
                 axis.recommendations.forEach(rec => { md += `- → ${rec}\n`; });
                 md += '\n';
               }
@@ -1554,8 +1577,8 @@ ${serialized}`;
             cells.forEach(c => Object.keys(data[c]).forEach(p => phaseSet.add(p)));
             const phases = [...phaseSet];
 
-            md += `## ${tt('Stimuli Distribution', 'Distribution des stimuli')}\n\n`;
-            md += `| ${tt('Cell', 'Cellule')} | ${phases.join(' | ')} | Total |\n`;
+            md += `## ${tt('Stimuli Distribution', 'Distribution des stimuli', 'Stimuli-Verteilung')}\n\n`;
+            md += `| ${tt('Cell', 'Cellule', 'Zelle')} | ${phases.join(' | ')} | Total |\n`;
             md += `|${'----|'.repeat(phases.length + 2)}\n`;
             cells.forEach(cell => {
               const vals = phases.map(p => data[cell][p] || 0);
@@ -1567,7 +1590,7 @@ ${serialized}`;
         }
 
         // Checklist
-        md += `## ${tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »')}\n\n`;
+        md += `## ${tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »', 'Spielbereit-Checkliste')}\n\n`;
         let totalItems = 0, checkedCount = 0;
         categories.forEach(cat => {
           md += `### ${cat.title}\n`;
@@ -1582,13 +1605,13 @@ ${serialized}`;
           });
           md += '\n';
         });
-        md += `**${tt('Progress', 'Progression')}**: ${checkedCount} / ${totalItems}\n`;
+        md += `**${tt('Progress', 'Progression', 'Fortschritt')}**: ${checkedCount} / ${totalItems}\n`;
 
         // Download
         const safeName = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
         const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
         downloadBlob(blob, `crisis_check_${safeName}_${date}.md`);
-        pushToast(tt('Report exported.', 'Rapport exporté.'), 'success');
+        pushToast(tt('Report exported.', 'Rapport exporté.', 'Bericht exportiert.'), 'success');
       }
 
       // ─── Export DOCX report ───────────────────────────────────────────────────
@@ -1598,7 +1621,7 @@ ${serialized}`;
         const r = cs.analysisResult;
         const mode = cs.mode || 'file';
         const fileName = mode === 'scenario'
-          ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel'))
+          ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel', 'Aktuelles Szenario'))
           : (cs.file ? cs.file.name : 'unknown');
         const date = new Date().toISOString().slice(0, 10);
         const categories = checkerGetChecklistCategories();
@@ -1666,30 +1689,30 @@ ${serialized}`;
         body.push(para(''));
 
         if (r) {
-          body.push(para(tt('Summary', 'Synthèse'), 'Heading1'));
+          body.push(para(tt('Summary', 'Synthèse', 'Zusammenfassung'), 'Heading1'));
           body.push(boldPara('Maturity / Maturité: ', maturityLabels[r.maturity] || r.maturity));
           if (r.summary) body.push(para(r.summary));
           body.push(para(''));
 
           if (r.priority_actions && r.priority_actions.length) {
-            body.push(para(tt('Priority Actions', 'Actions prioritaires'), 'Heading1'));
+            body.push(para(tt('Priority Actions', 'Actions prioritaires', 'Prioritätsmaßnahmen'), 'Heading1'));
             r.priority_actions.forEach(a => body.push(listPara(a, 2)));
             body.push(para(''));
           }
 
           if (r.axes) {
             r.axes.forEach(axis => {
-              body.push(para(`${tt('Axis', 'Axe')} ${axis.id}: ${axis.title} — ${verdictLabels[axis.verdict] || axis.verdict}`, 'Heading1'));
+              body.push(para(`${tt('Axis', 'Axe', 'Achse')} ${axis.id}: ${axis.title} — ${verdictLabels[axis.verdict] || axis.verdict}`, 'Heading1'));
               if (axis.positive && axis.positive.length) {
-                body.push(para(tt('Positive findings', 'Constats positifs'), 'Heading2'));
+                body.push(para(tt('Positive findings', 'Constats positifs', 'Positive Befunde'), 'Heading2'));
                 axis.positive.forEach(f => body.push(listPara(`✓ ${f}`, 1)));
               }
               if (axis.negative && axis.negative.length) {
-                body.push(para(tt('Negative findings', 'Constats négatifs'), 'Heading2'));
+                body.push(para(tt('Negative findings', 'Constats négatifs', 'Negative Befunde'), 'Heading2'));
                 axis.negative.forEach(f => body.push(listPara(`✗ ${f}`, 1)));
               }
               if (axis.recommendations && axis.recommendations.length) {
-                body.push(para(tt('Recommendations', 'Recommandations'), 'Heading2'));
+                body.push(para(tt('Recommendations', 'Recommandations', 'Empfehlungen'), 'Heading2'));
                 axis.recommendations.forEach(rec => body.push(listPara(`→ ${rec}`, 1)));
               }
               body.push(para(''));
@@ -1698,13 +1721,13 @@ ${serialized}`;
 
           const data = r.stimuli_per_cell_per_phase;
           if (data && Object.keys(data).length) {
-            body.push(para(tt('Stimuli Distribution', 'Distribution des stimuli'), 'Heading1'));
+            body.push(para(tt('Stimuli Distribution', 'Distribution des stimuli', 'Stimuli-Verteilung'), 'Heading1'));
             const cells = Object.keys(data);
             const phaseSet = new Set();
             cells.forEach(c => Object.keys(data[c]).forEach(p => phaseSet.add(p)));
             const phases = [...phaseSet];
             const rows = [];
-            rows.push(tableRow([tt('Cell', 'Cellule'), ...phases, 'Total'], true));
+            rows.push(tableRow([tt('Cell', 'Cellule', 'Zelle'), ...phases, 'Total'], true));
             cells.forEach(cell => {
               const vals = phases.map(p => String(data[cell][p] || 0));
               const total = vals.reduce((s, v) => s + parseInt(v, 10), 0);
@@ -1715,7 +1738,7 @@ ${serialized}`;
           }
         }
 
-        body.push(para(tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »'), 'Heading1'));
+        body.push(para(tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »', 'Spielbereit-Checkliste'), 'Heading1'));
         let totalItems = 0, checkedCount = 0;
         categories.forEach(cat => {
           body.push(para(cat.title, 'Heading2'));
@@ -1730,7 +1753,7 @@ ${serialized}`;
           });
         });
         body.push(para(''));
-        body.push(boldPara(`${tt('Progress', 'Progression')}: `, `${checkedCount} / ${totalItems}`));
+        body.push(boldPara(`${tt('Progress', 'Progression', 'Fortschritt')}: `, `${checkedCount} / ${totalItems}`));
 
         const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1867,6 +1890,6 @@ ${serialized}`;
           .then(blob => {
             const safeName = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
             downloadBlob(blob, `crisis_check_${safeName}_${date}.docx`);
-            pushToast(tt('Report exported.', 'Rapport exporté.'), 'success');
+            pushToast(tt('Report exported.', 'Rapport exporté.', 'Bericht exportiert.'), 'success');
           });
       }
