@@ -585,14 +585,11 @@
     /* Split-panel for Stimuli view */
     .stimuli-workspace {
       display: grid;
-      grid-template-rows: 1fr auto;
+      grid-template-rows: auto auto;
       gap: 0;
-      min-height: calc(100vh - 168px);
-      max-height: calc(100vh - 168px);
       font-size: 0.94rem;
     }
     .stimuli-timeline-panel {
-      min-height: 0;
       display: flex;
       flex-direction: column;
     }
@@ -664,24 +661,12 @@
     }
 
     @media (max-width: 1680px) {
-      .stimuli-workspace {
-        min-height: calc(100vh - 152px);
-        max-height: calc(100vh - 152px);
-      }
       .stimulus-modal-right .preview-stage {
         zoom: 0.86;
       }
     }
 
     @media (max-width: 1280px) {
-      .stimuli-workspace {
-        grid-template-rows: auto auto;
-        min-height: auto;
-        max-height: none;
-      }
-      .stimuli-timeline-panel {
-        min-height: auto;
-      }
       .hero-card {
         grid-template-columns: 1fr;
       }
@@ -1874,13 +1859,7 @@
     .stimuli-table-panel {
       background: var(--surface-alt);
       border-top: 1px solid var(--border);
-      overflow-y: auto;
-      max-height: 260px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
     }
-    .stimuli-table-panel::-webkit-scrollbar { width: 6px; }
-    .stimuli-table-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     .stimuli-table {
       width: 100%;
       border-collapse: collapse;
