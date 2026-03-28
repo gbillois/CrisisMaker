@@ -71,12 +71,8 @@
       };
 
       function ensureHDFonts() {
-        if (document.getElementById('hd-fonts-link')) return;
-        const link = document.createElement('link');
-        link.id = 'hd-fonts-link';
-        link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=UnifrakturMaguntia&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&family=DM+Serif+Display&family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,700;1,400&display=swap';
-        document.head.appendChild(link);
+        // All fonts (including HD variants) are now bundled locally in fonts/fonts.css
+        // No additional loading needed - all weights and styles are included offline
       }
 
       async function importCustomTemplate() {
