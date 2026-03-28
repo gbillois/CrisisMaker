@@ -862,8 +862,8 @@
         const m = String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0');
         const meta = CHANNEL_META[stimulus.channel] || CHANNEL_META.email_internal;
         return `
-          <div class="modal-backdrop" data-action="close-stimulus-modal">
-            <div class="modal-box modal-box-stimulus" onclick="event.stopPropagation()">
+          <div class="modal-backdrop">
+            <div class="modal-box modal-box-stimulus">
               <div class="modal-header">
                 <div style="display:flex; align-items:center; gap:10px;">
                   <span class="stimulus-modal-channel-dot" style="background:${meta.color};"></span>
@@ -1037,8 +1037,8 @@
         const history = stimulus.history || [];
         const actor = getActor(stimulus.actor_id);
         return `
-          <div class="modal-backdrop" data-action="close-history">
-            <div class="modal-box" onclick="event.stopPropagation()">
+          <div class="modal-backdrop">
+            <div class="modal-box">
               <div class="modal-header">
                 <h3>${tt('Version history', 'Historique des versions')} — ${escapeHtml(channelLabel(stimulus.channel))}</h3>
                 <button class="btn btn-secondary" data-action="close-history">✕</button>
