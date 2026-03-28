@@ -83,9 +83,13 @@
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.crisistemplate.json,.json';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        const cleanup = () => { if (input.parentNode) input.remove(); };
         return new Promise((resolve) => {
           input.addEventListener('change', async (event) => {
             const file = event.target.files?.[0];
+            cleanup();
             if (!file) { resolve(); return; }
             if (file.size > 2 * 1024 * 1024) {
               pushToast(tt('Template file too large (max 2 MB).', 'Fichier template trop volumineux (max 2 Mo).'), 'error');
@@ -130,6 +134,7 @@
             }
             resolve();
           }, { once: true });
+          input.addEventListener('cancel', () => { cleanup(); resolve(); }, { once: true });
           input.click();
         });
       }
