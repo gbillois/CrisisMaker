@@ -845,137 +845,365 @@ ${lines.join('\n')}`;
         const detectedStr = detectedCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none';
         const missingStr = missingCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none';
 
-        const conciseNote = concise ? '\nSois plus concis dans tes constats. / Be more concise in your findings.\n' : '';
+        const conciseNote = concise
+          ? tt('\nBe more concise in your findings.\n',
+               '\nSois plus concis dans tes constats.\n',
+               '\nSei prägnanter in deinen Feststellungen.\n')
+          : '';
 
-        return `Tu es un expert senior en gestion de crise et en conception d'exercices de crise. On te fournit un chronogramme d'exercice de crise sous forme de tableau. Chaque ligne représente un stimulus ou un événement du scénario.
-You are a senior expert in crisis management and crisis exercise design. You are provided with a crisis exercise chronogram in tabular form. Each line represents a stimulus or scenario event.
+        const axe1Title = tt('EXERCISE COMPLETENESS', 'COMPLÉTUDE DE L\'EXERCICE', 'VOLLSTÄNDIGKEIT DER ÜBUNG');
+        const axe2Title = tt('NARRATIVE COHERENCE', 'COHÉRENCE NARRATIVE', 'NARRATIVE KOHÄRENZ');
+        const axe3Title = tt('STIMULUS COHERENCE', 'COHÉRENCE DES STIMULI', 'STIMULUS-KOHÄRENZ');
+        const axe4Title = tt('PACE AND WORKLOAD PER CELL', 'RYTHME ET CHARGE PAR CELLULE', 'TEMPO UND ARBEITSLAST PRO ZELLE');
+        const axe5Title = tt('CONTINGENCY MANAGEMENT AND FLEXIBILITY', 'GESTION DES ALÉAS ET FLEXIBILITÉ', 'NOTFALLMANAGEMENT UND FLEXIBILITÄT');
 
-Les colonnes disponibles sont / Available columns: ${detectedStr}
-Les colonnes manquantes sont / Missing columns: ${missingStr}
-${conciseNote}
-Analyse le chronogramme selon les 5 axes ci-dessous. Pour chaque axe, produis :
-1. Un verdict synthétique : satisfactory, acceptable, ou insufficient
-2. La liste des constats positifs et négatifs, avec référence aux lignes concernées
-3. Des recommandations concrètes pour corriger les défauts identifiés
+        const intro = tt(
+          `You are a senior expert in crisis management and crisis exercise design. You are provided with a crisis exercise chronogram in tabular form. Each line represents a stimulus or scenario event.`,
+          `Tu es un expert senior en gestion de crise et en conception d'exercices de crise. On te fournit un chronogramme d'exercice de crise sous forme de tableau. Chaque ligne représente un stimulus ou un événement du scénario.`,
+          `Du bist ein erfahrener Experte für Krisenmanagement und die Gestaltung von Krisenübungen. Dir wird ein Krisenübungs-Chronogramm in tabellarischer Form bereitgestellt. Jede Zeile stellt einen Stimulus oder ein Szenarioereignis dar.`
+        );
 
-Analyze the chronogram according to the 5 axes below. For each axis, produce:
+        const colLabels = tt(
+          `Available columns: ${detectedStr}\nMissing columns: ${missingStr}`,
+          `Colonnes disponibles : ${detectedStr}\nColonnes manquantes : ${missingStr}`,
+          `Verfügbare Spalten: ${detectedStr}\nFehlende Spalten: ${missingStr}`
+        );
+
+        const instructions = tt(
+          `Analyze the chronogram according to the 5 axes below. For each axis, produce:
 1. A synthetic verdict: satisfactory, acceptable, or insufficient
 2. The list of positive and negative findings, with reference to the relevant lines
-3. Concrete recommendations to fix identified issues
+3. Concrete recommendations to fix identified issues`,
+          `Analyse le chronogramme selon les 5 axes ci-dessous. Pour chaque axe, produis :
+1. Un verdict synthétique : satisfactory, acceptable, ou insufficient
+2. La liste des constats positifs et négatifs, avec référence aux lignes concernées
+3. Des recommandations concrètes pour corriger les défauts identifiés`,
+          `Analysiere das Chronogramm anhand der folgenden 5 Achsen. Erstelle für jede Achse:
+1. Ein zusammenfassendes Urteil: satisfactory, acceptable oder insufficient
+2. Die Liste der positiven und negativen Befunde mit Verweis auf die betreffenden Zeilen
+3. Konkrete Empfehlungen zur Behebung der identifizierten Mängel`
+        );
 
----
+        const axe1 = tt(
+          `AXIS 1: ${axe1Title}
 
-AXE 1 : COMPLÉTUDE DE L'EXERCICE / EXERCISE COMPLETENESS
+Thematic coverage — are the major dimensions of a crisis represented?
+- Operational / technical
+- Internal communication
+- External communication (media, social media)
+- Legal / regulatory (notifications, compliance)
+- HR / social (employee impact, social partners)
+- Business continuity (BCP/DRP, failover, degraded mode)
+- Relations with authorities (regulator, law enforcement, national CERT)
+- External stakeholders (clients, suppliers, partners)
+- Financial / insurance
+
+Actor representation — do all expected categories appear as senders or recipients?
+- Senior management / COMEX
+- Decision-making crisis cell
+- Operational crisis cell
+- Communication / press relations
+- Legal department
+- Directly impacted business units
+- IT / technical teams / SOC / CERT
+- Critical service providers
+- Regulators / authorities
+
+Deliverables coverage — does the scenario push players to produce:
+- Press release or talking points
+- Regulatory notification
+- Structured situation report
+- BCP/DRP activation decision
+- Maintaining a log / chronolog
+- Internal communication
+
+Channel diversity — does the scenario use a variety of channels (email, call, alert, media, social media, messaging)?`,
+          `AXE 1 : ${axe1Title}
 
 Couverture thématique — les grandes dimensions d'une crise sont-elles représentées ?
-Thematic coverage — are the major dimensions of a crisis represented?
-- Opérationnel / technique (Operational / technical)
-- Communication interne (Internal communication)
-- Communication externe (médias, réseaux sociaux) (External communication — media, social media)
-- Juridique / réglementaire (notifications, conformité) (Legal / regulatory — notifications, compliance)
-- RH / social (impact collaborateurs, partenaires sociaux) (HR / social — employee impact, social partners)
-- Continuité d'activité (PCA/PRA, bascule, mode dégradé) (Business continuity — BCP/DRP, failover, degraded mode)
-- Relations avec les autorités (régulateur, forces de l'ordre, ANSSI/CERT national) (Relations with authorities — regulator, law enforcement, national CERT)
-- Parties prenantes externes (clients, fournisseurs, partenaires) (External stakeholders — clients, suppliers, partners)
-- Financier / assurance (Financial / insurance)
+- Opérationnel / technique
+- Communication interne
+- Communication externe (médias, réseaux sociaux)
+- Juridique / réglementaire (notifications, conformité)
+- RH / social (impact collaborateurs, partenaires sociaux)
+- Continuité d'activité (PCA/PRA, bascule, mode dégradé)
+- Relations avec les autorités (régulateur, forces de l'ordre, ANSSI/CERT national)
+- Parties prenantes externes (clients, fournisseurs, partenaires)
+- Financier / assurance
 
 Représentation des acteurs — toutes les catégories attendues apparaissent-elles comme émetteurs ou destinataires ?
-Actor representation — do all expected categories appear as senders or recipients?
-- Direction générale / COMEX (Senior management / COMEX)
-- Cellule de crise décisionnelle (Decision-making crisis cell)
-- Cellule de crise opérationnelle (Operational crisis cell)
-- Communication / relations presse (Communication / press relations)
-- Direction juridique (Legal department)
-- Métiers directement impactés (Directly impacted business units)
-- DSI / équipes techniques / SOC / CERT (IT / technical teams / SOC / CERT)
-- Prestataires critiques (Critical service providers)
-- Régulateurs / autorités (Regulators / authorities)
+- Direction générale / COMEX
+- Cellule de crise décisionnelle
+- Cellule de crise opérationnelle
+- Communication / relations presse
+- Direction juridique
+- Métiers directement impactés
+- DSI / équipes techniques / SOC / CERT
+- Prestataires critiques
+- Régulateurs / autorités
 
 Couverture des livrables — le scénario pousse-t-il les joueurs à produire :
-Deliverables coverage — does the scenario push players to produce:
-- Communiqué de presse ou éléments de langage (Press release or talking points)
-- Notification réglementaire (CNIL, ANSSI, autorité sectorielle) (Regulatory notification)
-- Point de situation structuré (Structured situation report)
-- Décision d'activation PCA/PRA (BCP/DRP activation decision)
-- Tenue d'une main courante (Maintaining a log / chronolog)
-- Communication interne (Internal communication)
+- Communiqué de presse ou éléments de langage
+- Notification réglementaire (CNIL, ANSSI, autorité sectorielle)
+- Point de situation structuré
+- Décision d'activation PCA/PRA
+- Tenue d'une main courante
+- Communication interne
 
-Diversité des canaux — le scénario utilise-t-il une variété de canaux ?
-Channel diversity — does the scenario use a variety of channels (email, call, alert, media, social media, messaging)?
+Diversité des canaux — le scénario utilise-t-il une variété de canaux (email, appel, alerte, média, réseau social, messagerie) ?`,
+          `ACHSE 1: ${axe1Title}
 
----
+Thematische Abdeckung — sind die wichtigsten Dimensionen einer Krise vertreten?
+- Operativ / technisch
+- Interne Kommunikation
+- Externe Kommunikation (Medien, soziale Medien)
+- Rechtlich / regulatorisch (Benachrichtigungen, Compliance)
+- HR / Soziales (Mitarbeiterauswirkungen, Sozialpartner)
+- Geschäftskontinuität (BCP/DRP, Failover, eingeschränkter Modus)
+- Beziehungen zu Behörden (Regulierer, Strafverfolgung, nationales CERT)
+- Externe Stakeholder (Kunden, Lieferanten, Partner)
+- Finanzen / Versicherung
 
-AXE 2 : COHÉRENCE NARRATIVE / NARRATIVE COHERENCE
+Darstellung der Akteure — erscheinen alle erwarteten Kategorien als Absender oder Empfänger?
+- Geschäftsleitung / COMEX
+- Entscheidungs-Krisenstab
+- Operativer Krisenstab
+- Kommunikation / Pressearbeit
+- Rechtsabteilung
+- Direkt betroffene Geschäftsbereiche
+- IT / technische Teams / SOC / CERT
+- Kritische Dienstleister
+- Regulierer / Behörden
+
+Abdeckung der Ergebnisse — drängt das Szenario die Spieler dazu, Folgendes zu erstellen:
+- Pressemitteilung oder Sprachregelungen
+- Regulatorische Benachrichtigung
+- Strukturierter Lagebericht
+- BCP/DRP-Aktivierungsentscheidung
+- Führung eines Chronologs
+- Interne Kommunikation
+
+Kanalvielfalt — nutzt das Szenario verschiedene Kanäle (E-Mail, Anruf, Alarm, Medien, soziale Medien, Messaging)?`
+        );
+
+        const axe2 = tt(
+          `AXIS 2: ${axe2Title}
+
+Phase structure — are the main phases present and logically ordered?
+- Detection / early warning signs
+- Alert and mobilization
+- Hot management / response
+- Stabilization / recovery
+- Demobilization / closure
+
+Causal chaining — does each event logically follow from the previous one?
+Severity progression — is the escalation gradual?
+Duration — is the total duration consistent with the type of crisis simulated?
+Scenario richness — does the scenario include at least one decision dilemma, a twist, a phase of uncertainty?
+Internal factual consistency — are factual elements consistent from one stimulus to another?`,
+          `AXE 2 : ${axe2Title}
 
 Structure en phases — les grandes phases sont-elles présentes et ordonnées logiquement ?
-Phase structure — are the main phases present and logically ordered?
-- Détection / signaux faibles (Detection / early warning signs)
-- Alerte et mobilisation (Alert and mobilization)
-- Gestion à chaud / réponse (Hot management / response)
-- Stabilisation / reprise de contrôle (Stabilization / recovery)
-- Démobilisation / clôture (Demobilization / closure)
+- Détection / signaux faibles
+- Alerte et mobilisation
+- Gestion à chaud / réponse
+- Stabilisation / reprise de contrôle
+- Démobilisation / clôture
 
-Enchaînement causal — chaque événement découle-t-il logiquement du précédent ? (Causal chaining — does each event logically follow from the previous one?)
-Progression de la gravité — la montée en puissance est-elle progressive ? (Severity progression — is the escalation gradual?)
-Durée — la durée totale est-elle cohérente avec le type de crise simulée ? (Duration — is the total duration consistent with the type of crisis simulated?)
-Richesse scénaristique — le scénario comporte-t-il au moins un dilemme décisionnel, un rebondissement, une phase d'incertitude ? (Scenario richness — does the scenario include at least one decision dilemma, a twist, a phase of uncertainty?)
-Cohérence factuelle interne — les éléments factuels sont-ils cohérents d'un stimulus à l'autre ? (Internal factual consistency — are factual elements consistent from one stimulus to another?)
+Enchaînement causal — chaque événement découle-t-il logiquement du précédent ?
+Progression de la gravité — la montée en puissance est-elle progressive ?
+Durée — la durée totale est-elle cohérente avec le type de crise simulée ?
+Richesse scénaristique — le scénario comporte-t-il au moins un dilemme décisionnel, un rebondissement, une phase d'incertitude ?
+Cohérence factuelle interne — les éléments factuels sont-ils cohérents d'un stimulus à l'autre ?`,
+          `ACHSE 2: ${axe2Title}
 
----
+Phasenstruktur — sind die Hauptphasen vorhanden und logisch geordnet?
+- Erkennung / Frühwarnsignale
+- Alarm und Mobilisierung
+- Akutmanagement / Reaktion
+- Stabilisierung / Wiederherstellung
+- Demobilisierung / Abschluss
 
-AXE 3 : COHÉRENCE DES STIMULI / STIMULUS COHERENCE
+Kausale Verkettung — folgt jedes Ereignis logisch aus dem vorherigen?
+Schweregradprogression — ist die Eskalation schrittweise?
+Dauer — ist die Gesamtdauer mit dem simulierten Krisentyp konsistent?
+Szenarioreichhaltigkeit — enthält das Szenario mindestens ein Entscheidungsdilemma, eine Wendung, eine Phase der Unsicherheit?
+Interne faktische Konsistenz — sind die faktischen Elemente von einem Stimulus zum anderen konsistent?`
+        );
 
-Complétude des métadonnées — chaque stimulus a-t-il un émetteur, un destinataire, un canal, un horodatage ? (Metadata completeness — does each stimulus have a sender, recipient, channel, timestamp?)
-Logique informationnelle / Information logic:
-- Un destinataire ne reçoit jamais une information qu'il est censé ignorer à ce stade (A recipient never receives information they are supposed to ignore at this stage)
-- Un stimulus de réponse n'arrive pas avant son stimulus déclencheur (A response stimulus does not arrive before its trigger stimulus)
-- Les délais de propagation sont réalistes (Propagation delays are realistic)
-Cohérence factuelle inter-stimuli — pas de contradiction entre deux stimuli (Inter-stimuli factual consistency — no contradiction between stimuli)
-Stimuli conditionnels — les stimuli dépendant d'une décision joueur sont-ils marqués ? (Conditional stimuli — are stimuli depending on player decisions marked?)
+        const axe3 = tt(
+          `AXIS 3: ${axe3Title}
 
----
+Metadata completeness — does each stimulus have a sender, recipient, channel, timestamp?
+Information logic:
+- A recipient never receives information they are supposed to ignore at this stage
+- A response stimulus does not arrive before its trigger stimulus
+- Propagation delays are realistic
+Inter-stimuli factual consistency — no contradiction between stimuli
+Conditional stimuli — are stimuli depending on player decisions marked?`,
+          `AXE 3 : ${axe3Title}
 
-AXE 4 : RYTHME ET CHARGE PAR CELLULE / PACE AND WORKLOAD PER CELL
+Complétude des métadonnées — chaque stimulus a-t-il un émetteur, un destinataire, un canal, un horodatage ?
+Logique informationnelle :
+- Un destinataire ne reçoit jamais une information qu'il est censé ignorer à ce stade
+- Un stimulus de réponse n'arrive pas avant son stimulus déclencheur
+- Les délais de propagation sont réalistes
+Cohérence factuelle inter-stimuli — pas de contradiction entre deux stimuli
+Stimuli conditionnels — les stimuli dépendant d'une décision joueur sont-ils marqués ?`,
+          `ACHSE 3: ${axe3Title}
 
-Continuité d'engagement — chaque cellule reçoit-elle des stimuli à intervalles suffisants ? Identifier les temps morts > 15 minutes. (Engagement continuity — does each cell receive stimuli at sufficient intervals? Identify gaps > 15 minutes.)
-Gestion de la charge — y a-t-il des pics excessifs (> 3 stimuli en 5 min pour une cellule) ? (Workload management — are there excessive peaks?)
-Dynamique — le rythme comporte-t-il des accélérations et des respirations ? (Dynamics — does the pace include accelerations and breathers?)
-Produire un tableau synthétique : nombre de stimuli par cellule et par phase. (Produce a summary table: number of stimuli per cell and per phase.)
+Metadaten-Vollständigkeit — hat jeder Stimulus einen Absender, Empfänger, Kanal, Zeitstempel?
+Informationslogik:
+- Ein Empfänger erhält niemals Informationen, die er zu diesem Zeitpunkt ignorieren soll
+- Ein Antwortstimulus kommt nicht vor seinem auslösenden Stimulus an
+- Ausbreitungsverzögerungen sind realistisch
+Inter-Stimulus faktische Konsistenz — kein Widerspruch zwischen Stimuli
+Bedingte Stimuli — sind Stimuli, die von Spielerentscheidungen abhängen, markiert?`
+        );
 
----
+        const axe4 = tt(
+          `AXIS 4: ${axe4Title}
 
-AXE 5 : GESTION DES ALÉAS ET FLEXIBILITÉ / CONTINGENCY MANAGEMENT AND FLEXIBILITY
+Engagement continuity — does each cell receive stimuli at sufficient intervals? Identify gaps > 15 minutes.
+Workload management — are there excessive peaks (> 3 stimuli in 5 min for a cell)?
+Dynamics — does the pace include accelerations and breathers?
+Produce a summary table: number of stimuli per cell and per phase.`,
+          `AXE 4 : ${axe4Title}
 
-Des injects alternatifs sont-ils prévus si les joueurs prennent une direction inattendue ? (Are alternative injects planned if players take an unexpected direction?)
-Un mécanisme de "coup de pouce" existe-t-il si une cellule est bloquée ? (Does a "nudge" mechanism exist if a cell is stuck?)
-Des stimuli de recadrage sont-ils prévus pour ramener le jeu sur les rails ? (Are reframing stimuli planned to bring the game back on track?)
-Le scénario prévoit-il un mécanisme d'arrêt anticipé ? (Does the scenario provide an early stop mechanism?)
+Continuité d'engagement — chaque cellule reçoit-elle des stimuli à intervalles suffisants ? Identifier les temps morts > 15 minutes.
+Gestion de la charge — y a-t-il des pics excessifs (> 3 stimuli en 5 min pour une cellule) ?
+Dynamique — le rythme comporte-t-il des accélérations et des respirations ?
+Produire un tableau synthétique : nombre de stimuli par cellule et par phase.`,
+          `ACHSE 4: ${axe4Title}
 
----
+Engagement-Kontinuität — erhält jede Zelle Stimuli in ausreichenden Intervallen? Identifiziere Lücken > 15 Minuten.
+Arbeitslastmanagement — gibt es übermäßige Spitzen (> 3 Stimuli in 5 Min. für eine Zelle)?
+Dynamik — umfasst das Tempo Beschleunigungen und Pausen?
+Erstelle eine Übersichtstabelle: Anzahl der Stimuli pro Zelle und Phase.`
+        );
 
-FORMAT DE SORTIE / OUTPUT FORMAT
+        const axe5 = tt(
+          `AXIS 5: ${axe5Title}
 
-Réponds UNIQUEMENT avec un objet JSON valide / Reply ONLY with a valid JSON object:
+Are alternative injects planned if players take an unexpected direction?
+Does a "nudge" mechanism exist if a cell is stuck?
+Are reframing stimuli planned to bring the game back on track?
+Does the scenario provide an early stop mechanism?`,
+          `AXE 5 : ${axe5Title}
+
+Des injects alternatifs sont-ils prévus si les joueurs prennent une direction inattendue ?
+Un mécanisme de "coup de pouce" existe-t-il si une cellule est bloquée ?
+Des stimuli de recadrage sont-ils prévus pour ramener le jeu sur les rails ?
+Le scénario prévoit-il un mécanisme d'arrêt anticipé ?`,
+          `ACHSE 5: ${axe5Title}
+
+Sind alternative Einspielungen geplant, falls Spieler eine unerwartete Richtung einschlagen?
+Gibt es einen "Anstoß"-Mechanismus, wenn eine Zelle feststeckt?
+Sind Neuausrichtungs-Stimuli geplant, um das Spiel wieder auf Kurs zu bringen?
+Sieht das Szenario einen vorzeitigen Abbruchmechanismus vor?`
+        );
+
+        const outputFormat = tt(
+          `OUTPUT FORMAT
+
+Reply ONLY with a valid JSON object:
 
 {
-  "summary": "Synthèse globale en 3-4 phrases / Global summary in 3-4 sentences",
+  "summary": "Global summary in 3-4 sentences",
   "maturity": "first_draft | advanced_draft | ready_to_play",
   "axes": [
     {
       "id": 1,
-      "title": "Complétude de l'exercice / Exercise Completeness",
+      "title": "Exercise Completeness",
       "verdict": "satisfactory | acceptable | insufficient",
-      "positive": ["constat positif 1 / positive finding 1", "constat positif 2"],
-      "negative": ["constat négatif 1 (lignes X-Y) / negative finding 1 (lines X-Y)", "constat négatif 2"],
-      "recommendations": ["recommandation 1 / recommendation 1", "recommandation 2"]
+      "positive": ["positive finding 1", "positive finding 2"],
+      "negative": ["negative finding 1 (lines X-Y)", "negative finding 2"],
+      "recommendations": ["recommendation 1", "recommendation 2"]
     }
   ],
-  "priority_actions": ["action prioritaire 1 / priority action 1", "action prioritaire 2", "action prioritaire 3"],
+  "priority_actions": ["priority action 1", "priority action 2", "priority action 3"],
   "stimuli_per_cell_per_phase": {
     "cell_name_1": {"phase_1": 0, "phase_2": 0},
     "cell_name_2": {"phase_1": 0, "phase_2": 0}
   }
-}
+}`,
+          `FORMAT DE SORTIE
+
+Réponds UNIQUEMENT avec un objet JSON valide :
+
+{
+  "summary": "Synthèse globale en 3-4 phrases",
+  "maturity": "first_draft | advanced_draft | ready_to_play",
+  "axes": [
+    {
+      "id": 1,
+      "title": "Complétude de l'exercice",
+      "verdict": "satisfactory | acceptable | insufficient",
+      "positive": ["constat positif 1", "constat positif 2"],
+      "negative": ["constat négatif 1 (lignes X-Y)", "constat négatif 2"],
+      "recommendations": ["recommandation 1", "recommandation 2"]
+    }
+  ],
+  "priority_actions": ["action prioritaire 1", "action prioritaire 2", "action prioritaire 3"],
+  "stimuli_per_cell_per_phase": {
+    "nom_cellule_1": {"phase_1": 0, "phase_2": 0},
+    "nom_cellule_2": {"phase_1": 0, "phase_2": 0}
+  }
+}`,
+          `AUSGABEFORMAT
+
+Antworte NUR mit einem gültigen JSON-Objekt:
+
+{
+  "summary": "Globale Zusammenfassung in 3-4 Sätzen",
+  "maturity": "first_draft | advanced_draft | ready_to_play",
+  "axes": [
+    {
+      "id": 1,
+      "title": "Vollständigkeit der Übung",
+      "verdict": "satisfactory | acceptable | insufficient",
+      "positive": ["positiver Befund 1", "positiver Befund 2"],
+      "negative": ["negativer Befund 1 (Zeilen X-Y)", "negativer Befund 2"],
+      "recommendations": ["Empfehlung 1", "Empfehlung 2"]
+    }
+  ],
+  "priority_actions": ["Prioritätsmaßnahme 1", "Prioritätsmaßnahme 2", "Prioritätsmaßnahme 3"],
+  "stimuli_per_cell_per_phase": {
+    "Zellenname_1": {"Phase_1": 0, "Phase_2": 0},
+    "Zellenname_2": {"Phase_1": 0, "Phase_2": 0}
+  }
+}`
+        );
+
+        return `${intro}
+
+${colLabels}
+${conciseNote}
+${instructions}
+
+---
+
+${axe1}
+
+---
+
+${axe2}
+
+---
+
+${axe3}
+
+---
+
+${axe4}
+
+---
+
+${axe5}
+
+---
+
+${outputFormat}
 
 ${serialized}
 
@@ -1188,9 +1416,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
 
       function getAxisLabel(axis, i) {
         if (!axis.title) return tt('Axis', 'Axe', 'Achse') + ' ' + (axis.id || (i + 1));
-        // Titles from AI are bilingual: "French part / English part"
-        const parts = axis.title.split(' / ');
-        return isFrenchUI() ? parts[0] : (parts[1] || parts[0]);
+        return axis.title;
       }
 
       function renderCheckerAxes(result) {
@@ -1528,23 +1754,23 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         const customItems = cl.customItems || {};
 
         const verdictLabels = {
-          satisfactory: '✅ Satisfactory / Satisfaisant',
-          acceptable: '⚠️ Acceptable',
-          insufficient: '❌ Insufficient / Insuffisant'
+          satisfactory: tt('✅ Satisfactory', '✅ Satisfaisant', '✅ Zufriedenstellend'),
+          acceptable: tt('⚠️ Acceptable', '⚠️ Acceptable', '⚠️ Akzeptabel'),
+          insufficient: tt('❌ Insufficient', '❌ Insuffisant', '❌ Unzureichend')
         };
         const maturityLabels = {
-          first_draft: 'First Draft / Premier brouillon',
-          advanced_draft: 'Advanced Draft / Brouillon avancé',
-          ready_to_play: 'Ready to Play / Prêt à jouer'
+          first_draft: tt('First Draft', 'Premier brouillon', 'Erster Entwurf'),
+          advanced_draft: tt('Advanced Draft', 'Brouillon avancé', 'Fortgeschrittener Entwurf'),
+          ready_to_play: tt('Ready to Play', 'Prêt à jouer', 'Spielbereit')
         };
 
-        let md = `# Crisis Checker Report — ${fileName}\nGenerated: ${date}\n\n`;
+        let md = `# ${tt('Crisis Checker Report', 'Rapport Crisis Checker', 'Crisis Checker Bericht')} — ${fileName}\n${tt('Generated', 'Généré le', 'Erstellt am')}: ${date}\n\n`;
 
         if (r) {
-          md += `## Summary / Synthèse\n**Maturity / Maturité**: ${maturityLabels[r.maturity] || r.maturity}\n\n${r.summary || ''}\n\n`;
+          md += `## ${tt('Summary', 'Synthèse', 'Zusammenfassung')}\n**${tt('Maturity', 'Maturité', 'Reifegrad')}**: ${maturityLabels[r.maturity] || r.maturity}\n\n${r.summary || ''}\n\n`;
 
           if (r.priority_actions && r.priority_actions.length) {
-            md += `## Priority Actions / Actions prioritaires\n`;
+            md += `## ${tt('Priority Actions', 'Actions prioritaires', 'Prioritätsmaßnahmen')}\n`;
             r.priority_actions.forEach((a, i) => { md += `${i + 1}. ${a}\n`; });
             md += '\n';
           }
@@ -1631,14 +1857,14 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         const customItems = cl.customItems || {};
 
         const verdictLabels = {
-          satisfactory: 'Satisfactory / Satisfaisant',
-          acceptable: 'Acceptable',
-          insufficient: 'Insufficient / Insuffisant'
+          satisfactory: tt('Satisfactory', 'Satisfaisant', 'Zufriedenstellend'),
+          acceptable: tt('Acceptable', 'Acceptable', 'Akzeptabel'),
+          insufficient: tt('Insufficient', 'Insuffisant', 'Unzureichend')
         };
         const maturityLabels = {
-          first_draft: 'First Draft / Premier brouillon',
-          advanced_draft: 'Advanced Draft / Brouillon avancé',
-          ready_to_play: 'Ready to Play / Prêt à jouer'
+          first_draft: tt('First Draft', 'Premier brouillon', 'Erster Entwurf'),
+          advanced_draft: tt('Advanced Draft', 'Brouillon avancé', 'Fortgeschrittener Entwurf'),
+          ready_to_play: tt('Ready to Play', 'Prêt à jouer', 'Spielbereit')
         };
 
         function esc(str) {
@@ -1685,13 +1911,13 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
 
         const body = [];
 
-        body.push(para(`Crisis Checker Report — ${fileName}`, 'CrisisTitle'));
-        body.push(para(`Generated: ${date}`, 'CrisisSubtitle'));
+        body.push(para(`${tt('Crisis Checker Report', 'Rapport Crisis Checker', 'Crisis Checker Bericht')} — ${fileName}`, 'CrisisTitle'));
+        body.push(para(`${tt('Generated', 'Généré le', 'Erstellt am')}: ${date}`, 'CrisisSubtitle'));
         body.push(para(''));
 
         if (r) {
           body.push(para(tt('Summary', 'Synthèse', 'Zusammenfassung'), 'Heading1'));
-          body.push(boldPara('Maturity / Maturité: ', maturityLabels[r.maturity] || r.maturity));
+          body.push(boldPara(`${tt('Maturity', 'Maturité', 'Reifegrad')}: `, maturityLabels[r.maturity] || r.maturity));
           if (r.summary) body.push(para(r.summary));
           body.push(para(''));
 
