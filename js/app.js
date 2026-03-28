@@ -1106,7 +1106,7 @@
       }
 
       function normalizeProviderSettingsInPlace(settings) {
-        if (!['anthropic', 'openai', 'azure_openai'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
+        if (!['anthropic', 'openai', 'azure_openai', 'google_gemini'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
         const providerModels = DEFAULT_MODELS[settings.ai_provider] || DEFAULT_MODELS.anthropic;
         if (!providerModels.includes(settings.ai_model)) settings.ai_model = providerModels[0];
         settings.ai_api_key = settings.ai_api_key || '';
@@ -1121,6 +1121,9 @@
         }
         if (settings.ai_provider === 'openai') {
           return `OpenAI / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
+        }
+        if (settings.ai_provider === 'google_gemini') {
+          return `Google Gemini / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
         }
         return `Anthropic / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
       }
