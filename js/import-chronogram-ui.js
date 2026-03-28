@@ -127,6 +127,7 @@
         if (!state) return '';
         const p = state.progress || { step: 1, totalSteps: 3, message: '', details: '' };
         const pct = Math.round((p.step / p.totalSteps) * 100);
+        const showStream = !!state.showLLMStream;
 
         const steps = [
           tt('Step 1: Analyze file structure', 'Étape 1 : Analyse de la structure du fichier'),
@@ -134,13 +135,21 @@
           tt('Step 3: Generate CrisisStim objects', 'Étape 3 : Génération des objets CrisisStim')
         ];
 
+        // Streaming advancement indicator: count chars from the last streaming log entry
+        const currentLog = state.llmLogs && state.llmLogs.length > 0 ? state.llmLogs[state.llmLogs.length - 1] : null;
+        const isStreamingNow = currentLog && currentLog.status === 'streaming';
+        const streamedChars = isStreamingNow ? (currentLog.responseText || '').length : 0;
+
         return `
           <div class="modal-backdrop">
-            <div class="modal-box chronogram-modal chronogram-progress-wide">
+            <div class="modal-box chronogram-modal ${showStream ? 'chronogram-progress-wide' : ''}">
               <div class="modal-header">
                 <h3>${tt('AI Import in progress...', 'Import IA en cours...')}</h3>
+                <button class="btn btn-secondary btn-sm" data-action="chronogram-toggle-llm-stream">
+                  ${showStream ? tt('Hide LLM stream', 'Masquer le flux LLM') : tt('Show LLM stream', 'Afficher le flux LLM')}
+                </button>
               </div>
-              <div class="chronogram-modal-body chronogram-progress-layout">
+              <div class="chronogram-modal-body ${showStream ? 'chronogram-progress-layout' : ''}">
 
                 <div class="chronogram-progress-left">
                   <div class="chronogram-progress-bar-container">
@@ -155,23 +164,32 @@
                       let cls = 'pending';
                       if (stepNum < p.step) { icon = '✅'; cls = 'done'; }
                       else if (stepNum === p.step) { icon = '🔄'; cls = 'active'; }
+                      const streamIndicator = (stepNum === p.step && isStreamingNow)
+                        ? `<div class="chronogram-stream-indicator" id="chronogram-stream-indicator">
+                            <span class="chronogram-stream-dot"></span>
+                            <span id="chronogram-stream-indicator-text">${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${streamedChars.toLocaleString()} ${tt('chars', 'car.')}</span>
+                           </div>`
+                        : '';
                       return `<div class="chronogram-step ${cls}">
                         <span class="chronogram-step-icon">${icon}</span>
                         <span class="chronogram-step-label">${label}</span>
                       </div>
-                      ${stepNum === p.step && p.details ? `<div class="chronogram-step-details subtle">${escapeHtml(p.details)}</div>` : ''}`;
+                      ${stepNum === p.step && p.details ? `<div class="chronogram-step-details subtle">${escapeHtml(p.details)}</div>` : ''}
+                      ${streamIndicator}`;
                     }).join('')}
                   </div>
 
                   ${state.error ? `<div class="chronogram-error-banner">${escapeHtml(state.error)}</div>` : ''}
                 </div>
 
+                ${showStream ? `
                 <div class="chronogram-progress-right">
                   <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct')}</div>
                   <div class="llm-stream-panel" id="llm-stream-panel">
                     <div id="llm-stream-content">${renderLLMLogs(state.llmLogs || [])}</div>
                   </div>
                 </div>
+                ` : ''}
 
               </div>
               <div class="chronogram-modal-footer">
