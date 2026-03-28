@@ -24,8 +24,8 @@
         const autonomy = appState.chronogramImportAutonomy || 'mostly_autonomous';
 
         return `
-          <div class="modal-backdrop" data-action="chronogram-cancel">
-            <div class="modal-box chronogram-modal" onclick="event.stopPropagation()">
+          <div class="modal-backdrop">
+            <div class="modal-box chronogram-modal" >
               <div class="modal-header">
                 <h3>${tt('AI Import - Chronogram', 'Import IA - Chronogramme')}</h3>
                 <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
@@ -109,7 +109,7 @@
 
         return `
           <div class="modal-backdrop">
-            <div class="modal-box chronogram-modal" onclick="event.stopPropagation()">
+            <div class="modal-box chronogram-modal" >
               <div class="modal-header">
                 <h3>${tt('AI Import in progress...', 'Import IA en cours...')}</h3>
               </div>
@@ -159,8 +159,8 @@
         const autonomy = appState.chronogramImportAutonomy || 'mostly_autonomous';
 
         return `
-          <div class="modal-backdrop" data-action="chronogram-cancel">
-            <div class="modal-box chronogram-modal chronogram-result-modal" onclick="event.stopPropagation()">
+          <div class="modal-backdrop">
+            <div class="modal-box chronogram-modal chronogram-result-modal" >
               <div class="modal-header">
                 <h3>${state.error
                   ? tt('AI Import failed', 'Import IA échoué')
@@ -227,8 +227,8 @@
         if (idx >= queue.length) {
           // All items reviewed
           return `
-            <div class="modal-backdrop" data-action="chronogram-cancel">
-              <div class="modal-box chronogram-modal" onclick="event.stopPropagation()">
+            <div class="modal-backdrop">
+              <div class="modal-box chronogram-modal" >
                 <div class="modal-header">
                   <h3>${tt('Validation complete', 'Validation terminée')}</h3>
                   <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
@@ -253,7 +253,7 @@
 
         return `
           <div class="modal-backdrop">
-            <div class="modal-box chronogram-modal" onclick="event.stopPropagation()">
+            <div class="modal-box chronogram-modal" >
               <div class="modal-header">
                 <h3>${tt('Review item', 'Valider l\'élément')} ${idx + 1}/${queue.length}</h3>
               </div>
