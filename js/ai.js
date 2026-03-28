@@ -1,9 +1,11 @@
       const AITextGenerator = {
         async testConnection() {
           const { ai_provider, ai_api_key, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
-          if (['anthropic', 'openai'].includes(ai_provider) && !ai_api_key) {
+          if (['anthropic', 'openai', 'google_gemini'].includes(ai_provider) && !ai_api_key) {
             throw new Error(ai_provider === 'openai'
               ? tt('Please enter an OpenAI API key before testing the connection.', 'Veuillez saisir une clé API OpenAI avant de tester la connexion.', 'Bitte geben Sie einen OpenAI-API-Schlüssel ein, bevor Sie die Verbindung testen.')
+              : ai_provider === 'google_gemini'
+              ? tt('Please enter a Google Gemini API key before testing the connection.', 'Veuillez saisir une clé API Google Gemini avant de tester la connexion.', 'Bitte geben Sie einen Google Gemini-API-Schlüssel ein, bevor Sie die Verbindung testen.')
               : tt('Please enter an Anthropic API key before testing the connection.', 'Veuillez saisir une clé API Anthropic avant de tester la connexion.', 'Bitte geben Sie einen Anthropic-API-Schlüssel ein, bevor Sie die Verbindung testen.'));
           }
           if (ai_provider === 'azure_openai') {
@@ -104,6 +106,20 @@
             return parseLLMJson(fullText);
           }
 
+          if (ai_provider === 'google_gemini') {
+            if (!ai_api_key) throw new Error(tt('Missing Google Gemini API key.', 'Clé API Google Gemini manquante.', 'Fehlender Google Gemini-API-Schlüssel.'));
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai_model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(ai_api_key)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + (userPrompt || 'Reply in strict JSON.') }] }], generationConfig: { maxOutputTokens: maxTokens } })
+            });
+            const fullText = await readSSE(response, (event) => {
+              const parts = event.candidates?.[0]?.content?.parts;
+              return parts?.[0]?.text || null;
+            });
+            return parseLLMJson(fullText);
+          }
+
           throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));
         },
 
@@ -111,6 +127,7 @@
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
           if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
+          if (ai_provider === 'google_gemini' && !ai_api_key) throw new Error(tt('Missing Google Gemini API key.', 'Clé API Google Gemini manquante.', 'Fehlender Google Gemini-API-Schlüssel.'));
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
@@ -162,6 +179,20 @@
             if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.', 'Leere OpenAI-Antwort.'));
             const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with OpenAI.', 'Contenu généré avec OpenAI.', 'Inhalt mit OpenAI generiert.'), 'success');
+            return parsed;
+          }
+          if (ai_provider === 'google_gemini') {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai_model)}:generateContent?key=${encodeURIComponent(ai_api_key)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + (userPrompt || 'Reply in strict JSON.') }] }], generationConfig: { maxOutputTokens: maxTokens } })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error?.message || 'Google Gemini API error');
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!content) throw new Error(tt('Empty Google Gemini response.', 'Réponse Google Gemini vide.', 'Leere Google Gemini-Antwort.'));
+            const parsed = parseLLMJson(content);
+            if (!quiet) pushToast(tt('Content generated with Google Gemini.', 'Contenu généré avec Google Gemini.', 'Inhalt mit Google Gemini generiert.'), 'success');
             return parsed;
           }
           throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));

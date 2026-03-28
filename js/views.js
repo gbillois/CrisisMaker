@@ -547,6 +547,7 @@
         const isAnthropic = settings.ai_provider === 'anthropic';
         const isOpenAI = settings.ai_provider === 'openai';
         const isAzure = settings.ai_provider === 'azure_openai';
+        const isGemini = settings.ai_provider === 'google_gemini';
         const connectionTest = appState.connectionTest || { status: 'idle', message: '', checkedAt: null, provider: '' };
         const connectionStatusLabels = {
           testing: tt('Testing…', 'Test en cours…', 'Wird getestet…'),
@@ -571,17 +572,18 @@
                     <option value="anthropic" ${settings.ai_provider === 'anthropic' ? 'selected' : ''}>Anthropic</option>
                     <option value="openai" ${settings.ai_provider === 'openai' ? 'selected' : ''}>OpenAI</option>
                     <option value="azure_openai" ${settings.ai_provider === 'azure_openai' ? 'selected' : ''}>Azure OpenAI</option>
+                    <option value="google_gemini" ${settings.ai_provider === 'google_gemini' ? 'selected' : ''}>Google Gemini</option>
                   </select>
                 </label>
-                ${(isAnthropic || isOpenAI) ? `
+                ${(isAnthropic || isOpenAI || isGemini) ? `
                   <label class="field">${tt('Model', 'Modèle', 'Modell')}
                     <select data-bind="settings.ai_model">
                       ${models.map((model) => `<option value="${model}" ${settings.ai_model === model ? 'selected' : ''}>${model}</option>`).join('')}
                     </select>
                   </label>
-                  <label class="field" style="grid-column: 1 / -1;">${isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
+                  <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
-                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
+                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isGemini ? 'AIza...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
                       <button class="btn btn-secondary" data-action="toggle-api-key">👁️</button>
                     </div>
                   </label>
@@ -628,8 +630,9 @@
                   <div style="margin-top:6px;font-size:13px;line-height:1.4;">${escapeHtml(connectionTest.message)}</div>
                 </div>
               ` : ''}
-              <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`, `Die ${isAzure ? 'Azure OpenAI' : isOpenAI ? 'OpenAI' : 'Anthropic'}-Einstellungen verbleiben in Ihrem Browser und werden nur an den ausgewählten Anbieter übermittelt.`)}</p>
+              <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`, `Die ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'}-Einstellungen verbleiben in Ihrem Browser und werden nur an den ausgewählten Anbieter übermittelt.`)}</p>
               ${(isOpenAI || isAzure) ? `<p class="helper">${tt('The OpenAI model dropdown is a curated list of current general-purpose chat-compatible model IDs. Azure availability still depends on your deployed model and region.', 'La liste déroulante OpenAI propose une sélection de modèles généralistes récents compatibles chat. La disponibilité dans Azure dépend toujours de votre déploiement et de votre région.', 'Das OpenAI-Modell-Dropdown ist eine kuratierte Liste aktueller Allzweck-Chat-kompatibler Modell-IDs. Die Azure-Verfügbarkeit hängt weiterhin von Ihrem bereitgestellten Modell und Ihrer Region ab.')}</p>` : ''}
+              ${isGemini ? `<p class="helper">${tt('Get your Gemini API key from Google AI Studio (aistudio.google.com).', 'Obtenez votre clé API Gemini depuis Google AI Studio (aistudio.google.com).', 'Holen Sie sich Ihren Gemini-API-Schlüssel von Google AI Studio (aistudio.google.com).')}</p>` : ''}
             </article>
             <article class="card">
               <div class="section-header"><h3>${tt('Export watermark', 'Filigrane d\'export', 'Export-Wasserzeichen')}</h3></div>
