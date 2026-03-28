@@ -317,8 +317,13 @@
             zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
           }
           document.body.removeChild(sandbox);
+          const exportData = JSON.parse(JSON.stringify(appState.scenario));
+          exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '' };
+          const json = JSON.stringify(exportData, null, 2);
+          const crisisSlug = slugify(appState.scenario.name);
+          zip.file(`${crisisSlug}.json`, json);
           const blob = await zip.generateAsync({ type: 'blob' });
-          downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_exports.zip`);
+          downloadBlob(blob, `${crisisSlug}.zip`);
           pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
         },
         filenameForStimulus(stimulus) {
@@ -372,7 +377,7 @@
         exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '' };
         const json = JSON.stringify(exportData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
-        downloadBlob(blob, `crisismaker_${slugify(appState.scenario.name)}_${new Date().toISOString().slice(0, 10)}.json`);
+        downloadBlob(blob, `${slugify(appState.scenario.name)}.json`);
         pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.', 'Szenario als JSON exportiert.'), 'success');
       }
 
