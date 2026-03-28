@@ -718,6 +718,11 @@ ${serialized}`;
             if (contentEl) contentEl.innerHTML = renderCheckerLLMLogs(cs.llmLogs);
             const panel = document.getElementById('checker-llm-stream-panel');
             if (panel) panel.scrollTop = panel.scrollHeight;
+            const indicatorText = document.getElementById('checker-stream-indicator-text');
+            if (indicatorText) {
+              const chars = (last.responseText || '').length;
+              indicatorText.textContent = `${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${chars.toLocaleString()} ${tt('chars', 'car.')}`;
+            }
           }
         };
 
@@ -771,30 +776,41 @@ ${serialized}`;
         const cs = appState.checkerState;
 
         if (cs.analysisLoading) {
+          const showStream = !!cs.showLLMStream;
+          const currentLog = cs.llmLogs && cs.llmLogs.length > 0 ? cs.llmLogs[cs.llmLogs.length - 1] : null;
+          const isStreamingNow = currentLog && currentLog.status === 'streaming';
+          const streamedChars = isStreamingNow ? (currentLog.responseText || '').length : 0;
+
           return `
             <article class="card checker-loading">
-              <div class="checker-progress-layout">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <strong>${tt('Analyzing…', 'Analyse en cours…')}</strong>
+                <button class="btn btn-secondary btn-sm" data-action="checker-toggle-llm-stream">
+                  ${showStream ? tt('Hide LLM stream', 'Masquer le flux LLM') : tt('Show LLM stream', 'Afficher le flux LLM')}
+                </button>
+              </div>
+              <div class="${showStream ? 'checker-progress-layout' : ''}">
                 <div class="checker-progress-left">
                   <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
                     <span class="checker-spinner"></span>
-                    <span><strong>${tt('Analyzing…', 'Analyse en cours…')}</strong></span>
+                    <span>${tt('Analyzing chronogram across 5 quality axes', 'Analyse du chronogramme selon 5 axes qualité')}</span>
                   </div>
-                  <div class="chronogram-steps-list">
-                    <div class="chronogram-step active">
-                      <span class="chronogram-step-icon">🔄</span>
-                      <span class="chronogram-step-label">${tt('Analyzing chronogram across 5 quality axes', 'Analyse du chronogramme selon 5 axes qualité')}</span>
-                    </div>
-                  </div>
-                  <div class="subtle" style="margin-top:16px; font-size:0.85rem;">
+                  ${isStreamingNow ? `
+                  <div class="chronogram-stream-indicator" style="margin-bottom:12px;" id="checker-stream-indicator">
+                    <span class="chronogram-stream-dot"></span>
+                    <span id="checker-stream-indicator-text">${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${streamedChars.toLocaleString()} ${tt('chars', 'car.')}</span>
+                  </div>` : ''}
+                  <div class="subtle" style="font-size:0.85rem;">
                     ⏱ ${tt('This may take 30–60 seconds', 'Cela peut prendre 30 à 60 secondes')}
                   </div>
                 </div>
+                ${showStream ? `
                 <div class="checker-progress-right">
                   <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct')}</div>
                   <div class="llm-stream-panel" id="checker-llm-stream-panel">
                     <div id="checker-llm-stream-content">${renderCheckerLLMLogs(cs.llmLogs || [])}</div>
                   </div>
-                </div>
+                </div>` : ''}
               </div>
             </article>
           `;

@@ -298,6 +298,7 @@
     .btn-danger { background: linear-gradient(135deg, #d9485f 0%, #f97316 100%); color: #fff; }
     .btn-success { background: linear-gradient(135deg, var(--success) 0%, #36bf8e 100%); color: #fff; }
     .btn-ghost { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; border-radius: 8px; font-weight: 500; }
 
     .project-welcome { gap: 22px; }
     .hero-card {
@@ -2182,6 +2183,29 @@
       margin-left: 34px;
       font-size: 0.82rem;
       margin-top: -4px;
+    }
+    .chronogram-stream-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 34px;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--primary);
+      font-weight: 500;
+    }
+    .chronogram-stream-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: stream-pulse 1s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes stream-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
     }
     /* Result */
     .chronogram-result-summary ul {

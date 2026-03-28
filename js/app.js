@@ -397,6 +397,10 @@
             case 'checker-analyze':
               checkerRunAnalysis();
               break;
+            case 'checker-toggle-llm-stream':
+              appState.checkerState.showLLMStream = !appState.checkerState.showLLMStream;
+              App.render();
+              break;
             case 'checker-select-axis': {
               const idx = parseInt(event.currentTarget.dataset.axisIndex, 10);
               if (!isNaN(idx)) { appState.checkerState.activeAxisTab = idx; App.render(); }
@@ -710,6 +714,13 @@
               input.click();
               break;
             }
+            case 'chronogram-toggle-llm-stream': {
+              if (appState.chronogramImport) {
+                appState.chronogramImport.showLLMStream = !appState.chronogramImport.showLLMStream;
+                App.render();
+              }
+              break;
+            }
             case 'chronogram-cancel': {
               appState.chronogramImport = null;
               App.render();
@@ -754,6 +765,11 @@
                       if (contentEl) contentEl.innerHTML = renderLLMLogs(logs);
                       const panel = document.getElementById('llm-stream-panel');
                       if (panel) panel.scrollTop = panel.scrollHeight;
+                      const indicatorText = document.getElementById('chronogram-stream-indicator-text');
+                      if (indicatorText) {
+                        const chars = (last.responseText || '').length;
+                        indicatorText.textContent = `${tt('Receiving LLM response', 'Réception de la réponse LLM')} — ${chars.toLocaleString()} ${tt('chars', 'car.')}`;
+                      }
                     } else if (entry.type === 'done' || entry.type === 'error') {
                       const last = logs[logs.length - 1];
                       if (last) last.status = entry.type;
