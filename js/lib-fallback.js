@@ -11,4 +11,7 @@
         if (typeof JSZip === 'undefined') {
           loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
         }
+        if (typeof XLSX === 'undefined') {
+          loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+        }
       })();

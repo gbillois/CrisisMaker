@@ -29,7 +29,7 @@
           const promptInfo = PromptBuilder.forStimulus(stimulus, actor, appState.scenario, fieldName, guidedPrompt);
           return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt);
         },
-        async generate(channel, systemPrompt, userPrompt = null, quiet = false) {
+        async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000) {
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.'));
           if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.'));
@@ -60,7 +60,7 @@
             const response = await fetch('https://api.anthropic.com/v1/messages', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'x-api-key': ai_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-              body: JSON.stringify({ model: ai_model, max_tokens: 2000, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }] })
+              body: JSON.stringify({ model: ai_model, max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }] })
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error?.message || 'Erreur API Anthropic');
