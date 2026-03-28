@@ -203,6 +203,7 @@
     .grid { display: grid; gap: 20px; }
     .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
     .card {
       background: var(--surface);
@@ -341,6 +342,10 @@
       color: rgba(255,255,255,0.82);
       font-size: 0.92rem;
     }
+
+    .welcome-block { display: grid; gap: 12px; }
+    .welcome-block-title { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .card-disabled { opacity: 0.45; pointer-events: none; }
 
     .helper { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
     .table { width: 100%; border-collapse: collapse; }
@@ -1225,7 +1230,7 @@
     @media (max-width: 1280px) {
       .app-shell { grid-template-columns: 1fr; }
       .sidebar { position: relative; height: auto; }
-      .editor-layout, .grid.cols-2, .grid.cols-3, .field-grid.cols-2, .field-grid.cols-3 { grid-template-columns: 1fr; }
+      .editor-layout, .grid.cols-2, .grid.cols-3, .grid.cols-4, .field-grid.cols-2, .field-grid.cols-3 { grid-template-columns: 1fr; }
       .topbar { position: relative; top: 0; }
       .nav-topbar {
         flex-wrap: wrap;
