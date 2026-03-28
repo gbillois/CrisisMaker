@@ -693,7 +693,7 @@ Response format (strict JSON):
             ${!llmOk ? `<span title="${tooltip}" style="display:inline-block; cursor:not-allowed;">` : ''}
             <button class="btn btn-primary" data-action="checker-analyze"
                     ${!llmOk ? 'disabled style="pointer-events:none;"' : ''}>
-              ${tt('Analyze Chronogram', 'Analyser le chronogramme', 'Chronogramm analysieren')}
+              ${tt('Stress-test the timeline', 'Stress-tester la timeline', 'Stresstest der Timeline')}
             </button>
             ${!llmOk ? '</span>' : ''}
           </div>
@@ -997,7 +997,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         cs.llmLogs = [];
         App.render();
 
-        const stepLabel = tt('Chronogram Analysis', 'Analyse du chronogramme', 'Chronogramm-Analyse');
+        const stepLabel = tt('Timeline Stress-test', 'Stress-test de la timeline', 'Timeline-Stresstest');
 
         const startLog = (userPromptPreview) => {
           cs.llmLogs.push({ id: Date.now(), stepLabel, userPromptPreview, responseText: '', status: 'streaming' });
@@ -1090,7 +1090,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
                 <div class="checker-progress-left">
                   <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
                     <span class="checker-spinner"></span>
-                    <span>${tt('Analyzing chronogram across 5 quality axes', 'Analyse du chronogramme selon 5 axes qualité', 'Chronogramm nach 5 Qualitätsachsen analysieren')}</span>
+                    <span>${tt('Stress-testing timeline across 5 quality axes', 'Stress-test de la timeline selon 5 axes qualité', 'Stresstest der Timeline nach 5 Qualitätsachsen')}</span>
                   </div>
                   ${isStreamingNow ? `
                   <div class="chronogram-stream-indicator" style="margin-bottom:12px;" id="checker-stream-indicator">
