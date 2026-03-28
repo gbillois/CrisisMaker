@@ -317,11 +317,6 @@
               appState.launchScreenOpen = false;
               App.render();
               break;
-            case 'launch-start-example':
-              appState.launchScreenOpen = false;
-              appState.scenario = defaultScenario();
-              App.render();
-              break;
             case 'toggle-settings-drawer':
               appState.settingsDrawerOpen = !appState.settingsDrawerOpen;
               App.render();
