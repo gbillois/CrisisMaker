@@ -30,6 +30,7 @@
           analysisResult: null,
           analysisLoading: false,
           analysisError: null,
+          llmLogs: [],
           checklist: {},
           activeAxisTab: 0
         }

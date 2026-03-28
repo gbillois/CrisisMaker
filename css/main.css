@@ -2384,7 +2384,22 @@
       animation: checker-spin 0.7s linear infinite;
     }
     @keyframes checker-spin { to { transform: rotate(360deg); } }
-    .checker-loading { text-align: center; color: var(--muted); }
+    .checker-loading { color: var(--muted); }
+    .checker-progress-layout {
+      display: flex;
+      gap: 20px;
+      min-height: 280px;
+    }
+    .checker-progress-left {
+      flex: 0 0 260px;
+      min-width: 0;
+    }
+    .checker-progress-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
 
     /* Results */
     .checker-results { }

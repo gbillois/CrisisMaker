@@ -452,6 +452,7 @@
           analysisResult: null,
           analysisLoading: false,
           analysisError: null,
+          llmLogs: [],
           checklist: {},
           activeAxisTab: 0
         };
@@ -464,15 +465,44 @@
         const cs = appState.checkerState;
         if (cs.analysisResult || cs.analysisLoading) return '';
         const llmOk = isLLMAvailable();
+        const tooltip = !llmOk ? escapeAttribute(tt('Configure an API key in Settings to use this feature.', 'Configurez une clé API dans les Paramètres pour utiliser cette fonctionnalité.')) : '';
         return `
           <div style="text-align:center; margin: 8px 0;">
+            ${!llmOk ? `<span title="${tooltip}" style="display:inline-block; cursor:not-allowed;">` : ''}
             <button class="btn btn-primary" data-action="checker-analyze"
-                    ${!llmOk ? 'disabled' : ''}
-                    ${!llmOk ? `title="${escapeAttribute(tt('API key required. Configure in Settings.', 'Clé API requise. Configurez dans les Paramètres.'))}"` : ''}>
+                    ${!llmOk ? 'disabled style="pointer-events:none;"' : ''}>
               ${tt('Analyze Chronogram', 'Analyser le chronogramme')}
             </button>
+            ${!llmOk ? '</span>' : ''}
           </div>
         `;
+      }
+
+      // ─── LLM Log Renderer (checker) ──────────────────────────────────────────────
+
+      function renderCheckerLLMLogs(logs) {
+        if (!logs || logs.length === 0) {
+          return `<div class="llm-stream-empty">${tt('Waiting for LLM response\u2026', 'En attente de la réponse LLM\u2026')}</div>`;
+        }
+        return logs.map(entry => {
+          const isStreaming = entry.status === 'streaming';
+          const isError = entry.status === 'error';
+          const responseDisplay = entry.responseText
+            ? (entry.responseText.length > 3000 ? '\u2026' + entry.responseText.slice(-3000) : entry.responseText)
+            : '';
+          const cursor = isStreaming ? '<span class="llm-stream-cursor"></span>' : '';
+          const assistantCls = isError ? 'error' : 'assistant';
+          const assistantLabel = isError
+            ? tt('Error', 'Erreur')
+            : (isStreaming ? tt('Assistant (streaming\u2026)', 'Assistant (streaming\u2026)') : tt('Assistant', 'Assistant'));
+          return `
+            <div class="llm-log-entry">
+              <div class="llm-role-label">\uD83E\uDDD1 ${escapeHtml(entry.stepLabel)}</div>
+              <div class="llm-bubble user">${escapeHtml((entry.userPromptPreview || '').slice(0, 400))}${(entry.userPromptPreview || '').length >= 400 ? '\u2026' : ''}</div>
+              <div class="llm-role-label">\uD83E\uDD16 ${assistantLabel}</div>
+              <div class="llm-bubble ${assistantCls}">${escapeHtml(responseDisplay)}${cursor}</div>
+            </div>`;
+        }).join('');
       }
 
       // ─── Phase 2: LLM Analysis ───────────────────────────────────────────────────
@@ -670,7 +700,32 @@ ${serialized}`;
         cs.analysisError = null;
         cs.analysisResult = null;
         cs._rawResponse = null;
+        cs.llmLogs = [];
         App.render();
+
+        const stepLabel = tt('Chronogram Analysis', 'Analyse du chronogramme');
+
+        const startLog = (userPromptPreview) => {
+          cs.llmLogs.push({ id: Date.now(), stepLabel, userPromptPreview, responseText: '', status: 'streaming' });
+          App.render();
+        };
+
+        const onChunk = (delta) => {
+          const last = cs.llmLogs[cs.llmLogs.length - 1];
+          if (last) {
+            last.responseText += delta;
+            const contentEl = document.getElementById('checker-llm-stream-content');
+            if (contentEl) contentEl.innerHTML = renderCheckerLLMLogs(cs.llmLogs);
+            const panel = document.getElementById('checker-llm-stream-panel');
+            if (panel) panel.scrollTop = panel.scrollHeight;
+          }
+        };
+
+        const finishLog = (status) => {
+          const last = cs.llmLogs[cs.llmLogs.length - 1];
+          if (last) last.status = status;
+          App.render();
+        };
 
         try {
           const { serialized, detectedCols, missingCols, truncated } = checkerSerializeChronogram();
@@ -682,13 +737,19 @@ ${serialized}`;
           }
 
           const prompt = checkerBuildPrompt(serialized, detectedCols, missingCols, false);
+          const userPromptPreview = prompt.slice(0, 400);
           let result;
           try {
-            result = await AITextGenerator.generate('checker_analysis', prompt, 'Reply in strict JSON.', true, 8000);
+            startLog(userPromptPreview);
+            result = await AITextGenerator.generateStreaming('checker_analysis', prompt, 'Reply in strict JSON.', onChunk, 8000);
+            finishLog('done');
           } catch (firstErr) {
+            finishLog('error');
             // Retry with lower max_tokens and concise instruction
             const concisePrompt = checkerBuildPrompt(serialized, detectedCols, missingCols, true);
-            result = await AITextGenerator.generate('checker_analysis', concisePrompt, 'Reply in strict JSON.', true, 4096);
+            startLog(concisePrompt.slice(0, 400));
+            result = await AITextGenerator.generateStreaming('checker_analysis', concisePrompt, 'Reply in strict JSON.', onChunk, 4096);
+            finishLog('done');
           }
 
           cs.analysisResult = result;
@@ -697,6 +758,7 @@ ${serialized}`;
           App.render();
           pushToast(tt('Analysis complete.', 'Analyse terminée.'), 'success');
         } catch (err) {
+          finishLog('error');
           cs.analysisLoading = false;
           cs.analysisError = err.message;
           App.render();
@@ -711,9 +773,28 @@ ${serialized}`;
         if (cs.analysisLoading) {
           return `
             <article class="card checker-loading">
-              <div style="display:flex; align-items:center; gap:12px; justify-content:center; padding:32px;">
-                <span class="checker-spinner"></span>
-                <span>${tt('Analyzing… (this may take 30-60s)', 'Analyse en cours… (cela peut prendre 30-60s)')}</span>
+              <div class="checker-progress-layout">
+                <div class="checker-progress-left">
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                    <span class="checker-spinner"></span>
+                    <span><strong>${tt('Analyzing…', 'Analyse en cours…')}</strong></span>
+                  </div>
+                  <div class="chronogram-steps-list">
+                    <div class="chronogram-step active">
+                      <span class="chronogram-step-icon">🔄</span>
+                      <span class="chronogram-step-label">${tt('Analyzing chronogram across 5 quality axes', 'Analyse du chronogramme selon 5 axes qualité')}</span>
+                    </div>
+                  </div>
+                  <div class="subtle" style="margin-top:16px; font-size:0.85rem;">
+                    ⏱ ${tt('This may take 30–60 seconds', 'Cela peut prendre 30 à 60 secondes')}
+                  </div>
+                </div>
+                <div class="checker-progress-right">
+                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct')}</div>
+                  <div class="llm-stream-panel" id="checker-llm-stream-panel">
+                    <div id="checker-llm-stream-content">${renderCheckerLLMLogs(cs.llmLogs || [])}</div>
+                  </div>
+                </div>
               </div>
             </article>
           `;
