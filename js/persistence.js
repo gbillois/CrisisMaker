@@ -50,8 +50,8 @@
           const file = await handle.getFile();
           return await parseProjectFile(file);
         } catch (e) {
-          if (e.name !== 'AbortError') console.warn('File open error', e);
-          return null;
+          if (e.name === 'AbortError') return null; // user cancelled
+          throw e; // re-throw other errors so the caller can fall back
         }
       }
 
@@ -379,10 +379,15 @@
       async function loadScenarioFromFile() {
         // Try File System Access API first (Chrome/Edge)
         if (supportsFileSystemAccess()) {
-          const data = await openWithFileSystemAPI();
-          if (!data) return;
-          applyLoadedScenario(data);
-          return;
+          try {
+            const data = await openWithFileSystemAPI();
+            if (!data) return; // user cancelled
+            applyLoadedScenario(data);
+            return;
+          } catch (e) {
+            console.warn('File System Access API failed, falling back to classic input', e);
+            // fall through to classic file input below
+          }
         }
         // Fallback: classic file input (element must be in DOM for Safari/Firefox compatibility)
         await new Promise((resolve) => {
