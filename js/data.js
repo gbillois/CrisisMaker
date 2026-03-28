@@ -62,14 +62,14 @@
       function defaultScenario() {
         const actors = [
           { id: uid('actor'), name: 'John Carter', role: 'journalist', organization: 'Global Daily', title: 'Cybersecurity reporter', language: 'en', avatar_initials: 'JC', avatar_url: '' },
-          { id: uid('actor'), name: 'Claire Martin', role: 'internal', organization: 'Group X', title: 'Cyber crisis director', language: 'fr', avatar_initials: 'CM', avatar_url: '' },
+          { id: uid('actor'), name: 'Claire Martin', role: 'internal', organization: 'StonaWave', title: 'Cyber crisis director', language: 'fr', avatar_initials: 'CM', avatar_url: '' },
           { id: uid('actor'), name: 'CERT-FR', role: 'authority', organization: 'ANSSI', title: 'Government cyber alert and response center', language: 'fr', avatar_initials: 'CF', avatar_url: '' }
         ];
         const scenario = {
           id: uid('scenario'),
-          name: 'CrisisMaker - Ransomware exercise - ClientX',
-          client: { name: 'Client X', sector: 'Banking', language: 'en', logo_url: '' },
-          scenario: { type: 'Ransomware', summary: 'A ransomware attack hits the information system of a large listed company. Critical operations are disrupted, the press starts reporting the incident, and authorities are alerted.', detailed_context: '', start_date: '2026-03-15T08:00', timezone: 'America/New_York' },
+          name: 'CrisisMaker - Ransomware exercise - StonaWave',
+          client: { name: 'StonaWave', sector: 'Pharmaceutical', language: 'en', logo_url: '' },
+          scenario: { type: 'Ransomware', summary: 'A ransomware attack hits the information system of StonaWave, a global pharmaceutical company. Critical manufacturing, supply chain, and clinical systems are disrupted, the press starts reporting the incident, and health authorities are alerted.', detailed_context: '', start_date: '2026-03-15T08:00', timezone: 'America/New_York' },
           actors,
           stimuli: [],
           custom_templates: [],
