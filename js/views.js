@@ -139,8 +139,13 @@
         const vc = viewConfig();
         return `
           <div class="app-shell">
+            ${appState.launchScreenOpen ? renderLaunchScreen() : ''}
             <nav class="nav-topbar">
               <div class="nav-topbar-left">
+                <button class="nav-icon-btn nav-home-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil')}">
+                  ${svgHome()}
+                  <span>${tt('Home', 'Accueil')}</span>
+                </button>
                 ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet'))}
                 ${renderNavIconButton('scenario', svgTarget(), tt('Scenario', 'Scénario'))}
                 ${renderNavIconButton('stimuli', svgPen(), tt('Stimuli', 'Stimuli'))}
@@ -205,6 +210,99 @@
       function svgGrid() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>'; }
       function svgGear() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'; }
       function svgSave() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>'; }
+      function svgHome() { return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>'; }
+
+      function renderLaunchScreen() {
+        const llmAvailable = isLLMAvailable();
+        return `
+          <div class="launch-screen-overlay" data-action="close-launch-screen">
+            <div class="launch-screen" onclick="event.stopPropagation()">
+
+              <div class="launch-hero">
+                <button class="launch-hero-close" data-action="close-launch-screen" title="${tt('Close', 'Fermer')}">✕</button>
+                <span class="hero-kicker">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span>
+                <h1 class="launch-hero-title">${tt('Accelerate crisis exercises stimulus creation.', 'Accélérez la création de stimuli pour les exercices de crise.')}</h1>
+                <p class="launch-hero-desc">${tt('A complete studio to prepare realistic scenarios, generate crisis stimuli, and export polished deliverables — all from your browser, with no server required.', 'Un studio complet pour préparer des scénarios réalistes, générer des stimuli de crise et exporter des livrables soignés — depuis votre navigateur, sans serveur requis.')}</p>
+                <div class="launch-hero-stats">
+                  <div class="hero-stat">
+                    <strong>${llmAvailable ? tt('AI connected', 'IA connectée') : tt('Stand-alone', 'Autonome')}</strong>
+                    <span>${llmAvailable ? tt('Ready for AI content generation', 'Prêt pour la génération de contenu IA') : tt('Configure an AI provider in settings', 'Configurez un fournisseur IA dans les paramètres')}</span>
+                  </div>
+                  <div class="hero-stat">
+                    <strong>${tt('Local-first', 'Local d\'abord')}</strong>
+                    <span>${tt('Data stays in your browser — no server, no account', 'Vos données restent dans votre navigateur — sans serveur ni compte')}</span>
+                  </div>
+                  <div class="hero-stat">
+                    <strong>${tt('Export-ready', 'Prêt à l\'export')}</strong>
+                    <span>${tt('.json · .zip · styled images', '.json · .zip · images stylées')}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="launch-body">
+                <div>
+                  <div class="welcome-block-title" style="margin-bottom:14px;">${tt('What you can do', 'Ce que vous pouvez faire')}</div>
+                  <div class="launch-features">
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgFolder()}</div>
+                      <strong>${tt('Project', 'Projet')}</strong>
+                      <p>${tt('Create, open, save and export your crisis exercise projects. Import existing Excel timelines with AI assistance.', 'Créez, ouvrez, sauvegardez et exportez vos projets. Importez des chronologies Excel existantes avec l\'aide de l\'IA.')}</p>
+                    </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgTarget()}</div>
+                      <strong>${tt('Scenario', 'Scénario')}</strong>
+                      <p>${tt('Define the client organisation, crisis type, timeline and actors who will receive stimuli during the exercise.', 'Définissez l\'organisation cliente, le type de crise, la chronologie et les acteurs qui recevront les stimuli.')}</p>
+                    </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgPen()}</div>
+                      <strong>${tt('Stimuli', 'Stimuli')}</strong>
+                      <p>${tt('Write or AI-generate realistic crisis content: emails, SMS, calls, social posts and more — with polished visual templates.', 'Rédigez ou générez par IA des contenus réalistes : emails, SMS, appels, posts sociaux — avec des gabarits visuels soignés.')}</p>
+                    </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgGrid()}</div>
+                      <strong>${tt('Library', 'Bibliothèque')}</strong>
+                      <p>${tt('Browse, filter and preview all stimuli. Export them as styled images or download the complete package as a ZIP.', 'Parcourez, filtrez et prévisualisez tous les stimuli. Exportez-les en images ou téléchargez le package complet en ZIP.')}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="welcome-block-title" style="margin-bottom:14px;">${tt('Getting started', 'Pour commencer')}</div>
+                  <div class="launch-tips">
+                    <div class="launch-tip">
+                      <div class="launch-tip-num">1</div>
+                      <span>${tt('<strong>Set up your scenario</strong> — define the client, crisis type and actors in the Scenario tab.', '<strong>Configurez votre scénario</strong> — définissez le client, le type de crise et les acteurs dans l\'onglet Scénario.')}</span>
+                    </div>
+                    <div class="launch-tip">
+                      <div class="launch-tip-num">2</div>
+                      <span>${tt('<strong>Create your stimuli</strong> — add messages, calls or social posts in the Stimuli editor, with optional AI content generation.', '<strong>Créez vos stimuli</strong> — ajoutez des messages, appels ou posts dans l\'éditeur de stimuli, avec génération de contenu IA en option.')}</span>
+                    </div>
+                    <div class="launch-tip">
+                      <div class="launch-tip-num">3</div>
+                      <span>${tt('<strong>Export your deliverables</strong> — use the Library to preview everything, then export a ZIP with all styled stimuli ready for facilitation.', '<strong>Exportez vos livrables</strong> — utilisez la Bibliothèque pour tout prévisualiser, puis exportez un ZIP avec tous les stimuli prêts pour l\'animation.')}</span>
+                    </div>
+                    <div class="launch-tip">
+                      <div class="launch-tip-num launch-tip-num-accent">✦</div>
+                      <span>${tt('<strong>Tip:</strong> Configure an AI provider (Anthropic, OpenAI or Azure) in Settings to unlock automatic content generation for all stimulus types.', '<strong>Conseil :</strong> Configurez un fournisseur IA (Anthropic, OpenAI ou Azure) dans les Paramètres pour débloquer la génération automatique de contenu.')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="launch-actions">
+                <button class="btn btn-secondary" data-action="launch-start-example">${tt('Load example scenario', 'Charger un scénario exemple')}</button>
+                <button class="btn btn-primary launch-start-btn" data-action="close-launch-screen">${tt('Start using CrisisMaker', 'Commencer avec CrisisMaker')} →</button>
+              </div>
+
+              <div class="launch-footer">
+                <span>© 2026 Wavestone — ${tt('All rights reserved.', 'Tous droits réservés.')}</span>
+                <a href="./LICENSE" target="_blank" rel="noopener noreferrer">${tt('View License', 'Voir la licence')}</a>
+              </div>
+
+            </div>
+          </div>
+        `;
+      }
 
       function viewConfig() {
         const map = {

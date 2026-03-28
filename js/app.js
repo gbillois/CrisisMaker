@@ -4,6 +4,7 @@
         stimulusModalId: null,
         slideshowIndex: 0,
         settingsDrawerOpen: false,
+        launchScreenOpen: true,
         scenario: loadInitialScenario(),
         toasts: [],
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
@@ -294,6 +295,19 @@
         const action = event.currentTarget.dataset.action;
         try {
           switch (action) {
+            case 'show-launch-screen':
+              appState.launchScreenOpen = true;
+              App.render();
+              break;
+            case 'close-launch-screen':
+              appState.launchScreenOpen = false;
+              App.render();
+              break;
+            case 'launch-start-example':
+              appState.launchScreenOpen = false;
+              appState.scenario = defaultScenario();
+              App.render();
+              break;
             case 'toggle-settings-drawer':
               appState.settingsDrawerOpen = !appState.settingsDrawerOpen;
               App.render();
