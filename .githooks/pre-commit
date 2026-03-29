@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Pre-commit hook: run node --check on all .js files
+#
+
+echo "Running node --check on JavaScript files..."
+
+errors=0
+for file in $(find . -name '*.js' -not -path './node_modules/*' -not -path './.git/*'); do
+  if ! node --check "$file" 2>&1; then
+    errors=$((errors + 1))
+  fi
+done
+
+if [ "$errors" -gt 0 ]; then
+  echo "Commit aborted: syntax errors found in $errors file(s)."
+  exit 1
+fi
+
+echo "All JavaScript files passed syntax check."
+exit 0
