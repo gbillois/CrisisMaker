@@ -326,7 +326,7 @@
               App.render();
               break;
             case 'toggle-confidentiality-acknowledged': {
-              appState.scenario.settings.confidentiality_acknowledged = el.checked;
+              appState.scenario.settings.confidentiality_acknowledged = event.currentTarget.checked;
               persistProviderSettings(appState.scenario.settings);
               App.render();
               break;
