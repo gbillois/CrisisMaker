@@ -1404,7 +1404,7 @@
 
     .preview-toolbar {
       position: sticky;
-      top: 100px;
+      top: 130px;
       z-index: 4;
       display: flex;
       justify-content: space-between;
@@ -1517,7 +1517,7 @@
       }
 
       .preview-toolbar {
-        top: 76px;
+        top: 106px;
         flex-direction: column;
         align-items: stretch;
       }
