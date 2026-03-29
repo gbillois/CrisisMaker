@@ -1970,17 +1970,17 @@
 
     /* ─── Chronogram Import Modals ─── */
     .chronogram-modal {
-      width: 620px;
+      width: 820px;
       max-width: 95vw;
-      max-height: 90vh;
+      max-height: 85vh;
       display: flex;
       flex-direction: column;
     }
     .chronogram-result-modal {
-      width: 720px;
+      width: 860px;
     }
     .chronogram-modal-body {
-      padding: 20px 24px;
+      padding: 24px 32px;
       overflow-y: auto;
       flex: 1;
     }
