@@ -566,7 +566,23 @@
             <article class="card">
               <div class="section-header"><h3>${tt('AI connection', 'Connexion IA', 'KI-Verbindung')}</h3></div>
               ${!isLLMAvailable() ? `<div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#78350F;">${tt('No API key configured. AI generation features are disabled.', 'Aucune clé API configurée. Les fonctionnalités de génération par IA sont désactivées.', 'Kein API-Schlüssel konfiguriert. KI-Generierungsfunktionen sind deaktiviert.')}</div>` : ''}
-              <div class="field-grid cols-2">
+              <div style="background:#FEF2F2;border:2px solid #DC2626;border-radius:8px;padding:14px 16px;margin-bottom:16px;color:#991B1B;">
+                <div style="font-weight:700;font-size:14px;margin-bottom:8px;">⚠️ ${tt('Confidentiality warning', 'Avertissement de confidentialité des données', 'Vertraulichkeitswarnung')}</div>
+                <div style="font-size:13px;line-height:1.5;margin-bottom:6px;">
+                  🇬🇧 For confidentiality reasons, the use of AI and the provider used must be explicitly approved by the organization for which the exercise is being conducted.
+                </div>
+                <div style="font-size:13px;line-height:1.5;margin-bottom:6px;">
+                  🇫🇷 Pour des raisons de confidentialité, l'usage de l'IA et le fournisseur utilisé doivent être approuvés explicitement par la structure pour laquelle l'exercice est réalisé.
+                </div>
+                <div style="font-size:13px;line-height:1.5;margin-bottom:10px;">
+                  🇩🇪 Aus Vertraulichkeitsgründen müssen der Einsatz von KI und der verwendete Anbieter ausdrücklich von der Organisation genehmigt werden, für die die Übung durchgeführt wird.
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
+                  <input type="checkbox" data-action="toggle-confidentiality-acknowledged" ${settings.confidentiality_acknowledged ? 'checked' : ''} style="width:18px;height:18px;accent-color:#DC2626;cursor:pointer;">
+                  ${tt("I have written approval", "Je dispose d'une validation écrite", "Ich verfüge über eine schriftliche Genehmigung")}
+                </label>
+              </div>
+              <div class="field-grid cols-2" ${!settings.confidentiality_acknowledged ? 'style="opacity:0.4;pointer-events:none;"' : ''}>
                 <label class="field">${tt('AI provider', 'Fournisseur IA', 'KI-Anbieter')}
                   <select data-bind="settings.ai_provider">
                     <option value="anthropic" ${settings.ai_provider === 'anthropic' ? 'selected' : ''}>Anthropic</option>
@@ -602,6 +618,8 @@
                     </div>
                   </label>
                 ` : ''}
+              </div>
+              <div class="field-grid cols-2">
                 <label class="field">${tt("Application language", "Langue de l'application", 'Anwendungssprache')}
                   <select data-bind="settings.language">
                     <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>

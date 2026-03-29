@@ -14,7 +14,8 @@
         azureApiKey: 'azureApiKey',       // legacy key - cleaned up on load
         azureDeployment: 'azureDeployment',
         apiKey: 'crisismaker_api_key',    // dedicated key for API key, separate from project data
-        azureApiKeyStore: 'crisismaker_azure_api_key' // dedicated key for Azure API key
+        azureApiKeyStore: 'crisismaker_azure_api_key', // dedicated key for Azure API key
+        confidentialityAcknowledged: 'crisismaker_confidentiality_acknowledged'
       };
       const ROLES = [
         { value: 'journalist', label: 'Journalist' },

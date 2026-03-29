@@ -325,6 +325,12 @@
               appState.settingsDrawerOpen = !appState.settingsDrawerOpen;
               App.render();
               break;
+            case 'toggle-confidentiality-acknowledged': {
+              appState.scenario.settings.confidentiality_acknowledged = el.checked;
+              persistProviderSettings(appState.scenario.settings);
+              App.render();
+              break;
+            }
             case 'toggle-api-key': {
               const input = document.getElementById('api-key-input');
               input.type = input.type === 'password' ? 'text' : 'password';

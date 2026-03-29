@@ -106,7 +106,8 @@
         const result = {
           ai_provider: localStorage.getItem(PROVIDER_STORAGE_KEYS.aiProvider) || undefined,
           azure_endpoint: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureEndpoint) || undefined,
-          azure_deployment: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureDeployment) || undefined
+          azure_deployment: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureDeployment) || undefined,
+          confidentiality_acknowledged: localStorage.getItem(PROVIDER_STORAGE_KEYS.confidentialityAcknowledged) === 'true'
         };
         // Only include API keys in result if they are actually stored in dedicated keys,
         // otherwise leave them undefined so embedded values in the scenario JSON are preserved
@@ -132,6 +133,7 @@
         } else {
           localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
         }
+        localStorage.setItem(PROVIDER_STORAGE_KEYS.confidentialityAcknowledged, settings.confidentiality_acknowledged ? 'true' : 'false');
       }
 
 
