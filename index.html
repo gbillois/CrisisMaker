@@ -5,14 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src https://api.anthropic.com https://api.openai.com https://*.openai.azure.com https://*.cognitiveservices.azure.com https://generativelanguage.googleapis.com; form-action 'none'; base-uri 'none'; frame-ancestors 'none';">
   <title>CrisisMaker by Wavestone - Crisis exercise studio</title>
-  <!-- Local-first: place html-to-image.min.js and jszip.min.js in js/lib/ for offline/standalone use -->
-  <script src="js/lib/html-to-image.min.js"></script>
-  <script src="js/lib/jszip.min.js"></script>
-  <script src="js/lib/xlsx.full.min.js"></script>
-  <!-- CDN fallback if local libs are missing (requires internet) -->
-  <script src="js/lib-fallback.js"></script>
-  <link rel="stylesheet" href="fonts/fonts.css">
+  <!-- Critical inline styles for instant first paint (no flash of white) -->
+  <style>
+    body{margin:0;background:radial-gradient(circle at top right,rgba(48,195,143,.18),transparent 24%),radial-gradient(circle at top left,rgba(15,109,143,.18),transparent 30%),linear-gradient(180deg,#f8fcfd 0%,#edf6f8 240px);min-height:100vh}
+  </style>
+  <!-- Full CSS -->
   <link rel="stylesheet" href="css/main.css">
+  <link rel="preload" href="fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <!-- Local-first: place html-to-image.min.js and jszip.min.js in js/lib/ for offline/standalone use -->
+  <script defer src="js/lib/html-to-image.min.js"></script>
+  <script defer src="js/lib/jszip.min.js"></script>
+  <script defer src="js/lib/xlsx.full.min.js"></script>
+  <!-- CDN fallback if local libs are missing (requires internet) -->
+  <script defer src="js/lib-fallback.js"></script>
 </head>
 <body>
   <div id="app"></div>
