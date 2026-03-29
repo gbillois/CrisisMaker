@@ -579,7 +579,7 @@
                 </div>
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
                   <input type="checkbox" data-action="toggle-confidentiality-acknowledged" ${settings.confidentiality_acknowledged ? 'checked' : ''} style="width:18px;height:18px;accent-color:#DC2626;cursor:pointer;">
-                  ${tt('I have written approval', 'Je dispose d\\'une validation écrite', 'Ich verfüge über eine schriftliche Genehmigung')}
+                  ${tt("I have written approval", "Je dispose d'une validation écrite", "Ich verfüge über eine schriftliche Genehmigung")}
                 </label>
               </div>
               <div class="field-grid cols-2" ${!settings.confidentiality_acknowledged ? 'style="opacity:0.4;pointer-events:none;"' : ''}>
