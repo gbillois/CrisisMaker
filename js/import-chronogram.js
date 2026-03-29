@@ -370,7 +370,8 @@ RULES:
 - Generate all inject text content in ${injectLangName}, except press articles which use their publication's native language.
 
 Reply ONLY with a valid JSON object.
-IMPORTANT: Write your entire response in ${respondInLang}. All text fields (warnings, messages, etc.) must be in ${respondInLang}.`;
+IMPORTANT: Write your entire response in ${respondInLang}. All text fields (warnings, messages, etc.) must be in ${respondInLang}.
+
 {
   "actors": [{"id": "string", "name": "string", "role": "string", "organization": "string", "title": "string", "language": "string", "avatar_initials": "string"}],
   "stimuli": [{"id": "string", "source_row": number, "is_implicit": boolean, "channel": "string", "template_id": "string", "actor_id": "string", "timestamp_offset_minutes": number, "status": "draft", "generation_mode": "ai_guided", "generation_prompt": "string", "fields": {...}}],
