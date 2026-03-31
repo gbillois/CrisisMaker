@@ -960,6 +960,7 @@
           </div>
 
           ${stimulus.channel === 'breaking_news_tv' ? renderVideoFileControl(stimulus) : ''}
+          ${stimulus.channel === 'audio_message' ? renderAudioControls(stimulus) : ''}
 
           ${renderStimulusWatermarkControls(stimulus)}
         `;
@@ -985,6 +986,40 @@
                 <button class="btn btn-ghost" data-action="clear-video" data-stimulus-id="${stimulus.id}">${tt('Remove', 'Supprimer', 'Entfernen')}</button>
               ` : ''}
             </div>
+          </div>
+        `;
+      }
+
+      function renderAudioControls(stimulus) {
+        const audioInfo = appState.audioFiles?.[stimulus.id];
+        const hasAudio = !!audioInfo;
+        const isGenerating = appState.ui?.actionLoading?.['generate-tts'];
+        return `
+          <div style="margin-top:16px; border:1px solid var(--border, #e5e7eb); border-radius:8px; padding:14px 16px;">
+            <p style="margin:0 0 10px; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Audio generation', 'Génération audio', 'Audio-Generierung')}</p>
+            <p style="margin:0 0 12px; font-size:0.8rem; color:var(--text-muted, #6b7280);">${tt(
+              'Generate audio from the text above using browser text-to-speech, or upload your own audio file. The cybercriminal voice applies pitch and distortion effects.',
+              'Générez l\'audio à partir du texte ci-dessus via la synthèse vocale du navigateur, ou importez votre propre fichier audio. La voix cybercriminel applique des effets de distorsion et de tonalité grave.',
+              'Generieren Sie Audio aus dem obigen Text mit der Browser-Sprachsynthese oder laden Sie Ihre eigene Audiodatei hoch. Die Cyberkriminellen-Stimme wendet Verzerrung und tiefe Tonhöhe an.'
+            )}</p>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+              <button class="btn btn-primary" data-action="generate-tts" data-stimulus-id="${stimulus.id}" ${isGenerating ? 'disabled' : ''}>
+                ${isGenerating ? `<span class="ai-spinner"></span>${tt('Generating…', 'Génération…', 'Wird generiert…')}` : tt('Generate audio 🔊', 'Générer l\'audio 🔊', 'Audio generieren 🔊')}
+              </button>
+              <span style="font-size:0.8rem; color:var(--text-muted, #6b7280);">${tt('or', 'ou', 'oder')}</span>
+              <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
+                ${tt('Upload audio file…', 'Importer un fichier audio…', 'Audiodatei hochladen…')}
+                <input type="file" accept="audio/mp3,audio/wav,audio/ogg,audio/webm,audio/mpeg,audio/*" data-stimulus-audio="${stimulus.id}" style="display:none;">
+              </label>
+            </div>
+            ${hasAudio ? `
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:10px 14px; background:var(--bg-alt, #f1f5f9); border-radius:8px;">
+                <span style="font-size:0.82rem;">🔊 ${escapeHtml(audioInfo.fileName || tt('Generated audio', 'Audio généré', 'Generiertes Audio'))}</span>
+                <button class="btn btn-xs btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">${tt('Play', 'Écouter', 'Abspielen')} ▶</button>
+                <button class="btn btn-xs btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">${tt('Stop', 'Arrêter', 'Stopp')} ◼</button>
+                <button class="btn btn-ghost btn-xs" data-action="clear-audio" data-stimulus-id="${stimulus.id}">${tt('Remove', 'Supprimer', 'Entfernen')}</button>
+              </div>
+            ` : ''}
           </div>
         `;
       }
@@ -1080,6 +1115,12 @@
                   <div class="preview-toolbar-inline">
                     ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .eml', 'Exporter .eml', '.eml exportieren')}</button>` : ''}
                     ${appState.videoFiles?.[stimulus.id] && stimulus.channel === 'breaking_news_tv' ? `<button class="btn btn-secondary" data-action="export-video" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
+                    ${appState.audioFiles?.[stimulus.id] && stimulus.channel === 'audio_message' ? `
+                      <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
+                      <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
+                      <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${stimulus.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
+                      <button class="btn btn-secondary" data-action="export-audio" data-stimulus-id="${stimulus.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')} 🔊</button>
+                    ` : ''}
                     <button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
                   </div>
                   <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
@@ -1170,6 +1211,12 @@
                 <button class="btn btn-primary" data-action="goto-stimuli" data-stimulus-id="${current.id}">${tt('Edit', 'Éditer', 'Bearbeiten')}</button>
                 ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .eml file', 'Exporter le fichier .eml', '.eml-Datei exportieren')}</button>` : ''}
                 ${appState.videoFiles?.[current.id] && current.channel === 'breaking_news_tv' ? `<button class="btn btn-success" data-action="export-video" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
+                ${appState.audioFiles?.[current.id] && current.channel === 'audio_message' ? `
+                  <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${current.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
+                  <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${current.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
+                  <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${current.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
+                  <button class="btn btn-success" data-action="export-audio" data-stimulus-id="${current.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')} 🔊</button>
+                ` : ''}
                 <button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
               </div>
             </article>

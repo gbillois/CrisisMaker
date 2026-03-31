@@ -1378,6 +1378,10 @@
     .bfm-banner.bfm-overlay { background: transparent; }
     .bfm-video-frame { background: #000; }
 
+    /* ── Audio message ──────────────────── */
+    .audio-message-card { width: 520px; min-height: 320px; }
+    .audio-message-card.hd { width: 560px; min-height: 400px; }
+
     /* ── HD Authority extras ──────────────────── */
     .authority-email.hd .authority-content { padding-top: 0; }
     .authority-hd-severity { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #fff; font-size: 13px; margin-bottom: 16px; }
