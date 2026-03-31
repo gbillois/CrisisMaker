@@ -45,7 +45,8 @@
         post_reddit: { label: 'Reddit post', color: '#ff4500', category: 'Social' },
         press_release: { label: 'Press release', color: '#7c3aed', category: 'Corporate' },
         sms_notification: { label: 'SMS / Notification', color: '#f59e0b', category: 'Mobile' },
-        internal_memo: { label: 'Internal memo', color: '#4b5563', category: 'Corporate' }
+        internal_memo: { label: 'Internal memo', color: '#4b5563', category: 'Corporate' },
+        audio_message: { label: 'Audio message', color: '#e11d48', category: 'Audio' }
       };
 
       const ARTICLE_TEMPLATE_LIBRARY = {
@@ -319,5 +320,18 @@
             device: 'iphone'
           },
           fields: [field('sender', 'Sender', 'text'), field('text', 'Text', 'textarea'), field('time', 'Time', 'text'), field('device', 'Device', 'select', { options: ['iphone', 'android'] })]
+        },
+        audio_message: {
+          label: 'Audio message',
+          template_id: 'audio_message',
+          defaults: {
+            title: 'Ransom demand — PharmLeaks',
+            voice_type: 'cybercriminal',
+            text: 'Attention. We are PharmLeaks. We have encrypted your entire infrastructure and exfiltrated 2.4 terabytes of your most sensitive data, including patient records and clinical trial results. You have 72 hours to pay 25 million dollars in Bitcoin. If you refuse, everything will be published. Do not contact law enforcement. Do not attempt to restore your systems. The clock is ticking.',
+            duration: '',
+            tts_speed: 0.85,
+            tts_pitch: 0.7
+          },
+          fields: [field('title', 'Audio title', 'text'), field('voice_type', 'Voice type', 'select', { options: ['cybercriminal', 'radio_female', 'radio_male'] }), field('text', 'Text to speak', 'textarea'), field('tts_speed', 'Speed (0.5–2.0)', 'number'), field('tts_pitch', 'Pitch (0.1–2.0)', 'number')]
         }
       };

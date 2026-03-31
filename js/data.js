@@ -62,7 +62,8 @@
           post_reddit: ['Reddit post', 'Post Reddit', 'Reddit-Beitrag'],
           press_release: ['Press release', 'Communiqué de presse', 'Pressemitteilung'],
           sms_notification: ['SMS / Notification', 'SMS / Notification', 'SMS / Benachrichtigung'],
-          internal_memo: ['Internal memo', 'Note interne', 'Internes Memo']
+          internal_memo: ['Internal memo', 'Note interne', 'Internes Memo'],
+          audio_message: ['Audio message', 'Message audio', 'Audio-Nachricht']
         };
         const [en, fr, de] = labels[value] || [value, value, value];
         return tt(en, fr, de);

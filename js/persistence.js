@@ -372,6 +372,25 @@
           link.click();
         },
 
+        // ── Audio export: download audio file ──
+        async exportAudio(stimulus) {
+          if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.', 'Kein Stimulus ausgewählt.'));
+          const audioInfo = appState.audioFiles?.[stimulus.id];
+          if (!audioInfo?.blob && !audioInfo?.objectUrl) throw new Error(tt('No audio file attached to this inject. Generate or upload audio first.', 'Aucun fichier audio attaché à cet inject. Générez ou importez un audio d\'abord.', 'Keine Audiodatei an diesen Inject angehängt. Generieren oder laden Sie zuerst Audio hoch.'));
+          const actor = getActor(stimulus.actor_id);
+          const ext = (audioInfo.fileName || '').split('.').pop() || 'wav';
+          const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_audio_${slugify(stimulus.fields.voice_type || 'custom')}_${slugify(actor?.name || 'actor')}.${ext}`;
+          if (audioInfo.blob) {
+            downloadBlob(audioInfo.blob, filename);
+          } else {
+            // Fetch from objectUrl
+            const resp = await fetch(audioInfo.objectUrl);
+            const blob = await resp.blob();
+            downloadBlob(blob, filename);
+          }
+          pushToast(tt('Audio exported.', 'Audio exporté.', 'Audio exportiert.'), 'success');
+        },
+
         // ── Video export: composite video + BFM overlay → WebM ──
         async exportVideo(stimulus) {
           if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.', 'Kein Stimulus ausgewählt.'));

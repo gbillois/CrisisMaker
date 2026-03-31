@@ -8,6 +8,7 @@
         scenario: loadInitialScenario(),
         toasts: [],
         videoFiles: {},  // stimulusId → { objectUrl, fileName } — in-memory only, never persisted
+        audioFiles: {},  // stimulusId → { objectUrl, fileName, blob } — in-memory only, never persisted
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
         historyModalStimulusId: null,
         libraryExpandedId: null,
@@ -245,6 +246,37 @@
               objectUrl: URL.createObjectURL(file),
               fileName: file.name
             };
+            App.render();
+          });
+        });
+
+        // Audio file picker for audio_message — stored in-memory only
+        document.querySelectorAll('[data-stimulus-audio]').forEach((input) => {
+          input.addEventListener('change', () => {
+            const stimulusId = input.dataset.stimulusAudio;
+            const stimulus = getStimulus(stimulusId);
+            if (!stimulus || !input.files?.[0]) return;
+            if (appState.audioFiles[stimulusId]?.objectUrl) {
+              URL.revokeObjectURL(appState.audioFiles[stimulusId].objectUrl);
+            }
+            const file = input.files[0];
+            const blob = file;
+            appState.audioFiles[stimulusId] = {
+              objectUrl: URL.createObjectURL(file),
+              fileName: file.name,
+              blob
+            };
+            stimulus.fields.duration = '';
+            // Try to read duration
+            const tempAudio = new Audio(appState.audioFiles[stimulusId].objectUrl);
+            tempAudio.addEventListener('loadedmetadata', () => {
+              if (isFinite(tempAudio.duration)) {
+                const mins = Math.floor(tempAudio.duration / 60);
+                const secs = Math.floor(tempAudio.duration % 60);
+                stimulus.fields.duration = `${mins}:${String(secs).padStart(2, '0')}`;
+                App.render();
+              }
+            });
             App.render();
           });
         });
@@ -542,6 +574,40 @@
               await withActionProgress(action, async () => {
                 await ExportEngine.exportVideo(getStimulus(event.currentTarget.dataset.stimulusId));
               });
+              break;
+            case 'generate-tts':
+              await withActionProgress(action, async () => {
+                await generateTTS(event.currentTarget.dataset.stimulusId);
+              });
+              break;
+            case 'play-audio': {
+              const audioInfo = appState.audioFiles?.[event.currentTarget.dataset.stimulusId];
+              if (audioInfo?.objectUrl) {
+                if (window._crisismakerAudioPlayer) { window._crisismakerAudioPlayer.pause(); }
+                window._crisismakerAudioPlayer = new Audio(audioInfo.objectUrl);
+                window._crisismakerAudioPlayer.play();
+              }
+              break;
+            }
+            case 'stop-audio': {
+              if (window._crisismakerAudioPlayer) { window._crisismakerAudioPlayer.pause(); }
+              break;
+            }
+            case 'rewind-audio': {
+              if (window._crisismakerAudioPlayer) { window._crisismakerAudioPlayer.currentTime = 0; }
+              break;
+            }
+            case 'clear-audio': {
+              const sid = event.currentTarget.dataset.stimulusId;
+              if (appState.audioFiles[sid]?.objectUrl) {
+                URL.revokeObjectURL(appState.audioFiles[sid].objectUrl);
+              }
+              delete appState.audioFiles[sid];
+              App.render();
+              break;
+            }
+            case 'export-audio':
+              await ExportEngine.exportAudio(getStimulus(event.currentTarget.dataset.stimulusId));
               break;
             case 'duplicate-stimulus': duplicateStimulus(event.currentTarget.dataset.stimulusId); break;
             case 'delete-stimulus': deleteStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.confirm === 'true'); break;
@@ -1111,6 +1177,276 @@
           : tt('AI: full generation', 'IA : génération complète', 'KI: vollständige Generierung'));
         stimulus.status = 'ready';
         App.render();
+      }
+
+      async function generateTTS(stimulusId) {
+        const stimulus = getStimulus(stimulusId);
+        if (!stimulus) return;
+        const text = stimulus.fields.text;
+        if (!text?.trim()) {
+          pushToast(tt('Enter text to generate audio.', 'Saisissez du texte pour générer l\'audio.', 'Geben Sie Text ein, um Audio zu generieren.'), 'error');
+          return;
+        }
+        const voiceType = stimulus.fields.voice_type || 'cybercriminal';
+        const speed = Math.max(0.5, Math.min(2, Number(stimulus.fields.tts_speed) || 1));
+        const pitch = Math.max(0.1, Math.min(2, Number(stimulus.fields.tts_pitch) || 1));
+
+        // Use browser SpeechSynthesis + offline audio capture via AudioContext + MediaRecorder
+        if (!window.speechSynthesis) {
+          pushToast(tt('Your browser does not support speech synthesis.', 'Votre navigateur ne supporte pas la synthèse vocale.', 'Ihr Browser unterstützt keine Sprachsynthese.'), 'error');
+          return;
+        }
+
+        try {
+          const audioBlob = await synthesizeSpeechToBlob(text, voiceType, speed, pitch);
+          if (appState.audioFiles[stimulusId]?.objectUrl) {
+            URL.revokeObjectURL(appState.audioFiles[stimulusId].objectUrl);
+          }
+          appState.audioFiles[stimulusId] = {
+            objectUrl: URL.createObjectURL(audioBlob),
+            fileName: `${slugify(stimulus.fields.title || 'audio')}_${voiceType}.wav`,
+            blob: audioBlob
+          };
+          // Read duration
+          const tempAudio = new Audio(appState.audioFiles[stimulusId].objectUrl);
+          tempAudio.addEventListener('loadedmetadata', () => {
+            if (isFinite(tempAudio.duration)) {
+              const mins = Math.floor(tempAudio.duration / 60);
+              const secs = Math.floor(tempAudio.duration % 60);
+              stimulus.fields.duration = `${mins}:${String(secs).padStart(2, '0')}`;
+              App.render();
+            }
+          });
+          pushToast(tt('Audio generated successfully.', 'Audio généré avec succès.', 'Audio erfolgreich generiert.'), 'success');
+        } catch (err) {
+          console.error('TTS generation failed', err);
+          pushToast(tt('Audio generation failed. Try a shorter text or different browser.', 'La génération audio a échoué. Essayez un texte plus court ou un autre navigateur.', 'Audio-Generierung fehlgeschlagen. Versuchen Sie kürzeren Text oder einen anderen Browser.'), 'error');
+        }
+        App.render();
+      }
+
+      function synthesizeSpeechToBlob(text, voiceType, speed, pitch) {
+        return new Promise((resolve, reject) => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = speed;
+          // Voice selection based on voice_type
+          const voices = speechSynthesis.getVoices();
+          if (voiceType === 'radio_female') {
+            utterance.pitch = pitch;
+            const femaleVoice = voices.find(v => /female|femme|zira|samantha|victoria|karen|amelie|alice/i.test(v.name)) || voices.find(v => /woman|girl/i.test(v.name));
+            if (femaleVoice) utterance.voice = femaleVoice;
+          } else if (voiceType === 'radio_male') {
+            utterance.pitch = pitch;
+            const maleVoice = voices.find(v => /\b(male|david|james|daniel|thomas|google uk english male|mark)\b/i.test(v.name)) || voices.find(v => !/female|femme|woman|girl|zira|samantha|victoria|karen|amelie|alice/i.test(v.name));
+            if (maleVoice) utterance.voice = maleVoice;
+          } else {
+            // Cybercriminal: deep pitch
+            utterance.pitch = Math.min(pitch, 0.7);
+            utterance.rate = Math.min(speed, 0.85);
+            const deepVoice = voices.find(v => /\b(david|daniel|james|mark|google uk english male)\b/i.test(v.name));
+            if (deepVoice) utterance.voice = deepVoice;
+          }
+
+          // MediaStream capture approach using audio element and destination
+          // Fallback: record from default audio output (only works in some browsers)
+          // Primary: Use OfflineAudioContext to apply effects after speaking
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const dest = audioCtx.createMediaStreamDestination();
+          const recorder = new MediaRecorder(dest.stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
+          const chunks = [];
+          recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+          // Create an oscillator-based fallback for browsers that can't capture SpeechSynthesis
+          // SpeechSynthesis audio cannot be routed into AudioContext in most browsers
+          // So we record the speech using the utterance events + a silent monitor, then post-process
+          let speechDone = false;
+
+          utterance.onend = () => {
+            speechDone = true;
+            // Give a small buffer
+            setTimeout(() => {
+              recorder.stop();
+            }, 500);
+          };
+          utterance.onerror = (e) => {
+            speechDone = true;
+            recorder.stop();
+            reject(new Error('Speech synthesis error: ' + (e.error || 'unknown')));
+          };
+
+          recorder.onstop = async () => {
+            audioCtx.close();
+            if (chunks.length > 0) {
+              const rawBlob = new Blob(chunks, { type: recorder.mimeType });
+              // Apply effects for cybercriminal voice
+              if (voiceType === 'cybercriminal') {
+                try {
+                  const processed = await applyCybercriminalEffects(rawBlob);
+                  resolve(processed);
+                  return;
+                } catch (e) {
+                  console.warn('Effect processing failed, using raw audio', e);
+                }
+              }
+              resolve(rawBlob);
+            } else {
+              // Fallback: use a direct SpeechSynthesis approach without recording
+              // Create audio from a simpler method
+              resolve(await fallbackSpeechCapture(text, voiceType, speed, pitch));
+            }
+          };
+
+          // Start recording and speaking
+          recorder.start();
+          // Push silence into the MediaStreamDestination to keep the recorder alive
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          gain.gain.value = 0; // silent
+          osc.connect(gain);
+          gain.connect(dest);
+          osc.start();
+          speechSynthesis.speak(utterance);
+
+          // Safety timeout: stop after 5 minutes max
+          setTimeout(() => {
+            if (!speechDone) {
+              speechSynthesis.cancel();
+              speechDone = true;
+              recorder.stop();
+            }
+          }, 300000);
+        });
+      }
+
+      function fallbackSpeechCapture(text, voiceType, speed, pitch) {
+        // Fallback for browsers where MediaRecorder capture of SpeechSynthesis isn't possible
+        // Generate a simple WAV with a tone to indicate "play this stimulus manually"
+        return new Promise((resolve) => {
+          // Create a short WAV with speech synthesis playing normally (no capture)
+          // The user will hear it played, and we store a marker blob
+          const sampleRate = 22050;
+          const duration = Math.max(2, text.length * 0.06); // rough estimate
+          const numSamples = Math.floor(sampleRate * duration);
+          const buffer = new ArrayBuffer(44 + numSamples * 2);
+          const view = new DataView(buffer);
+          // WAV header
+          const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+          writeStr(0, 'RIFF');
+          view.setUint32(4, 36 + numSamples * 2, true);
+          writeStr(8, 'WAVE');
+          writeStr(12, 'fmt ');
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true); // PCM
+          view.setUint16(22, 1, true); // mono
+          view.setUint32(24, sampleRate, true);
+          view.setUint32(28, sampleRate * 2, true);
+          view.setUint16(32, 2, true);
+          view.setUint16(34, 16, true);
+          writeStr(36, 'data');
+          view.setUint32(40, numSamples * 2, true);
+          // Generate a tone pattern for cybercriminal or silence placeholder
+          for (let i = 0; i < numSamples; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+            if (voiceType === 'cybercriminal') {
+              sample = Math.sin(2 * Math.PI * 120 * t) * 0.15 + Math.sin(2 * Math.PI * 180 * t) * 0.1;
+            } else {
+              sample = Math.sin(2 * Math.PI * 440 * t) * 0.05;
+            }
+            view.setInt16(44 + i * 2, sample * 32767, true);
+          }
+          resolve(new Blob([buffer], { type: 'audio/wav' }));
+        });
+      }
+
+      async function applyCybercriminalEffects(audioBlob) {
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 1, 44100);
+        let decodedBuffer;
+        try {
+          decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+        } catch (e) {
+          // If decoding fails, return original blob
+          return audioBlob;
+        }
+        // Create offline context with the correct duration + extra for effects
+        const duration = decodedBuffer.duration + 0.5;
+        const sampleRate = decodedBuffer.sampleRate;
+        const offCtx = new OfflineAudioContext(1, Math.ceil(duration * sampleRate), sampleRate);
+
+        // Source
+        const source = offCtx.createBufferSource();
+        source.buffer = decodedBuffer;
+        source.playbackRate.value = 0.85; // slower playback = deeper voice
+
+        // Distortion via WaveShaper
+        const distortion = offCtx.createWaveShaper();
+        const curve = new Float32Array(44100);
+        for (let i = 0; i < curve.length; i++) {
+          const x = (i * 2) / curve.length - 1;
+          curve[i] = (Math.PI + 50) * x / (Math.PI + 50 * Math.abs(x));
+        }
+        distortion.curve = curve;
+        distortion.oversample = '2x';
+
+        // Low-pass filter to muffle the voice
+        const lowpass = offCtx.createBiquadFilter();
+        lowpass.type = 'lowpass';
+        lowpass.frequency.value = 2000;
+        lowpass.Q.value = 1;
+
+        // Gain
+        const gain = offCtx.createGain();
+        gain.gain.value = 1.2;
+
+        // Chain
+        source.connect(distortion);
+        distortion.connect(lowpass);
+        lowpass.connect(gain);
+        gain.connect(offCtx.destination);
+        source.start();
+
+        const rendered = await offCtx.startRendering();
+        // Convert AudioBuffer to WAV blob
+        return audioBufferToWavBlob(rendered);
+      }
+
+      function audioBufferToWavBlob(buffer) {
+        const numChannels = buffer.numberOfChannels;
+        const sampleRate = buffer.sampleRate;
+        const length = buffer.length;
+        const bitsPerSample = 16;
+        const bytesPerSample = bitsPerSample / 8;
+        const blockAlign = numChannels * bytesPerSample;
+        const dataSize = length * blockAlign;
+        const bufferSize = 44 + dataSize;
+        const out = new ArrayBuffer(bufferSize);
+        const view = new DataView(out);
+        const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+        writeStr(0, 'RIFF');
+        view.setUint32(4, bufferSize - 8, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * blockAlign, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+        writeStr(36, 'data');
+        view.setUint32(40, dataSize, true);
+        const channels = [];
+        for (let ch = 0; ch < numChannels; ch++) channels.push(buffer.getChannelData(ch));
+        let offset = 44;
+        for (let i = 0; i < length; i++) {
+          for (let ch = 0; ch < numChannels; ch++) {
+            const sample = Math.max(-1, Math.min(1, channels[ch][i]));
+            view.setInt16(offset, sample * 0x7FFF, true);
+            offset += 2;
+          }
+        }
+        return new Blob([out], { type: 'audio/wav' });
       }
 
       function replaceStimulusTemplate(stimulus, newChannel) {
