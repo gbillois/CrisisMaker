@@ -381,7 +381,7 @@
           // 1. Create an offscreen video element to read source frames
           const srcVideo = document.createElement('video');
           srcVideo.src = videoInfo.objectUrl;
-          srcVideo.muted = true;
+          srcVideo.muted = false;
           srcVideo.playsInline = true;
           srcVideo.crossOrigin = 'anonymous';
           await new Promise((resolve, reject) => {
@@ -402,10 +402,15 @@
           // 3. Also render the watermark overlay
           const watermarkPng = await this._renderWatermarkImage(stimulus, W, H);
 
-          // 4. Set up MediaRecorder on the canvas stream
+          // 4. Set up MediaRecorder on the canvas stream (+ audio tracks from source video)
           const fps = 30;
           const stream = canvas.captureStream(fps);
-          const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+          if (srcVideo.captureStream) {
+            srcVideo.captureStream().getAudioTracks().forEach(track => stream.addTrack(track));
+          }
+          const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
             : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
             : 'video/webm';
           const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
