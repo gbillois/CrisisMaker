@@ -1024,7 +1024,7 @@
         const mode = stimulus.fields.audio_mode || 'create';
         const character = stimulus.fields.audio_character || 'attacker_best';
         const provider = stimulus.fields.tts_provider || 'browser';
-        const lang = stimulus.fields.tts_language || 'fr-FR';
+        const lang = stimulus.fields.tts_language || (() => { const l = appState.scenario.settings.inject_language || appState.scenario.settings.language || 'en'; if (l === 'fr') return 'fr-FR'; if (l === 'de') return 'de-DE'; if (l === 'en') return 'en-US'; return 'en-US'; })();
         const wmType = stimulus.fields.audio_watermark_type || 'beeps';
         const wmText = stimulus.fields.audio_watermark_text || 'EXERCISE';
         const azureKey = appState.scenario.settings.azure_speech_key;
@@ -1122,7 +1122,7 @@
                   ${tt('3. Text to speak', '3. Texte à lire', '3. Sprechtext')}
                   <textarea data-stimulus-field="${stimulus.id}.text" style="min-height:120px;">${escapeHtml(stimulus.fields.text || '')}</textarea>
                   <div class="actions" style="margin-top:4px;">
-                    <button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="text" ${_textGenerating ? 'disabled' : ''}>${_textGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `✨ ${tt('Regenerate', 'Régénérer', 'Neu generieren')}`}</button>
+                    <button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="text" ${_textGenerating ? 'disabled' : ''}>${_textGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `✨ ${tt('Regenerate text', 'Régénérer le texte', 'Text neu generieren')}`}</button>
                   </div>
                 </label>
 

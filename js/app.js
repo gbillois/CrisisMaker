@@ -1248,6 +1248,16 @@
         const ttsProvider = stimulus.fields.tts_provider || 'browser';
         const ttsLang = resolveTTSLanguage(stimulus);
 
+        // Clear previous audio so Play/Export buttons disappear during generation
+        if (appState.audioFiles[stimulusId]?.objectUrl) {
+          URL.revokeObjectURL(appState.audioFiles[stimulusId].objectUrl);
+        }
+        if (window._crisismakerAudioPlayer) {
+          window._crisismakerAudioPlayer.pause();
+          window._crisismakerAudioPlayer = null;
+        }
+        delete appState.audioFiles[stimulusId];
+
         try {
           let audioBlob;
           if (ttsProvider === 'azure_speech') {
@@ -1265,6 +1275,11 @@
               return;
             }
             audioBlob = await synthesizeWithBrowser(text, gender, ttsLang);
+            pushToast(tt(
+              'Browser TTS plays audio live but cannot be captured into a file. Use Azure Speech for exportable audio.',
+              'Le TTS navigateur joue l\'audio en direct mais ne peut pas être capturé dans un fichier. Utilisez Azure Speech pour un audio exportable.',
+              'Browser-TTS spielt Audio live ab, kann es aber nicht in eine Datei erfassen. Verwenden Sie Azure Speech für exportierbares Audio.'
+            ), 'warning');
           }
 
           // Apply cybercriminal effects if needed
@@ -1289,9 +1304,6 @@
             }
           }
 
-          if (appState.audioFiles[stimulusId]?.objectUrl) {
-            URL.revokeObjectURL(appState.audioFiles[stimulusId].objectUrl);
-          }
           appState.audioFiles[stimulusId] = {
             objectUrl: URL.createObjectURL(audioBlob),
             fileName: `${slugify(stimulus.fields.title || 'audio')}_${voiceType}_${ttsLang}.wav`,
@@ -1366,97 +1378,78 @@
         return new Blob([arrayBuffer], { type: 'audio/wav' });
       }
 
-      // ── Browser SpeechSynthesis with language-aware voice selection ───
+      // ── Browser SpeechSynthesis ─────────────────────────────────────
+      // NOTE: Browser speechSynthesis plays audio through the system output.
+      // It CANNOT be captured into a blob via Web Audio API / MediaRecorder.
+      // This function plays the speech live and returns a placeholder WAV
+      // indicating that browser TTS was used (the actual speech is played
+      // directly to the user's speakers during generation).
+      // For exportable audio files, use Azure Speech instead.
       function synthesizeWithBrowser(text, gender, lang) {
         return new Promise((resolve, reject) => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = lang;
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-
-          // Wait for voices to be loaded
+          // Ensure voices are loaded
           let voices = speechSynthesis.getVoices();
-          if (!voices.length) {
-            speechSynthesis.addEventListener('voiceschanged', () => {
-              voices = speechSynthesis.getVoices();
-            }, { once: true });
-            // Short delay to let voices load
-            setTimeout(() => { voices = speechSynthesis.getVoices(); }, 100);
-          }
+          const doSynthesize = () => {
+            voices = speechSynthesis.getVoices();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
 
-          // Filter voices by language first
-          const langPrefix = lang.split('-')[0]; // e.g. 'fr' from 'fr-FR'
-          const langVoices = voices.filter(v => v.lang === lang || v.lang.startsWith(langPrefix));
-          const pool = langVoices.length > 0 ? langVoices : voices;
+            // Filter voices by language
+            const langPrefix = lang.split('-')[0]; // e.g. 'fr' from 'fr-FR'
+            const langVoices = voices.filter(v => v.lang === lang || v.lang.startsWith(langPrefix));
+            const pool = langVoices.length > 0 ? langVoices : voices;
 
-          if (gender === 'female') {
-            const femaleVoice = pool.find(v => /female|femme|zira|samantha|victoria|karen|amelie|alice|denise|sonia|jenny|katja|eloise|libby|aria|amala/i.test(v.name))
-              || pool.find(v => /woman|girl/i.test(v.name));
-            if (femaleVoice) utterance.voice = femaleVoice;
-            else if (langVoices.length) utterance.voice = langVoices[0];
-          } else {
-            // Male (radio or attacker — attacker effects applied later via DSP chain)
-            const maleVoice = pool.find(v => /\b(male|david|james|daniel|thomas|henri|ryan|guy|conrad|davis|mark|google.*male)\b/i.test(v.name))
-              || pool.find(v => !/female|femme|woman|girl|zira|samantha|victoria|karen|amelie|alice|denise|sonia|jenny|katja/i.test(v.name));
-            if (maleVoice) utterance.voice = maleVoice;
-            else if (langVoices.length) utterance.voice = langVoices[0];
-          }
-
-          // MediaStream capture
-          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const dest = audioCtx.createMediaStreamDestination();
-          const recorder = new MediaRecorder(dest.stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
-          const chunks = [];
-          recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-
-          let speechDone = false;
-
-          utterance.onend = () => {
-            speechDone = true;
-            setTimeout(() => { recorder.stop(); }, 500);
-          };
-          utterance.onerror = (e) => {
-            speechDone = true;
-            recorder.stop();
-            reject(new Error('Speech synthesis error: ' + (e.error || 'unknown')));
-          };
-
-          recorder.onstop = async () => {
-            audioCtx.close();
-            if (chunks.length > 0) {
-              const rawBlob = new Blob(chunks, { type: recorder.mimeType });
-              // Try to decode to WAV for consistency
-              try {
-                const ab = await rawBlob.arrayBuffer();
-                const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const decoded = await decodeCtx.decodeAudioData(ab);
-                decodeCtx.close();
-                resolve(audioBufferToWavBlob(decoded));
-              } catch (_) {
-                resolve(rawBlob);
-              }
+            // Select voice by gender using name heuristics (browser voices lack a gender property)
+            if (gender === 'female') {
+              const femaleVoice = pool.find(v => /female|femme|woman|girl/i.test(v.name))
+                || pool.find(v => /\b(zira|samantha|victoria|karen|amelie|alice|hazel|susan|fiona|moira|tessa|paulina|monica|luciana|joana|ioana)\b/i.test(v.name));
+              if (femaleVoice) utterance.voice = femaleVoice;
+              else if (langVoices.length) utterance.voice = langVoices[0];
             } else {
-              // Fallback: generate tone placeholder
-              resolve(fallbackSpeechCapture(text, gender === 'male'));
+              const maleVoice = pool.find(v => /\b(male|homme)\b/i.test(v.name))
+                || pool.find(v => /\b(david|james|daniel|thomas|mark|richard|george|fred|alex|rishi|aaron|luca)\b/i.test(v.name))
+                || pool.find(v => /google.*male/i.test(v.name))
+                || pool.find(v => !/female|femme|woman|girl/i.test(v.name));
+              if (maleVoice) utterance.voice = maleVoice;
+              else if (langVoices.length) utterance.voice = langVoices[0];
             }
+
+            console.info(`[Browser TTS] voice=${utterance.voice?.name || '(default)'}, lang=${lang}, gender=${gender}`);
+
+            utterance.onend = () => {
+              // Browser TTS cannot be captured into a blob.
+              // Return a placeholder WAV — the user heard it live during generation.
+              resolve(fallbackSpeechCapture(text, gender === 'male'));
+            };
+            utterance.onerror = (e) => {
+              reject(new Error('Speech synthesis error: ' + (e.error || 'unknown')));
+            };
+
+            speechSynthesis.cancel(); // Cancel any pending speech
+            speechSynthesis.speak(utterance);
+
+            // Safety timeout
+            setTimeout(() => {
+              if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                resolve(fallbackSpeechCapture(text, gender === 'male'));
+              }
+            }, 300000);
           };
 
-          recorder.start();
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          gain.gain.value = 0;
-          osc.connect(gain);
-          gain.connect(dest);
-          osc.start();
-          speechSynthesis.speak(utterance);
-
-          setTimeout(() => {
-            if (!speechDone) {
-              speechSynthesis.cancel();
-              speechDone = true;
-              recorder.stop();
-            }
-          }, 300000);
+          if (!voices.length) {
+            let started = false;
+            const startOnce = () => { if (started) return; started = true; doSynthesize(); };
+            speechSynthesis.addEventListener('voiceschanged', startOnce, { once: true });
+            // Also try after a short delay in case voiceschanged already fired
+            setTimeout(() => {
+              if (speechSynthesis.getVoices().length) startOnce();
+            }, 200);
+          } else {
+            doSynthesize();
+          }
         });
       }
 
@@ -1568,15 +1561,22 @@
         let prefixSamples;
 
         if (wmType === 'text' && wmText && wmText.trim()) {
-          // Synthesize the watermark text via browser TTS and prepend it
+          // Synthesize the watermark text — prefer Azure Speech (produces real audio)
           try {
-            const wmBlob = await synthesizeWithBrowser(wmText.trim(), 'female', lang);
-            const wmRaw = await decodeAudioBlobToMono(wmBlob, sampleRate);
-            // Add 0.2s silence after the text
-            const silenceSamples = Math.floor(0.2 * sampleRate);
-            prefixSamples = new Float32Array(wmRaw.length + silenceSamples);
-            prefixSamples.set(wmRaw, 0);
+            const { azure_speech_key, azure_speech_region } = appState.scenario.settings;
+            let wmBlob;
+            if (azure_speech_key) {
+              wmBlob = await synthesizeWithAzureSpeech(wmText.trim(), 'female', lang, '', azure_speech_key, azure_speech_region || 'westeurope');
+            }
+            if (wmBlob) {
+              const wmRaw = await decodeAudioBlobToMono(wmBlob, sampleRate);
+              // Add 0.2s silence after the text
+              const silenceSamples = Math.floor(0.2 * sampleRate);
+              prefixSamples = new Float32Array(wmRaw.length + silenceSamples);
+              prefixSamples.set(wmRaw, 0);
+            }
           } catch (e) {
+            console.warn('[Watermark] Text watermark synthesis failed, falling through to beeps:', e);
             // Fall through to beeps
           }
         }
