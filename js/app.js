@@ -7,6 +7,7 @@
         launchScreenOpen: true,
         scenario: loadInitialScenario(),
         toasts: [],
+        videoFiles: {},  // stimulusId → { objectUrl, fileName } — in-memory only, never persisted
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
         historyModalStimulusId: null,
         libraryExpandedId: null,
@@ -226,6 +227,25 @@
               App.render();
             };
             reader.readAsDataURL(input.files[0]);
+          });
+        });
+
+        // Video file picker for breaking_news_tv — stored in-memory only
+        document.querySelectorAll('[data-stimulus-video]').forEach((input) => {
+          input.addEventListener('change', () => {
+            const stimulusId = input.dataset.stimulusVideo;
+            const stimulus = getStimulus(stimulusId);
+            if (!stimulus || !input.files?.[0]) return;
+            // Revoke previous blob URL to avoid memory leaks
+            if (appState.videoFiles[stimulusId]?.objectUrl) {
+              URL.revokeObjectURL(appState.videoFiles[stimulusId].objectUrl);
+            }
+            const file = input.files[0];
+            appState.videoFiles[stimulusId] = {
+              objectUrl: URL.createObjectURL(file),
+              fileName: file.name
+            };
+            App.render();
           });
         });
 
@@ -509,6 +529,20 @@
               }
               break;
             }
+            case 'clear-video': {
+              const sid = event.currentTarget.dataset.stimulusId;
+              if (appState.videoFiles[sid]?.objectUrl) {
+                URL.revokeObjectURL(appState.videoFiles[sid].objectUrl);
+              }
+              delete appState.videoFiles[sid];
+              App.render();
+              break;
+            }
+            case 'export-video':
+              await withActionProgress(action, async () => {
+                await ExportEngine.exportVideo(getStimulus(event.currentTarget.dataset.stimulusId));
+              });
+              break;
             case 'duplicate-stimulus': duplicateStimulus(event.currentTarget.dataset.stimulusId); break;
             case 'delete-stimulus': deleteStimulus(event.currentTarget.dataset.stimulusId, event.currentTarget.dataset.confirm === 'true'); break;
             case 'move-stimulus-up': {
