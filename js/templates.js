@@ -988,7 +988,7 @@
                 <div style="width:48px; height:48px; border-radius:50%; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">${isCriminal ? '🎭' : '🎙️'}</div>
                 <div>
                   <div style="font-weight:700; font-size:1.1rem;">${escapeHtml(f.title || tt('Audio message', 'Message audio', 'Audio-Nachricht'))}</div>
-                  <div style="font-size:0.82rem; opacity:0.7;">${escapeHtml(voiceLabel)}</div>
+                  <div style="font-size:0.82rem; opacity:0.7;">${escapeHtml(voiceLabel)} · ${escapeHtml(f.tts_language || 'Auto')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'}</div>
                 </div>
               </div>
               <div class="audio-waveform-visual" style="display:flex; align-items:center; gap:10px; padding:16px; background:${isCriminal ? 'rgba(225,29,72,0.12)' : 'rgba(99,102,241,0.08)'}; border-radius:10px; margin-bottom:16px;">
@@ -1024,7 +1024,7 @@
                   <div style="width:56px; height:56px; border-radius:14px; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; box-shadow:0 4px 12px ${isCriminal ? 'rgba(225,29,72,0.4)' : 'rgba(99,102,241,0.3)'};">${isCriminal ? '🎭' : '🎙️'}</div>
                   <div style="flex:1;">
                     <div style="font-weight:700; font-size:1.15rem; letter-spacing:-0.01em;">${escapeHtml(f.title || tt('Audio message', 'Message audio', 'Audio-Nachricht'))}</div>
-                    <div style="font-size:0.82rem; opacity:0.6; margin-top:2px;">${escapeHtml(voiceLabel)} · ${tt('Speed', 'Vitesse', 'Tempo')}: ${speed.toFixed(2)}x · ${tt('Pitch', 'Tonalité', 'Tonhöhe')}: ${pitch.toFixed(2)}</div>
+                    <div style="font-size:0.82rem; opacity:0.6; margin-top:2px;">${escapeHtml(voiceLabel)} · ${escapeHtml(f.tts_language || 'Auto')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'} · ${tt('Speed', 'Vitesse', 'Tempo')}: ${speed.toFixed(2)}x · ${tt('Pitch', 'Tonalité', 'Tonhöhe')}: ${pitch.toFixed(2)}</div>
                   </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:12px; padding:18px 20px; background:${isCriminal ? 'rgba(225,29,72,0.10)' : 'rgba(99,102,241,0.06)'}; border-radius:12px; margin-bottom:20px; border:1px solid ${isCriminal ? 'rgba(225,29,72,0.2)' : 'rgba(99,102,241,0.12)'};">

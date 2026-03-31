@@ -692,7 +692,35 @@
                   </select>
                 </label>
               </div>
-              <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported injects. Each inject can override these defaults.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages.', 'Das Wasserzeichen wird über alle exportierten Injects gelegt. Jeder Inject kann diese Standardeinstellungen überschreiben.')}</p>
+              <label class="field">${tt('Audio watermark', 'Filigrane audio', 'Audio-Wasserzeichen')}
+                  <select data-bind="settings.watermark_audio_enabled">
+                    <option value="true" ${settings.watermark_audio_enabled !== false ? 'selected' : ''}>${tt('Yes — prepend spoken "Exercise" warning', 'Oui — ajouter un avertissement vocal "Exercice"', 'Ja — gesprochene "Übung"-Warnung voranstellen')}</option>
+                    <option value="false" ${settings.watermark_audio_enabled === false ? 'selected' : ''}>${tt('No', 'Non', 'Nein')}</option>
+                  </select>
+                </label>
+              <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported injects. Each inject can override these defaults. The audio watermark prepends a spoken warning before generated audio.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages. Le filigrane audio ajoute un avertissement vocal avant l\'audio généré.', 'Das Wasserzeichen wird über alle exportierten Injects gelegt. Jeder Inject kann diese Standardeinstellungen überschreiben. Das Audio-Wasserzeichen stellt eine gesprochene Warnung vor das generierte Audio.')}</p>
+            </article>
+            <article class="card">
+              <div class="section-header"><h3>${tt('Azure Speech TTS', 'Azure Speech TTS', 'Azure Speech TTS')}</h3></div>
+              <p style="margin:0 0 12px; font-size:0.82rem; color:var(--text-muted, #6b7280);">${tt(
+                'Azure Cognitive Services Speech provides high-quality neural voices for audio message generation. Configure your API key here, then select "Azure Speech" as TTS provider in each audio inject.',
+                'Azure Cognitive Services Speech fournit des voix neuronales de haute qualité pour la génération de messages audio. Configurez votre clé API ici, puis sélectionnez "Azure Speech" comme fournisseur TTS dans chaque inject audio.',
+                'Azure Cognitive Services Speech bietet hochwertige neuronale Stimmen für die Audio-Nachrichtengenerierung. Konfigurieren Sie Ihren API-Schlüssel hier und wählen Sie dann "Azure Speech" als TTS-Anbieter in jedem Audio-Inject.'
+              )}</p>
+              <div class="field-grid cols-2">
+                <label class="field">${tt('Azure Speech API key', 'Clé API Azure Speech', 'Azure Speech API-Schlüssel')}
+                  <div style="display:flex; gap:10px;">
+                    <input id="azure-speech-key-input" type="password" data-bind="settings.azure_speech_key" value="${escapeAttribute(settings.azure_speech_key || '')}" placeholder="${tt('Enter your Azure Speech key', 'Entrez votre clé Azure Speech', 'Geben Sie Ihren Azure Speech-Schlüssel ein')}">
+                    <button class="btn btn-secondary" data-action="toggle-azure-speech-key">👁️</button>
+                  </div>
+                </label>
+                <label class="field">${tt('Azure region', 'Région Azure', 'Azure-Region')}
+                  <select data-bind="settings.azure_speech_region">
+                    ${['westeurope', 'eastus', 'eastus2', 'westus', 'westus2', 'northeurope', 'southeastasia', 'eastasia', 'centralus', 'uksouth', 'francecentral', 'germanywestcentral', 'japaneast', 'australiaeast', 'canadacentral'].map(r => `<option value="${r}" ${(settings.azure_speech_region || 'westeurope') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                  </select>
+                </label>
+              </div>
+              <p class="helper" style="margin-top:14px;">${tt('The Azure Speech key stays in your browser and is only sent to Microsoft Azure. Get your key from the Azure portal → Cognitive Services → Speech.', 'La clé Azure Speech reste dans votre navigateur et n\'est transmise qu\'à Microsoft Azure. Obtenez votre clé depuis le portail Azure → Cognitive Services → Speech.', 'Der Azure Speech-Schlüssel verbleibt in Ihrem Browser und wird nur an Microsoft Azure gesendet. Holen Sie sich Ihren Schlüssel im Azure-Portal → Cognitive Services → Speech.')}</p>
             </article>
           </section>
           <div style="padding:18px 0 4px;">
@@ -993,20 +1021,17 @@
       function renderAudioControls(stimulus) {
         const audioInfo = appState.audioFiles?.[stimulus.id];
         const hasAudio = !!audioInfo;
-        const isGenerating = appState.ui?.actionLoading?.['generate-tts'];
+        const provider = stimulus.fields.tts_provider || 'browser';
+        const providerLabel = provider === 'azure_speech' ? 'Azure Speech (Neural)' : tt('Browser (built-in)', 'Navigateur (intégré)', 'Browser (eingebaut)');
         return `
           <div style="margin-top:16px; border:1px solid var(--border, #e5e7eb); border-radius:8px; padding:14px 16px;">
-            <p style="margin:0 0 10px; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Audio generation', 'Génération audio', 'Audio-Generierung')}</p>
+            <p style="margin:0 0 10px; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Audio', 'Audio', 'Audio')}</p>
             <p style="margin:0 0 12px; font-size:0.8rem; color:var(--text-muted, #6b7280);">${tt(
-              'Generate audio from the text above using browser text-to-speech, or upload your own audio file. The cybercriminal voice applies pitch and distortion effects.',
-              'Générez l\'audio à partir du texte ci-dessus via la synthèse vocale du navigateur, ou importez votre propre fichier audio. La voix cybercriminel applique des effets de distorsion et de tonalité grave.',
-              'Generieren Sie Audio aus dem obigen Text mit der Browser-Sprachsynthese oder laden Sie Ihre eigene Audiodatei hoch. Die Cyberkriminellen-Stimme wendet Verzerrung und tiefe Tonhöhe an.'
-            )}</p>
+              'Use the "Generate audio" button in the preview toolbar to synthesize speech, or upload your own audio file below.',
+              'Utilisez le bouton "Générer l\'audio" dans la barre de prévisualisation pour synthétiser la voix, ou importez votre propre fichier audio ci-dessous.',
+              'Verwenden Sie die Schaltfläche "Audio generieren" in der Vorschau-Symbolleiste, um Sprache zu synthetisieren, oder laden Sie unten Ihre eigene Audiodatei hoch.'
+            )} ${tt('TTS provider', 'Fournisseur TTS', 'TTS-Anbieter')}: <strong>${providerLabel}</strong></p>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
-              <button class="btn btn-primary" data-action="generate-tts" data-stimulus-id="${stimulus.id}" ${isGenerating ? 'disabled' : ''}>
-                ${isGenerating ? `<span class="ai-spinner"></span>${tt('Generating…', 'Génération…', 'Wird generiert…')}` : tt('Generate audio 🔊', 'Générer l\'audio 🔊', 'Audio generieren 🔊')}
-              </button>
-              <span style="font-size:0.8rem; color:var(--text-muted, #6b7280);">${tt('or', 'ou', 'oder')}</span>
               <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
                 ${tt('Upload audio file…', 'Importer un fichier audio…', 'Audiodatei hochladen…')}
                 <input type="file" accept="audio/mp3,audio/wav,audio/ogg,audio/webm,audio/mpeg,audio/*" data-stimulus-audio="${stimulus.id}" style="display:none;">
@@ -1014,7 +1039,7 @@
             </div>
             ${hasAudio ? `
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:10px 14px; background:var(--bg-alt, #f1f5f9); border-radius:8px;">
-                <span style="font-size:0.82rem;">🔊 ${escapeHtml(audioInfo.fileName || tt('Generated audio', 'Audio généré', 'Generiertes Audio'))}</span>
+                <span style="font-size:0.82rem;">${escapeHtml(audioInfo.fileName || tt('Generated audio', 'Audio généré', 'Generiertes Audio'))}</span>
                 <button class="btn btn-xs btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">${tt('Play', 'Écouter', 'Abspielen')} ▶</button>
                 <button class="btn btn-xs btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">${tt('Stop', 'Arrêter', 'Stopp')} ◼</button>
                 <button class="btn btn-ghost btn-xs" data-action="clear-audio" data-stimulus-id="${stimulus.id}">${tt('Remove', 'Supprimer', 'Entfernen')}</button>
@@ -1115,13 +1140,16 @@
                   <div class="preview-toolbar-inline">
                     ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .eml', 'Exporter .eml', '.eml exportieren')}</button>` : ''}
                     ${appState.videoFiles?.[stimulus.id] && stimulus.channel === 'breaking_news_tv' ? `<button class="btn btn-secondary" data-action="export-video" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
-                    ${appState.audioFiles?.[stimulus.id] && stimulus.channel === 'audio_message' ? `
-                      <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
-                      <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
-                      <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${stimulus.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
-                      <button class="btn btn-secondary" data-action="export-audio" data-stimulus-id="${stimulus.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')} 🔊</button>
+                    ${stimulus.channel === 'audio_message' ? `
+                      <button class="btn btn-primary" data-action="generate-tts" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['generate-tts'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['generate-tts'] ? `<span class="ai-spinner"></span>${tt('Generating…', 'Génération…', 'Wird generiert…')}` : tt('Generate audio', 'Générer l\'audio', 'Audio generieren')}</button>
+                      ${appState.audioFiles?.[stimulus.id] ? `
+                        <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
+                        <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
+                        <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${stimulus.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
+                        <button class="btn btn-success" data-action="export-audio" data-stimulus-id="${stimulus.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')}</button>
+                      ` : ''}
                     ` : ''}
-                    <button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
+                    ${stimulus.channel !== 'audio_message' ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>` : ''}
                   </div>
                   <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
                     <div class="preview-stage">
@@ -1151,12 +1179,43 @@
           `;
         }
         if (spec.type === 'select') {
+          // For TTS provider, show a hint when azure is selected but no key configured
+          const isProviderField = spec.key === 'tts_provider';
+          const azureHint = isProviderField && String(value) === 'azure_speech' && !appState.scenario.settings.azure_speech_key
+            ? `<p style="margin:4px 0 0; font-size:0.78rem; color:#b91c1c;">⚠ ${tt('Azure Speech requires an API key. Configure it in Settings.', 'Azure Speech nécessite une clé API. Configurez-la dans les Paramètres.', 'Azure Speech erfordert einen API-Schlüssel. Konfigurieren Sie ihn in den Einstellungen.')}</p>`
+            : '';
+          const providerLabels = isProviderField ? { browser: tt('Browser (built-in)', 'Navigateur (intégré)', 'Browser (eingebaut)'), azure_speech: 'Azure Speech (Neural)' } : {};
           return `
             <label class="field">${escapeHtml(spec.label)}
               <select ${bind}>
-                ${(spec.options || []).map((option) => `<option value="${option}" ${String(value) === String(option) ? 'selected' : ''}>${option}</option>`).join('')}
+                ${(spec.options || []).map((option) => `<option value="${option}" ${String(value) === String(option) ? 'selected' : ''}>${isProviderField ? (providerLabels[option] || option) : option}</option>`).join('')}
               </select>
+              ${azureHint}
               ${genBtn}
+            </label>
+          `;
+        }
+        if (spec.type === 'tts_language_select') {
+          const effectiveLang = value || (() => { const l = appState.scenario.settings.inject_language || appState.scenario.settings.language || 'en'; if (l === 'fr') return 'fr-FR'; if (l === 'de') return 'de-DE'; return 'en-US'; })();
+          return `
+            <label class="field">${escapeHtml(spec.label)}
+              <select ${bind}>
+                <option value="" ${!value ? 'selected' : ''}>${tt('Auto (from interface language)', 'Auto (depuis la langue de l\'interface)', 'Auto (von der Oberflächensprache)')}</option>
+                ${TTS_LANGUAGES.map(l => `<option value="${l.value}" ${String(value) === l.value ? 'selected' : ''}>${l.label}</option>`).join('')}
+              </select>
+            </label>
+          `;
+        }
+        if (spec.type === 'azure_voice_select') {
+          const provider = stimulus.fields.tts_provider || 'browser';
+          if (provider !== 'azure_speech') return '';
+          const lang = stimulus.fields.tts_language || (() => { const l = appState.scenario.settings.inject_language || appState.scenario.settings.language || 'en'; if (l === 'fr') return 'fr-FR'; if (l === 'de') return 'de-DE'; return 'en-US'; })();
+          const voices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'] || [];
+          return `
+            <label class="field">${escapeHtml(spec.label)}
+              <select ${bind}>
+                ${voices.map(v => `<option value="${v.value}" ${String(value) === v.value ? 'selected' : ''}>${v.label} — ${v.value}</option>`).join('')}
+              </select>
             </label>
           `;
         }
@@ -1211,13 +1270,16 @@
                 <button class="btn btn-primary" data-action="goto-stimuli" data-stimulus-id="${current.id}">${tt('Edit', 'Éditer', 'Bearbeiten')}</button>
                 ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .eml file', 'Exporter le fichier .eml', '.eml-Datei exportieren')}</button>` : ''}
                 ${appState.videoFiles?.[current.id] && current.channel === 'breaking_news_tv' ? `<button class="btn btn-success" data-action="export-video" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
-                ${appState.audioFiles?.[current.id] && current.channel === 'audio_message' ? `
-                  <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${current.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
-                  <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${current.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
-                  <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${current.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
-                  <button class="btn btn-success" data-action="export-audio" data-stimulus-id="${current.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')} 🔊</button>
+                ${current.channel === 'audio_message' ? `
+                  <button class="btn btn-primary" data-action="generate-tts" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['generate-tts'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['generate-tts'] ? `<span class="ai-spinner"></span>${tt('Generating…', 'Génération…', 'Wird generiert…')}` : tt('Generate audio', 'Générer l\'audio', 'Audio generieren')}</button>
+                  ${appState.audioFiles?.[current.id] ? `
+                    <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${current.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
+                    <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${current.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
+                    <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${current.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
+                    <button class="btn btn-success" data-action="export-audio" data-stimulus-id="${current.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')}</button>
+                  ` : ''}
                 ` : ''}
-                <button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
+                ${current.channel !== 'audio_message' ? `<button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>` : ''}
               </div>
             </article>
             <article class="preview-shell">

@@ -22,7 +22,7 @@
         if (!_fileHandle) return false;
         try {
           const exportData = JSON.parse(JSON.stringify(appState.scenario));
-          exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '' }; // never export keys
+          exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' }; // never export keys
           const writable = await _fileHandle.createWritable();
           await writable.write(JSON.stringify(exportData, null, 2));
           await writable.close();
@@ -60,9 +60,9 @@
         try {
           appState.scenario.updated_at = new Date().toISOString();
           const scenarioToSave = JSON.parse(JSON.stringify(appState.scenario));
-          scenarioToSave.settings = { ...scenarioToSave.settings, ai_api_key: '', azure_api_key: '' }; // never store keys in project data
+          scenarioToSave.settings = { ...scenarioToSave.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' }; // never store keys in project data
           localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarioToSave));
-          const settingsToSave = { ...appState.scenario.settings, ai_api_key: '', azure_api_key: '' };
+          const settingsToSave = { ...appState.scenario.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
           persistProviderSettings(appState.scenario.settings);
           if (showToast) pushToast(tt('Scenario saved locally.', 'Scénario enregistré localement.', 'Szenario lokal gespeichert.'), 'success');
@@ -115,6 +115,10 @@
         if (apiKey) result.ai_api_key = apiKey;
         const azureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
         if (azureApiKey) result.azure_api_key = azureApiKey;
+        const azureSpeechKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
+        if (azureSpeechKey) result.azure_speech_key = azureSpeechKey;
+        const azureSpeechRegion = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion);
+        if (azureSpeechRegion) result.azure_speech_region = azureSpeechRegion;
         return result;
       }
 
@@ -133,6 +137,12 @@
         } else {
           localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
         }
+        if (settings.azure_speech_key) {
+          localStorage.setItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore, settings.azure_speech_key);
+        } else {
+          localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
+        }
+        localStorage.setItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion, settings.azure_speech_region || 'westeurope');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.confidentialityAcknowledged, settings.confidentiality_acknowledged ? 'true' : 'false');
       }
 
@@ -320,7 +330,7 @@
           }
           document.body.removeChild(sandbox);
           const exportData = JSON.parse(JSON.stringify(appState.scenario));
-          exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '' };
+          exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
           const json = JSON.stringify(exportData, null, 2);
           const crisisSlug = slugify(appState.scenario.name);
           zip.file(`${crisisSlug}.json`, json);
@@ -519,7 +529,7 @@
 
       async function saveScenarioToFile() {
         const exportData = JSON.parse(JSON.stringify(appState.scenario));
-        exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '' };
+        exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
         const json = JSON.stringify(exportData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         downloadBlob(blob, `${slugify(appState.scenario.name)}.json`);
@@ -622,6 +632,10 @@
           if (savedApiKey) appState.scenario.settings.ai_api_key = savedApiKey;
           const savedAzureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
           if (savedAzureApiKey) appState.scenario.settings.azure_api_key = savedAzureApiKey;
+          const savedSpeechKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
+          if (savedSpeechKey) appState.scenario.settings.azure_speech_key = savedSpeechKey;
+          const savedSpeechRegion = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion);
+          if (savedSpeechRegion) appState.scenario.settings.azure_speech_region = savedSpeechRegion;
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
           appState.route = 'project';
           appState.launchScreenOpen = false;

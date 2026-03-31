@@ -15,7 +15,39 @@
         azureDeployment: 'azureDeployment',
         apiKey: 'crisismaker_api_key',    // dedicated key for API key, separate from project data
         azureApiKeyStore: 'crisismaker_azure_api_key', // dedicated key for Azure API key
+        azureSpeechKeyStore: 'crisismaker_azure_speech_key', // Azure Speech TTS API key
+        azureSpeechRegion: 'crisismaker_azure_speech_region',
         confidentialityAcknowledged: 'crisismaker_confidentiality_acknowledged'
+      };
+      const TTS_LANGUAGES = [
+        { value: 'fr-FR', label: 'Français (FR)' },
+        { value: 'en-GB', label: 'English (UK)' },
+        { value: 'en-US', label: 'English (US)' },
+        { value: 'de-DE', label: 'Deutsch (DE)' }
+      ];
+      const AZURE_SPEECH_VOICES = {
+        'fr-FR': [
+          { value: 'fr-FR-DeniseNeural', label: 'Denise (F)', gender: 'female' },
+          { value: 'fr-FR-HenriNeural', label: 'Henri (M)', gender: 'male' },
+          { value: 'fr-FR-EloiseNeural', label: 'Eloise (F)', gender: 'female' },
+          { value: 'fr-FR-RemyMultilingualNeural', label: 'Remy Multilingual (M)', gender: 'male' }
+        ],
+        'en-GB': [
+          { value: 'en-GB-SoniaNeural', label: 'Sonia (F)', gender: 'female' },
+          { value: 'en-GB-RyanNeural', label: 'Ryan (M)', gender: 'male' },
+          { value: 'en-GB-LibbyNeural', label: 'Libby (F)', gender: 'female' }
+        ],
+        'en-US': [
+          { value: 'en-US-JennyNeural', label: 'Jenny (F)', gender: 'female' },
+          { value: 'en-US-GuyNeural', label: 'Guy (M)', gender: 'male' },
+          { value: 'en-US-AriaNeural', label: 'Aria (F)', gender: 'female' },
+          { value: 'en-US-DavisNeural', label: 'Davis (M)', gender: 'male' }
+        ],
+        'de-DE': [
+          { value: 'de-DE-KatjaNeural', label: 'Katja (F)', gender: 'female' },
+          { value: 'de-DE-ConradNeural', label: 'Conrad (M)', gender: 'male' },
+          { value: 'de-DE-AmalaNeural', label: 'Amala (F)', gender: 'female' }
+        ]
       };
       const ROLES = [
         { value: 'journalist', label: 'Journalist' },
@@ -327,11 +359,14 @@
           defaults: {
             title: 'Ransom demand — PharmLeaks',
             voice_type: 'cybercriminal',
+            tts_provider: 'browser',
+            tts_language: '',
+            azure_voice: '',
             text: 'Attention. We are PharmLeaks. We have encrypted your entire infrastructure and exfiltrated 2.4 terabytes of your most sensitive data, including patient records and clinical trial results. You have 72 hours to pay 25 million dollars in Bitcoin. If you refuse, everything will be published. Do not contact law enforcement. Do not attempt to restore your systems. The clock is ticking.',
             duration: '',
             tts_speed: 0.85,
             tts_pitch: 0.7
           },
-          fields: [field('title', 'Audio title', 'text'), field('voice_type', 'Voice type', 'select', { options: ['cybercriminal', 'radio_female', 'radio_male'] }), field('text', 'Text to speak', 'textarea'), field('tts_speed', 'Speed (0.5–2.0)', 'number'), field('tts_pitch', 'Pitch (0.1–2.0)', 'number')]
+          fields: [field('title', 'Audio title', 'text'), field('voice_type', 'Voice type', 'select', { options: ['cybercriminal', 'radio_female', 'radio_male'] }), field('tts_provider', 'TTS provider', 'select', { options: ['browser', 'azure_speech'] }), field('tts_language', 'Voice language', 'tts_language_select'), field('azure_voice', 'Azure voice', 'azure_voice_select'), field('text', 'Text to speak', 'textarea'), field('tts_speed', 'Speed (0.5–2.0)', 'number'), field('tts_pitch', 'Pitch (0.1–2.0)', 'number')]
         }
       };
