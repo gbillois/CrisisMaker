@@ -212,7 +212,11 @@
             stimulus.fields[fieldName] = value;
             stimulus.manual_overrides[fieldName] = value;
             // Fields that affect the audio editor layout need a full re-render
-            const audioEditorFields = ['audio_mode', 'tts_provider', 'audio_character', 'audio_watermark_type'];
+            const audioEditorFields = ['audio_mode', 'tts_provider', 'audio_character', 'audio_watermark_type', 'tts_language'];
+            // When language or character changes, reset azure_voice so it auto-selects a matching voice
+            if (fieldName === 'tts_language' || fieldName === 'audio_character') {
+              stimulus.fields.azure_voice = '';
+            }
             if (audioEditorFields.includes(fieldName)) {
               App.render();
             } else {
@@ -608,7 +612,14 @@
               if (audioInfo?.objectUrl) {
                 if (window._crisismakerAudioPlayer) { window._crisismakerAudioPlayer.pause(); }
                 window._crisismakerAudioPlayer = new Audio(audioInfo.objectUrl);
-                window._crisismakerAudioPlayer.play();
+                window._crisismakerAudioPlayer.onerror = (e) => {
+                  console.error('[Audio] Playback error:', e);
+                  pushToast(tt('Audio playback failed. Try regenerating.', 'Échec de la lecture audio. Essayez de régénérer.', 'Audiowiedergabe fehlgeschlagen. Versuchen Sie es erneut.'), 'error');
+                };
+                window._crisismakerAudioPlayer.play().catch(err => {
+                  console.error('[Audio] Play() rejected:', err);
+                  pushToast(tt('Audio playback failed. Try regenerating.', 'Échec de la lecture audio. Essayez de régénérer.', 'Audiowiedergabe fehlgeschlagen. Versuchen Sie es erneut.'), 'error');
+                });
               }
               break;
             }
@@ -1245,7 +1256,9 @@
               pushToast(tt('Azure Speech API key not configured. Go to Settings.', 'Clé API Azure Speech non configurée. Allez dans les Paramètres.', 'Azure Speech API-Schlüssel nicht konfiguriert. Gehen Sie zu den Einstellungen.'), 'error');
               return;
             }
+            console.info(`[TTS] Azure Speech: gender=${gender}, lang=${ttsLang}, voice=${stimulus.fields.azure_voice || '(auto)'}, region=${azure_speech_region || 'westeurope'}`);
             audioBlob = await synthesizeWithAzureSpeech(text, gender, ttsLang, stimulus.fields.azure_voice, azure_speech_key, azure_speech_region || 'westeurope');
+            console.info(`[TTS] Azure blob size: ${audioBlob.size} bytes`);
           } else {
             if (!window.speechSynthesis) {
               pushToast(tt('Your browser does not support speech synthesis.', 'Votre navigateur ne supporte pas la synthèse vocale.', 'Ihr Browser unterstützt keine Sprachsynthese.'), 'error');
@@ -1259,8 +1272,9 @@
             const preset = ATTACKER_VOICE_PRESETS[presetKey] || ATTACKER_VOICE_PRESETS.best_attacker;
             try {
               audioBlob = await applyCybercriminalEffects(audioBlob, preset);
+              console.info(`[TTS] After effects: blob size=${audioBlob.size} bytes`);
             } catch (e) {
-              console.warn('Effect processing failed, using raw audio', e);
+              console.warn('[TTS] Effect processing failed, using raw audio', e);
             }
           }
 
@@ -1303,11 +1317,14 @@
 
       // ── Azure Speech TTS ──────────────────────────────────────────────
       async function synthesizeWithAzureSpeech(text, gender, lang, azureVoice, apiKey, region) {
-        // Determine voice name
+        // Determine voice name — always validate it matches the requested language
+        const voices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'];
         let voiceName = azureVoice;
-        if (!voiceName) {
-          const voices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'];
+
+        // Validate voice belongs to the selected language; reset if mismatched or empty
+        if (!voiceName || !voices.some(v => v.value === voiceName)) {
           voiceName = (voices.find(v => v.gender === gender) || voices[0]).value;
+          console.info(`[Azure TTS] Auto-selected voice: ${voiceName} (lang=${lang}, gender=${gender})`);
         }
 
         // Build SSML (neutral rate/pitch — voice character is handled by effects)
@@ -1318,17 +1335,23 @@
   </voice>
 </speak>`;
 
+        console.info(`[Azure TTS] Calling ${region} with voice=${voiceName}, lang=${lang}, text length=${text.length}`);
         const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Ocp-Apim-Subscription-Key': apiKey,
-            'Content-Type': 'application/ssml+xml',
-            'X-Microsoft-OutputFormat': 'riff-24khz-16bit-mono-pcm',
-            'User-Agent': 'CrisisMaker'
-          },
-          body: ssml
-        });
+        let response;
+        try {
+          response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Ocp-Apim-Subscription-Key': apiKey,
+              'Content-Type': 'application/ssml+xml',
+              'X-Microsoft-OutputFormat': 'riff-24khz-16bit-mono-pcm',
+              'User-Agent': 'CrisisMaker'
+            },
+            body: ssml
+          });
+        } catch (networkErr) {
+          throw new Error(`Azure Speech network error: ${networkErr.message}. Check your internet connection and Azure region (${region}).`);
+        }
 
         if (!response.ok) {
           const errText = await response.text().catch(() => '');
@@ -1336,6 +1359,10 @@
         }
 
         const arrayBuffer = await response.arrayBuffer();
+        if (!arrayBuffer || arrayBuffer.byteLength < 100) {
+          throw new Error(`Azure Speech returned empty or too-small audio (${arrayBuffer?.byteLength || 0} bytes). Check your API key and region.`);
+        }
+        console.info(`[Azure TTS] Received ${arrayBuffer.byteLength} bytes of audio`);
         return new Blob([arrayBuffer], { type: 'audio/wav' });
       }
 
@@ -1532,7 +1559,9 @@
         let mainSamples;
         try {
           mainSamples = await decodeAudioBlobToMono(audioBlob, sampleRate);
+          console.info(`[Watermark] Decoded main audio: ${mainSamples.length} samples (${(mainSamples.length / sampleRate).toFixed(2)}s)`);
         } catch (e) {
+          console.warn('[Watermark] Failed to decode main audio, returning original blob:', e);
           return audioBlob; // Can't decode, return original
         }
 
