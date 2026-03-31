@@ -211,8 +211,14 @@
             if (input.type === 'number') value = Number(value);
             stimulus.fields[fieldName] = value;
             stimulus.manual_overrides[fieldName] = value;
-            const previewHost = document.querySelector('.preview-stage');
-            if (previewHost) previewHost.innerHTML = renderStimulusPreview(stimulus);
+            // Fields that affect the audio editor layout need a full re-render
+            const audioEditorFields = ['audio_mode', 'tts_provider', 'audio_character', 'audio_watermark_type'];
+            if (audioEditorFields.includes(fieldName)) {
+              App.render();
+            } else {
+              const previewHost = document.querySelector('.preview-stage');
+              if (previewHost) previewHost.innerHTML = renderStimulusPreview(stimulus);
+            }
           });
         });
 
@@ -252,7 +258,7 @@
 
         // Audio file picker for audio_message — stored in-memory only
         document.querySelectorAll('[data-stimulus-audio]').forEach((input) => {
-          input.addEventListener('change', () => {
+          input.addEventListener('change', async () => {
             const stimulusId = input.dataset.stimulusAudio;
             const stimulus = getStimulus(stimulusId);
             if (!stimulus || !input.files?.[0]) return;
@@ -260,9 +266,21 @@
               URL.revokeObjectURL(appState.audioFiles[stimulusId].objectUrl);
             }
             const file = input.files[0];
-            const blob = file;
+            let blob = file;
+            // Apply audio watermark if enabled
+            if (appState.scenario.settings.watermark_enabled !== false && appState.scenario.settings.watermark_audio_enabled !== false) {
+              try {
+                const ttsLang = resolveTTSLanguage(stimulus);
+                const wmType = stimulus.fields.audio_watermark_type || 'beeps';
+                const wmText = stimulus.fields.audio_watermark_text || 'EXERCISE';
+                blob = await prependAudioWatermark(blob, ttsLang, wmType, wmText);
+              } catch (e) {
+                console.warn('Audio watermark on upload failed, using raw file', e);
+                blob = file;
+              }
+            }
             appState.audioFiles[stimulusId] = {
-              objectUrl: URL.createObjectURL(file),
+              objectUrl: URL.createObjectURL(blob),
               fileName: file.name,
               blob
             };
@@ -1194,6 +1212,18 @@
         return 'en-US';
       }
 
+      // Map audio_character to synthesis params
+      function resolveCharacterParams(character) {
+        switch (character) {
+          case 'male':           return { voiceType: 'radio_male',    gender: 'male',   isAttacker: false, preset: null };
+          case 'female':         return { voiceType: 'radio_female',  gender: 'female', isAttacker: false, preset: null };
+          case 'attacker_best':  return { voiceType: 'cybercriminal', gender: 'male',   isAttacker: true,  preset: 'best_attacker' };
+          case 'attacker_drama': return { voiceType: 'cybercriminal', gender: 'male',   isAttacker: true,  preset: 'drama_attacker' };
+          case 'attacker_techno':return { voiceType: 'cybercriminal', gender: 'male',   isAttacker: true,  preset: 'techno_attacker' };
+          default:               return { voiceType: 'cybercriminal', gender: 'male',   isAttacker: true,  preset: 'best_attacker' };
+        }
+      }
+
       async function generateTTS(stimulusId) {
         const stimulus = getStimulus(stimulusId);
         if (!stimulus) return;
@@ -1202,9 +1232,8 @@
           pushToast(tt('Enter text to generate audio.', 'Saisissez du texte pour générer l\'audio.', 'Geben Sie Text ein, um Audio zu generieren.'), 'error');
           return;
         }
-        const voiceType = stimulus.fields.voice_type || 'cybercriminal';
-        const speed = Math.max(0.5, Math.min(2, Number(stimulus.fields.tts_speed) || 1));
-        const pitch = Math.max(0.1, Math.min(2, Number(stimulus.fields.tts_pitch) || 1));
+        const charParams = resolveCharacterParams(stimulus.fields.audio_character || 'attacker_best');
+        const { voiceType, gender, isAttacker, preset: presetKey } = charParams;
         const ttsProvider = stimulus.fields.tts_provider || 'browser';
         const ttsLang = resolveTTSLanguage(stimulus);
 
@@ -1216,18 +1245,17 @@
               pushToast(tt('Azure Speech API key not configured. Go to Settings.', 'Clé API Azure Speech non configurée. Allez dans les Paramètres.', 'Azure Speech API-Schlüssel nicht konfiguriert. Gehen Sie zu den Einstellungen.'), 'error');
               return;
             }
-            audioBlob = await synthesizeWithAzureSpeech(text, voiceType, ttsLang, speed, pitch, stimulus.fields.azure_voice, azure_speech_key, azure_speech_region || 'westeurope');
+            audioBlob = await synthesizeWithAzureSpeech(text, gender, ttsLang, stimulus.fields.azure_voice, azure_speech_key, azure_speech_region || 'westeurope');
           } else {
             if (!window.speechSynthesis) {
               pushToast(tt('Your browser does not support speech synthesis.', 'Votre navigateur ne supporte pas la synthèse vocale.', 'Ihr Browser unterstützt keine Sprachsynthese.'), 'error');
               return;
             }
-            audioBlob = await synthesizeWithBrowser(text, voiceType, ttsLang, speed, pitch);
+            audioBlob = await synthesizeWithBrowser(text, gender, ttsLang);
           }
 
           // Apply cybercriminal effects if needed
-          if (voiceType === 'cybercriminal') {
-            const presetKey = stimulus.fields.attacker_voice || 'best_attacker';
+          if (isAttacker && presetKey) {
             const preset = ATTACKER_VOICE_PRESETS[presetKey] || ATTACKER_VOICE_PRESETS.best_attacker;
             try {
               audioBlob = await applyCybercriminalEffects(audioBlob, preset);
@@ -1239,7 +1267,9 @@
           // Prepend audio watermark if enabled
           if (appState.scenario.settings.watermark_enabled !== false && appState.scenario.settings.watermark_audio_enabled !== false) {
             try {
-              audioBlob = await prependAudioWatermark(audioBlob, ttsLang);
+              const wmType = stimulus.fields.audio_watermark_type || 'beeps';
+              const wmText = stimulus.fields.audio_watermark_text || 'EXERCISE';
+              audioBlob = await prependAudioWatermark(audioBlob, ttsLang, wmType, wmText);
             } catch (e) {
               console.warn('Audio watermark failed, using raw audio', e);
             }
@@ -1248,10 +1278,9 @@
           if (appState.audioFiles[stimulusId]?.objectUrl) {
             URL.revokeObjectURL(appState.audioFiles[stimulusId].objectUrl);
           }
-          const ext = ttsProvider === 'azure_speech' ? 'wav' : 'wav';
           appState.audioFiles[stimulusId] = {
             objectUrl: URL.createObjectURL(audioBlob),
-            fileName: `${slugify(stimulus.fields.title || 'audio')}_${voiceType}_${ttsLang}.${ext}`,
+            fileName: `${slugify(stimulus.fields.title || 'audio')}_${voiceType}_${ttsLang}.wav`,
             blob: audioBlob
           };
           // Read duration
@@ -1273,29 +1302,19 @@
       }
 
       // ── Azure Speech TTS ──────────────────────────────────────────────
-      async function synthesizeWithAzureSpeech(text, voiceType, lang, speed, pitch, azureVoice, apiKey, region) {
+      async function synthesizeWithAzureSpeech(text, gender, lang, azureVoice, apiKey, region) {
         // Determine voice name
         let voiceName = azureVoice;
         if (!voiceName) {
           const voices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'];
-          if (voiceType === 'radio_female' || voiceType === 'cybercriminal') {
-            voiceName = (voices.find(v => v.gender === (voiceType === 'radio_female' ? 'female' : 'male')) || voices[0]).value;
-          } else if (voiceType === 'radio_male') {
-            voiceName = (voices.find(v => v.gender === 'male') || voices[0]).value;
-          } else {
-            voiceName = voices[0].value;
-          }
+          voiceName = (voices.find(v => v.gender === gender) || voices[0]).value;
         }
 
-        // Build SSML
-        const ratePercent = Math.round((speed - 1) * 100);
-        const pitchPercent = Math.round((pitch - 1) * 50);
+        // Build SSML (neutral rate/pitch — voice character is handled by effects)
         const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}">
   <voice name="${voiceName}">
-    <prosody rate="${ratePercent >= 0 ? '+' : ''}${ratePercent}%" pitch="${pitchPercent >= 0 ? '+' : ''}${pitchPercent}%">
-      ${escapedText}
-    </prosody>
+    ${escapedText}
   </voice>
 </speak>`;
 
@@ -1321,11 +1340,12 @@
       }
 
       // ── Browser SpeechSynthesis with language-aware voice selection ───
-      function synthesizeWithBrowser(text, voiceType, lang, speed, pitch) {
+      function synthesizeWithBrowser(text, gender, lang) {
         return new Promise((resolve, reject) => {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = lang;
-          utterance.rate = speed;
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
 
           // Wait for voices to be loaded
           let voices = speechSynthesis.getVoices();
@@ -1342,24 +1362,16 @@
           const langVoices = voices.filter(v => v.lang === lang || v.lang.startsWith(langPrefix));
           const pool = langVoices.length > 0 ? langVoices : voices;
 
-          if (voiceType === 'radio_female') {
-            utterance.pitch = pitch;
+          if (gender === 'female') {
             const femaleVoice = pool.find(v => /female|femme|zira|samantha|victoria|karen|amelie|alice|denise|sonia|jenny|katja|eloise|libby|aria|amala/i.test(v.name))
               || pool.find(v => /woman|girl/i.test(v.name));
             if (femaleVoice) utterance.voice = femaleVoice;
             else if (langVoices.length) utterance.voice = langVoices[0];
-          } else if (voiceType === 'radio_male') {
-            utterance.pitch = pitch;
+          } else {
+            // Male (radio or attacker — attacker effects applied later via DSP chain)
             const maleVoice = pool.find(v => /\b(male|david|james|daniel|thomas|henri|ryan|guy|conrad|davis|mark|google.*male)\b/i.test(v.name))
               || pool.find(v => !/female|femme|woman|girl|zira|samantha|victoria|karen|amelie|alice|denise|sonia|jenny|katja/i.test(v.name));
             if (maleVoice) utterance.voice = maleVoice;
-            else if (langVoices.length) utterance.voice = langVoices[0];
-          } else {
-            // Cybercriminal: deep pitch
-            utterance.pitch = Math.min(pitch, 0.7);
-            utterance.rate = Math.min(speed, 0.85);
-            const deepVoice = pool.find(v => /\b(david|daniel|james|mark|henri|ryan|guy|conrad|davis|google.*male)\b/i.test(v.name));
-            if (deepVoice) utterance.voice = deepVoice;
             else if (langVoices.length) utterance.voice = langVoices[0];
           }
 
@@ -1398,7 +1410,7 @@
               }
             } else {
               // Fallback: generate tone placeholder
-              resolve(fallbackSpeechCapture(text, voiceType, speed, pitch));
+              resolve(fallbackSpeechCapture(text, gender === 'male'));
             }
           };
 
@@ -1421,7 +1433,7 @@
         });
       }
 
-      function fallbackSpeechCapture(text, voiceType, speed, pitch) {
+      function fallbackSpeechCapture(text, isMale) {
         return new Promise((resolve) => {
           const sampleRate = 22050;
           const duration = Math.max(2, text.length * 0.06);
@@ -1444,12 +1456,8 @@
           view.setUint32(40, numSamples * 2, true);
           for (let i = 0; i < numSamples; i++) {
             const t = i / sampleRate;
-            let sample = 0;
-            if (voiceType === 'cybercriminal') {
-              sample = Math.sin(2 * Math.PI * 120 * t) * 0.15 + Math.sin(2 * Math.PI * 180 * t) * 0.1;
-            } else {
-              sample = Math.sin(2 * Math.PI * 440 * t) * 0.05;
-            }
+            const freq = isMale ? 120 : 220;
+            const sample = Math.sin(2 * Math.PI * freq * t) * 0.1;
             view.setInt16(44 + i * 2, sample * 32767, true);
           }
           resolve(new Blob([buffer], { type: 'audio/wav' }));
@@ -1457,74 +1465,117 @@
       }
 
       // ── Audio watermark: prepend a spoken "Exercise" warning + tone ───
-      async function prependAudioWatermark(audioBlob, lang) {
-        const sampleRate = 24000;
-        const watermarkText = appState.scenario.settings.watermark_text || 'EXERCISE EXERCISE EXERCISE';
-
-        // Generate a 3-beep tone watermark (always works, no TTS dependency)
-        const beepDuration = 0.15;
-        const pauseDuration = 0.1;
-        const numBeeps = 3;
-        const totalBeepTime = numBeeps * beepDuration + (numBeeps - 1) * pauseDuration + 0.3;
-        const beepSamples = Math.ceil(totalBeepTime * sampleRate);
-        const beepBuffer = new Float32Array(beepSamples);
-
-        for (let b = 0; b < numBeeps; b++) {
-          const startSample = Math.floor((b * (beepDuration + pauseDuration)) * sampleRate);
-          const endSample = startSample + Math.floor(beepDuration * sampleRate);
-          for (let i = startSample; i < endSample && i < beepSamples; i++) {
-            const t = (i - startSample) / sampleRate;
-            // 1kHz warning tone with envelope
-            const envelope = Math.min(1, Math.min(t / 0.01, (beepDuration - t + (i - startSample) / sampleRate * 0) / 0.01));
-            beepBuffer[i] = Math.sin(2 * Math.PI * 1000 * t) * 0.35 * Math.min(1, t / 0.01, (beepDuration - (i - startSample) / sampleRate) / 0.01);
-          }
-        }
-
-        // Decode the main audio
-        const mainArrayBuffer = await audioBlob.arrayBuffer();
-        let mainDecoded;
+      // ── Helper: decode an audio blob to a mono Float32Array at targetSampleRate ──
+      async function decodeAudioBlobToMono(blob, targetSampleRate) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let decoded;
         try {
-          const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
-          mainDecoded = await tempCtx.decodeAudioData(mainArrayBuffer.slice(0));
+          decoded = await tempCtx.decodeAudioData(arrayBuffer.slice(0));
+        } finally {
           tempCtx.close();
+        }
+        // Mix down to mono (average all channels)
+        const numCh = decoded.numberOfChannels;
+        const len = decoded.length;
+        const mono = new Float32Array(len);
+        for (let ch = 0; ch < numCh; ch++) {
+          const chData = decoded.getChannelData(ch);
+          for (let i = 0; i < len; i++) mono[i] += chData[i] / numCh;
+        }
+        // Resample if needed
+        if (decoded.sampleRate === targetSampleRate) return mono;
+        const ratio = decoded.sampleRate / targetSampleRate;
+        const newLength = Math.floor(len / ratio);
+        const resampled = new Float32Array(newLength);
+        for (let i = 0; i < newLength; i++) {
+          const srcIdx = i * ratio;
+          const idx = Math.floor(srcIdx);
+          const frac = srcIdx - idx;
+          resampled[i] = mono[idx] * (1 - frac) + (mono[Math.min(idx + 1, len - 1)] || 0) * frac;
+        }
+        return resampled;
+      }
+
+      // ── Helper: write a raw Float32Array directly to a WAV blob ──
+      function float32ToWavBlob(samples, sampleRate) {
+        const dataSize = samples.length * 2;
+        const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+        const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+        writeStr(0, 'RIFF');
+        view.setUint32(4, 36 + dataSize, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);   // PCM
+        view.setUint16(22, 1, true);   // mono
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeStr(36, 'data');
+        view.setUint32(40, dataSize, true);
+        let off = 44;
+        for (let i = 0; i < samples.length; i++) {
+          view.setInt16(off, Math.max(-1, Math.min(1, samples[i])) * 0x7FFF, true);
+          off += 2;
+        }
+        return new Blob([buffer], { type: 'audio/wav' });
+      }
+
+      // ── Audio watermark: prepend 3 beeps OR a spoken text before the main audio ──
+      async function prependAudioWatermark(audioBlob, lang, wmType, wmText) {
+        const sampleRate = 24000;
+
+        // Decode main audio to mono samples
+        let mainSamples;
+        try {
+          mainSamples = await decodeAudioBlobToMono(audioBlob, sampleRate);
         } catch (e) {
           return audioBlob; // Can't decode, return original
         }
 
-        // Resample main audio to our target sample rate if needed
-        const mainData = mainDecoded.getChannelData(0);
-        const mainSampleRate = mainDecoded.sampleRate;
-        let resampledMain;
-        if (mainSampleRate !== sampleRate) {
-          const ratio = mainSampleRate / sampleRate;
-          const newLength = Math.floor(mainDecoded.length / ratio);
-          resampledMain = new Float32Array(newLength);
-          for (let i = 0; i < newLength; i++) {
-            const srcIdx = i * ratio;
-            const idx = Math.floor(srcIdx);
-            const frac = srcIdx - idx;
-            resampledMain[i] = (mainData[idx] || 0) * (1 - frac) + (mainData[Math.min(idx + 1, mainData.length - 1)] || 0) * frac;
+        let prefixSamples;
+
+        if (wmType === 'text' && wmText && wmText.trim()) {
+          // Synthesize the watermark text via browser TTS and prepend it
+          try {
+            const wmBlob = await synthesizeWithBrowser(wmText.trim(), 'female', lang);
+            const wmRaw = await decodeAudioBlobToMono(wmBlob, sampleRate);
+            // Add 0.2s silence after the text
+            const silenceSamples = Math.floor(0.2 * sampleRate);
+            prefixSamples = new Float32Array(wmRaw.length + silenceSamples);
+            prefixSamples.set(wmRaw, 0);
+          } catch (e) {
+            // Fall through to beeps
           }
-        } else {
-          resampledMain = mainData;
         }
 
-        // Concatenate: beep + main audio
-        const totalLength = beepSamples + resampledMain.length;
-        const combined = new Float32Array(totalLength);
-        combined.set(beepBuffer, 0);
-        combined.set(resampledMain, beepSamples);
+        if (!prefixSamples) {
+          // Default: 3-beep tone watermark
+          const beepDuration = 0.15;
+          const pauseDuration = 0.1;
+          const numBeeps = 3;
+          const totalBeepTime = numBeeps * beepDuration + (numBeeps - 1) * pauseDuration + 0.3;
+          const beepSamples = Math.ceil(totalBeepTime * sampleRate);
+          prefixSamples = new Float32Array(beepSamples);
+          for (let b = 0; b < numBeeps; b++) {
+            const startSample = Math.floor(b * (beepDuration + pauseDuration) * sampleRate);
+            const endSample = startSample + Math.floor(beepDuration * sampleRate);
+            for (let i = startSample; i < endSample && i < beepSamples; i++) {
+              const t = (i - startSample) / sampleRate;
+              const env = Math.min(t / 0.01, (beepDuration - t) / 0.01, 1);
+              prefixSamples[i] = Math.sin(2 * Math.PI * 1000 * t) * 0.35 * Math.max(0, env);
+            }
+          }
+        }
 
-        // Create AudioBuffer and convert to WAV
-        const offCtx = new OfflineAudioContext(1, totalLength, sampleRate);
-        const buf = offCtx.createBuffer(1, totalLength, sampleRate);
-        buf.getChannelData(0).set(combined);
-        const src = offCtx.createBufferSource();
-        src.buffer = buf;
-        src.connect(offCtx.destination);
-        src.start();
-        const rendered = await offCtx.startRendering();
-        return audioBufferToWavBlob(rendered);
+        // Concatenate prefix + main and write directly to WAV (no OfflineAudioContext needed)
+        const combined = new Float32Array(prefixSamples.length + mainSamples.length);
+        combined.set(prefixSamples, 0);
+        combined.set(mainSamples, prefixSamples.length);
+        return float32ToWavBlob(combined, sampleRate);
       }
 
       async function applyCybercriminalEffects(audioBlob, preset) {

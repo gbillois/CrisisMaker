@@ -270,6 +270,26 @@
         }
         // Add custom_templates array
         if (!Array.isArray(raw.custom_templates)) raw.custom_templates = [];
+        // Migrate audio_message stimuli from old voice_type/attacker_voice to audio_character
+        if (Array.isArray(raw.stimuli)) {
+          raw.stimuli.forEach(s => {
+            if (s.channel === 'audio_message' && s.fields) {
+              if (!s.fields.audio_mode) s.fields.audio_mode = 'create';
+              if (!s.fields.audio_character) {
+                const vt = s.fields.voice_type || 'cybercriminal';
+                const av = s.fields.attacker_voice || 'best_attacker';
+                if (vt === 'radio_female') s.fields.audio_character = 'female';
+                else if (vt === 'radio_male') s.fields.audio_character = 'male';
+                else if (av === 'drama_attacker') s.fields.audio_character = 'attacker_drama';
+                else if (av === 'techno_attacker') s.fields.audio_character = 'attacker_techno';
+                else s.fields.audio_character = 'attacker_best';
+              }
+              if (!s.fields.tts_language) s.fields.tts_language = 'fr-FR';
+              if (!s.fields.audio_watermark_type) s.fields.audio_watermark_type = 'beeps';
+              if (!s.fields.audio_watermark_text) s.fields.audio_watermark_text = 'EXERCISE';
+            }
+          });
+        }
         return raw;
       }
 

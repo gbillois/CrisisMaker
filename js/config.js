@@ -411,16 +411,16 @@
           template_id: 'audio_message',
           defaults: {
             title: 'Ransom demand — PharmLeaks',
-            voice_type: 'cybercriminal',
-            attacker_voice: 'best_attacker',
+            audio_mode: 'create',
+            audio_character: 'attacker_best',
             tts_provider: 'browser',
-            tts_language: '',
+            tts_language: 'fr-FR',
             azure_voice: '',
             text: 'Attention. We are PharmLeaks. We have encrypted your entire infrastructure and exfiltrated 2.4 terabytes of your most sensitive data, including patient records and clinical trial results. You have 72 hours to pay 25 million dollars in Bitcoin. If you refuse, everything will be published. Do not contact law enforcement. Do not attempt to restore your systems. The clock is ticking.',
             duration: '',
-            tts_speed: 0.85,
-            tts_pitch: 0.7
+            audio_watermark_type: 'beeps',
+            audio_watermark_text: 'EXERCISE'
           },
-          fields: [field('title', 'Audio title', 'text'), field('voice_type', 'Voice type', 'select', { options: ['cybercriminal', 'radio_female', 'radio_male'] }), field('attacker_voice', 'Attacker voice preset', 'attacker_voice_select'), field('tts_provider', 'TTS provider', 'select', { options: ['browser', 'azure_speech'] }), field('tts_language', 'Voice language', 'tts_language_select'), field('azure_voice', 'Azure voice', 'azure_voice_select'), field('text', 'Text to speak', 'textarea'), field('tts_speed', 'Speed (0.5–2.0)', 'number'), field('tts_pitch', 'Pitch (0.1–2.0)', 'number')]
+          fields: [field('title', 'Audio title', 'text')]
         }
       };
