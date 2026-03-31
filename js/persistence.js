@@ -402,11 +402,18 @@
           // 3. Also render the watermark overlay
           const watermarkPng = await this._renderWatermarkImage(stimulus, W, H);
 
-          // 4. Set up MediaRecorder on the canvas stream (+ audio tracks from source video)
+          // 4. Set up MediaRecorder on the canvas stream (+ audio from source video via AudioContext)
           const fps = 30;
           const stream = canvas.captureStream(fps);
-          if (srcVideo.captureStream) {
-            srcVideo.captureStream().getAudioTracks().forEach(track => stream.addTrack(track));
+          let audioCtx = null;
+          try {
+            audioCtx = new AudioContext();
+            const audioSource = audioCtx.createMediaElementSource(srcVideo);
+            const audioDest = audioCtx.createMediaStreamDestination();
+            audioSource.connect(audioDest);
+            audioDest.stream.getAudioTracks().forEach(track => stream.addTrack(track));
+          } catch (_) {
+            // No audio available or AudioContext not supported — export video-only
           }
           const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
             : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
@@ -443,6 +450,7 @@
           recorder.stop();
           srcVideo.pause();
           await recordingDone;
+          if (audioCtx) audioCtx.close();
 
           // 8. Download the composited video
           const blob = new Blob(chunks, { type: mimeType });
