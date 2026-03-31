@@ -46,6 +46,14 @@
             default: return null;
           }
         },
+        renderOverlay(stimulus, scenario) {
+          const f = stimulus.fields || {};
+          const quality = scenario?.settings?.template_quality || 'basic';
+          if (stimulus.channel === 'breaking_news_tv') {
+            return quality === 'hd' ? this.bfmOverlayHD(f) : this.bfmOverlay(f);
+          }
+          return null;
+        },
         renderCustom(templateDef, fields) {
           let html = templateDef.render_html || '';
           const rawKeys = new Set(['body']);
@@ -381,6 +389,25 @@
         bfm(f) {
           return `
             <article class="bfm-banner">
+              <div class="bfm-live">
+                <div class="bfm-logo">BFM<br>TV</div>
+                <div class="bfm-category">${escapeHtml(f.category || 'ALERTE INFO')}</div>
+              </div>
+              <div class="bfm-main">
+                <div class="bfm-headline">${escapeHtml(f.headline || '')}</div>
+                <div class="bfm-subline">${escapeHtml(f.subline || '')}</div>
+              </div>
+              <div class="bfm-footer">
+                <div class="bfm-time">${escapeHtml(f.time || '')}</div>
+                <div class="bfm-ticker-wrap"><div class="bfm-ticker">${escapeHtml(f.ticker || '')}</div></div>
+                <div class="bfm-channel">DIRECT</div>
+              </div>
+            </article>
+          `;
+        },
+        bfmOverlay(f) {
+          return `
+            <article class="bfm-banner bfm-overlay">
               <div class="bfm-live">
                 <div class="bfm-logo">BFM<br>TV</div>
                 <div class="bfm-category">${escapeHtml(f.category || 'ALERTE INFO')}</div>
@@ -816,6 +843,27 @@
         bfmHD(f) {
           return `
             <article class="bfm-banner hd">
+              <div class="bfm-hd-watermark">BFM TV</div>
+              <div class="bfm-live">
+                <div class="bfm-logo">BFM<br>TV</div>
+                <div class="bfm-category">${escapeHtml(f.category || 'ALERTE INFO')}</div>
+              </div>
+              <div class="bfm-main">
+                <div class="bfm-headline">${escapeHtml(f.headline || '')}</div>
+                <div class="bfm-subline">${escapeHtml(f.subline || '')}</div>
+              </div>
+              <div class="bfm-footer">
+                <div class="bfm-time">${escapeHtml(f.time || '')}</div>
+                <div class="bfm-ticker-wrap"><div class="bfm-ticker">${escapeHtml(f.ticker || '')}</div></div>
+                <div class="bfm-channel">DIRECT</div>
+              </div>
+              <div class="bfm-hd-overlay"></div>
+            </article>
+          `;
+        },
+        bfmOverlayHD(f) {
+          return `
+            <article class="bfm-banner hd bfm-overlay">
               <div class="bfm-hd-watermark">BFM TV</div>
               <div class="bfm-live">
                 <div class="bfm-logo">BFM<br>TV</div>

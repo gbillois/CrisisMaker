@@ -370,6 +370,125 @@
           link.href = dataUrl;
           link.download = filename;
           link.click();
+        },
+
+        // ── Video export: composite video + BFM overlay → WebM ──
+        async exportVideo(stimulus) {
+          if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.', 'Kein Stimulus ausgewählt.'));
+          const videoInfo = appState.videoFiles?.[stimulus.id];
+          if (!videoInfo?.objectUrl) throw new Error(tt('No video file attached to this inject.', 'Aucun fichier vidéo attaché à cet inject.', 'Keine Videodatei an diesen Inject angehängt.'));
+
+          // 1. Create an offscreen video element to read source frames
+          const srcVideo = document.createElement('video');
+          srcVideo.src = videoInfo.objectUrl;
+          srcVideo.muted = true;
+          srcVideo.playsInline = true;
+          srcVideo.crossOrigin = 'anonymous';
+          await new Promise((resolve, reject) => {
+            srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
+            srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
+            srcVideo.load();
+          });
+
+          const W = 1280, H = 720;
+          const canvas = document.createElement('canvas');
+          canvas.width = W;
+          canvas.height = H;
+          const ctx = canvas.getContext('2d');
+
+          // 2. Render the BFM overlay to a static PNG image
+          const overlayPng = await this._renderOverlayImage(stimulus, W, H);
+
+          // 3. Also render the watermark overlay
+          const watermarkPng = await this._renderWatermarkImage(stimulus, W, H);
+
+          // 4. Set up MediaRecorder on the canvas stream
+          const fps = 30;
+          const stream = canvas.captureStream(fps);
+          const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
+            : 'video/webm';
+          const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+          const chunks = [];
+          recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+          const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
+
+          // 5. Start recording + playing
+          recorder.start();
+          srcVideo.currentTime = 0;
+          await srcVideo.play();
+
+          // 6. Draw loop: video frame + overlay on each animation frame
+          let stopped = false;
+          const drawFrame = () => {
+            if (stopped) return;
+            ctx.drawImage(srcVideo, 0, 0, W, H);
+            if (overlayPng) ctx.drawImage(overlayPng, 0, 0, W, H);
+            if (watermarkPng) ctx.drawImage(watermarkPng, 0, 0, W, H);
+            requestAnimationFrame(drawFrame);
+          };
+          drawFrame();
+
+          // 7. Wait for video to end
+          await new Promise((resolve) => {
+            srcVideo.addEventListener('ended', resolve, { once: true });
+          });
+          stopped = true;
+          recorder.stop();
+          srcVideo.pause();
+          await recordingDone;
+
+          // 8. Download the composited video
+          const blob = new Blob(chunks, { type: mimeType });
+          const actor = getActor(stimulus.actor_id);
+          const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.webm`;
+          downloadBlob(blob, filename);
+          pushToast(tt('Video exported with overlays.', 'Vidéo exportée avec les incrustations.', 'Video mit Overlay exportiert.'), 'success');
+        },
+
+        async _renderOverlayImage(stimulus, w, h) {
+          const overlayHtml = TemplateEngine.renderOverlay(stimulus, appState.scenario);
+          if (!overlayHtml) return null;
+          const sandbox = document.createElement('div');
+          sandbox.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none;z-index:-1;';
+          sandbox.innerHTML = `<div style="width:${w}px;height:${h}px;position:relative;">${overlayHtml}</div>`;
+          document.body.appendChild(sandbox);
+          const node = sandbox.firstElementChild;
+          try {
+            const dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 1, backgroundColor: null, width: w, height: h });
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = dataUrl;
+            });
+            return img;
+          } finally {
+            document.body.removeChild(sandbox);
+          }
+        },
+
+        async _renderWatermarkImage(stimulus, w, h) {
+          const wmHtml = renderWatermarkOverlay(stimulus);
+          if (!wmHtml) return null;
+          const sandbox = document.createElement('div');
+          sandbox.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none;z-index:-1;';
+          sandbox.innerHTML = `<div style="width:${w}px;height:${h}px;position:relative;">${wmHtml}</div>`;
+          document.body.appendChild(sandbox);
+          const node = sandbox.firstElementChild;
+          try {
+            const dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 1, backgroundColor: null, width: w, height: h });
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = dataUrl;
+            });
+            return img;
+          } finally {
+            document.body.removeChild(sandbox);
+          }
         }
       };
 

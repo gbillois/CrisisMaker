@@ -959,7 +959,33 @@
             ${library.fields.map((spec) => renderFieldControl(stimulus, spec)).join('')}
           </div>
 
+          ${stimulus.channel === 'breaking_news_tv' ? renderVideoFileControl(stimulus) : ''}
+
           ${renderStimulusWatermarkControls(stimulus)}
+        `;
+      }
+
+      function renderVideoFileControl(stimulus) {
+        const video = appState.videoFiles?.[stimulus.id];
+        return `
+          <div style="margin-top:16px; border:1px solid var(--border, #e5e7eb); border-radius:8px; padding:14px 16px;">
+            <p style="margin:0 0 10px; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Background video', 'Vidéo de fond', 'Hintergrundvideo')}</p>
+            <p style="margin:0 0 10px; font-size:0.8rem; color:var(--text-muted, #6b7280);">${tt(
+              'Select a local video file to play behind the overlay. The video is kept in memory only and will not be saved to the project.',
+              'Sélectionnez un fichier vidéo local qui sera lu derrière les incrustations. La vidéo reste en mémoire uniquement et ne sera pas sauvegardée dans le projet.',
+              'Wählen Sie eine lokale Videodatei, die hinter dem Overlay abgespielt wird. Das Video wird nur im Speicher gehalten und nicht im Projekt gespeichert.'
+            )}</p>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
+                ${tt('Select video…', 'Sélectionner une vidéo…', 'Video auswählen…')}
+                <input type="file" accept="video/mp4,video/webm,video/ogg,video/*" data-stimulus-video="${stimulus.id}" style="display:none;">
+              </label>
+              ${video ? `
+                <span style="font-size:0.82rem; color:var(--text-muted, #6b7280);">📎 ${escapeHtml(video.fileName)}</span>
+                <button class="btn btn-ghost" data-action="clear-video" data-stimulus-id="${stimulus.id}">${tt('Remove', 'Supprimer', 'Entfernen')}</button>
+              ` : ''}
+            </div>
+          </div>
         `;
       }
 
@@ -1053,6 +1079,7 @@
                 <div class="stimulus-modal-right">
                   <div class="preview-toolbar-inline">
                     ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .eml', 'Exporter .eml', '.eml exportieren')}</button>` : ''}
+                    ${appState.videoFiles?.[stimulus.id] && stimulus.channel === 'breaking_news_tv' ? `<button class="btn btn-secondary" data-action="export-video" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
                     <button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
                   </div>
                   <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
@@ -1142,6 +1169,7 @@
                 <button class="btn btn-secondary" data-action="preview-next">${tt('Next', 'Suivant', 'Weiter')} →</button>
                 <button class="btn btn-primary" data-action="goto-stimuli" data-stimulus-id="${current.id}">${tt('Edit', 'Éditer', 'Bearbeiten')}</button>
                 ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .eml file', 'Exporter le fichier .eml', '.eml-Datei exportieren')}</button>` : ''}
+                ${appState.videoFiles?.[current.id] && current.channel === 'breaking_news_tv' ? `<button class="btn btn-success" data-action="export-video" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
                 <button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
               </div>
             </article>
@@ -1196,8 +1224,20 @@
 
       function renderStimulusPreview(stimulus, id = '', thumbnail = false) {
         const wrapperId = id || `render-${stimulus.id}`;
-        const body = TemplateEngine.render(stimulus, getActor(stimulus.actor_id), appState.scenario);
+        const videoInfo = appState.videoFiles?.[stimulus.id];
+        const hasVideo = videoInfo && stimulus.channel === 'breaking_news_tv';
         const watermark = renderWatermarkOverlay(stimulus);
+
+        if (hasVideo) {
+          const overlayBody = TemplateEngine.renderOverlay(stimulus, appState.scenario);
+          return `<div id="${wrapperId}" class="render-frame bfm-video-frame" style="position:relative; width:1280px; height:720px; transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center; overflow:hidden;">
+            <video class="bfm-video-bg" src="${escapeAttribute(videoInfo.objectUrl)}" ${thumbnail ? '' : 'autoplay loop'} muted playsinline style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;"></video>
+            <div class="bfm-overlay-layer" style="position:absolute; inset:0; z-index:2;">${overlayBody}</div>
+            <div style="position:absolute; inset:0; z-index:3;">${watermark}</div>
+          </div>`;
+        }
+
+        const body = TemplateEngine.render(stimulus, getActor(stimulus.actor_id), appState.scenario);
         return `<div id="${wrapperId}" class="render-frame" style="position:relative; transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center;">${body}${watermark}</div>`;
       }
 

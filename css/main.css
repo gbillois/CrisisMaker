@@ -1374,6 +1374,10 @@
     .bfm-hd-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 900; color: rgba(255,255,255,0.03); letter-spacing: 0.1em; pointer-events: none; }
     .bfm-hd-overlay { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%, rgba(0,0,0,0.08) 100%); }
 
+    /* ── BFM overlay mode (transparent background for video composite) ──── */
+    .bfm-banner.bfm-overlay { background: transparent; }
+    .bfm-video-frame { background: #000; }
+
     /* ── HD Authority extras ──────────────────── */
     .authority-email.hd .authority-content { padding-top: 0; }
     .authority-hd-severity { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #fff; font-size: 13px; margin-bottom: 16px; }
