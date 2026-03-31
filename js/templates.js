@@ -1001,7 +1001,13 @@
                 <span style="font-size:0.78rem; opacity:0.6; min-width:40px; text-align:right;">${escapeHtml(f.duration || '--:--')}</span>
               </div>
               <div style="padding:8px 12px; background:${isCriminal ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.12)'}; border:1px solid rgba(251,191,36,0.3); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
-              ${isCriminal ? `<div style="padding:10px 14px; background:rgba(225,29,72,0.15); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:14px; font-style:italic; opacity:0.85;">⚠ ${tt('Voice distorted — anonymous / cybercriminal style', 'Voix trafiquée — style anonyme / cybercriminel', 'Stimme verzerrt — Anonym / Cyberkriminell-Stil')}</div>` : ''}
+              ${isCriminal ? (() => {
+                const presetKey = f.attacker_voice || 'best_attacker';
+                const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetKey] : null;
+                const uiLang = typeof appState !== 'undefined' ? (appState.scenario?.settings?.language || 'en') : 'en';
+                const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : presetKey;
+                return `<div style="padding:10px 14px; background:rgba(225,29,72,0.15); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:14px; font-style:italic; opacity:0.85;">⚠ ${escapeHtml(presetLabel)}</div>`;
+              })() : ''}
               <div style="font-size:0.85rem; line-height:1.6; opacity:0.8; white-space:pre-wrap;">${escapeHtml(textPreview)}</div>
             </article>
           `;
@@ -1037,7 +1043,13 @@
                   <span style="font-size:0.78rem; opacity:0.5; min-width:44px; text-align:right; font-variant-numeric:tabular-nums;">${escapeHtml(f.duration || '--:--')}</span>
                 </div>
                 <div style="padding:8px 14px; background:${isCriminal ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.10)'}; border:1px solid rgba(251,191,36,0.25); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:16px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
-                ${isCriminal ? `<div style="padding:10px 14px; background:rgba(225,29,72,0.12); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:16px; font-style:italic; opacity:0.85;">⚠ ${tt('Distorted voice — anonymous / cybercriminal style', 'Voix trafiquée — style anonyme / cybercriminel', 'Stimme verzerrt — Anonym / Cyberkriminell-Stil')}</div>` : ''}
+                ${isCriminal ? (() => {
+                  const presetKey = f.attacker_voice || 'best_attacker';
+                  const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetKey] : null;
+                  const uiLang = typeof appState !== 'undefined' ? (appState.scenario?.settings?.language || 'en') : 'en';
+                  const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : presetKey;
+                  return `<div style="padding:10px 14px; background:rgba(225,29,72,0.12); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:16px; font-style:italic; opacity:0.85;">⚠ ${escapeHtml(presetLabel)}</div>`;
+                })() : ''}
                 <div style="font-size:0.85rem; line-height:1.7; opacity:0.75; white-space:pre-wrap;">${escapeHtml(textPreview)}</div>
               </div>
             </article>

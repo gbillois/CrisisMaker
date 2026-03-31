@@ -1227,8 +1227,10 @@
 
           // Apply cybercriminal effects if needed
           if (voiceType === 'cybercriminal') {
+            const presetKey = stimulus.fields.attacker_voice || 'best_attacker';
+            const preset = ATTACKER_VOICE_PRESETS[presetKey] || ATTACKER_VOICE_PRESETS.best_attacker;
             try {
-              audioBlob = await applyCybercriminalEffects(audioBlob);
+              audioBlob = await applyCybercriminalEffects(audioBlob, preset);
             } catch (e) {
               console.warn('Effect processing failed, using raw audio', e);
             }
@@ -1525,7 +1527,8 @@
         return audioBufferToWavBlob(rendered);
       }
 
-      async function applyCybercriminalEffects(audioBlob) {
+      async function applyCybercriminalEffects(audioBlob, preset) {
+        const p = preset || ATTACKER_VOICE_PRESETS.best_attacker;
         const arrayBuffer = await audioBlob.arrayBuffer();
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         let decodedBuffer;
@@ -1536,39 +1539,172 @@
           tempCtx.close();
           return audioBlob;
         }
-        const duration = decodedBuffer.duration + 0.5;
+
+        // Account for slower playback rate extending duration
+        const playbackRate = p.playbackRate || 0.84;
+        const extraDuration = p.microDelay ? p.microDelay + 0.1 : 0.5;
+        const duration = (decodedBuffer.duration / playbackRate) + extraDuration;
         const sampleRate = decodedBuffer.sampleRate;
         const offCtx = new OfflineAudioContext(1, Math.ceil(duration * sampleRate), sampleRate);
 
+        // ── Source with pitch shift via playback rate ──
         const source = offCtx.createBufferSource();
         source.buffer = decodedBuffer;
-        source.playbackRate.value = 0.85;
+        source.playbackRate.value = playbackRate;
 
-        // Distortion via WaveShaper
-        const distortion = offCtx.createWaveShaper();
-        const curve = new Float32Array(44100);
-        for (let i = 0; i < curve.length; i++) {
-          const x = (i * 2) / curve.length - 1;
-          curve[i] = (Math.PI + 50) * x / (Math.PI + 50 * Math.abs(x));
-        }
-        distortion.curve = curve;
-        distortion.oversample = '2x';
+        // Build the processing chain
+        let lastNode = source;
 
+        // ── High-pass filter (bandpass low end) ──
+        const highpass = offCtx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = p.bandpassLow || 300;
+        highpass.Q.value = 0.7;
+        lastNode.connect(highpass);
+        lastNode = highpass;
+
+        // ── Low-pass filter (bandpass high end) ──
         const lowpass = offCtx.createBiquadFilter();
         lowpass.type = 'lowpass';
-        lowpass.frequency.value = 2000;
-        lowpass.Q.value = 1;
+        lowpass.frequency.value = p.bandpassHigh || 3000;
+        lowpass.Q.value = 0.7;
+        lastNode.connect(lowpass);
+        lastNode = lowpass;
 
-        const gain = offCtx.createGain();
-        gain.gain.value = 1.2;
+        // ── 2kHz presence boost (Best Attacker) ──
+        if (p.boost2k) {
+          const peaking = offCtx.createBiquadFilter();
+          peaking.type = 'peaking';
+          peaking.frequency.value = 2000;
+          peaking.Q.value = 1.5;
+          peaking.gain.value = 4; // +4 dB
+          lastNode.connect(peaking);
+          lastNode = peaking;
+        }
 
-        source.connect(distortion);
-        distortion.connect(lowpass);
-        lowpass.connect(gain);
-        gain.connect(offCtx.destination);
+        // ── Compressor ──
+        const compressor = offCtx.createDynamicsCompressor();
+        compressor.threshold.value = p.compressionThreshold || -24;
+        compressor.ratio.value = p.compressionRatio || 5;
+        compressor.knee.value = 6;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.15;
+        lastNode.connect(compressor);
+        lastNode = compressor;
+
+        // ── Saturation / distortion via WaveShaper ──
+        const satAmount = p.saturationAmount || 15;
+        if (satAmount > 0) {
+          const distortion = offCtx.createWaveShaper();
+          const curveLen = 44100;
+          const curve = new Float32Array(curveLen);
+          const k = satAmount;
+          for (let i = 0; i < curveLen; i++) {
+            const x = (i * 2) / curveLen - 1;
+            curve[i] = (Math.PI + k) * x / (Math.PI + k * Math.abs(x));
+          }
+          distortion.curve = curve;
+          distortion.oversample = '2x';
+          lastNode.connect(distortion);
+          lastNode = distortion;
+        }
+
+        // ── Vocoder-like effect (Drama Attacker) — ring modulation ──
+        if (p.vocoderMix > 0) {
+          // Create a ring modulator effect by multiplying with a low frequency
+          // Using a gain node modulated by an oscillator
+          const vocoderGain = offCtx.createGain();
+          vocoderGain.gain.value = 1.0 - p.vocoderMix;
+          lastNode.connect(vocoderGain);
+
+          const ringGain = offCtx.createGain();
+          ringGain.gain.value = 0;
+          lastNode.connect(ringGain);
+
+          const ringOsc = offCtx.createOscillator();
+          ringOsc.type = 'sine';
+          ringOsc.frequency.value = 50; // 50Hz ring mod for robotic effect
+          const ringMod = offCtx.createGain();
+          ringMod.gain.value = p.vocoderMix;
+          ringOsc.connect(ringMod);
+          ringMod.connect(ringGain.gain);
+          ringOsc.start();
+
+          const vocoderMerge = offCtx.createGain();
+          vocoderMerge.gain.value = 1.0;
+          vocoderGain.connect(vocoderMerge);
+          ringGain.connect(vocoderMerge);
+          lastNode = vocoderMerge;
+        }
+
+        // ── Micro delay (Techno Attacker) ──
+        if (p.microDelay > 0) {
+          const dryGain = offCtx.createGain();
+          dryGain.gain.value = 0.8;
+          lastNode.connect(dryGain);
+
+          const delay = offCtx.createDelay(0.5);
+          delay.delayTime.value = p.microDelay;
+          const wetGain = offCtx.createGain();
+          wetGain.gain.value = 0.35;
+          lastNode.connect(delay);
+          delay.connect(wetGain);
+
+          const delayMerge = offCtx.createGain();
+          delayMerge.gain.value = 1.0;
+          dryGain.connect(delayMerge);
+          wetGain.connect(delayMerge);
+          lastNode = delayMerge;
+        }
+
+        // ── Output gain (normalize) ──
+        const outputGain = offCtx.createGain();
+        outputGain.gain.value = 1.3;
+        lastNode.connect(outputGain);
+        outputGain.connect(offCtx.destination);
+
         source.start();
-
         const rendered = await offCtx.startRendering();
+
+        // ── Post-processing: add noise in raw samples ──
+        if (p.noiseLevel > 0 || p.glitches) {
+          const channelData = rendered.getChannelData(0);
+          const noiseLevel = p.noiseLevel || 0;
+          const isRadio = p.noiseType === 'radio';
+          const isInterference = p.noiseType === 'interference';
+
+          for (let i = 0; i < channelData.length; i++) {
+            // Base noise
+            if (noiseLevel > 0) {
+              let noise = (Math.random() * 2 - 1) * noiseLevel;
+              // Radio noise: more crackling, less uniform
+              if (isRadio) {
+                noise *= (Math.random() > 0.92 ? 4 : 1);
+                // Periodic static bursts
+                if (Math.sin(i / sampleRate * 2.7) > 0.95) noise *= 3;
+              }
+              // Interference: periodic buzz
+              if (isInterference) {
+                noise += Math.sin(2 * Math.PI * 50 * i / sampleRate) * noiseLevel * 0.5; // 50Hz hum
+                if (Math.random() > 0.998) noise += (Math.random() * 2 - 1) * 0.08; // interference spikes
+              }
+              channelData[i] += noise;
+            }
+
+            // Glitches (Drama Attacker): occasional short audio dropouts
+            if (p.glitches && Math.random() > 0.9997) {
+              const glitchLen = Math.floor(Math.random() * sampleRate * 0.03); // up to 30ms
+              for (let g = 0; g < glitchLen && (i + g) < channelData.length; g++) {
+                channelData[i + g] *= 0.05; // near-silence glitch
+              }
+              i += glitchLen;
+            }
+
+            // Clamp
+            channelData[i] = Math.max(-1, Math.min(1, channelData[i]));
+          }
+        }
+
         return audioBufferToWavBlob(rendered);
       }
 

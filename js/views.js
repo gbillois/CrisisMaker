@@ -1219,6 +1219,20 @@
             </label>
           `;
         }
+        if (spec.type === 'attacker_voice_select') {
+          if (stimulus.fields.voice_type !== 'cybercriminal') return '';
+          const uiLang = appState.scenario.settings.language || 'en';
+          return `
+            <label class="field">${escapeHtml(spec.label)}
+              <select ${bind}>
+                ${Object.entries(ATTACKER_VOICE_PRESETS).map(([k, preset]) => {
+                  const label = preset.label[uiLang] || preset.label.en;
+                  return `<option value="${k}" ${String(value) === k ? 'selected' : ''}>${label}</option>`;
+                }).join('')}
+              </select>
+            </label>
+          `;
+        }
         if (spec.type === 'checkbox') {
           return `
             <label class="field">${escapeHtml(spec.label)}
