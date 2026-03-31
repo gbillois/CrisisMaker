@@ -1231,7 +1231,7 @@
         if (hasVideo) {
           const overlayBody = TemplateEngine.renderOverlay(stimulus, appState.scenario);
           return `<div id="${wrapperId}" class="render-frame bfm-video-frame" style="position:relative; width:1280px; height:720px; transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center; overflow:hidden;">
-            <video class="bfm-video-bg" src="${escapeAttribute(videoInfo.objectUrl)}" ${thumbnail ? '' : 'autoplay loop'} muted playsinline style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;"></video>
+            <video class="bfm-video-bg" src="${escapeAttribute(videoInfo.objectUrl)}" ${thumbnail ? 'muted' : 'autoplay loop'} playsinline style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;"></video>
             <div class="bfm-overlay-layer" style="position:absolute; inset:0; z-index:2;">${overlayBody}</div>
             <div style="position:absolute; inset:0; z-index:3;">${watermark}</div>
           </div>`;
