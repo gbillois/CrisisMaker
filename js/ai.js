@@ -427,14 +427,16 @@ Stimulus format:
               };
               break;
             case 'audio_message': {
-              const voiceType = stimulus.fields.voice_type || 'cybercriminal';
-              const voiceInstructions = {
-                cybercriminal: `The text will be read by a text-to-speech engine with a deep, distorted, anonymous voice (like Anonymous/cybercriminal ransom demands). Write a menacing, cold, and direct ransom message or threat. Use short, impactful sentences. No pleasantries. The tone should be intimidating and clinical.`,
-                radio_female: `The text will be read by a professional female radio presenter. Write a clear, well-structured news bulletin or announcement. Use a journalistic, calm, and authoritative tone. Structure sentences for easy oral reading: short paragraphs, no complex subordinate clauses.`,
-                radio_male: `The text will be read by a professional male radio presenter. Write a clear, well-structured news bulletin or announcement. Use a journalistic, calm, and authoritative tone. Structure sentences for easy oral reading: short paragraphs, no complex subordinate clauses.`
-              };
+              const character = stimulus.fields.audio_character || 'attacker_best';
+              const isAttacker = character.startsWith('attacker');
+              const isFemale = character === 'female';
+              const voiceInstruction = isAttacker
+                ? `The text will be read by a TTS engine with a deep, distorted, anonymous voice (cybercriminal ransom demands). Write a menacing, cold, and direct ransom message or threat. Use short, impactful sentences. No pleasantries. The tone should be intimidating and clinical.`
+                : isFemale
+                  ? `The text will be read by a professional female radio presenter. Write a clear, well-structured news bulletin or announcement. Use a journalistic, calm, and authoritative tone. Structure sentences for easy oral reading: short paragraphs, no complex subordinate clauses.`
+                  : `The text will be read by a professional male radio presenter. Write a clear, well-structured news bulletin or announcement. Use a journalistic, calm, and authoritative tone. Structure sentences for easy oral reading: short paragraphs, no complex subordinate clauses.`;
               result = {
-                systemPrompt: `Write text for an audio message in a cyber crisis exercise. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Timeline: ${common.timestamp}. Actor: ${common.actorName}, ${common.actorTitle}. ${voiceInstructions[voiceType] || voiceInstructions.cybercriminal} Write in ${common.language}. Reply only with JSON {"title":"...", "text":"..."}.`,
+                systemPrompt: `Write text for an audio message in a cyber crisis exercise. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Timeline: ${common.timestamp}. Actor: ${common.actorName}, ${common.actorTitle}. ${voiceInstruction} Write in ${common.language}. Reply only with JSON {"title":"...", "text":"..."}.`,
                 userPrompt: fieldName ? `Improve field ${fieldName}.` : 'Write the full audio message text.'
               };
               break;

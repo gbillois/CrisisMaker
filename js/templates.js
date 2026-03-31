@@ -975,23 +975,30 @@
           `;
         },
         audioMessage(f) {
-          const voiceLabels = { cybercriminal: tt('Cybercriminal', 'Cybercriminel', 'Cyberkrimineller'), radio_female: tt('Radio presenter (F)', 'Animatrice radio (F)', 'Radiomoderatorin (F)'), radio_male: tt('Radio presenter (M)', 'Animateur radio (M)', 'Radiomoderator (M)') };
-          const voiceLabel = voiceLabels[f.voice_type] || f.voice_type || 'Unknown';
-          const isCriminal = f.voice_type === 'cybercriminal';
-          const accentColor = isCriminal ? '#e11d48' : '#6366f1';
-          const bgColor = isCriminal ? '#1a1a2e' : '#f8fafc';
-          const textColor = isCriminal ? '#e2e8f0' : '#1e293b';
+          const character = f.audio_character || 'attacker_best';
+          const isAttacker = character.startsWith('attacker');
+          const characterLabels = {
+            male: tt('Male', 'Homme', 'Männlich'),
+            female: tt('Female', 'Femme', 'Weiblich'),
+            attacker_best: tt('Attacker Best', 'Attaquant Best', 'Angreifer Best'),
+            attacker_drama: tt('Attacker Drama', 'Attaquant Drama', 'Angreifer Drama'),
+            attacker_techno: tt('Attacker Techno', 'Attaquant Techno', 'Angreifer Techno')
+          };
+          const characterLabel = characterLabels[character] || character;
+          const accentColor = isAttacker ? '#e11d48' : '#6366f1';
+          const bgColor = isAttacker ? '#1a1a2e' : '#f8fafc';
+          const textColor = isAttacker ? '#e2e8f0' : '#1e293b';
           const textPreview = String(f.text || '').slice(0, 300) + (String(f.text || '').length > 300 ? '…' : '');
           return `
             <article class="audio-message-card" style="background:${bgColor}; color:${textColor}; font-family:system-ui,-apple-system,sans-serif; padding:32px; min-height:320px; border-radius:12px;">
               <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
-                <div style="width:48px; height:48px; border-radius:50%; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">${isCriminal ? '🎭' : '🎙️'}</div>
+                <div style="width:48px; height:48px; border-radius:50%; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">${isAttacker ? '🎭' : '🎙️'}</div>
                 <div>
                   <div style="font-weight:700; font-size:1.1rem;">${escapeHtml(f.title || tt('Audio message', 'Message audio', 'Audio-Nachricht'))}</div>
-                  <div style="font-size:0.82rem; opacity:0.7;">${escapeHtml(voiceLabel)} · ${escapeHtml(f.tts_language || 'Auto')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'}</div>
+                  <div style="font-size:0.82rem; opacity:0.7;">${escapeHtml(characterLabel)} · ${escapeHtml(f.tts_language || 'fr-FR')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'}</div>
                 </div>
               </div>
-              <div class="audio-waveform-visual" style="display:flex; align-items:center; gap:10px; padding:16px; background:${isCriminal ? 'rgba(225,29,72,0.12)' : 'rgba(99,102,241,0.08)'}; border-radius:10px; margin-bottom:16px;">
+              <div class="audio-waveform-visual" style="display:flex; align-items:center; gap:10px; padding:16px; background:${isAttacker ? 'rgba(225,29,72,0.12)' : 'rgba(99,102,241,0.08)'}; border-radius:10px; margin-bottom:16px;">
                 <div style="width:40px; height:40px; border-radius:50%; background:${accentColor}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;">
                   <span style="color:#fff; font-size:18px; margin-left:2px;">▶</span>
                 </div>
@@ -1000,12 +1007,12 @@
                 </div>
                 <span style="font-size:0.78rem; opacity:0.6; min-width:40px; text-align:right;">${escapeHtml(f.duration || '--:--')}</span>
               </div>
-              <div style="padding:8px 12px; background:${isCriminal ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.12)'}; border:1px solid rgba(251,191,36,0.3); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
-              ${isCriminal ? (() => {
-                const presetKey = f.attacker_voice || 'best_attacker';
-                const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetKey] : null;
+              <div style="padding:8px 12px; background:${isAttacker ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.12)'}; border:1px solid rgba(251,191,36,0.3); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
+              ${isAttacker ? (() => {
+                const presetMap = { attacker_best: 'best_attacker', attacker_drama: 'drama_attacker', attacker_techno: 'techno_attacker' };
+                const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetMap[character]] : null;
                 const uiLang = typeof appState !== 'undefined' ? (appState.scenario?.settings?.language || 'en') : 'en';
-                const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : presetKey;
+                const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : character;
                 return `<div style="padding:10px 14px; background:rgba(225,29,72,0.15); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:14px; font-style:italic; opacity:0.85;">⚠ ${escapeHtml(presetLabel)}</div>`;
               })() : ''}
               <div style="font-size:0.85rem; line-height:1.6; opacity:0.8; white-space:pre-wrap;">${escapeHtml(textPreview)}</div>
@@ -1013,28 +1020,33 @@
           `;
         },
         audioMessageHD(f) {
-          const voiceLabels = { cybercriminal: tt('Cybercriminal', 'Cybercriminel', 'Cyberkrimineller'), radio_female: tt('Radio presenter (F)', 'Animatrice radio (F)', 'Radiomoderatorin (F)'), radio_male: tt('Radio presenter (M)', 'Animateur radio (M)', 'Radiomoderator (M)') };
-          const voiceLabel = voiceLabels[f.voice_type] || f.voice_type || 'Unknown';
-          const isCriminal = f.voice_type === 'cybercriminal';
-          const accentColor = isCriminal ? '#e11d48' : '#6366f1';
-          const bgGradient = isCriminal ? 'linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 40%, #16213e 100%)' : 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)';
-          const textColor = isCriminal ? '#e2e8f0' : '#1e293b';
+          const character = f.audio_character || 'attacker_best';
+          const isAttacker = character.startsWith('attacker');
+          const characterLabels = {
+            male: tt('Male', 'Homme', 'Männlich'),
+            female: tt('Female', 'Femme', 'Weiblich'),
+            attacker_best: tt('Attacker Best', 'Attaquant Best', 'Angreifer Best'),
+            attacker_drama: tt('Attacker Drama', 'Attaquant Drama', 'Angreifer Drama'),
+            attacker_techno: tt('Attacker Techno', 'Attaquant Techno', 'Angreifer Techno')
+          };
+          const characterLabel = characterLabels[character] || character;
+          const accentColor = isAttacker ? '#e11d48' : '#6366f1';
+          const bgGradient = isAttacker ? 'linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 40%, #16213e 100%)' : 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)';
+          const textColor = isAttacker ? '#e2e8f0' : '#1e293b';
           const textPreview = String(f.text || '').slice(0, 400) + (String(f.text || '').length > 400 ? '…' : '');
-          const speed = Number(f.tts_speed) || 1;
-          const pitch = Number(f.tts_pitch) || 1;
           return `
             <article class="audio-message-card hd" style="background:${bgGradient}; color:${textColor}; font-family:'Inter',system-ui,-apple-system,sans-serif; padding:0; min-height:400px; border-radius:16px; overflow:hidden; position:relative;">
-              ${isCriminal ? `<div style="position:absolute; inset:0; background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(225,29,72,0.03) 2px, rgba(225,29,72,0.03) 4px); pointer-events:none; z-index:1;"></div>` : ''}
+              ${isAttacker ? `<div style="position:absolute; inset:0; background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(225,29,72,0.03) 2px, rgba(225,29,72,0.03) 4px); pointer-events:none; z-index:1;"></div>` : ''}
               <div style="position:relative; z-index:2; padding:32px 32px 28px;">
                 <div style="display:flex; align-items:center; gap:14px; margin-bottom:24px;">
-                  <div style="width:56px; height:56px; border-radius:14px; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; box-shadow:0 4px 12px ${isCriminal ? 'rgba(225,29,72,0.4)' : 'rgba(99,102,241,0.3)'};">${isCriminal ? '🎭' : '🎙️'}</div>
+                  <div style="width:56px; height:56px; border-radius:14px; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; box-shadow:0 4px 12px ${isAttacker ? 'rgba(225,29,72,0.4)' : 'rgba(99,102,241,0.3)'};">${isAttacker ? '🎭' : '🎙️'}</div>
                   <div style="flex:1;">
                     <div style="font-weight:700; font-size:1.15rem; letter-spacing:-0.01em;">${escapeHtml(f.title || tt('Audio message', 'Message audio', 'Audio-Nachricht'))}</div>
-                    <div style="font-size:0.82rem; opacity:0.6; margin-top:2px;">${escapeHtml(voiceLabel)} · ${escapeHtml(f.tts_language || 'Auto')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'} · ${tt('Speed', 'Vitesse', 'Tempo')}: ${speed.toFixed(2)}x · ${tt('Pitch', 'Tonalité', 'Tonhöhe')}: ${pitch.toFixed(2)}</div>
+                    <div style="font-size:0.82rem; opacity:0.6; margin-top:2px;">${escapeHtml(characterLabel)} · ${escapeHtml(f.tts_language || 'fr-FR')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'}</div>
                   </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:12px; padding:18px 20px; background:${isCriminal ? 'rgba(225,29,72,0.10)' : 'rgba(99,102,241,0.06)'}; border-radius:12px; margin-bottom:20px; border:1px solid ${isCriminal ? 'rgba(225,29,72,0.2)' : 'rgba(99,102,241,0.12)'};">
-                  <div style="width:44px; height:44px; border-radius:50%; background:${accentColor}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px ${isCriminal ? 'rgba(225,29,72,0.3)' : 'rgba(99,102,241,0.25)'};">
+                <div style="display:flex; align-items:center; gap:12px; padding:18px 20px; background:${isAttacker ? 'rgba(225,29,72,0.10)' : 'rgba(99,102,241,0.06)'}; border-radius:12px; margin-bottom:20px; border:1px solid ${isAttacker ? 'rgba(225,29,72,0.2)' : 'rgba(99,102,241,0.12)'};">
+                  <div style="width:44px; height:44px; border-radius:50%; background:${accentColor}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px ${isAttacker ? 'rgba(225,29,72,0.3)' : 'rgba(99,102,241,0.25)'};">
                     <span style="color:#fff; font-size:18px; margin-left:2px;">▶</span>
                   </div>
                   <div style="flex:1; display:flex; align-items:center; gap:2px; height:36px;">
@@ -1042,12 +1054,12 @@
                   </div>
                   <span style="font-size:0.78rem; opacity:0.5; min-width:44px; text-align:right; font-variant-numeric:tabular-nums;">${escapeHtml(f.duration || '--:--')}</span>
                 </div>
-                <div style="padding:8px 14px; background:${isCriminal ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.10)'}; border:1px solid rgba(251,191,36,0.25); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:16px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
-                ${isCriminal ? (() => {
-                  const presetKey = f.attacker_voice || 'best_attacker';
-                  const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetKey] : null;
+                <div style="padding:8px 14px; background:${isAttacker ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.10)'}; border:1px solid rgba(251,191,36,0.25); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:16px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
+                ${isAttacker ? (() => {
+                  const presetMap = { attacker_best: 'best_attacker', attacker_drama: 'drama_attacker', attacker_techno: 'techno_attacker' };
+                  const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetMap[character]] : null;
                   const uiLang = typeof appState !== 'undefined' ? (appState.scenario?.settings?.language || 'en') : 'en';
-                  const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : presetKey;
+                  const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : character;
                   return `<div style="padding:10px 14px; background:rgba(225,29,72,0.12); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:16px; font-style:italic; opacity:0.85;">⚠ ${escapeHtml(presetLabel)}</div>`;
                 })() : ''}
                 <div style="font-size:0.85rem; line-height:1.7; opacity:0.75; white-space:pre-wrap;">${escapeHtml(textPreview)}</div>
