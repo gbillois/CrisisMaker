@@ -988,7 +988,7 @@
                 <div style="width:48px; height:48px; border-radius:50%; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">${isCriminal ? '🎭' : '🎙️'}</div>
                 <div>
                   <div style="font-weight:700; font-size:1.1rem;">${escapeHtml(f.title || tt('Audio message', 'Message audio', 'Audio-Nachricht'))}</div>
-                  <div style="font-size:0.82rem; opacity:0.7;">${escapeHtml(voiceLabel)}</div>
+                  <div style="font-size:0.82rem; opacity:0.7;">${escapeHtml(voiceLabel)} · ${escapeHtml(f.tts_language || 'Auto')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'}</div>
                 </div>
               </div>
               <div class="audio-waveform-visual" style="display:flex; align-items:center; gap:10px; padding:16px; background:${isCriminal ? 'rgba(225,29,72,0.12)' : 'rgba(99,102,241,0.08)'}; border-radius:10px; margin-bottom:16px;">
@@ -1001,7 +1001,13 @@
                 <span style="font-size:0.78rem; opacity:0.6; min-width:40px; text-align:right;">${escapeHtml(f.duration || '--:--')}</span>
               </div>
               <div style="padding:8px 12px; background:${isCriminal ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.12)'}; border:1px solid rgba(251,191,36,0.3); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
-              ${isCriminal ? `<div style="padding:10px 14px; background:rgba(225,29,72,0.15); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:14px; font-style:italic; opacity:0.85;">⚠ ${tt('Voice distorted — anonymous / cybercriminal style', 'Voix trafiquée — style anonyme / cybercriminel', 'Stimme verzerrt — Anonym / Cyberkriminell-Stil')}</div>` : ''}
+              ${isCriminal ? (() => {
+                const presetKey = f.attacker_voice || 'best_attacker';
+                const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetKey] : null;
+                const uiLang = typeof appState !== 'undefined' ? (appState.scenario?.settings?.language || 'en') : 'en';
+                const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : presetKey;
+                return `<div style="padding:10px 14px; background:rgba(225,29,72,0.15); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:14px; font-style:italic; opacity:0.85;">⚠ ${escapeHtml(presetLabel)}</div>`;
+              })() : ''}
               <div style="font-size:0.85rem; line-height:1.6; opacity:0.8; white-space:pre-wrap;">${escapeHtml(textPreview)}</div>
             </article>
           `;
@@ -1024,7 +1030,7 @@
                   <div style="width:56px; height:56px; border-radius:14px; background:${accentColor}; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; box-shadow:0 4px 12px ${isCriminal ? 'rgba(225,29,72,0.4)' : 'rgba(99,102,241,0.3)'};">${isCriminal ? '🎭' : '🎙️'}</div>
                   <div style="flex:1;">
                     <div style="font-weight:700; font-size:1.15rem; letter-spacing:-0.01em;">${escapeHtml(f.title || tt('Audio message', 'Message audio', 'Audio-Nachricht'))}</div>
-                    <div style="font-size:0.82rem; opacity:0.6; margin-top:2px;">${escapeHtml(voiceLabel)} · ${tt('Speed', 'Vitesse', 'Tempo')}: ${speed.toFixed(2)}x · ${tt('Pitch', 'Tonalité', 'Tonhöhe')}: ${pitch.toFixed(2)}</div>
+                    <div style="font-size:0.82rem; opacity:0.6; margin-top:2px;">${escapeHtml(voiceLabel)} · ${escapeHtml(f.tts_language || 'Auto')} · ${f.tts_provider === 'azure_speech' ? 'Azure' : 'Browser'} · ${tt('Speed', 'Vitesse', 'Tempo')}: ${speed.toFixed(2)}x · ${tt('Pitch', 'Tonalité', 'Tonhöhe')}: ${pitch.toFixed(2)}</div>
                   </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:12px; padding:18px 20px; background:${isCriminal ? 'rgba(225,29,72,0.10)' : 'rgba(99,102,241,0.06)'}; border-radius:12px; margin-bottom:20px; border:1px solid ${isCriminal ? 'rgba(225,29,72,0.2)' : 'rgba(99,102,241,0.12)'};">
@@ -1037,7 +1043,13 @@
                   <span style="font-size:0.78rem; opacity:0.5; min-width:44px; text-align:right; font-variant-numeric:tabular-nums;">${escapeHtml(f.duration || '--:--')}</span>
                 </div>
                 <div style="padding:8px 14px; background:${isCriminal ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.10)'}; border:1px solid rgba(251,191,36,0.25); border-radius:6px; font-size:0.78rem; font-weight:600; color:#b45309; margin-bottom:16px; text-transform:uppercase; letter-spacing:0.05em;">Exercice - Exercice - Exercice</div>
-                ${isCriminal ? `<div style="padding:10px 14px; background:rgba(225,29,72,0.12); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:16px; font-style:italic; opacity:0.85;">⚠ ${tt('Distorted voice — anonymous / cybercriminal style', 'Voix trafiquée — style anonyme / cybercriminel', 'Stimme verzerrt — Anonym / Cyberkriminell-Stil')}</div>` : ''}
+                ${isCriminal ? (() => {
+                  const presetKey = f.attacker_voice || 'best_attacker';
+                  const preset = typeof ATTACKER_VOICE_PRESETS !== 'undefined' ? ATTACKER_VOICE_PRESETS[presetKey] : null;
+                  const uiLang = typeof appState !== 'undefined' ? (appState.scenario?.settings?.language || 'en') : 'en';
+                  const presetLabel = preset ? (preset.label[uiLang] || preset.label.en) : presetKey;
+                  return `<div style="padding:10px 14px; background:rgba(225,29,72,0.12); border-left:3px solid ${accentColor}; border-radius:4px; font-size:0.82rem; margin-bottom:16px; font-style:italic; opacity:0.85;">⚠ ${escapeHtml(presetLabel)}</div>`;
+                })() : ''}
                 <div style="font-size:0.85rem; line-height:1.7; opacity:0.75; white-space:pre-wrap;">${escapeHtml(textPreview)}</div>
               </div>
             </article>

@@ -148,7 +148,7 @@
         document.querySelectorAll('[data-bind]').forEach((input) => {
           input.addEventListener('change', () => {
             let val = input.value;
-            if (input.dataset.bind === 'settings.watermark_enabled') val = (val === 'true');
+            if (input.dataset.bind === 'settings.watermark_enabled' || input.dataset.bind === 'settings.watermark_audio_enabled') val = (val === 'true');
             else if (input.dataset.bind === 'settings.watermark_opacity' || input.dataset.bind === 'settings.watermark_rotation' || input.dataset.bind === 'settings.watermark_text_size') val = Number(val);
             setByPath(appState.scenario, input.dataset.bind, val);
             if (input.dataset.bind === 'settings.ai_provider') {
@@ -386,6 +386,11 @@
             case 'toggle-api-key': {
               const input = document.getElementById('api-key-input');
               input.type = input.type === 'password' ? 'text' : 'password';
+              break;
+            }
+            case 'toggle-azure-speech-key': {
+              const input = document.getElementById('azure-speech-key-input');
+              if (input) input.type = input.type === 'password' ? 'text' : 'password';
               break;
             }
             case 'save-local': saveLocal(); break;
@@ -1179,6 +1184,16 @@
         App.render();
       }
 
+      // ── TTS helpers ──────────────────────────────────────────────────
+      function resolveTTSLanguage(stimulus) {
+        if (stimulus.fields.tts_language) return stimulus.fields.tts_language;
+        const l = appState.scenario.settings.inject_language || appState.scenario.settings.language || 'en';
+        if (l === 'fr') return 'fr-FR';
+        if (l === 'de') return 'de-DE';
+        if (l === 'en') return 'en-US';
+        return 'en-US';
+      }
+
       async function generateTTS(stimulusId) {
         const stimulus = getStimulus(stimulusId);
         if (!stimulus) return;
@@ -1190,21 +1205,53 @@
         const voiceType = stimulus.fields.voice_type || 'cybercriminal';
         const speed = Math.max(0.5, Math.min(2, Number(stimulus.fields.tts_speed) || 1));
         const pitch = Math.max(0.1, Math.min(2, Number(stimulus.fields.tts_pitch) || 1));
-
-        // Use browser SpeechSynthesis + offline audio capture via AudioContext + MediaRecorder
-        if (!window.speechSynthesis) {
-          pushToast(tt('Your browser does not support speech synthesis.', 'Votre navigateur ne supporte pas la synthèse vocale.', 'Ihr Browser unterstützt keine Sprachsynthese.'), 'error');
-          return;
-        }
+        const ttsProvider = stimulus.fields.tts_provider || 'browser';
+        const ttsLang = resolveTTSLanguage(stimulus);
 
         try {
-          const audioBlob = await synthesizeSpeechToBlob(text, voiceType, speed, pitch);
+          let audioBlob;
+          if (ttsProvider === 'azure_speech') {
+            const { azure_speech_key, azure_speech_region } = appState.scenario.settings;
+            if (!azure_speech_key) {
+              pushToast(tt('Azure Speech API key not configured. Go to Settings.', 'Clé API Azure Speech non configurée. Allez dans les Paramètres.', 'Azure Speech API-Schlüssel nicht konfiguriert. Gehen Sie zu den Einstellungen.'), 'error');
+              return;
+            }
+            audioBlob = await synthesizeWithAzureSpeech(text, voiceType, ttsLang, speed, pitch, stimulus.fields.azure_voice, azure_speech_key, azure_speech_region || 'westeurope');
+          } else {
+            if (!window.speechSynthesis) {
+              pushToast(tt('Your browser does not support speech synthesis.', 'Votre navigateur ne supporte pas la synthèse vocale.', 'Ihr Browser unterstützt keine Sprachsynthese.'), 'error');
+              return;
+            }
+            audioBlob = await synthesizeWithBrowser(text, voiceType, ttsLang, speed, pitch);
+          }
+
+          // Apply cybercriminal effects if needed
+          if (voiceType === 'cybercriminal') {
+            const presetKey = stimulus.fields.attacker_voice || 'best_attacker';
+            const preset = ATTACKER_VOICE_PRESETS[presetKey] || ATTACKER_VOICE_PRESETS.best_attacker;
+            try {
+              audioBlob = await applyCybercriminalEffects(audioBlob, preset);
+            } catch (e) {
+              console.warn('Effect processing failed, using raw audio', e);
+            }
+          }
+
+          // Prepend audio watermark if enabled
+          if (appState.scenario.settings.watermark_enabled !== false && appState.scenario.settings.watermark_audio_enabled !== false) {
+            try {
+              audioBlob = await prependAudioWatermark(audioBlob, ttsLang);
+            } catch (e) {
+              console.warn('Audio watermark failed, using raw audio', e);
+            }
+          }
+
           if (appState.audioFiles[stimulusId]?.objectUrl) {
             URL.revokeObjectURL(appState.audioFiles[stimulusId].objectUrl);
           }
+          const ext = ttsProvider === 'azure_speech' ? 'wav' : 'wav';
           appState.audioFiles[stimulusId] = {
             objectUrl: URL.createObjectURL(audioBlob),
-            fileName: `${slugify(stimulus.fields.title || 'audio')}_${voiceType}.wav`,
+            fileName: `${slugify(stimulus.fields.title || 'audio')}_${voiceType}_${ttsLang}.${ext}`,
             blob: audioBlob
           };
           // Read duration
@@ -1220,53 +1267,114 @@
           pushToast(tt('Audio generated successfully.', 'Audio généré avec succès.', 'Audio erfolgreich generiert.'), 'success');
         } catch (err) {
           console.error('TTS generation failed', err);
-          pushToast(tt('Audio generation failed. Try a shorter text or different browser.', 'La génération audio a échoué. Essayez un texte plus court ou un autre navigateur.', 'Audio-Generierung fehlgeschlagen. Versuchen Sie kürzeren Text oder einen anderen Browser.'), 'error');
+          pushToast(tt(`Audio generation failed: ${err.message}`, `La génération audio a échoué : ${err.message}`, `Audio-Generierung fehlgeschlagen: ${err.message}`), 'error');
         }
         App.render();
       }
 
-      function synthesizeSpeechToBlob(text, voiceType, speed, pitch) {
+      // ── Azure Speech TTS ──────────────────────────────────────────────
+      async function synthesizeWithAzureSpeech(text, voiceType, lang, speed, pitch, azureVoice, apiKey, region) {
+        // Determine voice name
+        let voiceName = azureVoice;
+        if (!voiceName) {
+          const voices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'];
+          if (voiceType === 'radio_female' || voiceType === 'cybercriminal') {
+            voiceName = (voices.find(v => v.gender === (voiceType === 'radio_female' ? 'female' : 'male')) || voices[0]).value;
+          } else if (voiceType === 'radio_male') {
+            voiceName = (voices.find(v => v.gender === 'male') || voices[0]).value;
+          } else {
+            voiceName = voices[0].value;
+          }
+        }
+
+        // Build SSML
+        const ratePercent = Math.round((speed - 1) * 100);
+        const pitchPercent = Math.round((pitch - 1) * 50);
+        const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}">
+  <voice name="${voiceName}">
+    <prosody rate="${ratePercent >= 0 ? '+' : ''}${ratePercent}%" pitch="${pitchPercent >= 0 ? '+' : ''}${pitchPercent}%">
+      ${escapedText}
+    </prosody>
+  </voice>
+</speak>`;
+
+        const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Ocp-Apim-Subscription-Key': apiKey,
+            'Content-Type': 'application/ssml+xml',
+            'X-Microsoft-OutputFormat': 'riff-24khz-16bit-mono-pcm',
+            'User-Agent': 'CrisisMaker'
+          },
+          body: ssml
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => '');
+          throw new Error(`Azure Speech API error ${response.status}: ${errText || response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        return new Blob([arrayBuffer], { type: 'audio/wav' });
+      }
+
+      // ── Browser SpeechSynthesis with language-aware voice selection ───
+      function synthesizeWithBrowser(text, voiceType, lang, speed, pitch) {
         return new Promise((resolve, reject) => {
           const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = lang;
           utterance.rate = speed;
-          // Voice selection based on voice_type
-          const voices = speechSynthesis.getVoices();
+
+          // Wait for voices to be loaded
+          let voices = speechSynthesis.getVoices();
+          if (!voices.length) {
+            speechSynthesis.addEventListener('voiceschanged', () => {
+              voices = speechSynthesis.getVoices();
+            }, { once: true });
+            // Short delay to let voices load
+            setTimeout(() => { voices = speechSynthesis.getVoices(); }, 100);
+          }
+
+          // Filter voices by language first
+          const langPrefix = lang.split('-')[0]; // e.g. 'fr' from 'fr-FR'
+          const langVoices = voices.filter(v => v.lang === lang || v.lang.startsWith(langPrefix));
+          const pool = langVoices.length > 0 ? langVoices : voices;
+
           if (voiceType === 'radio_female') {
             utterance.pitch = pitch;
-            const femaleVoice = voices.find(v => /female|femme|zira|samantha|victoria|karen|amelie|alice/i.test(v.name)) || voices.find(v => /woman|girl/i.test(v.name));
+            const femaleVoice = pool.find(v => /female|femme|zira|samantha|victoria|karen|amelie|alice|denise|sonia|jenny|katja|eloise|libby|aria|amala/i.test(v.name))
+              || pool.find(v => /woman|girl/i.test(v.name));
             if (femaleVoice) utterance.voice = femaleVoice;
+            else if (langVoices.length) utterance.voice = langVoices[0];
           } else if (voiceType === 'radio_male') {
             utterance.pitch = pitch;
-            const maleVoice = voices.find(v => /\b(male|david|james|daniel|thomas|google uk english male|mark)\b/i.test(v.name)) || voices.find(v => !/female|femme|woman|girl|zira|samantha|victoria|karen|amelie|alice/i.test(v.name));
+            const maleVoice = pool.find(v => /\b(male|david|james|daniel|thomas|henri|ryan|guy|conrad|davis|mark|google.*male)\b/i.test(v.name))
+              || pool.find(v => !/female|femme|woman|girl|zira|samantha|victoria|karen|amelie|alice|denise|sonia|jenny|katja/i.test(v.name));
             if (maleVoice) utterance.voice = maleVoice;
+            else if (langVoices.length) utterance.voice = langVoices[0];
           } else {
             // Cybercriminal: deep pitch
             utterance.pitch = Math.min(pitch, 0.7);
             utterance.rate = Math.min(speed, 0.85);
-            const deepVoice = voices.find(v => /\b(david|daniel|james|mark|google uk english male)\b/i.test(v.name));
+            const deepVoice = pool.find(v => /\b(david|daniel|james|mark|henri|ryan|guy|conrad|davis|google.*male)\b/i.test(v.name));
             if (deepVoice) utterance.voice = deepVoice;
+            else if (langVoices.length) utterance.voice = langVoices[0];
           }
 
-          // MediaStream capture approach using audio element and destination
-          // Fallback: record from default audio output (only works in some browsers)
-          // Primary: Use OfflineAudioContext to apply effects after speaking
+          // MediaStream capture
           const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           const dest = audioCtx.createMediaStreamDestination();
           const recorder = new MediaRecorder(dest.stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
           const chunks = [];
           recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
-          // Create an oscillator-based fallback for browsers that can't capture SpeechSynthesis
-          // SpeechSynthesis audio cannot be routed into AudioContext in most browsers
-          // So we record the speech using the utterance events + a silent monitor, then post-process
           let speechDone = false;
 
           utterance.onend = () => {
             speechDone = true;
-            // Give a small buffer
-            setTimeout(() => {
-              recorder.stop();
-            }, 500);
+            setTimeout(() => { recorder.stop(); }, 500);
           };
           utterance.onerror = (e) => {
             speechDone = true;
@@ -1278,36 +1386,31 @@
             audioCtx.close();
             if (chunks.length > 0) {
               const rawBlob = new Blob(chunks, { type: recorder.mimeType });
-              // Apply effects for cybercriminal voice
-              if (voiceType === 'cybercriminal') {
-                try {
-                  const processed = await applyCybercriminalEffects(rawBlob);
-                  resolve(processed);
-                  return;
-                } catch (e) {
-                  console.warn('Effect processing failed, using raw audio', e);
-                }
+              // Try to decode to WAV for consistency
+              try {
+                const ab = await rawBlob.arrayBuffer();
+                const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const decoded = await decodeCtx.decodeAudioData(ab);
+                decodeCtx.close();
+                resolve(audioBufferToWavBlob(decoded));
+              } catch (_) {
+                resolve(rawBlob);
               }
-              resolve(rawBlob);
             } else {
-              // Fallback: use a direct SpeechSynthesis approach without recording
-              // Create audio from a simpler method
-              resolve(await fallbackSpeechCapture(text, voiceType, speed, pitch));
+              // Fallback: generate tone placeholder
+              resolve(fallbackSpeechCapture(text, voiceType, speed, pitch));
             }
           };
 
-          // Start recording and speaking
           recorder.start();
-          // Push silence into the MediaStreamDestination to keep the recorder alive
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
-          gain.gain.value = 0; // silent
+          gain.gain.value = 0;
           osc.connect(gain);
           gain.connect(dest);
           osc.start();
           speechSynthesis.speak(utterance);
 
-          // Safety timeout: stop after 5 minutes max
           setTimeout(() => {
             if (!speechDone) {
               speechSynthesis.cancel();
@@ -1319,32 +1422,26 @@
       }
 
       function fallbackSpeechCapture(text, voiceType, speed, pitch) {
-        // Fallback for browsers where MediaRecorder capture of SpeechSynthesis isn't possible
-        // Generate a simple WAV with a tone to indicate "play this stimulus manually"
         return new Promise((resolve) => {
-          // Create a short WAV with speech synthesis playing normally (no capture)
-          // The user will hear it played, and we store a marker blob
           const sampleRate = 22050;
-          const duration = Math.max(2, text.length * 0.06); // rough estimate
+          const duration = Math.max(2, text.length * 0.06);
           const numSamples = Math.floor(sampleRate * duration);
           const buffer = new ArrayBuffer(44 + numSamples * 2);
           const view = new DataView(buffer);
-          // WAV header
           const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
           writeStr(0, 'RIFF');
           view.setUint32(4, 36 + numSamples * 2, true);
           writeStr(8, 'WAVE');
           writeStr(12, 'fmt ');
           view.setUint32(16, 16, true);
-          view.setUint16(20, 1, true); // PCM
-          view.setUint16(22, 1, true); // mono
+          view.setUint16(20, 1, true);
+          view.setUint16(22, 1, true);
           view.setUint32(24, sampleRate, true);
           view.setUint32(28, sampleRate * 2, true);
           view.setUint16(32, 2, true);
           view.setUint16(34, 16, true);
           writeStr(36, 'data');
           view.setUint32(40, numSamples * 2, true);
-          // Generate a tone pattern for cybercriminal or silence placeholder
           for (let i = 0; i < numSamples; i++) {
             const t = i / sampleRate;
             let sample = 0;
@@ -1359,55 +1456,255 @@
         });
       }
 
-      async function applyCybercriminalEffects(audioBlob) {
+      // ── Audio watermark: prepend a spoken "Exercise" warning + tone ───
+      async function prependAudioWatermark(audioBlob, lang) {
+        const sampleRate = 24000;
+        const watermarkText = appState.scenario.settings.watermark_text || 'EXERCISE EXERCISE EXERCISE';
+
+        // Generate a 3-beep tone watermark (always works, no TTS dependency)
+        const beepDuration = 0.15;
+        const pauseDuration = 0.1;
+        const numBeeps = 3;
+        const totalBeepTime = numBeeps * beepDuration + (numBeeps - 1) * pauseDuration + 0.3;
+        const beepSamples = Math.ceil(totalBeepTime * sampleRate);
+        const beepBuffer = new Float32Array(beepSamples);
+
+        for (let b = 0; b < numBeeps; b++) {
+          const startSample = Math.floor((b * (beepDuration + pauseDuration)) * sampleRate);
+          const endSample = startSample + Math.floor(beepDuration * sampleRate);
+          for (let i = startSample; i < endSample && i < beepSamples; i++) {
+            const t = (i - startSample) / sampleRate;
+            // 1kHz warning tone with envelope
+            const envelope = Math.min(1, Math.min(t / 0.01, (beepDuration - t + (i - startSample) / sampleRate * 0) / 0.01));
+            beepBuffer[i] = Math.sin(2 * Math.PI * 1000 * t) * 0.35 * Math.min(1, t / 0.01, (beepDuration - (i - startSample) / sampleRate) / 0.01);
+          }
+        }
+
+        // Decode the main audio
+        const mainArrayBuffer = await audioBlob.arrayBuffer();
+        let mainDecoded;
+        try {
+          const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+          mainDecoded = await tempCtx.decodeAudioData(mainArrayBuffer.slice(0));
+          tempCtx.close();
+        } catch (e) {
+          return audioBlob; // Can't decode, return original
+        }
+
+        // Resample main audio to our target sample rate if needed
+        const mainData = mainDecoded.getChannelData(0);
+        const mainSampleRate = mainDecoded.sampleRate;
+        let resampledMain;
+        if (mainSampleRate !== sampleRate) {
+          const ratio = mainSampleRate / sampleRate;
+          const newLength = Math.floor(mainDecoded.length / ratio);
+          resampledMain = new Float32Array(newLength);
+          for (let i = 0; i < newLength; i++) {
+            const srcIdx = i * ratio;
+            const idx = Math.floor(srcIdx);
+            const frac = srcIdx - idx;
+            resampledMain[i] = (mainData[idx] || 0) * (1 - frac) + (mainData[Math.min(idx + 1, mainData.length - 1)] || 0) * frac;
+          }
+        } else {
+          resampledMain = mainData;
+        }
+
+        // Concatenate: beep + main audio
+        const totalLength = beepSamples + resampledMain.length;
+        const combined = new Float32Array(totalLength);
+        combined.set(beepBuffer, 0);
+        combined.set(resampledMain, beepSamples);
+
+        // Create AudioBuffer and convert to WAV
+        const offCtx = new OfflineAudioContext(1, totalLength, sampleRate);
+        const buf = offCtx.createBuffer(1, totalLength, sampleRate);
+        buf.getChannelData(0).set(combined);
+        const src = offCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(offCtx.destination);
+        src.start();
+        const rendered = await offCtx.startRendering();
+        return audioBufferToWavBlob(rendered);
+      }
+
+      async function applyCybercriminalEffects(audioBlob, preset) {
+        const p = preset || ATTACKER_VOICE_PRESETS.best_attacker;
         const arrayBuffer = await audioBlob.arrayBuffer();
-        const audioCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 1, 44100);
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         let decodedBuffer;
         try {
-          decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+          decodedBuffer = await tempCtx.decodeAudioData(arrayBuffer.slice(0));
+          tempCtx.close();
         } catch (e) {
-          // If decoding fails, return original blob
+          tempCtx.close();
           return audioBlob;
         }
-        // Create offline context with the correct duration + extra for effects
-        const duration = decodedBuffer.duration + 0.5;
+
+        // Account for slower playback rate extending duration
+        const playbackRate = p.playbackRate || 0.84;
+        const extraDuration = p.microDelay ? p.microDelay + 0.1 : 0.5;
+        const duration = (decodedBuffer.duration / playbackRate) + extraDuration;
         const sampleRate = decodedBuffer.sampleRate;
         const offCtx = new OfflineAudioContext(1, Math.ceil(duration * sampleRate), sampleRate);
 
-        // Source
+        // ── Source with pitch shift via playback rate ──
         const source = offCtx.createBufferSource();
         source.buffer = decodedBuffer;
-        source.playbackRate.value = 0.85; // slower playback = deeper voice
+        source.playbackRate.value = playbackRate;
 
-        // Distortion via WaveShaper
-        const distortion = offCtx.createWaveShaper();
-        const curve = new Float32Array(44100);
-        for (let i = 0; i < curve.length; i++) {
-          const x = (i * 2) / curve.length - 1;
-          curve[i] = (Math.PI + 50) * x / (Math.PI + 50 * Math.abs(x));
-        }
-        distortion.curve = curve;
-        distortion.oversample = '2x';
+        // Build the processing chain
+        let lastNode = source;
 
-        // Low-pass filter to muffle the voice
+        // ── High-pass filter (bandpass low end) ──
+        const highpass = offCtx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = p.bandpassLow || 300;
+        highpass.Q.value = 0.7;
+        lastNode.connect(highpass);
+        lastNode = highpass;
+
+        // ── Low-pass filter (bandpass high end) ──
         const lowpass = offCtx.createBiquadFilter();
         lowpass.type = 'lowpass';
-        lowpass.frequency.value = 2000;
-        lowpass.Q.value = 1;
+        lowpass.frequency.value = p.bandpassHigh || 3000;
+        lowpass.Q.value = 0.7;
+        lastNode.connect(lowpass);
+        lastNode = lowpass;
 
-        // Gain
-        const gain = offCtx.createGain();
-        gain.gain.value = 1.2;
+        // ── 2kHz presence boost (Best Attacker) ──
+        if (p.boost2k) {
+          const peaking = offCtx.createBiquadFilter();
+          peaking.type = 'peaking';
+          peaking.frequency.value = 2000;
+          peaking.Q.value = 1.5;
+          peaking.gain.value = 4; // +4 dB
+          lastNode.connect(peaking);
+          lastNode = peaking;
+        }
 
-        // Chain
-        source.connect(distortion);
-        distortion.connect(lowpass);
-        lowpass.connect(gain);
-        gain.connect(offCtx.destination);
+        // ── Compressor ──
+        const compressor = offCtx.createDynamicsCompressor();
+        compressor.threshold.value = p.compressionThreshold || -24;
+        compressor.ratio.value = p.compressionRatio || 5;
+        compressor.knee.value = 6;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.15;
+        lastNode.connect(compressor);
+        lastNode = compressor;
+
+        // ── Saturation / distortion via WaveShaper ──
+        const satAmount = p.saturationAmount || 15;
+        if (satAmount > 0) {
+          const distortion = offCtx.createWaveShaper();
+          const curveLen = 44100;
+          const curve = new Float32Array(curveLen);
+          const k = satAmount;
+          for (let i = 0; i < curveLen; i++) {
+            const x = (i * 2) / curveLen - 1;
+            curve[i] = (Math.PI + k) * x / (Math.PI + k * Math.abs(x));
+          }
+          distortion.curve = curve;
+          distortion.oversample = '2x';
+          lastNode.connect(distortion);
+          lastNode = distortion;
+        }
+
+        // ── Vocoder-like effect (Drama Attacker) — ring modulation ──
+        if (p.vocoderMix > 0) {
+          // Create a ring modulator effect by multiplying with a low frequency
+          // Using a gain node modulated by an oscillator
+          const vocoderGain = offCtx.createGain();
+          vocoderGain.gain.value = 1.0 - p.vocoderMix;
+          lastNode.connect(vocoderGain);
+
+          const ringGain = offCtx.createGain();
+          ringGain.gain.value = 0;
+          lastNode.connect(ringGain);
+
+          const ringOsc = offCtx.createOscillator();
+          ringOsc.type = 'sine';
+          ringOsc.frequency.value = 50; // 50Hz ring mod for robotic effect
+          const ringMod = offCtx.createGain();
+          ringMod.gain.value = p.vocoderMix;
+          ringOsc.connect(ringMod);
+          ringMod.connect(ringGain.gain);
+          ringOsc.start();
+
+          const vocoderMerge = offCtx.createGain();
+          vocoderMerge.gain.value = 1.0;
+          vocoderGain.connect(vocoderMerge);
+          ringGain.connect(vocoderMerge);
+          lastNode = vocoderMerge;
+        }
+
+        // ── Micro delay (Techno Attacker) ──
+        if (p.microDelay > 0) {
+          const dryGain = offCtx.createGain();
+          dryGain.gain.value = 0.8;
+          lastNode.connect(dryGain);
+
+          const delay = offCtx.createDelay(0.5);
+          delay.delayTime.value = p.microDelay;
+          const wetGain = offCtx.createGain();
+          wetGain.gain.value = 0.35;
+          lastNode.connect(delay);
+          delay.connect(wetGain);
+
+          const delayMerge = offCtx.createGain();
+          delayMerge.gain.value = 1.0;
+          dryGain.connect(delayMerge);
+          wetGain.connect(delayMerge);
+          lastNode = delayMerge;
+        }
+
+        // ── Output gain (normalize) ──
+        const outputGain = offCtx.createGain();
+        outputGain.gain.value = 1.3;
+        lastNode.connect(outputGain);
+        outputGain.connect(offCtx.destination);
+
         source.start();
-
         const rendered = await offCtx.startRendering();
-        // Convert AudioBuffer to WAV blob
+
+        // ── Post-processing: add noise in raw samples ──
+        if (p.noiseLevel > 0 || p.glitches) {
+          const channelData = rendered.getChannelData(0);
+          const noiseLevel = p.noiseLevel || 0;
+          const isRadio = p.noiseType === 'radio';
+          const isInterference = p.noiseType === 'interference';
+
+          for (let i = 0; i < channelData.length; i++) {
+            // Base noise
+            if (noiseLevel > 0) {
+              let noise = (Math.random() * 2 - 1) * noiseLevel;
+              // Radio noise: more crackling, less uniform
+              if (isRadio) {
+                noise *= (Math.random() > 0.92 ? 4 : 1);
+                // Periodic static bursts
+                if (Math.sin(i / sampleRate * 2.7) > 0.95) noise *= 3;
+              }
+              // Interference: periodic buzz
+              if (isInterference) {
+                noise += Math.sin(2 * Math.PI * 50 * i / sampleRate) * noiseLevel * 0.5; // 50Hz hum
+                if (Math.random() > 0.998) noise += (Math.random() * 2 - 1) * 0.08; // interference spikes
+              }
+              channelData[i] += noise;
+            }
+
+            // Glitches (Drama Attacker): occasional short audio dropouts
+            if (p.glitches && Math.random() > 0.9997) {
+              const glitchLen = Math.floor(Math.random() * sampleRate * 0.03); // up to 30ms
+              for (let g = 0; g < glitchLen && (i + g) < channelData.length; g++) {
+                channelData[i + g] *= 0.05; // near-silence glitch
+              }
+              i += glitchLen;
+            }
+
+            // Clamp
+            channelData[i] = Math.max(-1, Math.min(1, channelData[i]));
+          }
+        }
+
         return audioBufferToWavBlob(rendered);
       }
 
@@ -1491,6 +1788,8 @@
         settings.azure_endpoint = settings.azure_endpoint || '';
         settings.azure_api_key = settings.azure_api_key || '';
         settings.azure_deployment = settings.azure_deployment || '';
+        settings.azure_speech_key = settings.azure_speech_key || '';
+        settings.azure_speech_region = settings.azure_speech_region || 'westeurope';
       }
 
       function renderProviderSummary(settings) {

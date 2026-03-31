@@ -98,7 +98,7 @@
           actors,
           stimuli: [],
           custom_templates: [],
-          settings: { language: 'en', inject_language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0, confidentiality_acknowledged: false }
+          settings: { language: 'en', inject_language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-4-20250514', ai_api_key: '', azure_endpoint: '', azure_api_key: '', azure_deployment: '', azure_speech_key: '', azure_speech_region: 'westeurope', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0, watermark_audio_enabled: true, confidentiality_acknowledged: false }
         };
         const samples = [
           makeStimulus('email_internal',    actors[0].id, 0),
