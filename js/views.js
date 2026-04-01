@@ -1024,7 +1024,7 @@
         const mode = stimulus.fields.audio_mode || 'create';
         const character = stimulus.fields.audio_character || 'attacker_best';
         const provider = stimulus.fields.tts_provider || 'browser';
-        const lang = stimulus.fields.tts_language || 'fr-FR';
+        const lang = stimulus.fields.tts_language || (() => { const l = appState.scenario.settings.inject_language || appState.scenario.settings.language || 'en'; if (l === 'fr') return 'fr-FR'; if (l === 'de') return 'de-DE'; if (l === 'en') return 'en-US'; return 'en-US'; })();
         const wmType = stimulus.fields.audio_watermark_type || 'beeps';
         const wmText = stimulus.fields.audio_watermark_text || 'EXERCISE';
         const azureKey = appState.scenario.settings.azure_speech_key;
@@ -1040,7 +1040,17 @@
           { value: 'attacker_techno',label: tt('Attacker Techno', 'Attaquant Techno', 'Angreifer Techno') }
         ];
 
-        const azureVoices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'] || [];
+        // Determine gender from character for Azure voice filtering
+        const characterGender = (character === 'female') ? 'female' : 'male';
+        const allAzureVoices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'] || [];
+        // Filter voices by gender; show all if filtering yields none
+        const genderFilteredVoices = allAzureVoices.filter(v => v.gender === characterGender);
+        const azureVoices = genderFilteredVoices.length > 0 ? genderFilteredVoices : allAzureVoices;
+
+        // Auto-select first matching voice if current azure_voice is not in the filtered list
+        if (provider === 'azure_speech' && azureVoices.length > 0 && !azureVoices.some(v => v.value === stimulus.fields.azure_voice)) {
+          stimulus.fields.azure_voice = azureVoices[0].value;
+        }
 
         return `
           <div style="margin-top:16px; border:1px solid var(--border, #e5e7eb); border-radius:8px; padding:14px 16px;">
@@ -1112,7 +1122,7 @@
                   ${tt('3. Text to speak', '3. Texte à lire', '3. Sprechtext')}
                   <textarea data-stimulus-field="${stimulus.id}.text" style="min-height:120px;">${escapeHtml(stimulus.fields.text || '')}</textarea>
                   <div class="actions" style="margin-top:4px;">
-                    <button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="text" ${_textGenerating ? 'disabled' : ''}>${_textGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `✨ ${tt('Regenerate', 'Régénérer', 'Neu generieren')}`}</button>
+                    <button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="text" ${_textGenerating ? 'disabled' : ''}>${_textGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `✨ ${tt('Regenerate text', 'Régénérer le texte', 'Text neu generieren')}`}</button>
                   </div>
                 </label>
 
@@ -1315,11 +1325,18 @@
           const provider = stimulus.fields.tts_provider || 'browser';
           if (provider !== 'azure_speech') return '';
           const lang = stimulus.fields.tts_language || (() => { const l = appState.scenario.settings.inject_language || appState.scenario.settings.language || 'en'; if (l === 'fr') return 'fr-FR'; if (l === 'de') return 'de-DE'; return 'en-US'; })();
-          const voices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'] || [];
+          const charGender = (stimulus.fields.audio_character === 'female') ? 'female' : 'male';
+          const allVoices = AZURE_SPEECH_VOICES[lang] || AZURE_SPEECH_VOICES['en-US'] || [];
+          const filteredVoices = allVoices.filter(v => v.gender === charGender);
+          const voices = filteredVoices.length > 0 ? filteredVoices : allVoices;
+          // Auto-select first matching voice if current value is not in the filtered list
+          if (voices.length > 0 && !voices.some(v => v.value === String(value))) {
+            stimulus.fields.azure_voice = voices[0].value;
+          }
           return `
             <label class="field">${escapeHtml(spec.label)}
               <select ${bind}>
-                ${voices.map(v => `<option value="${v.value}" ${String(value) === v.value ? 'selected' : ''}>${v.label} — ${v.value}</option>`).join('')}
+                ${voices.map(v => `<option value="${v.value}" ${String(stimulus.fields.azure_voice || value) === v.value ? 'selected' : ''}>${v.label} — ${v.value}</option>`).join('')}
               </select>
             </label>
           `;

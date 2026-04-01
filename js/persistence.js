@@ -389,7 +389,8 @@
           if (!audioInfo?.blob && !audioInfo?.objectUrl) throw new Error(tt('No audio file attached to this inject. Generate or upload audio first.', 'Aucun fichier audio attaché à cet inject. Générez ou importez un audio d\'abord.', 'Keine Audiodatei an diesen Inject angehängt. Generieren oder laden Sie zuerst Audio hoch.'));
           const actor = getActor(stimulus.actor_id);
           const ext = (audioInfo.fileName || '').split('.').pop() || 'wav';
-          const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_audio_${slugify(stimulus.fields.voice_type || 'custom')}_${slugify(actor?.name || 'actor')}.${ext}`;
+          const voiceLabel = stimulus.fields.audio_character || stimulus.fields.voice_type || 'custom';
+          const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_audio_${slugify(voiceLabel)}_${slugify(actor?.name || 'actor')}.${ext}`;
           if (audioInfo.blob) {
             downloadBlob(audioInfo.blob, filename);
           } else {
