@@ -1285,6 +1285,7 @@
               'Le TTS navigateur joue l\'audio en direct mais ne peut pas être capturé dans un fichier. Utilisez Azure Speech pour un audio exportable.',
               'Browser-TTS spielt Audio live ab, kann es aber nicht in eine Datei erfassen. Verwenden Sie Azure Speech für exportierbares Audio.'
             ), 'warning');
+            return; // Browser TTS cannot be captured — do not store placeholder as exportable audio
           }
 
           // Apply cybercriminal effects if needed
