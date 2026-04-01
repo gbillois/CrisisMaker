@@ -190,6 +190,13 @@
         }
         scenario.settings = { ...scenario.settings, ...providerSettings };
         normalizeProviderSettingsInPlace(scenario.settings);
+        // Preserve llm_prompts for restoration after appState init
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.llm_prompts) scenario._llm_prompts = parsed.llm_prompts;
+          } catch (_) { /* already handled above */ }
+        }
         return scenario;
       }
 

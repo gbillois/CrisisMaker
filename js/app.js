@@ -42,6 +42,11 @@
 
       const App = {
         init() {
+          // Restore LLM prompt texts from saved scenario data
+          if (appState.scenario._llm_prompts) {
+            restoreLLMPrompts(appState.scenario._llm_prompts);
+            delete appState.scenario._llm_prompts;
+          }
           this.bindBeforeUnload();
           this.startAutosave();
           this.render();
