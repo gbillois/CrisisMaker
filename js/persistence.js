@@ -23,6 +23,7 @@
         try {
           const exportData = JSON.parse(JSON.stringify(appState.scenario));
           exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' }; // never export keys
+          exportData.llm_prompts = extractLLMPrompts();
           const writable = await _fileHandle.createWritable();
           await writable.write(JSON.stringify(exportData, null, 2));
           await writable.close();
@@ -55,12 +56,34 @@
         }
       }
 
+      // ── LLM prompts persistence ──────────────────────────────────────
+      function extractLLMPrompts() {
+        const state = appState.llmState;
+        const prompts = {};
+        for (const zone of ['scenario', 'actors', 'stimulus', 'stimuli_batch']) {
+          if (state[zone] && state[zone].text) {
+            prompts[zone] = state[zone].text;
+          }
+        }
+        return prompts;
+      }
+
+      function restoreLLMPrompts(llmPrompts) {
+        if (!llmPrompts || typeof llmPrompts !== 'object') return;
+        for (const zone of ['scenario', 'actors', 'stimulus', 'stimuli_batch']) {
+          if (llmPrompts[zone] && appState.llmState[zone]) {
+            appState.llmState[zone].text = llmPrompts[zone];
+          }
+        }
+      }
+
       // Level 2: localStorage (always active)
       function saveLocal(showToast = true) {
         try {
           appState.scenario.updated_at = new Date().toISOString();
           const scenarioToSave = JSON.parse(JSON.stringify(appState.scenario));
           scenarioToSave.settings = { ...scenarioToSave.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' }; // never store keys in project data
+          scenarioToSave.llm_prompts = extractLLMPrompts();
           localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarioToSave));
           const settingsToSave = { ...appState.scenario.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
@@ -638,6 +661,9 @@
           const savedSpeechRegion = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion);
           if (savedSpeechRegion) appState.scenario.settings.azure_speech_region = savedSpeechRegion;
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
+          // Restore LLM prompt texts from saved data
+          appState.llmState = makeDefaultLLMState();
+          restoreLLMPrompts(data.llm_prompts);
           appState.route = 'project';
           appState.launchScreenOpen = false;
           App.render();
