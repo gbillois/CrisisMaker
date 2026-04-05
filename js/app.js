@@ -575,9 +575,11 @@
               const s = getStimulus(event.currentTarget.dataset.stimulusId);
               if (s) {
                 const tpl = getTemplateDefinition(s);
-                s.fields = deepClone(tpl.defaults);
+                saveStimulus(s, tpl.defaults, tt('Clear content', 'Effacer le contenu'));
                 s.generated_text = {};
                 s.manual_overrides = {};
+                appState.llmState.stimulus.lastFilledCount = 0;
+                appState.llmState.stimulus.error = null;
                 await autoSave();
                 App.render();
               }
