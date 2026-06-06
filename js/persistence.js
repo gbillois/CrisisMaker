@@ -4,6 +4,15 @@
 
       const supportsFileSystemAccess = () => typeof window !== 'undefined' && 'showSaveFilePicker' in window;
 
+      function buildProjectFileData() {
+        const exportData = JSON.parse(JSON.stringify(appState.scenario));
+        exportData.debrief = normalizeDebrief(exportData.debrief, exportData);
+        exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
+        exportData.llm_prompts = extractLLMPrompts();
+        delete exportData._llm_prompts;
+        return exportData;
+      }
+
       async function saveToFileFirstTime() {
         if (!supportsFileSystemAccess()) return false;
         try {
@@ -21,9 +30,7 @@
       async function writeToFile() {
         if (!_fileHandle) return false;
         try {
-          const exportData = JSON.parse(JSON.stringify(appState.scenario));
-          exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' }; // never export keys
-          exportData.llm_prompts = extractLLMPrompts();
+          const exportData = buildProjectFileData();
           const writable = await _fileHandle.createWritable();
           await writable.write(JSON.stringify(exportData, null, 2));
           await writable.close();
@@ -81,9 +88,7 @@
       function saveLocal(showToast = true) {
         try {
           appState.scenario.updated_at = new Date().toISOString();
-          const scenarioToSave = JSON.parse(JSON.stringify(appState.scenario));
-          scenarioToSave.settings = { ...scenarioToSave.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' }; // never store keys in project data
-          scenarioToSave.llm_prompts = extractLLMPrompts();
+          const scenarioToSave = buildProjectFileData();
           localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarioToSave));
           const settingsToSave = { ...appState.scenario.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
@@ -352,8 +357,7 @@
             zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
           }
           document.body.removeChild(sandbox);
-          const exportData = JSON.parse(JSON.stringify(appState.scenario));
-          exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
+          const exportData = buildProjectFileData();
           const json = JSON.stringify(exportData, null, 2);
           const crisisSlug = slugify(appState.scenario.name);
           zip.file(`${crisisSlug}.json`, json);
@@ -552,8 +556,7 @@
 
 
       async function saveScenarioToFile() {
-        const exportData = JSON.parse(JSON.stringify(appState.scenario));
-        exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
+        const exportData = buildProjectFileData();
         const json = JSON.stringify(exportData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         downloadBlob(blob, `${slugify(appState.scenario.name)}.json`);
@@ -666,6 +669,7 @@
           restoreLLMPrompts(data.llm_prompts);
           appState.route = 'project';
           appState.launchScreenOpen = false;
+          saveLocal(false);
           App.render();
           pushToast(tt('Scenario loaded successfully.', 'Scénario chargé avec succès.', 'Szenario erfolgreich geladen.'), 'success');
           if (zipImport?.imageCount) {

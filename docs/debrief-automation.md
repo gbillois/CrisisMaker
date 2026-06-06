@@ -17,6 +17,12 @@ Two generation paths are available:
 
 The HTML export uses the interactive renderer extracted from `NotPetyaTimeline/CrisisDebrifier.html`. The generated artifact loads its configuration through `window.TIMELINE_CONFIG`.
 
+## Project persistence
+
+The canonical `scenario.debrief` object is saved with the rest of the CrisisMaker project. The same normalized project serializer is used for browser autosave, Save-to-file, JSON export, and the project JSON embedded in ZIP exports. Loading a JSON or ZIP project restores the complete debrief, including visual settings, map configuration, phases, event positions, evidence, custom kind labels, and the optional Debrief LLM prompt.
+
+Older projects without a `debrief` object are migrated by generating a deterministic story reconstruction. Changes made in the embedded CrisisDebrifier editor are posted back to `scenario.debrief` and debounced into browser autosave.
+
 ## Recommended next automation steps
 
 The strongest future input is structured scenario-design information:

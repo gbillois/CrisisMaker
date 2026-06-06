@@ -48,6 +48,7 @@
             delete appState.scenario._llm_prompts;
           }
           this.bindBeforeUnload();
+          this.bindDebriefEditorBridge();
           this.startAutosave();
           this.render();
         },
@@ -56,6 +57,16 @@
         },
         startAutosave() {
           startAutoSave();
+        },
+        bindDebriefEditorBridge() {
+          window.addEventListener('message', (event) => {
+            if (event.data?.type !== 'crisismaker-debrief-change') return;
+            const frame = document.getElementById('debrief-editor-frame');
+            if (!frame || event.source !== frame.contentWindow) return;
+            applyDebriefEditorConfig(event.data.config, appState.scenario);
+            clearTimeout(window._debriefEditorSaveTimer);
+            window._debriefEditorSaveTimer = setTimeout(() => saveLocal(false), 350);
+          });
         },
         render() {
           const root = document.getElementById('app');
@@ -73,7 +84,7 @@
           bindCheckerEvents();
           bindStimuliSplitters();
           bindStimulusModalSplitter();
-          mountDebriefPreview();
+          mountDebriefEditor();
           renderToasts();
         }
       };
@@ -476,6 +487,7 @@
               appState.selectedStimulusId = null;
               appState.route = 'project';
               appState.launchScreenOpen = false;
+              saveLocal(false);
               App.render();
               pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.', 'Neues Szenario initialisiert.'), 'success');
               break;
@@ -485,6 +497,7 @@
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
               appState.route = 'project';
               appState.launchScreenOpen = false;
+              saveLocal(false);
               App.render();
               pushToast(tt('Example scenario loaded.', 'Scénario exemple chargé.', 'Beispielszenario geladen.'), 'success');
               break;

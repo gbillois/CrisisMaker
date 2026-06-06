@@ -3,6 +3,7 @@
         { id: 'detonation', label: 'The crisis · Detonation and escalation', range: 'H0 · Crisis day', start: 0.34, end: 0.76, color: '#dc3c28' },
         { id: 'fallout', label: 'After the crisis · Recovery and lessons', range: 'Days and weeks after', start: 0.76, end: 1, color: '#b4afa5' }
       ];
+      const DEBRIEF_KIND_LABELS = { context:'Context',intrusion:'Intrusion',exfiltration:'Exfiltration',attack:'Attack',impact:'Impact',threat:'Threat',regulatory:'Regulatory',media:'Media',decision:'Decision',recovery:'Recovery',leak:'Leak',lessons:'Lessons',milestone:'Milestone' };
 
       function makeEmptyDebrief(scenario = {}) {
         const clientName = scenario.client?.name || 'Organisation';
@@ -21,6 +22,7 @@
           },
           layout: { showMap: true, showEventList: true, showSeverity: true, showArtifacts: true, showPlayback: true, mapSide: 'right' },
           map: { mode: 'globe', label: 'Crisis footprint' },
+          kindLabels: deepClone(DEBRIEF_KIND_LABELS),
           phases: deepClone(DEBRIEF_PHASE_PRESETS),
           events: [],
           generated_at: null,
@@ -38,10 +40,11 @@
           theme: { ...base.theme, ...(input.theme || {}) },
           layout: { ...base.layout, ...(input.layout || {}) },
           map: { ...base.map, ...(input.map || {}) },
+          kindLabels: { ...base.kindLabels, ...(input.kindLabels || {}) },
           phases: Array.isArray(input.phases) && input.phases.length ? input.phases.map((phase, index) => ({ ...deepClone(DEBRIEF_PHASE_PRESETS[index] || DEBRIEF_PHASE_PRESETS[2]), ...phase, id: phase.id || `phase_${index + 1}` })) : base.phases,
           events: Array.isArray(input.events) ? input.events.map(normalizeDebriefEvent) : []
         };
-        return refreshDebriefPositions(normalized);
+        return normalized;
       }
 
       function normalizeDebriefEvent(event) {
@@ -107,8 +110,9 @@
       function refreshDebriefPositions(debrief) { const events=[...(debrief.events||[])].sort((a,b)=>Number(a.order||0)-Number(b.order||0)); events.forEach((event,index)=>{event.order=index;event.t=events.length===1?0:index/(events.length-1);}); debrief.events=events; return debrief; }
 
       function debriefToTimelineConfig(debrief) {
-        const clean=refreshDebriefPositions(deepClone(debrief));
-        return { meta:clean.meta,theme:clean.theme,layout:clean.layout,map:clean.map,phases:clean.phases,kindLabels:{context:'Context',intrusion:'Intrusion',exfiltration:'Exfiltration',attack:'Attack',impact:'Impact',threat:'Threat',regulatory:'Regulatory',media:'Media',decision:'Decision',recovery:'Recovery',leak:'Leak',lessons:'Lessons',milestone:'Milestone'},events:clean.events.map(({id,phase,dateLabel,t,title,location,coords,severity,kind,headline,body,artifacts,casualties,damageUSD})=>({id,phase,dateLabel,t,title,location,coords,severity,kind,headline,body,artifacts,casualties,damageUSD})) };
+        const clean=deepClone(debrief);
+        clean.events=(clean.events||[]).slice().sort((a,b)=>Number(a.t||0)-Number(b.t||0));
+        return { meta:clean.meta,theme:clean.theme,layout:clean.layout,map:clean.map,phases:clean.phases,kindLabels:{ ...DEBRIEF_KIND_LABELS, ...(clean.kindLabels || {}) },events:clean.events.map(({id,phase,dateLabel,t,title,location,coords,severity,kind,headline,body,artifacts,casualties,damageUSD})=>({id,phase,dateLabel,t,title,location,coords,severity,kind,headline,body,artifacts,casualties,damageUSD})) };
       }
 
       function buildDebriefHTML(debrief) {
@@ -171,74 +175,45 @@
         scenario.debrief = refreshDebriefPositions(current); return scenario.debrief;
       }
 
-      function mountDebriefPreview() {
-        const frame = document.getElementById('debrief-live-preview');
+      function buildDebriefEditorHTML(debrief) {
+        const configJson = JSON.stringify(debriefToTimelineConfig(debrief)).replace(/</g, '\\u003c').replace(/-->/g, '--\\u003e');
+        return CRISIS_DEBRIEF_EDITOR_SOURCE.replace('</head>', `<script>window.CRISISMAKER_INITIAL_CONFIG = ${configJson};<\/script></head>`);
+      }
+
+      function mountDebriefEditor() {
+        const frame = document.getElementById('debrief-editor-frame');
         if (!frame || !appState?.scenario?.debrief) return;
-        if (window._debriefPreviewUrl) URL.revokeObjectURL(window._debriefPreviewUrl);
-        window._debriefPreviewUrl = URL.createObjectURL(new Blob([buildDebriefHTML(appState.scenario.debrief)], { type:'text/html' }));
-        frame.src = window._debriefPreviewUrl;
+        if (window._debriefEditorUrl) URL.revokeObjectURL(window._debriefEditorUrl);
+        window._debriefEditorUrl = URL.createObjectURL(new Blob([buildDebriefEditorHTML(appState.scenario.debrief)], { type:'text/html' }));
+        frame.src = window._debriefEditorUrl;
+      }
+
+      function applyDebriefEditorConfig(config, scenario) {
+        if (!config || typeof config !== 'object') return;
+        const current = normalizeDebrief(scenario.debrief, scenario);
+        scenario.debrief = {
+          ...current,
+          ...deepClone(config),
+          schema_version: 2,
+          meta: { ...current.meta, ...(config.meta || {}) },
+          theme: { ...current.theme, ...(config.theme || {}) },
+          layout: { ...current.layout, ...(config.layout || {}) },
+          map: { ...current.map, ...(config.map || {}) },
+          kindLabels: { ...current.kindLabels, ...(config.kindLabels || {}) },
+          phases: Array.isArray(config.phases) ? deepClone(config.phases) : current.phases,
+          events: Array.isArray(config.events) ? config.events.map((event, index) => normalizeDebriefEvent({ ...event, order:index })) : current.events
+        };
       }
 
       function renderDebriefView() {
         const debrief = appState.scenario.debrief = normalizeDebrief(appState.scenario.debrief, appState.scenario);
-        refreshDebriefPositions(debrief);
-        const phaseOptions = debrief.phases.map((phase)=>`<option value="${escapeAttribute(phase.id)}">${escapeHtml(phase.label)}</option>`).join('');
         return `
-          <div class="debrief-toolbar card">
-            <div><strong>${tt('Scenario story reconstruction','Reconstruction narrative du scénario','Narrative Szenario-Rekonstruktion')}</strong><p>${tt('Reveal what really happened before, during, and after the exercise. This timeline is independent from the injects shown to participants.','Révélez ce qui s’est réellement passé avant, pendant et après l’exercice. Cette timeline est indépendante des injects montrés aux participants.','Zeigen Sie, was vor, während und nach der Übung wirklich geschah. Dieser Zeitplan ist unabhängig von den Injects.')}</p></div>
-            <div class="actions">
-              <button class="btn btn-secondary" data-action="debrief-rebuild">${tt('Rebuild story skeleton','Reconstruire l’arc narratif','Handlungsbogen neu erstellen')}</button>
-              <button class="btn btn-secondary" data-action="debrief-add-event">${tt('+ Add story step','+ Ajouter une étape','+ Handlungsschritt')}</button>
-              <button class="btn btn-secondary" data-action="debrief-export-config">${tt('Export config','Exporter la config','Konfiguration exportieren')}</button>
-              <button class="btn btn-primary" data-action="debrief-export-html">${tt('Export interactive reconstruction','Exporter la reconstruction interactive','Interaktive Rekonstruktion exportieren')}</button>
-            </div>
-          </div>
-
           ${renderLLMConfigBlock('debrief',
             tt('Example: Reconstruct the complete hidden story: initial compromise, attacker preparation, detonation, global business impacts, response, recovery, and root causes. Add locations and evidence.',
               'Exemple : reconstruis toute l’histoire cachée : compromission initiale, préparation de l’attaquant, déclenchement, impacts métier mondiaux, réponse, reprise et causes racines. Ajoute les lieux et les preuves.',
               'Beispiel: Rekonstruiere die vollständige verborgene Geschichte: Erstkompromittierung, Vorbereitung, Auslösung, globale Auswirkungen, Reaktion, Wiederherstellung und Ursachen.'),
-            { title:tt('Generate the story reconstruction with AI','Générer la reconstruction avec l’IA','Rekonstruktion mit KI generieren'), subtitle:tt('The LLM uses the scenario context to explain what truly happened. Injects are supporting context only and must never become debrief events.','Le LLM utilise le contexte du scénario pour expliquer ce qui s’est réellement passé. Les injects sont seulement un contexte secondaire et ne doivent jamais devenir des événements du debrief.','Das LLM erklärt anhand des Szenariokontexts, was wirklich geschah. Injects sind nur Kontext und dürfen keine Debrief-Ereignisse werden.'), generateLabel:tt('Generate reconstruction ✨','Générer la reconstruction ✨','Rekonstruktion generieren ✨'), successMessage:(count)=>tt(`${count} story steps generated. Review the reconstruction.`,`${count} étapes narratives générées. Vérifiez la reconstruction.`,`${count} Handlungsschritte generiert. Rekonstruktion prüfen.`) })}
-
-          <article class="card debrief-visual-card">
-            <div class="section-header"><div><h3>${tt('CrisisDebrifier live preview','Aperçu réel CrisisDebrifier','CrisisDebrifier-Live-Vorschau')}</h3><p>${tt('This is the same interactive renderer used by the exported HTML, including globe, map, playback, impacts, and artifacts.','Il s’agit du même renderer interactif que le HTML exporté, avec globe, carte, lecture, impacts et artefacts.','Dies ist derselbe interaktive Renderer wie im exportierten HTML, einschließlich Globus, Karte, Wiedergabe, Auswirkungen und Artefakten.')}</p></div></div>
-            <iframe id="debrief-live-preview" class="debrief-live-preview" title="CrisisDebrifier preview"></iframe>
-          </article>
-
-          <div class="debrief-grid">
-            <section class="debrief-editor">
-              <article class="card debrief-meta-card">
-                <div class="section-header"><div><h3>${tt('Reconstruction settings','Paramètres de reconstruction','Rekonstruktions-Einstellungen')}</h3></div></div>
-                <div class="form-grid">
-                  <label>${tt('Title','Titre','Titel')}<input data-debrief-bind="meta.title" value="${escapeAttribute(debrief.meta.title)}"></label>
-                  <label>${tt('Subtitle','Sous-titre','Untertitel')}<input data-debrief-bind="meta.subtitle" value="${escapeAttribute(debrief.meta.subtitle)}"></label>
-                  <label>${tt('Badge','Badge','Badge')}<input data-debrief-bind="meta.badge" value="${escapeAttribute(debrief.meta.badge)}"></label>
-                  <label>${tt('Visual style','Style visuel','Visueller Stil')}<select data-debrief-bind="theme.preset"><option value="cyber-dark" ${debrief.theme.preset==='cyber-dark'?'selected':''}>Cyber dark · testr.html</option><option value="wavestone" ${debrief.theme.preset==='wavestone'?'selected':''}>Wavestone</option></select></label>
-                  <label>${tt('Map type','Type de carte','Kartentyp')}<select data-debrief-bind="map.mode"><option value="globe" ${debrief.map.mode==='globe'?'selected':''}>${tt('Globe','Globe','Globus')}</option><option value="region" ${debrief.map.mode==='region'?'selected':''}>${tt('Regional map','Carte régionale','Regionalkarte')}</option></select></label>
-                  <label>${tt('Map position','Position de la carte','Kartenposition')}<select data-debrief-bind="layout.mapSide"><option value="right" ${debrief.layout.mapSide==='right'?'selected':''}>${tt('Right','Droite','Rechts')}</option><option value="left" ${debrief.layout.mapSide==='left'?'selected':''}>${tt('Left','Gauche','Links')}</option></select></label>
-                </div>
-              </article>
-
-              <div class="debrief-event-list">
-                ${debrief.events.map((event,index)=>`
-                  <article class="card debrief-event-card" style="border-left-color:${escapeAttribute(debrief.phases.find((phase)=>phase.id===event.phase)?.color || '#dc3c28')}">
-                    <div class="debrief-event-heading"><div><span class="pill">${escapeHtml(event.dateLabel || `Step ${index+1}`)}</span><strong>${index+1}. ${escapeHtml(event.title)}</strong></div><div class="actions"><button class="btn btn-xs" data-action="debrief-move-event-up" data-event-id="${event.id}" ${index===0?'disabled':''}>↑</button><button class="btn btn-xs" data-action="debrief-move-event-down" data-event-id="${event.id}" ${index===debrief.events.length-1?'disabled':''}>↓</button><button class="btn btn-xs btn-danger" data-action="debrief-delete-event" data-event-id="${event.id}">${tt('Delete','Supprimer','Löschen')}</button></div></div>
-                    <div class="form-grid">
-                      <label>${tt('Story step title','Titre de l’étape','Schritttitel')}<input data-debrief-event-bind="${event.id}.title" value="${escapeAttribute(event.title)}"></label>
-                      <label>${tt('Phase','Phase','Phase')}<select data-debrief-event-bind="${event.id}.phase">${phaseOptions.replace(`value="${escapeAttribute(event.phase)}"`,`value="${escapeAttribute(event.phase)}" selected`)}</select></label>
-                      <label>${tt('Time label','Libellé temporel','Zeitbezeichnung')}<input data-debrief-event-bind="${event.id}.dateLabel" value="${escapeAttribute(event.dateLabel)}" placeholder="J-21 · H0 · Day +5"></label>
-                      <label>${tt('Severity','Sévérité','Schweregrad')}<select data-debrief-event-bind="${event.id}.severity">${[1,2,3,4,5].map((v)=>`<option value="${v}" ${v===event.severity?'selected':''}>${v}</option>`).join('')}</select></label>
-                      <label>${tt('Location','Lieu','Ort')}<input data-debrief-event-bind="${event.id}.location" value="${escapeAttribute(event.location)}"></label>
-                      <label>${tt('Coordinates lat, lon','Coordonnées lat, lon','Koordinaten Lat, Lon')}<input data-debrief-event-bind="${event.id}.coords" value="${escapeAttribute(event.coords ? event.coords.join(', ') : '')}" placeholder="48.86, 2.35"></label>
-                      <label class="span-2">${tt('Narrative headline','Accroche narrative','Narrative Überschrift')}<input data-debrief-event-bind="${event.id}.headline" value="${escapeAttribute(event.headline)}"></label>
-                      <label class="span-2">${tt('What really happened','Ce qui s’est réellement passé','Was wirklich geschah')}<textarea rows="5" data-debrief-event-bind="${event.id}.body">${escapeHtml(event.body)}</textarea></label>
-                      <label>${tt('Impact','Impact','Auswirkung')}<input data-debrief-event-bind="${event.id}.casualties" value="${escapeAttribute(event.casualties)}"></label>
-                      <label>${tt('Damage / cost','Dommages / coût','Schaden / Kosten')}<input data-debrief-event-bind="${event.id}.damageUSD" value="${escapeAttribute(event.damageUSD)}"></label>
-                      <label class="span-2">${tt('Evidence and artifacts, one per line','Preuves et artefacts, un par ligne','Beweise und Artefakte, eines pro Zeile')}<textarea rows="2" data-debrief-event-bind="${event.id}.artifacts">${escapeHtml((event.artifacts||[]).join('\n'))}</textarea></label>
-                    </div>
-                  </article>`).join('')}
-              </div>
-            </section>
-            <aside class="card debrief-preview"><div class="section-header"><div><h3>${tt('Story arc','Arc narratif','Handlungsbogen')}</h3><p>${debrief.events.length} ${tt('reconstruction steps','étapes de reconstruction','Rekonstruktionsschritte')}</p></div></div><div class="debrief-preview-track">${debrief.phases.map((phase)=>`<div class="debrief-preview-phase" style="width:${(phase.end-phase.start)*100}%;background:${escapeAttribute(phase.color)}"><span>${escapeHtml(phase.label)}</span></div>`).join('')}${debrief.events.map((event)=>`<div class="debrief-preview-dot" style="left:${event.t*100}%;background:${escapeAttribute(debrief.phases.find((phase)=>phase.id===event.phase)?.color || '#dc3c28')}" title="${escapeAttribute(event.title)}"></div>`).join('')}</div><div class="debrief-preview-cards">${debrief.events.map((event)=>`<div class="debrief-preview-item"><span style="background:${escapeAttribute(debrief.phases.find((phase)=>phase.id===event.phase)?.color || '#dc3c28')}">${escapeHtml(event.dateLabel)}</span><div><strong>${escapeHtml(event.title)}</strong><p>${escapeHtml(event.headline)}</p></div></div>`).join('')}</div></aside>
-          </div>`;
+            { title:tt('Generate a new debrief with AI','Générer un nouveau debrief avec l’IA','Neues Debrief mit KI generieren'), subtitle:tt('The LLM creates a first story reconstruction from the scenario context. It explains the major arc and never turns participant injects into debrief events. The complete CrisisDebrifier editor below remains available for manual refinement.','Le LLM crée une première reconstruction narrative à partir du contexte du scénario. Il explique l’arc majeur et ne transforme jamais les injects participants en événements de debrief. L’éditeur CrisisDebrifier complet ci-dessous permet ensuite de l’affiner manuellement.','Das LLM erstellt aus dem Szenariokontext eine erste Rekonstruktion. Der vollständige CrisisDebrifier-Editor darunter ermöglicht die manuelle Überarbeitung.'), generateLabel:tt('Create new debrief ✨','Créer un nouveau debrief ✨','Neues Debrief erstellen ✨'), successMessage:(count)=>tt(`${count} story steps generated. Review them in CrisisDebrifier.`,`${count} étapes narratives générées. Vérifiez-les dans CrisisDebrifier.`,`${count} Handlungsschritte generiert. Prüfen Sie sie in CrisisDebrifier.`) })}
+          <section class="debrief-embedded-workspace" aria-label="CrisisDebrifier editor">
+            <iframe id="debrief-editor-frame" class="debrief-editor-frame" title="CrisisDebrifier timeline editor"></iframe>
+          </section>`;
       }
