@@ -73,6 +73,7 @@
           bindCheckerEvents();
           bindStimuliSplitters();
           bindStimulusModalSplitter();
+          mountDebriefPreview();
           renderToasts();
         }
       };
@@ -346,7 +347,14 @@
 
         document.querySelectorAll('[data-debrief-bind]').forEach((input) => {
           input.addEventListener('change', () => {
-            setByPath(appState.scenario.debrief, input.dataset.debriefBind, input.value);
+            const path = input.dataset.debriefBind;
+            setByPath(appState.scenario.debrief, path, input.value);
+            if (path === 'theme.preset') {
+              const theme = input.value === 'wavestone'
+                ? { preset:'wavestone', bg:'#F5F4F9', fg:'#3A3550', ink:'#16121F', accent:'#04F06A', panel:'#FFFFFF', line:'#E6E4EE', muted:'#6B6580', fontTitle:'Poppins', fontBody:'Inter', fontMono:'IBM Plex Mono' }
+                : { preset:'cyber-dark', bg:'#0d0b08', fg:'#e6dcc8', ink:'#f6f1e4', accent:'#dc3c28', panel:'#0a0907', line:'#2a2620', muted:'#9a9283', fontTitle:'Fraunces', fontBody:'Inter', fontMono:'JetBrains Mono' };
+              appState.scenario.debrief.theme = { ...appState.scenario.debrief.theme, ...theme };
+            }
             saveLocal(false);
             App.render();
           });
@@ -358,10 +366,13 @@
             const milestone = appState.scenario.debrief.events.find((item) => item.id === eventId);
             if (!milestone) return;
             let value = input.value;
-            if (property === 'offset_minutes' || property === 'severity') value = Number(value);
+            if (property === 'severity') value = Number(value);
             if (property === 'artifacts') value = value.split('\n').map((item) => item.trim()).filter(Boolean);
+            if (property === 'coords') {
+              const coords = value.split(/[,\s]+/).map(Number).filter(Number.isFinite);
+              value = coords.length === 2 ? coords : null;
+            }
             milestone[property] = value;
-            if (property === 'offset_minutes') milestone.dateLabel = formatDebriefOffset(value);
             refreshDebriefPositions(appState.scenario.debrief);
             saveLocal(false);
             App.render();
@@ -508,24 +519,24 @@
               break;
             case 'debrief-rebuild': {
               if (!appState.scenario.debrief.events.length || window.confirm(tt(
-                'Rebuild the debrief from the timeline? Current milestone edits will be replaced.',
-                'Reconstruire le debrief depuis la timeline ? Les modifications actuelles des jalons seront remplacées.',
-                'Debrief aus dem Zeitplan neu erstellen? Aktuelle Änderungen werden ersetzt.'
+                'Rebuild the scenario story? Current reconstruction edits will be replaced.',
+                'Reconstruire l’histoire du scénario ? Les modifications actuelles seront remplacées.',
+                'Szenario-Handlung neu erstellen? Aktuelle Änderungen werden ersetzt.'
               ))) {
                 appState.scenario.debrief = buildDebriefFromScenario(appState.scenario);
                 saveLocal(false);
                 App.render();
-                pushToast(tt('Debrief rebuilt from major timeline milestones.', 'Debrief reconstruit à partir des jalons majeurs de la timeline.', 'Debrief aus wichtigen Zeitplan-Meilensteinen neu erstellt.'), 'success');
+                pushToast(tt('Scenario story reconstruction rebuilt.', 'Reconstruction narrative du scénario recréée.', 'Narrative Szenario-Rekonstruktion neu erstellt.'), 'success');
               }
               break;
             }
             case 'debrief-add-event': {
-              const offset = Math.max(0, ...(appState.scenario.debrief.events || []).map((item) => Number(item.offset_minutes || 0))) + 30;
               appState.scenario.debrief.events.push(normalizeDebriefEvent({
-                id: uid('debrief'),
-                phase: 'response',
-                offset_minutes: offset,
-                title: tt('New major milestone', 'Nouveau jalon majeur', 'Neuer wichtiger Meilenstein'),
+                id: uid('story'),
+                phase: 'fallout',
+                order: appState.scenario.debrief.events.length,
+                dateLabel: tt('After the crisis', 'Après la crise', 'Nach der Krise'),
+                title: tt('New story step', 'Nouvelle étape narrative', 'Neuer Handlungsschritt'),
                 headline: '',
                 body: '',
                 severity: 3,
@@ -542,6 +553,19 @@
               refreshDebriefPositions(appState.scenario.debrief);
               saveLocal(false);
               App.render();
+              break;
+            }
+            case 'debrief-move-event-up':
+            case 'debrief-move-event-down': {
+              const events = appState.scenario.debrief.events;
+              const index = events.findIndex((item) => item.id === event.currentTarget.dataset.eventId);
+              const target = action === 'debrief-move-event-up' ? index - 1 : index + 1;
+              if (index >= 0 && target >= 0 && target < events.length) {
+                [events[index], events[target]] = [events[target], events[index]];
+                refreshDebriefPositions(appState.scenario.debrief);
+                saveLocal(false);
+                App.render();
+              }
               break;
             }
             case 'debrief-export-html': exportDebriefHTML(); break;

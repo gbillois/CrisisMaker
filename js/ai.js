@@ -350,20 +350,18 @@ Stimulus format:
         debrief(userInput, scenario) {
           const language = scenario.settings?.language || scenario.client?.language || 'en';
           const languageName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch' }[language] || 'English';
-          const stimuli = [...(scenario.stimuli || [])]
+          const supportingInjectContext = [...(scenario.stimuli || [])]
             .sort((a, b) => Number(a.timestamp_offset_minutes || 0) - Number(b.timestamp_offset_minutes || 0))
             .map((stimulus) => ({
-              id: stimulus.id,
               offset_minutes: Number(stimulus.timestamp_offset_minutes || 0),
               channel: stimulus.channel,
-              actor: (scenario.actors || []).find((actor) => actor.id === stimulus.actor_id)?.name || stimulus.source_label || '',
               title: cleanDebriefText(stimulus.fields?.subject || stimulus.fields?.headline || stimulus.fields?.title || stimulus.fields?.text || stimulus.name || ''),
               content: debriefStimulusText(stimulus).slice(0, 600)
             }));
           return {
-            systemPrompt: `You are a senior crisis-exercise facilitator preparing an after-action debrief.
+            systemPrompt: `You are a senior crisis scenario writer preparing the final reveal and story reconstruction shown after a crisis exercise.
 
-Your job is NOT to summarize every inject. Select only 5 to 10 decisive milestones that reveal escalation, decisions, participant trade-offs, communications, impacts, or recovery.
+Your output explains WHAT REALLY HAPPENED in the fictional scenario, including hidden events participants could not see. It is not a review of participant actions and it is never a list or summary of injects.
 
 SCENARIO:
 - Client: ${scenario.client?.name || ''}
@@ -372,17 +370,21 @@ SCENARIO:
 - Summary: ${scenario.scenario?.summary || ''}
 - Detailed context: ${scenario.scenario?.detailed_context || ''}
 
-TIMELINE STIMULI:
-${JSON.stringify(stimuli)}
+INJECTS SHOWN DURING THE EXERCISE — SUPPORTING CONTEXT ONLY, NEVER TURN THEM DIRECTLY INTO EVENTS:
+${JSON.stringify(supportingInjectContext)}
 
 INSTRUCTIONS:
-- Use only stimulus_id values present in TIMELINE STIMULI when linking a milestone
-- Prefer major turning points over routine updates
-- A milestone title states what changed, not the message format
-- headline is the question or angle facilitators should discuss
-- body explains what happened, why it mattered, and a possible lesson learned
-- Use exactly these phase ids: detection, escalation, response
+- Reconstruct a coherent causal story from before the first visible alert through recovery and root causes
+- Create 10 to 18 story events, including hidden attacker preparation, detonation, propagation, business impacts, stakeholder consequences, response, recovery, and lessons
+- Do not mention emails, SMS, articles, posts, injects, facilitators, or participants
+- Each title states a real scenario event
+- headline is a concise narrative hook explaining why the event matters
+- body explains what actually happened with concrete technical and business detail
+- Use exactly these phase ids: prelude, detonation, fallout
 - Severity is an integer from 1 to 5
+- Give each event a meaningful time label such as J-21, H0, H+2, Day +5, or Week +6
+- Add a real-world location and [latitude, longitude] coordinates whenever relevant, so the interactive globe can tell the story
+- Include impacts, costs, and evidence when relevant
 - Write all generated text in ${languageName}
 - Preserve chronological order
 - Return strict JSON only
@@ -390,23 +392,28 @@ INSTRUCTIONS:
 Return this structure:
 {
   "meta": {
-    "title": "Debrief title",
-    "subtitle": "Short subtitle"
+    "title": "Scenario operation or crisis name",
+    "subtitle": "— crisis reconstruction",
+    "badge": "SCENARIO REVEAL"
   },
   "events": [
     {
-      "stimulus_id": "existing stimulus id",
-      "phase": "detection | escalation | response",
-      "title": "What changed",
-      "headline": "Debrief discussion angle",
-      "body": "What happened, why it mattered, and lesson learned",
+      "phase": "prelude | detonation | fallout",
+      "dateLabel": "J-21 | H0 | Day +5",
+      "title": "What really happened",
+      "location": "City, country or meaningful global location",
+      "coords": [48.86, 2.35],
+      "headline": "Why this story event matters",
+      "body": "Concrete reconstruction of what actually happened",
       "severity": 1,
-      "kind": "milestone | regulatory | media | communication | response | threat | impact",
-      "artifacts": ["Relevant evidence or output"]
+      "kind": "context | intrusion | exfiltration | attack | impact | threat | regulatory | media | decision | recovery | leak | lessons",
+      "artifacts": ["Relevant evidence or trace"],
+      "casualties": "Optional human or operational impact",
+      "damageUSD": "Optional cost or financial exposure"
     }
   ]
 }`,
-            userPrompt: `DEBRIEF FACILITATOR GUIDANCE:\n${userInput || 'Select the most decisive milestones and propose useful discussion angles.'}`
+            userPrompt: `STORY RECONSTRUCTION GUIDANCE:\n${userInput || 'Reconstruct the complete hidden story and its major causal arc.'}`
           };
         }
       };

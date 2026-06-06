@@ -2778,6 +2778,16 @@
       align-items: start;
       margin-top: 18px;
     }
+    .debrief-visual-card { margin-top: 18px; padding: 18px; }
+    .debrief-live-preview {
+      width: 100%;
+      height: min(78vh, 820px);
+      min-height: 620px;
+      border: 0;
+      border-radius: 12px;
+      background: #0d0b08;
+      box-shadow: 0 18px 40px rgba(11,47,74,0.18);
+    }
     .debrief-editor,
     .debrief-event-list { display: grid; gap: 14px; }
     .debrief-meta-card,

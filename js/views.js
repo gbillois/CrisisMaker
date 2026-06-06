@@ -274,7 +274,7 @@
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgDebrief()}</div>
                       <strong>${tt('Debrief', 'Debrief', 'Debrief')}</strong>
-                      <p>${tt('Select major crisis milestones without AI or generate an editable first version with AI, then export an interactive debrief timeline.', 'Sélectionnez les jalons majeurs sans IA ou générez une première version éditable avec l’IA, puis exportez une timeline de debrief interactive.', 'Wählen Sie wichtige Krisenmeilensteine ohne KI oder erstellen Sie eine bearbeitbare erste Version mit KI und exportieren Sie einen interaktiven Debrief-Zeitplan.')}</p>
+                      <p>${tt('Reconstruct the complete hidden scenario story without AI or generate an editable reconstruction with AI, then reveal it through an interactive timeline.', 'Reconstruisez toute l’histoire cachée du scénario sans IA ou générez une reconstruction éditable avec l’IA, puis révélez-la dans une timeline interactive.', 'Rekonstruieren Sie die vollständige verborgene Szenario-Handlung ohne KI oder erstellen Sie eine bearbeitbare Rekonstruktion mit KI und zeigen Sie sie in einem interaktiven Zeitplan.')}</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgShieldCheck()}</div>
@@ -345,7 +345,7 @@
           },
           debrief: {
             title: tt('Crisis Debrief', 'Debrief de crise', 'Krisen-Debrief'),
-            subtitle: tt('Select major milestones, refine lessons learned, and export an interactive debrief timeline.', 'Sélectionnez les jalons majeurs, affinez les enseignements et exportez une timeline de debrief interactive.', 'Wählen Sie wichtige Meilensteine, verfeinern Sie Erkenntnisse und exportieren Sie einen interaktiven Debrief-Zeitplan.')
+            subtitle: tt('Reconstruct the hidden scenario story and reveal what truly happened.', 'Reconstruisez l’histoire cachée du scénario et révélez ce qui s’est réellement passé.', 'Rekonstruieren Sie die verborgene Szenario-Handlung und zeigen Sie, was wirklich geschah.')
           }
         };
         return map[appState.route] || null;
