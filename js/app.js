@@ -344,6 +344,30 @@
           });
         });
 
+        document.querySelectorAll('[data-debrief-bind]').forEach((input) => {
+          input.addEventListener('change', () => {
+            setByPath(appState.scenario.debrief, input.dataset.debriefBind, input.value);
+            saveLocal(false);
+            App.render();
+          });
+        });
+
+        document.querySelectorAll('[data-debrief-event-bind]').forEach((input) => {
+          input.addEventListener('change', () => {
+            const [eventId, property] = input.dataset.debriefEventBind.split('.');
+            const milestone = appState.scenario.debrief.events.find((item) => item.id === eventId);
+            if (!milestone) return;
+            let value = input.value;
+            if (property === 'offset_minutes' || property === 'severity') value = Number(value);
+            if (property === 'artifacts') value = value.split('\n').map((item) => item.trim()).filter(Boolean);
+            milestone[property] = value;
+            if (property === 'offset_minutes') milestone.dateLabel = formatDebriefOffset(value);
+            refreshDebriefPositions(appState.scenario.debrief);
+            saveLocal(false);
+            App.render();
+          });
+        });
+
         document.querySelectorAll('[data-action]').forEach((button) => {
           button.addEventListener('click', handleAction);
         });
@@ -361,7 +385,8 @@
           scenario:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
           actors:        { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
           stimulus:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
-          stimuli_batch: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
+          stimuli_batch: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
+          debrief:       { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
         };
       }
 
@@ -434,6 +459,7 @@
             case 'nav-scenario': appState.route = 'scenario'; App.render(); break;
             case 'nav-stimuli': appState.route = 'stimuli'; App.render(); break;
             case 'nav-library': appState.route = 'library'; App.render(); break;
+            case 'nav-debrief': appState.route = 'debrief'; App.render(); break;
             case 'new-scenario': {
               appState.scenario = emptyScenario();
               appState.selectedStimulusId = null;
@@ -480,6 +506,46 @@
             case 'clear-data':
               if (confirmClearData()) clearScenarioData();
               break;
+            case 'debrief-rebuild': {
+              if (!appState.scenario.debrief.events.length || window.confirm(tt(
+                'Rebuild the debrief from the timeline? Current milestone edits will be replaced.',
+                'Reconstruire le debrief depuis la timeline ? Les modifications actuelles des jalons seront remplacées.',
+                'Debrief aus dem Zeitplan neu erstellen? Aktuelle Änderungen werden ersetzt.'
+              ))) {
+                appState.scenario.debrief = buildDebriefFromScenario(appState.scenario);
+                saveLocal(false);
+                App.render();
+                pushToast(tt('Debrief rebuilt from major timeline milestones.', 'Debrief reconstruit à partir des jalons majeurs de la timeline.', 'Debrief aus wichtigen Zeitplan-Meilensteinen neu erstellt.'), 'success');
+              }
+              break;
+            }
+            case 'debrief-add-event': {
+              const offset = Math.max(0, ...(appState.scenario.debrief.events || []).map((item) => Number(item.offset_minutes || 0))) + 30;
+              appState.scenario.debrief.events.push(normalizeDebriefEvent({
+                id: uid('debrief'),
+                phase: 'response',
+                offset_minutes: offset,
+                title: tt('New major milestone', 'Nouveau jalon majeur', 'Neuer wichtiger Meilenstein'),
+                headline: '',
+                body: '',
+                severity: 3,
+                artifacts: []
+              }));
+              refreshDebriefPositions(appState.scenario.debrief);
+              saveLocal(false);
+              App.render();
+              break;
+            }
+            case 'debrief-delete-event': {
+              const eventId = event.currentTarget.dataset.eventId;
+              appState.scenario.debrief.events = appState.scenario.debrief.events.filter((item) => item.id !== eventId);
+              refreshDebriefPositions(appState.scenario.debrief);
+              saveLocal(false);
+              App.render();
+              break;
+            }
+            case 'debrief-export-html': exportDebriefHTML(); break;
+            case 'debrief-export-config': exportDebriefConfig(); break;
             case 'checker-set-mode': {
               const newMode = event.currentTarget.dataset.mode;
               if (newMode && appState.checkerState.mode !== newMode) {
@@ -821,6 +887,23 @@
                 const addedCount = await handleMultiStimulusResult(configs, state.text);
                 state.loading = false;
                 state.lastFilledCount = addedCount;
+                App.render();
+              } catch (err) {
+                state.loading = false;
+                state.error = classifyLLMError(err);
+                App.render();
+              }
+              break;
+            }
+            case 'llm-generate-debrief': {
+              const state = appState.llmState.debrief;
+              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              try {
+                const result = await AITextGenerator.generateDebrief(state.text, appState.scenario);
+                const debrief = applyLLMDebrief(result, appState.scenario);
+                state.loading = false;
+                state.lastFilledCount = debrief.events.length;
+                saveLocal(false);
                 App.render();
               } catch (err) {
                 state.loading = false;

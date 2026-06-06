@@ -22,6 +22,10 @@
           const { systemPrompt, userPrompt } = LLMConfigPrompts.actors(userInput, scenario);
           return this.generate('llm_config_actors', systemPrompt, userPrompt);
         },
+        async generateDebrief(userInput, scenario) {
+          const { systemPrompt, userPrompt } = LLMConfigPrompts.debrief(userInput, scenario);
+          return this.generate('llm_config_debrief', systemPrompt, userPrompt, false, 5000);
+        },
         async generateStimulusConfig(userInput, scenario, actors) {
           const { systemPrompt, userPrompt } = LLMConfigPrompts.stimulus(userInput, scenario, actors);
           return this.generate('llm_config_stimulus', systemPrompt, userPrompt);
@@ -341,6 +345,68 @@ Stimulus format:
   "fields": { /* all channel fields filled with realistic content */ }
 }`,
             userPrompt: `STIMULUS DESCRIPTION:\n${userInput}`
+          };
+        },
+        debrief(userInput, scenario) {
+          const language = scenario.settings?.language || scenario.client?.language || 'en';
+          const languageName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch' }[language] || 'English';
+          const stimuli = [...(scenario.stimuli || [])]
+            .sort((a, b) => Number(a.timestamp_offset_minutes || 0) - Number(b.timestamp_offset_minutes || 0))
+            .map((stimulus) => ({
+              id: stimulus.id,
+              offset_minutes: Number(stimulus.timestamp_offset_minutes || 0),
+              channel: stimulus.channel,
+              actor: (scenario.actors || []).find((actor) => actor.id === stimulus.actor_id)?.name || stimulus.source_label || '',
+              title: cleanDebriefText(stimulus.fields?.subject || stimulus.fields?.headline || stimulus.fields?.title || stimulus.fields?.text || stimulus.name || ''),
+              content: debriefStimulusText(stimulus).slice(0, 600)
+            }));
+          return {
+            systemPrompt: `You are a senior crisis-exercise facilitator preparing an after-action debrief.
+
+Your job is NOT to summarize every inject. Select only 5 to 10 decisive milestones that reveal escalation, decisions, participant trade-offs, communications, impacts, or recovery.
+
+SCENARIO:
+- Client: ${scenario.client?.name || ''}
+- Sector: ${scenario.client?.sector || ''}
+- Crisis type: ${scenario.scenario?.type || ''}
+- Summary: ${scenario.scenario?.summary || ''}
+- Detailed context: ${scenario.scenario?.detailed_context || ''}
+
+TIMELINE STIMULI:
+${JSON.stringify(stimuli)}
+
+INSTRUCTIONS:
+- Use only stimulus_id values present in TIMELINE STIMULI when linking a milestone
+- Prefer major turning points over routine updates
+- A milestone title states what changed, not the message format
+- headline is the question or angle facilitators should discuss
+- body explains what happened, why it mattered, and a possible lesson learned
+- Use exactly these phase ids: detection, escalation, response
+- Severity is an integer from 1 to 5
+- Write all generated text in ${languageName}
+- Preserve chronological order
+- Return strict JSON only
+
+Return this structure:
+{
+  "meta": {
+    "title": "Debrief title",
+    "subtitle": "Short subtitle"
+  },
+  "events": [
+    {
+      "stimulus_id": "existing stimulus id",
+      "phase": "detection | escalation | response",
+      "title": "What changed",
+      "headline": "Debrief discussion angle",
+      "body": "What happened, why it mattered, and lesson learned",
+      "severity": 1,
+      "kind": "milestone | regulatory | media | communication | response | threat | impact",
+      "artifacts": ["Relevant evidence or output"]
+    }
+  ]
+}`,
+            userPrompt: `DEBRIEF FACILITATOR GUIDANCE:\n${userInput || 'Select the most decisive milestones and propose useful discussion angles.'}`
           };
         }
       };

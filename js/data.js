@@ -122,6 +122,7 @@
           makeStimulus('email_internal',    actors[0].id, 355)
         ];
         scenario.stimuli = samples;
+        scenario.debrief = buildDebriefFromScenario(scenario);
         return scenario;
       }
 
@@ -135,6 +136,7 @@
           scenario: { ...base.scenario, type: base.scenario.type, summary: '', detailed_context: '', start_date: '', timezone: base.scenario.timezone },
           actors: [],
           stimuli: [],
+          debrief: makeEmptyDebrief({ ...base, client: { ...base.client, name: '' } }),
           settings: { ...base.settings, ...settingsOverrides }
         };
       }
@@ -210,6 +212,7 @@
           settings: { ...base.settings, ...(input.settings || {}) },
           actors: Array.isArray(input.actors) && input.actors.length ? input.actors : base.actors,
           stimuli: Array.isArray(input.stimuli) ? input.stimuli.map(normalizeStimulus) : base.stimuli,
+          debrief: normalizeDebrief(input.debrief, { ...base, ...input }),
           custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : []
         };
         normalizeProviderSettingsInPlace(merged.settings);
@@ -277,6 +280,7 @@
         }
         // Add custom_templates array
         if (!Array.isArray(raw.custom_templates)) raw.custom_templates = [];
+        if (!raw.debrief) raw.debrief = buildDebriefFromScenario(raw);
         // Migrate audio_message stimuli from old voice_type/attacker_voice to audio_character
         if (Array.isArray(raw.stimuli)) {
           raw.stimuli.forEach(s => {

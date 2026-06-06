@@ -1493,9 +1493,11 @@
       .nav-topbar-left {
         width: auto;
         flex: 1;
-        overflow: visible;
-        justify-content: space-around;
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
       }
+      .nav-topbar-left::-webkit-scrollbar { display: none; }
       .nav-icon-btn {
         min-width: 44px;
         height: 56px;
@@ -2755,4 +2757,126 @@
     .checker-checklist-progress-text {
       font-size: 0.82rem;
       color: var(--muted);
+    }
+
+    /* ── Debrief editor ── */
+    .debrief-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+    .debrief-toolbar p,
+    .debrief-source-note,
+    .debrief-automation-note p,
+    .debrief-preview-item p { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin: 5px 0 0; }
+    .debrief-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
+      gap: 18px;
+      align-items: start;
+      margin-top: 18px;
+    }
+    .debrief-editor,
+    .debrief-event-list { display: grid; gap: 14px; }
+    .debrief-meta-card,
+    .debrief-event-card,
+    .debrief-preview { padding: 18px; }
+    .debrief-event-card {
+      border-left: 5px solid var(--primary);
+    }
+    .debrief-event-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .debrief-event-heading > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .debrief-event-heading strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .debrief-source-note {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .debrief-preview {
+      position: sticky;
+      top: 96px;
+      max-height: calc(100vh - 118px);
+      overflow-y: auto;
+    }
+    .debrief-preview-track {
+      position: relative;
+      height: 58px;
+      display: flex;
+      overflow: visible;
+      margin: 24px 8px 30px;
+      border-radius: 999px;
+      background: var(--surface-alt);
+    }
+    .debrief-preview-phase {
+      height: 8px;
+      margin-top: 25px;
+      position: relative;
+    }
+    .debrief-preview-phase:first-child { border-radius: 999px 0 0 999px; }
+    .debrief-preview-phase:last-child { border-radius: 0 999px 999px 0; }
+    .debrief-preview-phase span {
+      position: absolute;
+      top: -24px;
+      left: 4px;
+      width: max-content;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .debrief-preview-dot {
+      position: absolute;
+      top: 19px;
+      width: 20px;
+      height: 20px;
+      margin-left: -10px;
+      border: 4px solid white;
+      border-radius: 50%;
+      box-shadow: 0 4px 10px rgba(11,47,74,0.22);
+    }
+    .debrief-preview-cards { display: grid; gap: 10px; }
+    .debrief-preview-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      padding: 11px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.7);
+    }
+    .debrief-preview-item > span {
+      align-self: start;
+      padding: 4px 7px;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 0.66rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .debrief-preview-item strong { font-size: 0.83rem; line-height: 1.35; }
+    .debrief-automation-note {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(48,195,143,0.24);
+    }
+    .debrief-automation-note strong { color: #167956; font-size: 0.8rem; }
+
+    @media (max-width: 1150px) {
+      .debrief-grid { grid-template-columns: 1fr; }
+      .debrief-preview { position: static; max-height: none; }
+      .debrief-toolbar { align-items: flex-start; flex-direction: column; }
     }

@@ -60,7 +60,7 @@
       function extractLLMPrompts() {
         const state = appState.llmState;
         const prompts = {};
-        for (const zone of ['scenario', 'actors', 'stimulus', 'stimuli_batch']) {
+        for (const zone of ['scenario', 'actors', 'stimulus', 'stimuli_batch', 'debrief']) {
           if (state[zone] && state[zone].text) {
             prompts[zone] = state[zone].text;
           }
@@ -70,7 +70,7 @@
 
       function restoreLLMPrompts(llmPrompts) {
         if (!llmPrompts || typeof llmPrompts !== 'object') return;
-        for (const zone of ['scenario', 'actors', 'stimulus', 'stimuli_batch']) {
+        for (const zone of ['scenario', 'actors', 'stimulus', 'stimuli_batch', 'debrief']) {
           if (llmPrompts[zone] && appState.llmState[zone]) {
             appState.llmState[zone].text = llmPrompts[zone];
           }
