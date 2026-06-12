@@ -132,7 +132,7 @@
         sms_notification: { label: 'SMS / Notification', color: '#f59e0b', category: 'Mobile' },
         internal_memo: { label: 'Internal memo', color: '#4b5563', category: 'Corporate' },
         audio_message: { label: 'Audio message', color: '#e11d48', category: 'Audio' },
-        post_darkweb: { label: 'Dark Web Forum', color: '#22c55e', category: 'Dark Web' }
+        post_darkweb: { label: 'Darkweb forum post', color: '#22c55e', category: 'Dark Web' }
       };
 
       const ARTICLE_TEMPLATE_LIBRARY = {
@@ -425,7 +425,7 @@
           fields: [field('title', 'Audio title', 'text')]
         },
         post_darkweb: {
-          label: 'Dark Web Forum',
+          label: 'Darkweb forum post',
           template_id: 'darkweb',
           defaults: {
             forum_name: 'BreachTalk',
