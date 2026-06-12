@@ -2908,3 +2908,54 @@
       .debrief-preview { position: static; max-height: none; }
       .debrief-toolbar { align-items: flex-start; flex-direction: column; }
     }
+
+    /* ── Dark Web Forum ───────────────────────────────────────────── */
+    .dw-page { width: 780px; background: #0d0d0d; color: #c8c8c8; font-family: 'Courier New', 'Lucida Console', monospace; font-size: 13px; border: 1px solid #2a2a2a; }
+    .dw-page.hd { width: 860px; }
+
+    .dw-header { background: #111; border-bottom: 1px solid #1a3a1a; padding: 10px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .dw-logo { font-size: 18px; font-weight: 700; color: #22c55e; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 8px #22c55e88; }
+    .dw-tagline { font-size: 11px; color: #555; flex: 1; }
+    .dw-nav-items { display: flex; gap: 12px; font-size: 11px; color: #22c55e; }
+    .dw-nav-items span { cursor: pointer; }
+    .dw-nav-items span:hover { text-decoration: underline; }
+
+    .dw-hd-nav { margin-left: auto; display: flex; gap: 14px; font-size: 11px; color: #888; }
+    .dw-hd-nav span { cursor: pointer; }
+    .dw-hd-login-btn { color: #22c55e; }
+    .dw-hd-reg-btn { color: #f59e0b; }
+
+    .dw-hd-stats-bar { background: #0a0a0a; border-bottom: 1px solid #1e1e1e; padding: 5px 16px; display: flex; gap: 20px; font-size: 11px; color: #555; }
+    .dw-hd-stats-bar strong { color: #22c55e; }
+
+    .dw-breadcrumb { background: #111; border-bottom: 1px solid #1e1e1e; padding: 6px 16px; font-size: 11px; color: #555; }
+
+    .dw-thread-title { background: #141414; border-bottom: 1px solid #222; padding: 10px 16px; font-size: 15px; font-weight: 700; color: #e0e0e0; }
+
+    .dw-hd-thread-meta { background: #111; border-bottom: 1px solid #1e1e1e; padding: 5px 16px; display: flex; gap: 20px; font-size: 11px; color: #555; }
+    .dw-hd-thread-meta strong { color: #aaa; }
+
+    .dw-post { display: grid; grid-template-columns: 140px 1fr; border-bottom: 1px solid #1e1e1e; min-height: 200px; }
+
+    .dw-user-panel { background: #111; border-right: 1px solid #1e1e1e; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+    .dw-avatar-img { width: 64px; height: 64px; border-radius: 4px; border: 1px solid #22c55e44; object-fit: cover; }
+    .dw-avatar-placeholder { width: 64px; height: 64px; border-radius: 4px; border: 1px solid #22c55e44; background: #1a1a1a; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #22c55e; }
+    .dw-username { font-size: 12px; font-weight: 700; color: #22c55e; word-break: break-all; }
+    .dw-user-rank { font-size: 10px; color: #f59e0b; background: #1a1200; border: 1px solid #f59e0b44; border-radius: 2px; padding: 1px 5px; margin-top: 2px; }
+    .dw-user-stat { font-size: 10px; color: #555; width: 100%; text-align: left; }
+    .dw-stat-label { color: #777; }
+    .dw-hd-pgp-badge { margin-top: 6px; font-size: 9px; color: #22c55e; border: 1px solid #22c55e44; border-radius: 2px; padding: 2px 6px; background: #001a08; }
+
+    .dw-post-body { background: #0d0d0d; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .dw-post-meta { display: flex; gap: 12px; font-size: 11px; color: #444; border-bottom: 1px dashed #1e1e1e; padding-bottom: 8px; }
+    .dw-post-num { color: #22c55e; font-weight: 700; }
+    .dw-post-date { color: #555; }
+    .dw-post-content { font-size: 12.5px; color: #c8c8c8; line-height: 1.6; flex: 1; }
+    .dw-post-content p { margin: 0 0 6px; }
+    .dw-post-actions { display: flex; gap: 14px; font-size: 11px; color: #22c55e; border-top: 1px dashed #1e1e1e; padding-top: 8px; }
+    .dw-action { cursor: pointer; }
+    .dw-action:hover { text-decoration: underline; }
+    .dw-action-mirror { color: #f59e0b; }
+
+    .dw-footer { background: #111; border-top: 1px solid #1e1e1e; padding: 8px 16px; display: flex; gap: 20px; font-size: 11px; color: #555; }
+    .dw-footer strong { color: #888; }

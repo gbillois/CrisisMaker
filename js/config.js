@@ -131,7 +131,8 @@
         press_release: { label: 'Press release', color: '#7c3aed', category: 'Corporate' },
         sms_notification: { label: 'SMS / Notification', color: '#f59e0b', category: 'Mobile' },
         internal_memo: { label: 'Internal memo', color: '#4b5563', category: 'Corporate' },
-        audio_message: { label: 'Audio message', color: '#e11d48', category: 'Audio' }
+        audio_message: { label: 'Audio message', color: '#e11d48', category: 'Audio' },
+        post_darkweb: { label: 'Dark Web Forum', color: '#22c55e', category: 'Dark Web' }
       };
 
       const ARTICLE_TEMPLATE_LIBRARY = {
@@ -422,5 +423,41 @@
             audio_watermark_text: 'EXERCISE'
           },
           fields: [field('title', 'Audio title', 'text')]
+        },
+        post_darkweb: {
+          label: 'Dark Web Forum',
+          template_id: 'darkweb',
+          defaults: {
+            forum_name: 'BreachTalk',
+            forum_tagline: 'The Underground Exchange — since 2019',
+            thread_title: '[LEAK] StonaWave pharma — 2.3TB data dump — patient records + R&D',
+            thread_category: 'Data Leaks & Trading',
+            author_name: 'ph4rm_l34ker',
+            author_avatar: '',
+            author_rank: 'Elite Member',
+            author_posts: '4,891',
+            author_reputation: '★★★★☆',
+            date: 'Mar 15, 2026 — 08:47 UTC',
+            message: 'Dropping this here for the community.\n\nWe got in via a 0day on their VPN appliances (CVE-2026-21337) three weeks ago. Stayed undetected for 18 days.\n\nWhat\'s in the dump:\n- 1.2TB patient data (names, DOB, treatments, clinical trial records)\n- 680GB internal R&D documents (pipeline drugs, synthesis processes)\n- 400GB financial records (contracts, invoices, M&A due diligence)\n- Full AD dump (90k+ accounts, hashes included)\n\nWe\'re giving them 72h to pay $25M in XMR before we start releasing.\n\nSample proof: [redacted].onion/stonawave-proof-march2026\n\nBTC wallet for direct contact: [REDACTED]\n\nDon\'t bother with the authorities — we\'re already 3 hops deep.',
+            reply_count: '247',
+            views_count: '18,432',
+            has_avatar: false
+          },
+          fields: [
+            field('forum_name', 'Forum name', 'text'),
+            field('forum_tagline', 'Forum tagline', 'text'),
+            field('thread_title', 'Thread title', 'text'),
+            field('thread_category', 'Category', 'text'),
+            field('author_name', 'Author name', 'text'),
+            field('has_avatar', 'Use avatar image', 'checkbox'),
+            field('author_avatar', 'Avatar image', 'photo_upload'),
+            field('author_rank', 'Author rank', 'text'),
+            field('author_posts', 'Post count', 'text'),
+            field('author_reputation', 'Reputation', 'text'),
+            field('date', 'Date', 'text'),
+            field('message', 'Message', 'textarea'),
+            field('reply_count', 'Replies', 'text'),
+            field('views_count', 'Views', 'text')
+          ]
         }
       };
