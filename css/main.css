@@ -666,10 +666,16 @@
       zoom: 0.92;
       transform-origin: top center;
     }
+    .stimulus-modal-right .preview-stage.video-stimulus-preview {
+      zoom: 0.644;
+    }
 
     @media (max-width: 1680px) {
       .stimulus-modal-right .preview-stage {
         zoom: 0.86;
+      }
+      .stimulus-modal-right .preview-stage.video-stimulus-preview {
+        zoom: 0.602;
       }
     }
 

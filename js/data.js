@@ -125,7 +125,7 @@
           makeStimulus('email_authority',   actors[3].id, 160),
           makeStimulus('email_internal',    actors[7].id, 175),
           makeStimulus('article_press',     actors[2].id, 195, 'nyt'),
-          makeStimulus('breaking_news_tv',  actors[2].id, 210),
+          makeStimulus('breaking_news_tv',  actors[2].id, 210, 'cnn'),
           makeStimulus('internal_memo',     actors[1].id, 240),
           makeStimulus('email_internal',    actors[7].id, 255),
           makeStimulus('press_release',     actors[1].id, 270),

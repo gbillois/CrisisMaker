@@ -1281,7 +1281,7 @@
                     ${stimulus.channel !== 'audio_message' ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>` : ''}
                   </div>
                   <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
-                    <div class="preview-stage">
+                    <div class="preview-stage${stimulus.channel === 'breaking_news_tv' ? ' video-stimulus-preview' : ''}">
                       ${renderStimulusPreview(stimulus)}
                     </div>
                   </div>
