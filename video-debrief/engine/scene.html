@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts-local.css">
+<style>
+  /* ════════════════════════════════════════════════════════════════
+     VIDEO DEBRIEFER — generic deterministic scene engine.
+     Driven by window.PROJECT (+ window.TIMING in build mode).
+     In preview mode (?preview=1) the project arrives via postMessage
+     and VO durations are estimated from text length.
+     ════════════════════════════════════════════════════════════════ */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { background:#000; width:1920px; height:1080px; overflow:hidden; }
+  #stage { position:absolute; width:1920px; height:1080px; background:var(--c-bg); overflow:hidden;
+           font-family:var(--f-body); color:var(--c-fg); }
+  .scene { position:absolute; inset:0; opacity:0; }
+  canvas#map, canvas#grain { position:absolute; inset:0; }
+  .eyebrow { font-family:var(--f-mono); font-size:22px; letter-spacing:0.32em;
+             text-transform:uppercase; color:var(--c-muted); font-weight:500; }
+  .sc-eyebrow { position:absolute; top:96px; left:160px; }
+  .sc-head { position:absolute; top:140px; left:160px; font-size:64px; font-weight:700;
+             font-family:var(--f-display); color:var(--c-ink); }
+
+  /* cold-open */
+  .co-wrap { position:absolute; inset:0; display:flex; flex-direction:column;
+             align-items:center; justify-content:center; }
+  .co-eyebrow { position:absolute; top:84px; left:0; right:0; text-align:center; }
+  .co-date { font-family:var(--f-mono); font-weight:500; font-size:118px;
+             letter-spacing:0.12em; color:var(--c-ink); }
+  .co-kicker { font-family:var(--f-mono); font-size:28px; letter-spacing:0.14em;
+               color:var(--c-accent); margin-top:34px; text-align:center; max-width:1500px; }
+  .co-title { font-family:var(--f-display); font-weight:800; letter-spacing:0.02em;
+              line-height:1.02; position:relative; color:var(--c-ink); text-align:center; }
+  .co-sub { font-size:30px; font-weight:400; color:var(--c-muted2);
+            letter-spacing:0.06em; margin-top:38px; }
+
+  /* chain */
+  .node { position:absolute; width:310px; }
+  .node.up { bottom:560px; }
+  .node.down { top:600px; }
+  .node .nd-date { font-family:var(--f-mono); font-size:24px; color:var(--c-warn);
+                   letter-spacing:0.08em; margin-bottom:12px; }
+  .node .nd-title { font-family:var(--f-display); font-weight:700; font-size:32px;
+                    line-height:1.2; margin-bottom:10px; color:var(--c-ink); }
+  .node .nd-sub { font-size:21px; color:var(--c-muted2); line-height:1.45; }
+  .node.up .nd-date { margin-bottom:0; margin-top:12px; }
+  .chain-dot { position:absolute; top:529px; width:22px; height:22px; border-radius:50%;
+               background:var(--c-warn); box-shadow:0 0 24px var(--c-warn); }
+  .chain-line { position:absolute; left:190px; top:538px; height:3px; width:0;
+                background:linear-gradient(90deg,var(--c-warn),var(--c-accent)); }
+
+  /* map-focus / map-trace shared panel */
+  .mf-panel { position:absolute; left:160px; top:330px; width:640px; }
+  .mf-stat { font-family:var(--f-display); font-weight:800; line-height:1;
+             color:var(--c-accent); letter-spacing:-0.02em; }
+  .mf-statsub { font-size:30px; color:var(--c-fg); opacity:0.85; margin-top:10px; width:580px; line-height:1.45; }
+  .mf-bullets { margin-top:50px; }
+  .mf-bullet { font-family:var(--f-mono); font-size:26px; color:var(--c-fg);
+               margin-bottom:16px; letter-spacing:0.06em; }
+  .mf-bullet::before { content:'— '; color:var(--c-accent); }
+  .mt-big { font-family:var(--f-display); font-weight:800; font-size:104px; line-height:1.05; color:var(--c-good); }
+  .mt-sub { font-size:30px; color:var(--c-fg); opacity:0.85; line-height:1.5; margin-top:20px; width:640px; }
+  .mt-strip { margin-top:48px; font-family:var(--f-mono); font-size:28px; color:var(--c-goodsoft);
+              letter-spacing:0.05em; line-height:1.7; }
+  .mt-footer { margin-top:24px; font-size:27px; color:var(--c-muted2); font-style:italic; }
+
+  /* map-spread */
+  .ms-list { position:absolute; right:150px; top:280px; width:640px; }
+  .corp { margin-bottom:30px; border-left:4px solid var(--c-accent); padding-left:24px; }
+  .corp .c-name { font-family:var(--f-display); font-weight:700; font-size:38px;
+                  letter-spacing:0.02em; color:var(--c-ink); }
+  .corp .c-fig { font-family:var(--f-mono); font-size:23px; color:var(--c-accentsoft); margin-top:4px; }
+  .ms-bottom { position:absolute; left:160px; bottom:110px; font-family:var(--f-mono);
+               font-size:30px; letter-spacing:0.18em; color:var(--c-fg); text-transform:uppercase; }
+  .ms-bottom b { color:var(--c-accent); }
+
+  /* stat-grid */
+  .sg-grid { position:absolute; left:160px; right:160px; top:320px; display:grid;
+             grid-template-columns:1fr 1fr; gap:70px 90px; }
+  .fact .f-big { font-family:var(--f-display); font-weight:800; font-size:78px; line-height:1.08;
+                 letter-spacing:-0.01em; color:var(--c-ink); }
+  .fact .f-sub { font-size:26px; color:var(--c-muted2); margin-top:14px; line-height:1.5; }
+  .fact .f-tag { font-family:var(--f-mono); font-size:21px; letter-spacing:0.24em;
+                 text-transform:uppercase; color:var(--c-muted); margin-bottom:16px; }
+
+  /* lessons */
+  .scene.lessons { background:var(--lessons-bg); }
+  .ls-eyebrow { position:absolute; top:110px; left:160px; color:var(--c-good); }
+  .ls-list { position:absolute; left:160px; top:250px; width:1640px; }
+  .lesson { display:flex; gap:40px; margin-bottom:58px; align-items:baseline; }
+  .lesson .l-num { font-family:var(--f-mono); font-size:34px; color:var(--c-good); font-weight:500; }
+  .lesson .l-txt { font-family:var(--f-display); font-weight:600; font-size:46px;
+                   line-height:1.25; color:var(--lessons-fg); }
+  .ls-final { position:absolute; left:160px; bottom:130px; font-family:var(--f-display);
+              font-weight:800; font-size:84px; line-height:1.15; letter-spacing:-0.01em;
+              color:var(--lessons-fg); }
+  .ls-final span { color:var(--c-good); }
+
+  /* image */
+  .img-frame { position:absolute; inset:0; overflow:hidden; background:#000; }
+  .img-frame img { position:absolute; left:50%; top:50%; width:1920px; min-height:1080px;
+                   object-fit:cover; }
+  .img-shade { position:absolute; inset:0;
+               background:linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.75) 100%); }
+  .img-caption { position:absolute; left:160px; bottom:120px; max-width:1300px; }
+  .img-caption .ic-eyebrow { margin-bottom:18px; color:var(--c-accentsoft); }
+  .img-caption .ic-text { font-family:var(--f-display); font-weight:700; font-size:54px;
+                          line-height:1.2; color:#fff; text-shadow:0 2px 24px rgba(0,0,0,0.6); }
+
+  /* endcard */
+  .scene.endcard { background:var(--c-bg); display:flex; flex-direction:column;
+                   align-items:center; justify-content:center; }
+  .ec-title { font-family:var(--f-display); font-weight:800; font-size:108px;
+              letter-spacing:0.04em; color:var(--c-ink); }
+  .ec-sub { font-family:var(--f-mono); font-size:27px; letter-spacing:0.34em;
+            color:var(--c-muted); margin-top:26px; text-transform:uppercase; }
+  .ec-brand { position:absolute; bottom:110px; font-family:var(--f-mono); font-size:22px;
+              letter-spacing:0.3em; color:var(--c-muted); text-transform:uppercase; }
+  .ec-wave { margin-top:60px; }
+
+  #vignette { position:absolute; inset:0; pointer-events:none;
+              background:radial-gradient(130% 130% at 50% 42%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%); }
+  #fade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="map" width="1920" height="1080"></canvas>
+  <div id="scenes"></div>
+  <canvas id="grain" width="480" height="270"
+          style="width:1920px;height:1080px;opacity:0.07;mix-blend-mode:overlay"></canvas>
+  <div id="vignette"></div>
+  <div id="fade"></div>
+</div>
+
+<script src="land.js"></script>
+<script>
+// build mode: project.js + timing.js exist next to this file; preview mode: postMessage.
+const PREVIEW = /[?&]preview=1/.test(location.search);
+if (!PREVIEW) {
+  document.write('<script src="project.js"><\/script><script src="timing.js"><\/script>');
+}
+</script>
+<script>
+/* ───────────────────────── helpers ───────────────────────── */
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,t) => a + (b-a)*t;
+const prg = (t,t0,t1) => clamp((t-t0)/(t1-t0), 0, 1);
+const easeOut = p => 1 - Math.pow(1-p, 3);
+const easeInOut = p => p<0.5 ? 4*p*p*p : 1 - Math.pow(-2*p+2,3)/2;
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; } }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function hexRGB(h){ const m=/^#?([0-9a-f]{6})$/i.exec(h||''); if(!m) return [255,69,48];
+  const n=parseInt(m[1],16); return [n>>16&255,n>>8&255,n&255]; }
+
+/* ───────────────────────── themes ───────────────────────── */
+const THEMES = {
+  'wavestone': {
+    bg:'#0B0716', ink:'#FFFFFF', fg:'rgba(255,255,255,0.85)',
+    muted:'rgba(255,255,255,0.55)', muted2:'rgba(255,255,255,0.62)',
+    accent:'#FF4530', accentsoft:'#FF8A7A', warn:'#E8A33D', good:'#04F06A', goodsoft:'#A6FACA',
+    land:'#272040', landline:'rgba(255,255,255,0.10)', dimland:'#1A1530',
+    lessonsBg:'radial-gradient(120% 120% at 25% 15%, #5226E0 0%, #451DC7 38%, #2D1380 100%)',
+    lessonsFg:'#FFFFFF',
+    fDisplay:"'Poppins',sans-serif", fBody:"'Inter',sans-serif", fMono:"'IBM Plex Mono',monospace",
+    fontsLoad:['800 200px Poppins','700 60px Poppins','600 46px Poppins','400 30px Inter','500 24px "IBM Plex Mono"'],
+  },
+  'cyber-dark': {
+    bg:'#0d0b08', ink:'#f6f1e4', fg:'rgba(230,220,200,0.88)',
+    muted:'rgba(230,220,200,0.50)', muted2:'rgba(230,220,200,0.62)',
+    accent:'#dc3c28', accentsoft:'#e88a72', warn:'#d4a03c', good:'#30c38f', goodsoft:'#bdeedd',
+    land:'#221c12', landline:'rgba(230,220,200,0.12)', dimland:'#17130c',
+    lessonsBg:'linear-gradient(135deg, #1a140c 0%, #0d0b08 100%)',
+    lessonsFg:'#f6f1e4',
+    fDisplay:"'Fraunces',serif", fBody:"'Inter',sans-serif", fMono:"'JetBrains Mono',monospace",
+    fontsLoad:['700 200px Fraunces','700 60px Fraunces','600 46px Fraunces','400 30px Inter','500 24px "JetBrains Mono"'],
+  },
+};
+
+/* ───────────────────────── state ───────────────────────── */
+let PROJECT = window.PROJECT || null;
+let TIMING = window.TIMING || null;
+let THEME = null;
+let SC = [];          // [{spec, tw (timing window), el, anim(t), order}]
+let mapC, grainC, ACC;
+
+/* preview VO duration estimate: chars/sec by language */
+const CPS = { fr: 15.0, en: 14.2, es: 14.5, de: 13.5, it: 14.5, default: 14.5 };
+function estimateTiming(project){
+  const lead = (project.pacing&&project.pacing.lead)||0.8;
+  const gap = (project.pacing&&project.pacing.gap)||0.55;
+  const tail = (project.pacing&&project.pacing.tail)||4.8;
+  const cps = CPS[(project.meta&&project.meta.lang)||'fr'] || CPS.default;
+  let t = lead; const scenes = [];
+  (project.scenes||[]).forEach(s => {
+    const d = Math.max(3, (s.vo||'').length / cps);
+    scenes.push({ id:s.id, voStart:t, voEnd:t+d });
+    t += d + gap;
+  });
+  return { scenes, total: t - gap + tail, fps: 24 };
+}
+
+/* ───────────────────────── map shared ───────────────────────── */
+function proj(cam, lon, lat){
+  return [960 + (lon-cam.lon)*cam.s, 540 - (lat-cam.lat)*cam.s];
+}
+function camLerp(a,b,p){
+  return { lon:lerp(a.lon,b.lon,p), lat:lerp(a.lat,b.lat,p),
+           s:Math.exp(lerp(Math.log(a.s),Math.log(b.s),p)) };
+}
+function camOf(spec){
+  const c = spec.camera || {};
+  if (c.center) return { lon:c.center[0], lat:c.center[1], s:c.scale||22 };
+  return { lon:10, lat:24, s:5.6 }; // world default
+}
+function drawLand(cam, alpha, dimmed){
+  mapC.save(); mapC.globalAlpha = alpha;
+  mapC.beginPath();
+  for (const poly of window.LAND){
+    let first = true;
+    for (const [lon,lat] of poly){
+      const [x,y] = proj(cam, lon, lat);
+      if (first){ mapC.moveTo(x,y); first=false; } else mapC.lineTo(x,y);
+    }
+    mapC.closePath();
+  }
+  mapC.fillStyle = dimmed ? THEME.dimland : THEME.land;
+  mapC.fill();
+  mapC.strokeStyle = THEME.landline; mapC.lineWidth = 1; mapC.stroke();
+  mapC.restore();
+}
+function pulse(x, y, t0, t, rgb, maxR=70, n=3){
+  for (let i=0;i<n;i++){
+    const p = ((t - t0)*0.55 + i/n) % 1;
+    if (t < t0) continue;
+    mapC.beginPath(); mapC.arc(x, y, 8 + p*maxR, 0, 7);
+    mapC.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(0.55*(1-p)).toFixed(3)})`;
+    mapC.lineWidth = 2.4; mapC.stroke();
+  }
+}
+function dot(x,y,r,color,glow){
+  if (glow){ mapC.shadowColor = glow; mapC.shadowBlur = 18; }
+  mapC.beginPath(); mapC.arc(x,y,r,0,7); mapC.fillStyle = color; mapC.fill();
+  mapC.shadowBlur = 0;
+}
+function arcLine(from, to, p, color, lw=2){
+  if (p <= 0) return;
+  const mx=(from[0]+to[0])/2, my=(from[1]+to[1])/2;
+  const dx=to[0]-from[0], dy=to[1]-from[1];
+  const dist=Math.hypot(dx,dy)||1;
+  const cx=mx - dy/dist*dist*0.22, cy=my + dx/dist*dist*0.22;
+  mapC.beginPath();
+  const N=48;
+  for (let i=0;i<=N*p;i++){
+    const u=i/N;
+    const x=(1-u)*(1-u)*from[0]+2*(1-u)*u*cx+u*u*to[0];
+    const y=(1-u)*(1-u)*from[1]+2*(1-u)*u*cy+u*u*to[1];
+    if (i===0) mapC.moveTo(x,y); else mapC.lineTo(x,y);
+  }
+  mapC.strokeStyle=color; mapC.lineWidth=lw;
+  mapC.shadowColor=color; mapC.shadowBlur=6;
+  mapC.stroke(); mapC.shadowBlur=0;
+}
+function drawGrain(frame){
+  const r = mulberry32(frame*7919+13);
+  const img = grainC.createImageData(480,270);
+  for (let i=0;i<img.data.length;i+=4){
+    const v = r()*255|0;
+    img.data[i]=v; img.data[i+1]=v; img.data[i+2]=v; img.data[i+3]=255;
+  }
+  grainC.putImageData(img,0,0);
+}
+
+/* ───────────────────── cue distribution ───────────────────── */
+/* Each reveal unit may carry `at` (sec, relative to VO start). Missing cues
+   are spread evenly across the scene's VO duration. */
+function resolveCues(units, tw){
+  const dur = tw.voEnd - tw.voStart;
+  const n = units.length;
+  return units.map((u, i) => (typeof u.at === 'number')
+    ? tw.voStart + u.at
+    : tw.voStart + dur * (0.08 + 0.84 * (n === 1 ? 0.3 : i/(n-1))));
+}
+function show(el, t, t0, dur=0.7, rise=26){
+  const p = easeOut(prg(t, t0, t0+dur));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1-p)*rise}px)`;
+  return p;
+}
+
+/* ───────────────────── scene builders ─────────────────────
+   Each builder(spec, el) fills el and returns animate(t, tw, op). */
+const BUILDERS = {
+
+  'cold-open'(spec, el){
+    el.innerHTML = `
+      <div class="co-eyebrow eyebrow">${esc(spec.eyebrow)}</div>
+      <div class="co-wrap">
+        <div class="co-date">${esc(spec.dateLine)}</div>
+        <div class="co-kicker">${esc(spec.kicker)}</div>
+        <div class="co-title" style="font-size:${spec.titleSize||158}px">${esc(spec.title)}</div>
+        <div class="co-sub">${esc(spec.subtitle)}</div>
+      </div>`;
+    const [eb, date, kick, title, sub] =
+      ['.co-eyebrow','.co-date','.co-kicker','.co-title','.co-sub'].map(s => el.querySelector(s));
+    return (t, tw) => {
+      const r = mulberry32(Math.round(t*240)*31+7);
+      show(eb, t, tw.voStart-0.5, 0.8, 10);
+      const dp = prg(t, tw.voStart-0.1, tw.voStart+1.1);
+      const flick = dp < 1 ? (r() < 0.25+dp*0.75 ? 1 : 0.15) : 1;
+      date.style.opacity = dp > 0 ? (0.2+0.8*dp)*flick : 0;
+      const dur = tw.voEnd - tw.voStart;
+      const tRev = tw.voStart + (typeof spec.titleAt==='number' ? spec.titleAt : dur*0.72);
+      const tp = prg(t, tRev, tRev+1.0);
+      title.style.opacity = easeOut(tp);
+      title.style.transform = `scale(${lerp(1.06,1.0,easeOut(tp))})`;
+      const g = clamp(1-(t-tRev)/1.4, 0, 1);
+      if (tp > 0 && g > 0 && spec.glitch !== false){
+        const gx=(r()-0.5)*14*g, gy=(r()-0.5)*4*g;
+        title.style.textShadow = `${gx}px ${gy}px 0 ${THEME.accent}BB, ${-gx}px ${-gy}px 0 ${THEME.good}99`;
+      } else title.style.textShadow = 'none';
+      const rec = easeOut(prg(t, tRev-0.2, tRev+0.6));
+      date.style.transform = `translateY(${-rec*120}px) scale(${1-rec*0.55})`;
+      if (rec > 0) date.style.opacity = (1-rec*0.75)*(dp>0?1:0);
+      show(kick, t, tw.voStart+dur*0.16, 0.8);
+      kick.style.opacity = Math.min(parseFloat(kick.style.opacity)||0, 1-rec);
+      show(sub, t, tRev+1.9, 0.9);
+    };
+  },
+
+  'chain'(spec, el){
+    const nodes = spec.nodes || [];
+    let html = `<div class="sc-eyebrow eyebrow" style="color:var(--c-warn)">${esc(spec.eyebrow)}</div>
+                <div class="sc-head">${esc(spec.heading)}</div><div class="chain-line"></div>`;
+    el.innerHTML = html;
+    const x0 = 160, step = nodes.length > 1 ? Math.min(340, 1500/(nodes.length-1)) : 0;
+    nodes.forEach((n,i) => {
+      const x = x0 + i*step;
+      const d = document.createElement('div');
+      d.className = 'node ' + (i%2 ? 'down' : 'up');
+      d.style.left = x + 'px';
+      const parts = [`<div class="nd-date">${esc(n.date)}</div>`,
+                     `<div class="nd-title">${esc(n.title)}</div>`,
+                     `<div class="nd-sub">${esc(n.sub)}</div>`];
+      d.innerHTML = i%2 ? parts.join('') : parts[1]+parts[2]+parts[0];
+      el.appendChild(d);
+      const c = document.createElement('div');
+      c.className = 'chain-dot'; c.style.left = x + 'px';
+      el.appendChild(c);
+    });
+    const eb = el.querySelector('.sc-eyebrow'), head = el.querySelector('.sc-head'),
+          line = el.querySelector('.chain-line'),
+          els = el.querySelectorAll('.node'), dots = el.querySelectorAll('.chain-dot');
+    return (t, tw) => {
+      show(eb, t, tw.voStart-0.3, 0.7, 12);
+      show(head, t, tw.voStart, 0.8);
+      const cues = resolveCues(nodes, tw);
+      nodes.forEach((n,i) => {
+        show(els[i], t, cues[i], 0.7, i%2 ? 30 : -30);
+        dots[i].style.opacity = prg(t, cues[i], cues[i]+0.4);
+      });
+      const dur = tw.voEnd - tw.voStart;
+      line.style.width = (easeInOut(prg(t, tw.voStart+dur*0.08, tw.voEnd-1.2))
+                          * (x0 + (nodes.length-1)*step + 60 - 190)) + 'px';
+    };
+  },
+
+  'map-focus'(spec, el){
+    const bullets = spec.bullets || [];
+    el.innerHTML = `
+      <div class="sc-eyebrow eyebrow" style="color:var(--c-accentsoft)">${esc(spec.eyebrow)}</div>
+      <div class="sc-head">${esc(spec.heading)}</div>
+      <div class="mf-panel">
+        <div class="mf-stat" style="font-size:${spec.statSize||170}px"></div>
+        <div class="mf-statsub">${esc(spec.statLabel)}</div>
+        <div class="mf-bullets">${bullets.map(b=>`<div class="mf-bullet">${esc(b.text||b)}</div>`).join('')}</div>
+      </div>`;
+    const eb=el.querySelector('.sc-eyebrow'), head=el.querySelector('.sc-head'),
+          stat=el.querySelector('.mf-stat'), ssub=el.querySelector('.mf-statsub'),
+          bels=el.querySelectorAll('.mf-bullet');
+    const statVal = spec.stat && spec.stat.value, statSuffix = (spec.stat && spec.stat.suffix) || '';
+    const lang = (PROJECT.meta&&PROJECT.meta.lang)||'fr';
+    return (t, tw, op, mapEnv) => {
+      show(eb, t, tw.voStart-0.3, 0.7, 12);
+      show(head, t, tw.voStart, 0.8);
+      const dur = tw.voEnd - tw.voStart;
+      const statAt = tw.voStart + (typeof spec.statAt==='number'?spec.statAt:dur*0.18);
+      const sp = prg(t, statAt, statAt+1.3);
+      stat.style.opacity = sp > 0 ? 1 : 0;
+      if (typeof statVal === 'number'){
+        const v = Math.round(easeOut(sp)*statVal);
+        const r = statVal >= 1000 ? Math.round(v/100)*100 : v;
+        stat.textContent = r.toLocaleString(lang==='fr'?'fr-FR':'en-US') + statSuffix;
+      } else stat.textContent = (statVal||'') + statSuffix;
+      show(ssub, t, statAt+0.8, 0.8);
+      const cues = resolveCues(bullets.map(b => typeof b==='object'?b:{}), tw);
+      bels.forEach((b,i) => show(b, t, Math.max(cues[i], statAt+1.6), 0.5, 16));
+      // canvas: epicenter pulse + scatter dots
+      if (mapEnv && spec.epicenter){
+        const { cam, alpha } = mapEnv;
+        mapC.save(); mapC.globalAlpha = alpha;
+        const det = tw.voStart + (typeof spec.impactAt==='number'?spec.impactAt:dur*0.1);
+        const epi = proj(cam, spec.epicenter[0], spec.epicenter[1]);
+        if (t > det){
+          const flare = clamp(1-(t-det)/0.5, 0, 1);
+          if (flare > 0) dot(epi[0], epi[1], 14+60*(1-flare)*flare*4, `rgba(${ACC[0]},${ACC[1]},${ACC[2]},${0.25*flare})`);
+          dot(epi[0], epi[1], 9, THEME.accent, THEME.accent);
+          pulse(epi[0], epi[1], det, t, ACC, 26*cam.s/5.6);
+        }
+        const anchors = spec.dotAnchors && spec.dotAnchors.length ? spec.dotAnchors : [spec.epicenter];
+        const r = mulberry32(2026);
+        for (let i=0;i<(spec.dotCount==null?60:spec.dotCount);i++){
+          const a = anchors[i % anchors.length];
+          const lon=a[0]+(r()-0.5)*2.4, lat=a[1]+(r()-0.5)*1.6, rr=r();
+          const t0 = det + 1.2 + rr*(dur*0.55);
+          const p = prg(t, t0, t0+0.5);
+          if (p > 0) dot(...proj(cam,lon,lat), 3.4*p*Math.min(cam.s/12,1.6)+1.2,
+                         `rgba(${ACC[0]},${ACC[1]},${ACC[2]},${0.5+0.4*p})`);
+        }
+        mapC.restore();
+      }
+    };
+  },
+
+  'map-spread'(spec, el){
+    const stamps = spec.stamps || [];
+    el.innerHTML = `
+      <div class="sc-eyebrow eyebrow" style="color:var(--c-accentsoft)">${esc(spec.eyebrow)}</div>
+      <div class="sc-head">${esc(spec.heading)}</div>
+      <div class="ms-list">${stamps.map(s =>
+        `<div class="corp"><div class="c-name">${esc(s.name)}</div><div class="c-fig">${esc(s.fig)}</div></div>`).join('')}</div>
+      <div class="ms-bottom">${spec.bottom ? esc(spec.bottom.text||spec.bottom) : ''}
+        ${spec.bottom && spec.bottom.strong ? ' <b>'+esc(spec.bottom.strong)+'</b>' : ''}</div>`;
+    const eb=el.querySelector('.sc-eyebrow'), head=el.querySelector('.sc-head'),
+          cels=el.querySelectorAll('.corp'), bottom=el.querySelector('.ms-bottom');
+    return (t, tw, op, mapEnv) => {
+      show(eb, t, tw.voStart-0.3, 0.7, 12);
+      show(head, t, tw.voStart+0.2, 0.8);
+      const cues = resolveCues(stamps, tw);
+      cels.forEach((c,i) => show(c, t, cues[i], 0.6, 22));
+      show(bottom, t, tw.voEnd-1.6, 0.9);
+      if (mapEnv && spec.origin){
+        const { cam, alpha } = mapEnv;
+        mapC.save(); mapC.globalAlpha = alpha;
+        const origin = proj(cam, spec.origin[0], spec.origin[1]);
+        dot(origin[0], origin[1], 7, THEME.accent, THEME.accent);
+        stamps.forEach((h,i) => {
+          if (!h.coords) return;
+          const t0 = cues[i] - 1.1;
+          const ap = easeInOut(prg(t, t0, t0+1.1));
+          const target = proj(cam, h.coords[0], h.coords[1]);
+          arcLine(origin, target, ap, `rgba(${ACC[0]},${ACC[1]},${ACC[2]},0.65)`, 2.2);
+          if (ap >= 1){
+            dot(target[0], target[1], 7, THEME.accent, THEME.accent);
+            pulse(target[0], target[1], t0+1.1, t, ACC, 40, 2);
+          }
+        });
+        const r = mulberry32(4242);
+        const extra = spec.spreadDots==null ? 40 : spec.spreadDots;
+        const dur = tw.voEnd - tw.voStart;
+        for (let i=0;i<extra;i++){
+          const lon=-160+r()*320, lat=-45+r()*110;
+          // keep dots roughly on land by sampling anchor cities
+          const C=[[ -0.12,51.5],[13.4,52.5],[2.35,48.86],[-3.7,40.4],[9.19,45.46],[28.98,41.01],
+                   [31.23,30.04],[77.2,28.6],[103.85,1.29],[139.69,35.69],[151.21,-33.87],[-46.63,-23.55],
+                   [-99.13,19.43],[-79.38,43.65],[-118.24,34.05],[55.27,25.2],[126.98,37.57],[121.47,31.23],
+                   [18.42,-33.92],[36.82,-1.29],[14.42,50.08],[21.01,52.23],[4.35,50.85],[24.94,60.17],
+                   [-6.26,53.35],[-9.14,38.74],[12.5,41.9],[-77.0,38.9],[-71.06,42.36],[-95.37,29.76]];
+          const a = C[i % C.length];
+          const at = 1.5 + r()*(dur*0.7);
+          const p = prg(t, tw.voStart+at, tw.voStart+at+0.4);
+          if (p > 0) dot(...proj(cam, a[0]+(r()-0.5)*1.5, a[1]+(r()-0.5)*1.5),
+                         2.6*p+0.8, `rgba(${ACC[0]},${ACC[1]},${ACC[2]},${0.35+0.35*p})`);
+        }
+        mapC.restore();
+      }
+    };
+  },
+
+  'map-trace'(spec, el){
+    el.innerHTML = `
+      <div class="sc-eyebrow eyebrow" style="color:var(--c-good)">${esc(spec.eyebrow)}</div>
+      <div class="sc-head">${esc(spec.heading)}</div>
+      <div class="mf-panel" style="width:700px">
+        <div class="mt-big">${esc(spec.big)}</div>
+        <div class="mt-sub">${esc(spec.sub)}</div>
+        <div class="mt-strip">${esc(spec.strip).replace(/\n/g,'<br>')}</div>
+        <div class="mt-footer">${esc(spec.footer)}</div>
+      </div>`;
+    const eb=el.querySelector('.sc-eyebrow'), head=el.querySelector('.sc-head'),
+          big=el.querySelector('.mt-big'), sub=el.querySelector('.mt-sub'),
+          strip=el.querySelector('.mt-strip'), footer=el.querySelector('.mt-footer');
+    const trail = spec.trail || [];
+    const GOOD = hexRGB(THEME.good);
+    return (t, tw, op, mapEnv) => {
+      show(eb, t, tw.voStart-0.3, 0.7, 12);
+      show(head, t, tw.voStart, 0.8);
+      const dur = tw.voEnd - tw.voStart;
+      show(strip, t, tw.voStart+dur*0.12, 0.9);
+      show(big, t, tw.voStart+(typeof spec.bigAt==='number'?spec.bigAt:dur*0.44), 0.8);
+      show(sub, t, tw.voStart+(typeof spec.bigAt==='number'?spec.bigAt+2:dur*0.58), 0.8);
+      show(footer, t, tw.voEnd-2.6, 0.8);
+      if (mapEnv && trail.length){
+        const { cam, alpha } = mapEnv;
+        mapC.save(); mapC.globalAlpha = alpha;
+        mapC.font = `500 24px ${THEME.fMono.split(',')[0].replace(/'/g,'"')}`;
+        let prev = null;
+        const cues = resolveCues(trail, { voStart: tw.voStart+1.0, voEnd: tw.voStart+1.0+dur*0.3 });
+        trail.forEach((s,i) => {
+          const at = cues[i];
+          const gp = prg(t, at, at+0.7);
+          const g = proj(cam, s.coords[0], s.coords[1]);
+          if (prev){
+            const lp = easeInOut(prg(t, at-0.7, at+0.3));
+            arcLine(prev, g, lp, `rgba(${GOOD[0]},${GOOD[1]},${GOOD[2]},0.55)`, 2);
+          }
+          if (gp > 0){
+            dot(g[0], g[1], 7*gp, THEME.good, THEME.good);
+            pulse(g[0], g[1], at+0.3, t, GOOD, 55, 2);
+            mapC.fillStyle = `rgba(${GOOD[0]},${GOOD[1]},${GOOD[2]},${gp})`;
+            mapC.fillText(s.label||'', g[0]+(s.dx==null?24:s.dx), g[1]+(s.dy==null?-18:s.dy));
+          }
+          prev = g;
+        });
+        mapC.restore();
+      }
+    };
+  },
+
+  'stat-grid'(spec, el){
+    const facts = spec.facts || [];
+    el.innerHTML = `
+      <div class="sc-eyebrow eyebrow">${esc(spec.eyebrow)}</div>
+      <div class="sc-head">${esc(spec.heading)}</div>
+      <div class="sg-grid">${facts.map(f => `
+        <div class="fact">
+          <div class="f-tag">${esc(f.tag)}</div>
+          <div class="f-big">${esc(f.big).replace(/\n/g,'<br>')}</div>
+          <div class="f-sub">${esc(f.sub)}</div>
+        </div>`).join('')}</div>`;
+    const eb=el.querySelector('.sc-eyebrow'), head=el.querySelector('.sc-head'),
+          fels=el.querySelectorAll('.fact');
+    return (t, tw) => {
+      show(eb, t, tw.voStart-0.3, 0.7, 12);
+      show(head, t, tw.voStart, 0.8);
+      const cues = resolveCues(facts, tw);
+      facts.forEach((f,i) => {
+        show(fels[i], t, cues[i], 0.7, 26);
+        if (f.counter){     // {to, suffix} animated number
+          const np = easeOut(prg(t, cues[i], cues[i]+1.2));
+          fels[i].querySelector('.f-big').textContent =
+            Math.round(np*f.counter.to).toLocaleString('fr-FR') + (f.counter.suffix||'');
+        }
+      });
+    };
+  },
+
+  'lessons'(spec, el){
+    el.classList.add('lessons');
+    const lessons = spec.lessons || [];
+    el.innerHTML = `
+      <svg width="1920" height="1080" style="position:absolute;inset:0" viewBox="0 0 1920 1080" fill="none">
+        <path class="w1" d="M -50 980 C 500 760, 1100 1090, 1970 820" stroke="${THEME.good}" stroke-width="3" opacity="0.85"/>
+        <path class="w2" d="M -50 1040 C 520 820, 1150 1150, 1970 880" stroke="${THEME.lessonsFg}" stroke-width="2" opacity="0.35"/>
+      </svg>
+      <div class="ls-eyebrow eyebrow">${esc(spec.eyebrow)}</div>
+      <div class="ls-list">${lessons.map((l,i) => `
+        <div class="lesson"><div class="l-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="l-txt">${esc(l.text||l)}</div></div>`).join('')}</div>
+      <div class="ls-final">${esc(spec.finalLine1)}<br><span>${esc(spec.finalLine2)}</span></div>`;
+    const eb=el.querySelector('.ls-eyebrow'), list=el.querySelector('.ls-list'),
+          lels=el.querySelectorAll('.lesson'), fin=el.querySelector('.ls-final'),
+          w1=el.querySelector('.w1'), w2=el.querySelector('.w2');
+    return (t, tw) => {
+      show(eb, t, tw.voStart+0.4, 0.8, 12);
+      const dur = tw.voEnd - tw.voStart;
+      const cues = resolveCues(lessons.map(l => typeof l==='object'?l:{}),
+                               { voStart: tw.voStart+1.2, voEnd: tw.voStart+dur*0.62 });
+      lessons.forEach((l,i) => show(lels[i], t, cues[i], 0.8, 30));
+      const finAt = tw.voStart + (typeof spec.finalAt==='number'?spec.finalAt:dur*0.74);
+      const fp = easeOut(prg(t, finAt, finAt+1.0));
+      list.style.opacity = 1 - fp*0.65;
+      show(fin, t, finAt, 1.0, 34);
+      const ph = t*9;
+      w1.setAttribute('transform', `translate(${-ph%80},0)`);
+      w2.setAttribute('transform', `translate(${(ph*0.6)%60-30},0)`);
+    };
+  },
+
+  'image'(spec, el){
+    el.innerHTML = `
+      <div class="img-frame"><img src="${spec.src||''}"><div class="img-shade"></div></div>
+      <div class="img-caption">
+        <div class="ic-eyebrow eyebrow">${esc(spec.eyebrow)}</div>
+        <div class="ic-text">${esc(spec.caption)}</div>
+      </div>`;
+    const img=el.querySelector('img'), eb=el.querySelector('.ic-eyebrow'),
+          cap=el.querySelector('.ic-text');
+    const kb = spec.kenburns !== false;
+    return (t, tw) => {
+      const p = prg(t, tw.voStart-0.6, tw.voEnd+0.6);
+      const sc = kb ? lerp(1.06, 1.16, p) : 1.0;
+      const dx = kb ? lerp(-12, 12, p) : 0;
+      img.style.transform = `translate(calc(-50% + ${dx}px), -50%) scale(${sc})`;
+      show(eb, t, tw.voStart+0.3, 0.8, 12);
+      show(cap, t, tw.voStart+0.9, 0.9, 22);
+    };
+  },
+
+  'endcard'(spec, el){
+    el.classList.add('endcard');
+    el.innerHTML = `
+      <div class="ec-title">${esc(spec.title)}</div>
+      <div class="ec-sub">${esc(spec.subtitle)}</div>
+      <svg class="ec-wave" width="520" height="60" viewBox="0 0 520 60" fill="none">
+        <path d="M 5 50 C 140 5, 300 60, 515 18" stroke="${THEME.good}" stroke-width="3"/>
+      </svg>
+      <div class="ec-brand">${esc(spec.brand)}</div>`;
+    return () => {};
+  },
+};
+
+const MAP_TYPES = new Set(['map-focus','map-spread','map-trace']);
+
+/* ───────────────────── assembly & master seek ───────────────────── */
+function build(project, timing){
+  PROJECT = project; TIMING = timing;
+  const preset = (project.theme && project.theme.preset) || 'wavestone';
+  THEME = Object.assign({}, THEMES[preset] || THEMES.wavestone, project.theme && project.theme.overrides || {});
+  ACC = hexRGB(THEME.accent);
+  const root = document.documentElement.style;
+  root.setProperty('--c-bg', THEME.bg);       root.setProperty('--c-ink', THEME.ink);
+  root.setProperty('--c-fg', THEME.fg);       root.setProperty('--c-muted', THEME.muted);
+  root.setProperty('--c-muted2', THEME.muted2);
+  root.setProperty('--c-accent', THEME.accent); root.setProperty('--c-accentsoft', THEME.accentsoft);
+  root.setProperty('--c-warn', THEME.warn);   root.setProperty('--c-good', THEME.good);
+  root.setProperty('--c-goodsoft', THEME.goodsoft);
+  root.setProperty('--lessons-bg', THEME.lessonsBg); root.setProperty('--lessons-fg', THEME.lessonsFg);
+  root.setProperty('--f-display', THEME.fDisplay);
+  root.setProperty('--f-body', THEME.fBody);  root.setProperty('--f-mono', THEME.fMono);
+
+  const host = $('scenes');
+  host.innerHTML = '';
+  mapC = $('map').getContext('2d');
+  grainC = $('grain').getContext('2d');
+
+  const XFADE = 0.55;
+  const tmap = {}; timing.scenes.forEach(s => tmap[s.id] = s);
+  SC = (project.scenes || []).map((spec, i) => {
+    const el = document.createElement('div');
+    el.className = 'scene';
+    host.appendChild(el);
+    const builder = BUILDERS[spec.type];
+    const anim = builder ? builder(spec, el) : (() => {});
+    const tw = tmap[spec.id] || { voStart: 0, voEnd: 3 };
+    const next = project.scenes[i+1];
+    const winStart = tw.voStart - XFADE + 0.05;
+    const winEnd = next && tmap[next.id] ? tmap[next.id].voStart - XFADE + 0.05 : tw.voEnd + 0.4;
+    return { spec, el, anim, tw, win: [winStart, winEnd], xfade: XFADE };
+  });
+  window.seek(0);
+}
+
+function sceneOpacity(t, sc){
+  const [a,b] = sc.win;
+  if (t < a || t > b + sc.xfade) return 0;
+  return Math.min(prg(t, a, a+sc.xfade), 1 - prg(t, b, b+sc.xfade));
+}
+
+window.seek = function(t){
+  if (!SC.length) return;
+  drawGrain(Math.round(t*240));
+  mapC.clearRect(0,0,1920,1080);
+
+  // map environment: interpolate camera between adjacent visible map scenes
+  const vis = SC.map(sc => ({ sc, op: sceneOpacity(t, sc) }));
+  const mapVis = vis.filter(v => v.op > 0 && MAP_TYPES.has(v.sc.spec.type));
+  if (mapVis.length){
+    let cam, alpha = Math.max(...mapVis.map(v => v.op));
+    if (mapVis.length >= 2){
+      const a = mapVis[0], b = mapVis[1];
+      const p = easeInOut(prg(t, b.sc.win[0], b.sc.win[0] + 2.6));
+      cam = camLerp(camOf(a.sc.spec), camOf(b.sc.spec), p);
+    } else {
+      const cur = mapVis[0];
+      const idx = SC.indexOf(cur.sc);
+      const prev = SC[idx-1];
+      if (prev && MAP_TYPES.has(prev.spec.type)){
+        const p = easeInOut(prg(t, cur.sc.win[0], cur.sc.win[0] + 2.6));
+        cam = camLerp(camOf(prev.spec), camOf(cur.sc.spec), p);
+      } else cam = camOf(cur.sc.spec);
+    }
+    const dimmed = mapVis.every(v => v.sc.spec.type === 'map-trace');
+    drawLand(cam, alpha * (dimmed ? 0.45 : 1), dimmed);
+    vis.forEach(v => {
+      if (v.op > 0) {
+        v.sc.el.style.opacity = v.op;
+        v.sc.anim(t, v.sc.tw, v.op, MAP_TYPES.has(v.sc.spec.type) ? { cam, alpha: v.op * (dimmed?1:1) } : null);
+      } else v.sc.el.style.opacity = 0;
+    });
+  } else {
+    vis.forEach(v => {
+      v.sc.el.style.opacity = v.op;
+      if (v.op > 0) v.sc.anim(t, v.sc.tw, v.op, null);
+    });
+  }
+  $('fade').style.opacity = prg(t, TIMING.total-1.1, TIMING.total-0.15);
+};
+
+/* ───────────────────── boot ───────────────────── */
+function loadFonts(){
+  const list = (THEME && THEME.fontsLoad) || [];
+  return document.fonts.ready.then(() => Promise.all(list.map(f => document.fonts.load(f))));
+}
+if (PREVIEW){
+  window.addEventListener('message', ev => {
+    const m = ev.data || {};
+    if (m.type === 'project'){
+      const timing = m.timing || estimateTiming(m.project);
+      build(m.project, timing);
+      loadFonts().then(() => {
+        window.seek(m.t || 0);
+        parent.postMessage({ type:'engine-ready', total: timing.total,
+                             scenes: timing.scenes }, '*');
+      });
+    } else if (m.type === 'seek'){
+      window.seek(m.t);
+    }
+  });
+  parent.postMessage({ type:'engine-hello' }, '*');
+} else {
+  build(window.PROJECT, window.TIMING);
+  loadFonts().then(() => { window.seek(0); window.READY = true; });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Video Debriefer — Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #edf6f8; --surface: rgba(255,255,255,0.94); --surface-dark: #0b2f4a;
+    --text: #123047; --muted: #5d7384; --border: rgba(11,82,109,0.16);
+    --primary: #0f6d8f; --primary-strong: #0b2f4a; --accent: #30c38f;
+    --accent-soft: #def7ed; --danger: #d9485f;
+    --shadow-sm: 0 10px 28px rgba(11,47,74,0.10);
+    --radius: 18px; --radius-sm: 12px;
+    --ui: Inter, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: var(--ui); color: var(--text); overflow: hidden;
+    background:
+      radial-gradient(circle at top right, rgba(48,195,143,0.18), transparent 24%),
+      radial-gradient(circle at top left, rgba(15,109,143,0.18), transparent 30%),
+      linear-gradient(180deg, #f8fcfd 0%, var(--bg) 240px);
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .shell { display: flex; flex-direction: column; height: 100vh; }
+
+  .topbar {
+    min-height: 72px; flex-shrink: 0; z-index: 5; color: #fff;
+    background: linear-gradient(120deg, #0b2f4a 0%, #0f6d8f 58%, #30c38f 140%);
+    display: flex; align-items: center; gap: 16px; padding: 0 20px;
+    box-shadow: 0 14px 32px rgba(11,47,74,0.24);
+  }
+  .brand-mark {
+    width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.18);
+    font-weight: 700; font-size: 17px; letter-spacing: -0.08em;
+  }
+  .brand-eyebrow { color: rgba(255,255,255,0.74); font-size: 0.67rem; font-weight: 700;
+                   letter-spacing: 0.16em; text-transform: uppercase; }
+  .brand-name { font-size: 1rem; font-weight: 700; }
+  .steps { margin-left: 32px; display: flex; gap: 6px; }
+  .step-btn {
+    border: 1px solid rgba(255,255,255,0.22); background: rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.85); border-radius: 999px; padding: 8px 18px;
+    font-size: 0.82rem; font-weight: 600;
+  }
+  .step-btn.active { background: #fff; color: var(--primary-strong); }
+  .server-pill {
+    margin-left: auto; display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.14);
+  }
+  .server-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+  .server-dot.on { background: var(--accent); box-shadow: 0 0 0 4px rgba(48,195,143,0.18); }
+
+  .workspace { display: grid; grid-template-columns: 440px minmax(0,1fr);
+               flex: 1; min-height: 0; padding: 18px; gap: 18px; }
+  .panel {
+    background: rgba(255,255,255,0.72); border: 1px solid rgba(15,109,143,0.10);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    overflow-y: auto; padding: 18px; min-height: 0;
+  }
+  .preview-side { display: flex; flex-direction: column; min-height: 0; gap: 12px; }
+  .preview-frame {
+    flex: 1; min-height: 0; background: #0b0d12; border-radius: var(--radius);
+    box-shadow: var(--shadow-sm); overflow: hidden; position: relative;
+  }
+  .preview-frame iframe { width: 1920px; height: 1080px; border: 0;
+                          transform-origin: 0 0; position: absolute; }
+  .scrub-bar { display: flex; gap: 12px; align-items: center;
+               background: var(--surface); border-radius: var(--radius-sm);
+               padding: 10px 16px; box-shadow: var(--shadow-sm); }
+  .scrub-bar input[type=range] { flex: 1; }
+  .scrub-time { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); min-width: 96px; }
+  .play-btn { border: 0; background: var(--primary); color: #fff; border-radius: 8px;
+              width: 36px; height: 30px; font-size: 0.8rem; }
+
+  h3 { margin: 4px 0 10px; font-size: 0.85rem; text-transform: uppercase;
+       letter-spacing: 0.1em; color: var(--primary-strong); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 0.75rem; font-weight: 600;
+                 color: var(--muted); margin-bottom: 4px; }
+  .field input[type=text], .field input[type=password], .field input[type=number],
+  .field select, .field textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 9px;
+    padding: 8px 10px; background: #fff; font-size: 0.85rem;
+  }
+  .field textarea { font-family: var(--mono); font-size: 0.76rem; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .btn { border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 600;
+         font-size: 0.85rem; background: #e8eef2; color: var(--primary-strong); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-accent { background: var(--accent); color: #06342a; }
+  .btn-ghost { background: transparent; border: 1px dashed var(--border); }
+  .btn-danger { background: transparent; color: var(--danger); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 0.74rem; color: var(--muted); line-height: 1.5; margin: 6px 0 14px; }
+  .divider { border-top: 1px solid var(--border); margin: 18px 0; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px;
+           background: var(--accent-soft); color: #0a6c4e; font-size: 0.72rem; font-weight: 700; }
+  .badge.warn { background: #fdecec; color: var(--danger); }
+
+  .scene-card { border: 1px solid var(--border); border-radius: var(--radius-sm);
+                background: #fff; margin-bottom: 10px; overflow: hidden; }
+  .scene-card > header { display: flex; align-items: center; gap: 8px;
+                         padding: 10px 12px; cursor: pointer; }
+  .scene-type { font-family: var(--mono); font-size: 0.68rem; padding: 3px 8px;
+                background: var(--surface-dark); color: #fff; border-radius: 6px; }
+  .scene-title { font-weight: 600; font-size: 0.84rem; flex: 1; overflow: hidden;
+                 text-overflow: ellipsis; white-space: nowrap; }
+  .scene-dur { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+  .scene-body { padding: 0 12px 12px; border-top: 1px solid var(--border); }
+  .mini-btn { border: 0; background: transparent; font-size: 0.85rem; padding: 2px 5px; color: var(--muted); }
+  .progress-wrap { background: #e8eef2; border-radius: 8px; height: 14px; overflow: hidden; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent));
+                  width: 0; transition: width 0.4s; }
+  .log-box { font-family: var(--mono); font-size: 0.7rem; background: #0b2f4a; color: #cde9e0;
+             border-radius: 9px; padding: 10px; max-height: 180px; overflow-y: auto;
+             white-space: pre-wrap; margin-top: 10px; }
+  .step-view { display: none; }
+  .step-view.active { display: block; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="brand-mark">VD</div>
+    <div>
+      <div class="brand-eyebrow">Crisis Toolkit</div>
+      <div class="brand-name">Video Debriefer — Studio</div>
+    </div>
+    <div class="steps">
+      <button class="step-btn active" data-step="1">1 · Scénario</button>
+      <button class="step-btn" data-step="2">2 · Adaptation</button>
+      <button class="step-btn" data-step="3">3 · Production</button>
+    </div>
+    <div class="server-pill"><span class="server-dot" id="server-dot"></span>
+      <span id="server-label">serveur local : hors ligne</span></div>
+  </div>
+
+  <div class="workspace">
+    <aside class="panel">
+
+      <!-- ════════ STEP 1 — SCÉNARIO ════════ -->
+      <div class="step-view active" id="view-1">
+        <h3>Matière première</h3>
+        <div class="hint">Collez une timeline (format Crisis Debriefer / TIMELINE_EVENTS),
+          un compte-rendu, des notes… Tout texte qui raconte la crise.</div>
+        <div class="field">
+          <textarea id="src-material" rows="9" placeholder='[{"title": "…", "headline": "…", …}] ou texte libre'>The ransomware group PharmLeaks triggers a coordinated attack against StonaWave, a global pharmaceutical company headquartered near Paris with manufacturing sites in New Jersey, Frankfurt, and Hyderabad. After gaining initial access two weeks earlier via a compromised VPN credential, the attackers moved laterally through Active Directory, mapped backup infrastructure, and deployed ransomware across manufacturing execution systems (MES), the clinical trial management system (CTMS), and ERP platforms. The encryption is triggered at 07:45 ET on Sunday when staffing is minimal. Over six hours, the crisis escalates from internal detection through partner disruption, a $25M ransom demand, international media coverage in French, English, and German, regulatory alerts from CERT-FR, and an attacker escalation threatening to publish stolen patient data.</textarea>
+        </div>
+        <div class="row2">
+          <button class="btn" id="btn-load-json">Charger un fichier…</button>
+          <button class="btn" id="btn-load-example">Exemple Helios Leaks</button>
+        </div>
+        <input type="file" id="file-input" accept=".json,.txt,.md" style="display:none">
+
+        <div class="divider"></div>
+        <h3>Réglages de la vidéo</h3>
+        <div class="row2">
+          <div class="field"><label>Durée cible (s)</label>
+            <input type="number" id="set-duration" value="120" min="45" max="300"></div>
+          <div class="field"><label>Langue</label>
+            <select id="set-lang">
+              <option value="fr" selected>Français</option><option value="en">English</option>
+              <option value="es">Español</option><option value="de">Deutsch</option>
+              <option value="it">Italiano</option><option value="pt">Português</option>
+            </select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Style graphique</label>
+            <select id="set-theme">
+              <option value="wavestone" selected>Wavestone (indigo / néon)</option>
+              <option value="cyber-dark">Cyber dark (sépia / rouge)</option>
+            </select></div>
+          <div class="field"><label>Voix</label>
+            <select id="set-voice">
+              <option value="" selected>Auto (selon langue)</option>
+            </select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Ton</label>
+            <select id="set-tone">
+              <option value="documentaire sobre et factuel" selected>Documentaire sobre</option>
+              <option value="dramatique et tendu">Dramatique</option>
+              <option value="pédagogique et accessible">Pédagogique</option>
+              <option value="executive brief, direct et synthétique">Executive brief</option>
+            </select></div>
+          <div class="field"><label>Public</label>
+            <select id="set-audience">
+              <option value="comité exécutif" selected>Comex</option>
+              <option value="équipes cyber">Équipes cyber</option>
+              <option value="tous collaborateurs">Tous collaborateurs</option>
+            </select></div>
+        </div>
+
+        <div class="divider"></div>
+        <h3>Génération du scénario</h3>
+        <div class="hint">L’IA n’est utilisée <b>que pour cette étape</b> (rédaction du
+          brouillon). Le gabarit sans IA construit la structure depuis votre timeline ;
+          vous rédigez ensuite la voix off vous-même.</div>
+        <div class="row2">
+          <div class="field"><label>Fournisseur IA</label>
+            <select id="ai-provider">
+              <option value="none">Aucun (gabarit)</option>
+              <option value="anthropic" selected>Claude (Anthropic)</option>
+              <option value="openai">OpenAI</option>
+            </select></div>
+          <div class="field"><label>Modèle
+              <button class="mini-btn" id="btn-models" title="Rafraîchir la liste depuis l’API">⟳</button></label>
+            <select id="ai-model"></select></div>
+        </div>
+        <div class="field"><label>Clé API (stockée uniquement dans ce navigateur)</label>
+          <input type="password" id="ai-key" placeholder="sk-… / sk-ant-…"></div>
+        <div class="hint" id="models-status"></div>
+        <div class="row2">
+          <button class="btn btn-primary" id="btn-generate">✦ Générer le scénario (IA)</button>
+          <button class="btn" id="btn-skeleton">Gabarit sans IA</button>
+        </div>
+        <div class="hint" id="gen-status"></div>
+      </div>
+
+      <!-- ════════ STEP 2 — ADAPTATION ════════ -->
+      <div class="step-view" id="view-2">
+        <h3>Projet <span class="badge" id="dur-badge">—</span></h3>
+        <div class="row2">
+          <div class="field"><label>Titre</label><input type="text" id="p-title"></div>
+          <div class="field"><label>Style</label>
+            <select id="p-theme">
+              <option value="wavestone">Wavestone</option>
+              <option value="cyber-dark">Cyber dark</option>
+            </select></div>
+        </div>
+        <div class="divider"></div>
+        <h3>Scènes <button class="mini-btn" id="btn-add-scene" title="Ajouter">＋</button></h3>
+        <div id="scene-list"></div>
+        <div class="divider"></div>
+        <h3>JSON du projet</h3>
+        <div class="hint">Édition libre — toutes les options avancées
+          (cues <code>at</code>, caméra, moods, couleurs…) sont là.</div>
+        <div class="field"><textarea id="json-editor" rows="14" spellcheck="false"></textarea></div>
+        <div class="row2">
+          <button class="btn" id="btn-apply-json">Appliquer le JSON</button>
+          <button class="btn" id="btn-download">Télécharger le projet</button>
+        </div>
+      </div>
+
+      <!-- ════════ STEP 3 — PRODUCTION ════════ -->
+      <div class="step-view" id="view-3">
+        <h3>Produire en local</h3>
+        <div class="hint">La production tourne <b>en local</b> (voix neurale, rendu
+          1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.</div>
+
+        <div id="prod-server-ok" style="display:none">
+          <button class="btn btn-accent" id="btn-produce" style="width:100%">▶ Lancer la production</button>
+          <div style="margin:14px 0 6px"><div class="progress-wrap"><div class="progress-bar" id="prod-bar"></div></div></div>
+          <div class="hint" id="prod-stage"></div>
+          <div class="log-box" id="prod-log" style="display:none"></div>
+          <div id="prod-done" style="display:none; margin-top:10px">
+            <a class="btn btn-primary" id="prod-link" href="#" download style="text-decoration:none; display:inline-block">⬇ Télécharger le MP4</a>
+          </div>
+        </div>
+
+        <div id="prod-server-no">
+          <div class="hint"><b>Serveur local non détecté.</b> Lancez-le dans un terminal :</div>
+          <div class="log-box" style="display:block">cd video-debrief/pipeline
+python3 server.py</div>
+          <div class="hint">…puis revenez ici. Ou en ligne de commande directe :</div>
+          <div class="log-box" style="display:block">python3 pipeline/build.py mon-projet.json</div>
+          <button class="btn" id="btn-download2" style="margin-top:8px">Télécharger le projet JSON</button>
+        </div>
+
+        <div class="divider"></div>
+        <h3>Cloud GitHub</h3>
+        <div class="hint">Production sur <b>GitHub Actions</b> (~12 min) : le projet est
+          poussé dans <code>video-debrief/requests/</code>, le workflow produit le MP4 et le publie dans
+          la release <code>videos</code>. Token : <i>fine-grained PAT</i> du repo avec
+          permissions <b>Contents (read/write)</b> et <b>Actions (read)</b>.</div>
+        <div class="field"><label>Repo (owner/nom)</label>
+          <input type="text" id="gh-repo" value="gbillois/CrisisMaker"></div>
+        <div class="field"><label>Token GitHub (stocké uniquement dans ce navigateur)</label>
+          <input type="password" id="gh-token" placeholder="github_pat_…"></div>
+        <button class="btn btn-primary" id="btn-gh-produce" style="width:100%">☁ Produire via GitHub Actions</button>
+        <div class="hint" id="gh-stage"></div>
+        <div id="gh-done" style="display:none; margin-top:8px">
+          <a class="btn btn-accent" id="gh-link" href="#" target="_blank" style="text-decoration:none; display:inline-block">⬇ Télécharger le MP4</a>
+          <a class="btn" id="gh-run-link" href="#" target="_blank" style="text-decoration:none; display:inline-block">Voir le run</a>
+        </div>
+      </div>
+    </aside>
+
+    <main class="preview-side">
+      <div class="preview-frame" id="preview-frame">
+        <iframe id="preview" src="engine/scene.html?preview=1"></iframe>
+      </div>
+      <div class="scrub-bar">
+        <button class="play-btn" id="btn-play">▶</button>
+        <input type="range" id="scrub" min="0" max="100" step="0.05" value="0">
+        <span class="scrub-time" id="scrub-time">0.0 / 0.0 s</span>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════ state ═══════════════════════ */
+const $ = id => document.getElementById(id);
+let project = null;
+let totalDur = 0, playing = false, playT = 0, lastTick = 0;
+let engineReady = false;
+const SERVER = 'http://localhost:8765';
+let serverOn = false;
+
+/* ═══════════════ preview iframe scaling & messaging ═══════════════ */
+function fitPreview(){
+  const frame = $('preview-frame'), ifr = $('preview');
+  const k = Math.min(frame.clientWidth/1920, frame.clientHeight/1080);
+  ifr.style.transform = `scale(${k})`;
+  ifr.style.left = ((frame.clientWidth - 1920*k)/2) + 'px';
+  ifr.style.top = ((frame.clientHeight - 1080*k)/2) + 'px';
+}
+window.addEventListener('resize', fitPreview);
+
+function pushProject(){
+  if (!project) return;
+  $('preview').contentWindow.postMessage({ type:'project', project, t: playT }, '*');
+}
+window.addEventListener('message', ev => {
+  const m = ev.data || {};
+  if (m.type === 'engine-hello'){ engineReady = true; pushProject(); }
+  if (m.type === 'engine-ready'){
+    totalDur = m.total || 0;
+    $('scrub').max = totalDur;
+    updateDurBadge();
+    seekPreview(playT);
+  }
+});
+function seekPreview(t){
+  playT = Math.max(0, Math.min(t, totalDur));
+  $('preview').contentWindow.postMessage({ type:'seek', t: playT }, '*');
+  $('scrub').value = playT;
+  $('scrub-time').textContent = playT.toFixed(1) + ' / ' + totalDur.toFixed(1) + ' s';
+}
+$('scrub').addEventListener('input', e => { playing = false; $('btn-play').textContent = '▶'; seekPreview(parseFloat(e.target.value)); });
+$('btn-play').addEventListener('click', () => {
+  playing = !playing;
+  $('btn-play').textContent = playing ? '⏸' : '▶';
+  if (playing){ lastTick = performance.now(); requestAnimationFrame(tick); }
+});
+function tick(now){
+  if (!playing) return;
+  playT += (now - lastTick)/1000; lastTick = now;
+  if (playT >= totalDur){ playT = 0; }
+  seekPreview(playT);
+  requestAnimationFrame(tick);
+}
+
+/* ═══════════════════════ steps ═══════════════════════ */
+document.querySelectorAll('.step-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.step-btn').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
+  $('view-' + b.dataset.step).classList.add('active');
+}));
+
+/* ═══════════════════ settings persistence ═══════════════════ */
+['ai-provider','ai-model','ai-key'].forEach(id => {
+  const saved = localStorage.getItem('vd-' + id);
+  if (saved) $(id).value = saved;
+  $(id).addEventListener('change', () => localStorage.setItem('vd-' + id, $(id).value));
+});
+
+/* ─────────── dynamic model list (fetched from the provider API) ─────────── */
+const FALLBACK_MODELS = {
+  anthropic: ['claude-fable-5', 'claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+  openai: ['gpt-4o', 'gpt-4o-mini'],
+};
+function fillModels(list, keep){
+  const sel = $('ai-model');
+  const want = keep || sel.value || localStorage.getItem('vd-ai-model') || '';
+  const opts = list.slice();
+  if (want && !opts.includes(want)) opts.unshift(want);
+  sel.innerHTML = '';
+  opts.forEach(id => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = id;
+    sel.appendChild(o);
+  });
+  sel.value = opts.includes(want) && want ? want : opts[0] || '';
+  localStorage.setItem('vd-ai-model', sel.value);
+}
+async function fetchModels(){
+  const provider = $('ai-provider').value, key = $('ai-key').value.trim();
+  const status = $('models-status');
+  if (provider === 'none'){ fillModels([]); status.textContent = ''; return; }
+  if (!key){
+    fillModels(FALLBACK_MODELS[provider] || []);
+    status.textContent = 'Liste par défaut — entrez votre clé puis ⟳ pour la liste complète.';
+    return;
+  }
+  status.textContent = 'Chargement des modèles…';
+  try {
+    let ids = [];
+    if (provider === 'anthropic'){
+      const r = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01',
+                   'anthropic-dangerous-direct-browser-access': 'true' } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      ids = (await r.json()).data.map(m => m.id);
+    } else {
+      const r = await fetch('https://api.openai.com/v1/models', {
+        headers: { 'Authorization': 'Bearer ' + key } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      ids = (await r.json()).data.map(m => m.id)
+        .filter(id => /^(gpt-|o\d|chatgpt)/.test(id)
+          && !/(audio|realtime|search|transcribe|tts|embed|image|moderation|instruct)/.test(id))
+        .sort().reverse();
+    }
+    if (!ids.length) throw new Error('liste vide');
+    fillModels(ids);
+    status.textContent = ids.length + ' modèles disponibles.';
+  } catch (e) {
+    fillModels(FALLBACK_MODELS[provider] || []);
+    status.textContent = 'Liste par défaut (API : ' + e.message + ').';
+  }
+}
+$('btn-models').addEventListener('click', e => { e.preventDefault(); fetchModels(); });
+$('ai-provider').addEventListener('change', () => {
+  fillModels(FALLBACK_MODELS[$('ai-provider').value] || [],
+             (FALLBACK_MODELS[$('ai-provider').value] || [])[0]);
+  fetchModels();
+});
+$('ai-key').addEventListener('change', fetchModels);
+fetchModels();
+
+/* ─────────── voix par langue (synchronisées avec le sélecteur) ─────────── */
+const VOICE_CHOICES = {
+  fr: [['fr-FR-HenriNeural','Henri (h)'],['fr-FR-DeniseNeural','Denise (f)'],
+       ['fr-FR-RemyMultilingualNeural','Rémy (h · multilingue)'],['fr-FR-VivienneMultilingualNeural','Vivienne (f · multilingue)']],
+  en: [['en-US-AndrewNeural','Andrew (m)'],['en-US-AriaNeural','Aria (f)'],
+       ['en-US-ChristopherNeural','Christopher (m)'],['en-GB-RyanNeural','Ryan (GB · m)'],['en-GB-SoniaNeural','Sonia (GB · f)']],
+  es: [['es-ES-AlvaroNeural','Álvaro (h)'],['es-ES-ElviraNeural','Elvira (f)'],['es-MX-JorgeNeural','Jorge (MX · h)']],
+  de: [['de-DE-ConradNeural','Conrad (m)'],['de-DE-KatjaNeural','Katja (w)']],
+  it: [['it-IT-DiegoNeural','Diego (u)'],['it-IT-ElsaNeural','Elsa (d)']],
+  pt: [['pt-BR-AntonioNeural','Antônio (h)'],['pt-BR-FranciscaNeural','Francisca (f)']],
+};
+function fillVoices(){
+  const sel = $('set-voice'), keep = sel.value;
+  sel.innerHTML = '';
+  const auto = document.createElement('option');
+  auto.value = ''; auto.textContent = 'Auto (selon langue)';
+  sel.appendChild(auto);
+  (VOICE_CHOICES[$('set-lang').value] || []).forEach(([v, label]) => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = label;
+    sel.appendChild(o);
+  });
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+$('set-lang').addEventListener('change', fillVoices);
+fillVoices();
+
+/* ─────────── les réglages de l'étape 1 sont IMPOSÉS au projet généré ───────────
+   (même si l'IA dévie : style, langue, durée et voix font foi) */
+function enforceSettings(p){
+  p.meta = p.meta || {}; p.theme = p.theme || {};
+  p.audio = p.audio || {}; p.target = p.target || {};
+  p.meta.lang = $('set-lang').value;
+  p.theme.preset = $('set-theme').value;
+  p.target.duration = parseFloat($('set-duration').value) || 120;
+  const v = $('set-voice').value;
+  if (v) p.audio.voice = v; else delete p.audio.voice;
+  return p;
+}
+
+/* ═══════════════════ source material ═══════════════════ */
+$('btn-load-json').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  f.text().then(t => { $('src-material').value = t; });
+});
+$('btn-load-example').addEventListener('click', () => {
+  fetch('examples/helios-leaks.json').then(r => r.json()).then(p => {
+    applyProject(p);
+    setStep(2);
+  }).catch(() => alert('Ouvrez le studio via le serveur local pour charger l’exemple (python3 pipeline/server.py).'));
+});
+function setStep(n){
+  document.querySelector(`.step-btn[data-step="${n}"]`).click();
+}
+
+/* ═══════════════════ scenario generation ═══════════════════ */
+const SCHEMA_DOC = `Tu écris un scénario de vidéo documentaire de crise (style "cold open
+documentaire"). Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, au schéma :
+{
+ "meta": {"title": str, "slug": str-kebab, "lang": str},
+ "theme": {"preset": "wavestone"|"cyber-dark"},
+ "audio": {"rate": "+8%"},
+ "target": {"duration": number_secondes},
+ "pacing": {"lead":0.8,"gap":0.55,"tail":1.6},
+ "scenes": [ 6 à 9 scènes, chacune {"id":"s1"..., "type":..., "vo": "texte voix off", ...} ]
+}
+Types de scènes et leurs champs propres :
+- "cold-open": eyebrow, dateLine (ex "27.06.2017"), kicker (citation/accroche courte),
+  title (NOM COURT EN CAPITALES), subtitle, titleAt (sec, moment où le titre apparaît, ~70% de la VO)
+- "chain": eyebrow, heading, nodes:[{date,title,sub,at?}] (3-5 jalons chronologiques)
+- "map-focus": eyebrow, heading, camera:{center:[lon,lat],scale:18-40}, epicenter:[lon,lat],
+  impactAt (sec), dotAnchors:[[lon,lat]...] (villes touchées), stat:{value:number,suffix?},
+  statAt, statLabel, bullets:[{text,at?}]
+- "map-spread": eyebrow, heading, origin:[lon,lat], stamps:[{name,fig,coords:[lon,lat],at?}] (4-5),
+  bottom:{text,strong}
+- "map-trace": eyebrow, heading, trail:[{coords:[lon,lat],label,at?}] (piste d'enquête),
+  big, bigAt, sub, strip (2 lignes \\n), footer (phrase choc en italique)
+- "stat-grid": eyebrow, heading, facts:[{tag,big,sub,at?,counter?:{to,suffix}}] (4 max, big court)
+- "lessons": eyebrow, lessons:[{text,at?}] (3 leçons), finalLine1, finalLine2 (chute), finalAt
+- "image": src (laisser ""), eyebrow, caption — seulement si l'utilisateur fournira des photos
+- "endcard": vo:"", minDuration:4.2, title, subtitle, brand
+Règles : la VO totale doit tenir dans la durée cible moins ~10% (débit ≈15 caractères/s).
+Chaque scène : 2-4 phrases de VO, percutantes, rythmées. Les textes à l'écran sont COURTS.
+Les cues "at" (secondes depuis le début de la VO de la scène) synchronisent l'écran sur la voix.
+coords = [longitude, latitude]. Dramaturgie : accroche → montée → bascule → conséquences → leçons → chute.`;
+
+async function callAI(systemPrompt, userPrompt){
+  const provider = $('ai-provider').value, key = $('ai-key').value.trim(), model = $('ai-model').value.trim();
+  if (!key) throw new Error('Renseignez une clé API (ou utilisez le gabarit sans IA).');
+  if (provider === 'anthropic'){
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key,
+                 'anthropic-version': '2023-06-01',
+                 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model, max_tokens: 8000,
+        system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+    });
+    if (!r.ok) throw new Error('Anthropic ' + r.status + ' : ' + (await r.text()).slice(0, 300));
+    const d = await r.json();
+    return d.content.map(c => c.text || '').join('');
+  } else {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
+    });
+    if (!r.ok) throw new Error('OpenAI ' + r.status + ' : ' + (await r.text()).slice(0, 300));
+    const d = await r.json();
+    return d.choices[0].message.content;
+  }
+}
+
+$('btn-generate').addEventListener('click', async () => {
+  const src = $('src-material').value.trim();
+  if (!src) return alert('Collez d’abord la matière première (timeline ou texte).');
+  if ($('ai-provider').value === 'none') return $('btn-skeleton').click();
+  $('gen-status').textContent = 'Génération en cours…';
+  $('btn-generate').disabled = true;
+  try {
+    const user = `Matière première :\n${src.slice(0, 24000)}\n\nContraintes :
+- durée cible : ${$('set-duration').value}s — langue : ${$('set-lang').value}
+- ton : ${$('set-tone').value} — public : ${$('set-audience').value}
+- theme.preset : ${$('set-theme').value}${$('set-voice').value ? '\n- audio.voice : ' + $('set-voice').value : ''}`;
+    const raw = await callAI(SCHEMA_DOC, user);
+    const json = raw.replace(/^```json?\s*/m, '').replace(/```\s*$/m, '');
+    const p = JSON.parse(json.slice(json.indexOf('{'), json.lastIndexOf('}') + 1));
+    applyProject(enforceSettings(p));
+    $('gen-status').innerHTML = '<span class="badge">Scénario généré</span> — passez à l’adaptation.';
+    setStep(2);
+  } catch (e) {
+    $('gen-status').innerHTML = '<span class="badge warn">Erreur</span> ' + e.message;
+  } finally {
+    $('btn-generate').disabled = false;
+  }
+});
+
+/* deterministic skeleton from a CrisisDebrifier-style timeline (no AI) */
+$('btn-skeleton').addEventListener('click', () => {
+  let events = [];
+  try {
+    const m = $('src-material').value.match(/\[[\s\S]*\]/);
+    if (m) events = JSON.parse(m[0]);
+  } catch (e) {}
+  const lang = $('set-lang').value;
+  const L = lang === 'fr';
+  const sevSort = (a,b) => (b.severity||0) - (a.severity||0);
+  const phases = [...new Set(events.map(e => e.phase))];
+  const pre = events.filter(e => e.phase === phases[0]).slice(0, 5);
+  const main = events.filter(e => e.phase === phases[1] || phases.length < 2).sort(sevSort);
+  const last = events.filter(e => e.phase === phases[2]).sort(sevSort);
+  const big = main[0] || events[0] || {};
+  const todo = L ? '[À RÉDIGER] ' : '[TO WRITE] ';
+  const p = {
+    meta: { title: big.title || 'Crise', slug: 'ma-video', lang },
+    theme: { preset: $('set-theme').value },
+    audio: Object.assign({ rate: '+6%' }, $('set-voice').value ? { voice: $('set-voice').value } : {}),
+    target: { duration: parseFloat($('set-duration').value) || 120 },
+    pacing: { lead: 0.8, gap: 0.55, tail: 1.6 },
+    scenes: [
+      { id:'s1', type:'cold-open', vo: todo + (big.headline||''),
+        eyebrow:'', dateLine: big.dateLabel || '', kicker: big.headline || '',
+        title:(big.title||'CRISE').toUpperCase().slice(0,18), subtitle:'' },
+      { id:'s2', type:'chain', vo: todo + pre.map(e=>e.headline).join(' '),
+        eyebrow: L?'Acte I':'Act I', heading:'',
+        nodes: pre.map(e => ({ date: e.dateLabel||'', title:(e.title||'').slice(0,28), sub:(e.headline||'').slice(0,70) })) },
+      { id:'s3', type:'map-focus', vo: todo + (big.body||'').slice(0,180),
+        eyebrow:(L?'Acte II — ':'Act II — ')+(big.dateLabel||''), heading:(big.title||'').slice(0,30),
+        camera:{ center: big.coords ? [big.coords[1], big.coords[0]] : [10,47], scale:22 },
+        epicenter: big.coords ? [big.coords[1], big.coords[0]] : [10,47], impactAt:1.5,
+        dotAnchors: main.filter(e=>e.coords).slice(0,8).map(e=>[e.coords[1],e.coords[0]]),
+        stat:{ value:0 }, statLabel:(big.casualties||''), bullets: main.slice(1,5).map(e=>({text:(e.title||'').slice(0,40)})) },
+      { id:'s4', type:'map-spread', vo: todo,
+        eyebrow:L?'Acte II — propagation':'Act II — spread', heading:'',
+        origin: big.coords ? [big.coords[1], big.coords[0]] : [10,47],
+        stamps: main.slice(0,5).filter(e=>e.coords).map(e=>({ name:(e.title||'').toUpperCase().slice(0,16),
+          fig:(e.damageUSD||e.casualties||'').slice(0,42), coords:[e.coords[1],e.coords[0]] })),
+        bottom:{ text:'', strong:'' } },
+      { id:'s5', type:'stat-grid', vo: todo + last.map(e=>e.headline).join(' ').slice(0,200),
+        eyebrow:L?'Acte III — les suites':'Act III — fallout', heading:'',
+        facts: last.slice(0,4).map(e=>({ tag:(e.kind||''), big:(e.title||'').slice(0,26), sub:(e.headline||'').slice(0,70) })) },
+      { id:'s6', type:'lessons', vo: todo,
+        eyebrow:L?'Ce que ça signifie pour le comex':'What this means for the board',
+        lessons:[{text:L?'Leçon 1 — à rédiger.':'Lesson 1 — to write.'},
+                 {text:L?'Leçon 2 — à rédiger.':'Lesson 2 — to write.'},
+                 {text:L?'Leçon 3 — à rédiger.':'Lesson 3 — to write.'}],
+        finalLine1:'', finalLine2:'' },
+      { id:'s7', type:'endcard', vo:'', minDuration:4.2,
+        title:(big.title||'').toUpperCase().slice(0,18), subtitle:'', brand:'' },
+    ],
+  };
+  applyProject(enforceSettings(p));
+  $('gen-status').innerHTML = '<span class="badge">Gabarit créé</span> — rédigez les VO marquées '+todo;
+  setStep(2);
+});
+
+/* ═══════════════════ step 2 : editor ═══════════════════ */
+function applyProject(p){
+  project = p;
+  $('p-title').value = (p.meta && p.meta.title) || '';
+  $('p-theme').value = (p.theme && p.theme.preset) || 'wavestone';
+  $('json-editor').value = JSON.stringify(p, null, 2);
+  renderSceneCards();
+  pushProject();
+}
+function commit(){
+  $('json-editor').value = JSON.stringify(project, null, 2);
+  renderSceneCards();
+  pushProject();
+}
+$('p-title').addEventListener('input', () => { if (project){ project.meta.title = $('p-title').value; commitJsonOnly(); pushProject(); } });
+$('p-theme').addEventListener('change', () => { if (project){ project.theme.preset = $('p-theme').value; commitJsonOnly(); pushProject(); } });
+function commitJsonOnly(){ $('json-editor').value = JSON.stringify(project, null, 2); }
+
+const CPS = { fr: 15.0, en: 14.2, es: 14.5, de: 13.5, it: 14.5, pt: 14.5 };
+function estDur(s){ return s.vo ? Math.max(3, s.vo.length / (CPS[(project.meta||{}).lang] || 14.5)) : (s.minDuration || 3); }
+function updateDurBadge(){
+  if (!project) return;
+  const target = (project.target && project.target.duration) || 120;
+  const b = $('dur-badge');
+  b.textContent = `≈ ${Math.round(totalDur)}s / cible ${target}s`;
+  b.className = 'badge' + (totalDur > target + 4 ? ' warn' : '');
+}
+
+const TYPE_FIELDS = {
+  'cold-open': ['eyebrow','dateLine','kicker','title','subtitle'],
+  'chain': ['eyebrow','heading'],
+  'map-focus': ['eyebrow','heading','statLabel'],
+  'map-spread': ['eyebrow','heading'],
+  'map-trace': ['eyebrow','heading','big','sub','strip','footer'],
+  'stat-grid': ['eyebrow','heading'],
+  'lessons': ['eyebrow','finalLine1','finalLine2'],
+  'image': ['eyebrow','caption'],
+  'endcard': ['title','subtitle','brand'],
+};
+const open = new Set();
+function renderSceneCards(){
+  const host = $('scene-list');
+  host.innerHTML = '';
+  (project.scenes || []).forEach((s, i) => {
+    const card = document.createElement('div');
+    card.className = 'scene-card';
+    const head = document.createElement('header');
+    head.innerHTML = `<span class="scene-type">${s.type}</span>
+      <span class="scene-title">${s.heading || s.title || s.id}</span>
+      <span class="scene-dur">${estDur(s).toFixed(0)}s</span>`;
+    const up = document.createElement('button'); up.className = 'mini-btn'; up.textContent = '▲';
+    const down = document.createElement('button'); down.className = 'mini-btn'; down.textContent = '▼';
+    const del = document.createElement('button'); del.className = 'mini-btn'; del.textContent = '✕';
+    up.onclick = e => { e.stopPropagation(); if (i>0){ const a=project.scenes; [a[i-1],a[i]]=[a[i],a[i-1]]; commit(); } };
+    down.onclick = e => { e.stopPropagation(); const a=project.scenes; if (i<a.length-1){ [a[i+1],a[i]]=[a[i],a[i+1]]; commit(); } };
+    del.onclick = e => { e.stopPropagation(); if (confirm('Supprimer la scène ?')){ project.scenes.splice(i,1); commit(); } };
+    head.append(up, down, del);
+    head.onclick = () => { open.has(s.id) ? open.delete(s.id) : open.add(s.id); renderSceneCards(); };
+    card.appendChild(head);
+    if (open.has(s.id)){
+      const body = document.createElement('div');
+      body.className = 'scene-body';
+      const voF = document.createElement('div');
+      voF.className = 'field';
+      voF.innerHTML = `<label>Voix off</label>`;
+      const ta = document.createElement('textarea'); ta.rows = 3; ta.value = s.vo || '';
+      ta.oninput = () => { s.vo = ta.value; commitJsonOnly(); pushProject(); };
+      voF.appendChild(ta); body.appendChild(voF);
+      (TYPE_FIELDS[s.type] || []).forEach(f => {
+        const d = document.createElement('div'); d.className = 'field';
+        d.innerHTML = `<label>${f}</label>`;
+        const inp = document.createElement('input'); inp.type = 'text'; inp.value = s[f] || '';
+        inp.oninput = () => { s[f] = inp.value; commitJsonOnly(); pushProject(); };
+        d.appendChild(inp); body.appendChild(d);
+      });
+      if (s.type === 'image'){
+        const d = document.createElement('div'); d.className = 'field';
+        d.innerHTML = `<label>Photo (intégrée au projet)</label>`;
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+        inp.onchange = () => {
+          const f = inp.files[0]; if (!f) return;
+          const rd = new FileReader();
+          rd.onload = () => { s.src = rd.result; commitJsonOnly(); pushProject(); };
+          rd.readAsDataURL(f);
+        };
+        d.appendChild(inp); body.appendChild(d);
+      }
+      const goto = document.createElement('button');
+      goto.className = 'btn'; goto.textContent = '⌖ Voir cette scène';
+      goto.onclick = () => {
+        const idx = project.scenes.indexOf(s);
+        let t = 0.8;
+        for (let k = 0; k < idx; k++) t += estDur(project.scenes[k]) + 0.55;
+        playing = false; $('btn-play').textContent = '▶';
+        seekPreview(t + estDur(s) * 0.55);
+      };
+      body.appendChild(goto);
+      card.appendChild(body);
+    }
+    host.appendChild(card);
+  });
+}
+$('btn-add-scene').addEventListener('click', () => {
+  if (!project) return;
+  const type = prompt('Type de scène : cold-open, chain, map-focus, map-spread, map-trace, stat-grid, lessons, image, endcard', 'image');
+  if (!type || !TYPE_FIELDS[type]) return;
+  const id = 's' + (project.scenes.length + 1) + '_' + Math.random().toString(36).slice(2,5);
+  const s = { id, type, vo: '' };
+  if (type === 'image'){ s.src = ''; s.caption = ''; s.eyebrow = ''; }
+  if (type === 'endcard'){ s.minDuration = 4.2; }
+  project.scenes.push(s);
+  open.add(id);
+  commit();
+});
+$('btn-apply-json').addEventListener('click', () => {
+  try { applyProject(JSON.parse($('json-editor').value)); }
+  catch (e) { alert('JSON invalide : ' + e.message); }
+});
+function download(){
+  if (!project) return alert('Pas de projet.');
+  const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = ((project.meta && project.meta.slug) || 'projet-video') + '.json';
+  a.click();
+}
+$('btn-download').addEventListener('click', download);
+$('btn-download2').addEventListener('click', download);
+
+/* ═══════════════════ step 3 : production ═══════════════════ */
+async function checkServer(){
+  try {
+    const r = await fetch(SERVER + '/status', { signal: AbortSignal.timeout(1500) });
+    serverOn = (await r.json()).ok;
+  } catch (e) { serverOn = false; }
+  $('server-dot').classList.toggle('on', serverOn);
+  $('server-label').textContent = 'serveur local : ' + (serverOn ? 'connecté' : 'hors ligne');
+  $('prod-server-ok').style.display = serverOn ? 'block' : 'none';
+  $('prod-server-no').style.display = serverOn ? 'none' : 'block';
+}
+setInterval(checkServer, 4000); checkServer();
+
+let polling = null;
+$('btn-produce').addEventListener('click', async () => {
+  if (!project) return alert('Pas de projet.');
+  $('btn-produce').disabled = true;
+  $('prod-log').style.display = 'block';
+  $('prod-done').style.display = 'none';
+  const r = await fetch(SERVER + '/build', { method: 'POST', body: JSON.stringify(project) });
+  if (!r.ok){ $('prod-stage').textContent = 'Erreur : ' + (await r.text()); $('btn-produce').disabled = false; return; }
+  polling = setInterval(async () => {
+    const p = await (await fetch(SERVER + '/progress')).json();
+    $('prod-bar').style.width = (p.pct || 0) + '%';
+    $('prod-stage').textContent = p.stage || '';
+    $('prod-log').textContent = (p.log || []).join('\n');
+    $('prod-log').scrollTop = 1e9;
+    if (p.done){
+      clearInterval(polling); $('btn-produce').disabled = false;
+      if (p.error){ $('prod-stage').textContent = 'Échec — voir le journal.'; $('prod-log').textContent += '\n' + p.error; }
+      else {
+        $('prod-stage').textContent = 'Vidéo prête !';
+        $('prod-done').style.display = 'block';
+        $('prod-link').href = SERVER + '/video';
+        $('prod-link').download = ((project.meta && project.meta.slug) || 'video') + '.mp4';
+      }
+    }
+  }, 1200);
+});
+
+
+/* ═══════════════ production cloud (GitHub Actions) ═══════════════ */
+['gh-repo','gh-token'].forEach(id => {
+  const saved = localStorage.getItem('vd-' + id);
+  if (saved) $(id).value = saved;
+  $(id).addEventListener('change', () => localStorage.setItem('vd-' + id, $(id).value));
+});
+async function gh(path, opts = {}){
+  const tok = $('gh-token').value.trim();
+  const r = await fetch('https://api.github.com' + path, Object.assign({}, opts, {
+    headers: Object.assign({ 'Authorization': 'Bearer ' + tok,
+      'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, opts.headers || {}),
+  }));
+  if (!r.ok) throw new Error('GitHub ' + r.status + ' — ' + (await r.text()).slice(0, 200));
+  return r.json();
+}
+let ghPoll = null;
+$('btn-gh-produce').addEventListener('click', async () => {
+  if (!project) return alert('Pas de projet.');
+  const repo = $('gh-repo').value.trim();
+  if (!repo.includes('/')) return alert('Repo au format owner/nom.');
+  if (!$('gh-token').value.trim()) return alert('Renseignez un token GitHub (fine-grained PAT).');
+  const btn = $('btn-gh-produce'); btn.disabled = true;
+  $('gh-done').style.display = 'none';
+  const stage = $('gh-stage');
+  try {
+    stage.textContent = 'Envoi du projet…';
+    const slug = (project.meta && project.meta.slug) || 'video';
+    const path = `video-debrief/requests/${slug}-${Date.now()}.json`;
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(project, null, 2))));
+    const put = await gh(`/repos/${repo}/contents/${encodeURIComponent(path)}`, { method: 'PUT',
+      body: JSON.stringify({ message: 'studio: production ' + slug, content }) });
+    const sha = put.commit.sha;
+    stage.textContent = 'Projet poussé — démarrage du workflow…';
+    const t0 = Date.now();
+    if (ghPoll) clearInterval(ghPoll);
+    ghPoll = setInterval(async () => {
+      try {
+        const runs = await gh(`/repos/${repo}/actions/workflows/produce-video.yml/runs?head_sha=${sha}`);
+        const run = (runs.workflow_runs || [])[0];
+        const mins = ((Date.now() - t0) / 60000).toFixed(1);
+        if (!run){ stage.textContent = `En attente du workflow… (${mins} min)`; return; }
+        $('gh-run-link').href = run.html_url;
+        if (run.status !== 'completed'){
+          stage.textContent = `Production ${run.status === 'queued' ? 'en file d’attente' : 'en cours'}… (${mins} min — comptez ~12)`;
+          return;
+        }
+        clearInterval(ghPoll); btn.disabled = false;
+        if (run.conclusion !== 'success'){
+          stage.textContent = 'Échec du workflow (' + run.conclusion + ') — ouvrez le run pour le détail.';
+          $('gh-link').style.display = 'none';
+          $('gh-done').style.display = 'block';
+          return;
+        }
+        stage.textContent = 'Vidéo prête !';
+        let href = run.html_url;
+        try {
+          const rel = await gh(`/repos/${repo}/releases/tags/videos`);
+          const asset = (rel.assets || []).filter(a => a.name.startsWith(slug))
+            .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+          if (asset) href = asset.browser_download_url;
+        } catch (e) {}
+        $('gh-link').style.display = 'inline-block';
+        $('gh-link').href = href;
+        $('gh-done').style.display = 'block';
+      } catch (e) { stage.textContent = 'Erreur : ' + e.message; }
+    }, 6000);
+  } catch (e) {
+    stage.textContent = 'Erreur : ' + e.message;
+    btn.disabled = false;
+  }
+});
+
+/* boot */
+fitPreview();
+</script>
+</body>
+</html>

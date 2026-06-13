@@ -1,0 +1,109 @@
+{
+  "meta": { "title": "Helios Leaks", "slug": "helios-leaks", "lang": "fr" },
+  "theme": { "preset": "wavestone" },
+  "audio": { "rate": "+8%" },
+  "target": { "duration": 120 },
+  "pacing": { "lead": 0.8, "gap": 0.55, "tail": 1.6 },
+  "scenes": [
+    {
+      "id": "s1", "type": "cold-open", "mood": "dark",
+      "vo": "Cinq juin 2026. Un message anonyme, presque ignoré : « fuite imminente chez un grand constructeur européen ». Personne ne le sait encore : la crise a commencé il y a soixante jours. Voici l'histoire des Helios Leaks.",
+      "eyebrow": "Wavestone · Exercice de crise",
+      "dateLine": "05.06.2026",
+      "kicker": "« major european carmaker leak incoming »",
+      "title": "HELIOS LEAKS", "titleAt": 10.0,
+      "subtitle": "Reconstitution d’une fuite massive de données — scénario fictif"
+    },
+    {
+      "id": "s2", "type": "chain", "mood": "tension",
+      "vo": "Tout commence loin du groupe : un sous-traitant d'ingénierie, piégé par hameçonnage. Avec ses accès légitimes, les attaquants traversent les liens de confiance, puis exfiltrent plusieurs téraoctets — par petits flux chiffrés, pendant des semaines. Aucune alerte ne sonne.",
+      "eyebrow": "Acte I — La compromission silencieuse",
+      "heading": "Soixante jours d’avance.",
+      "nodes": [
+        { "date": "J-60", "title": "Un fournisseur piégé", "sub": "Hameçonnage ciblé chez un sous-traitant d’ingénierie", "at": 1.4 },
+        { "date": "J-50", "title": "Mouvement latéral", "sub": "Les accès légitimes traversent les liens de confiance", "at": 4.8 },
+        { "date": "J-42", "title": "Cartographie", "sub": "RH, commerce, ingénierie : le plus sensible est repéré", "at": 6.9 },
+        { "date": "J-36", "title": "Exfiltration", "sub": "Plusieurs téraoctets, par petits flux chiffrés", "at": 8.3 },
+        { "date": "J-30", "title": "Traces effacées", "sub": "Dispersion multi-pays. Aucune alerte ne sonne", "at": 12.2 }
+      ]
+    },
+    {
+      "id": "s3", "type": "map-focus", "mood": "impact",
+      "vo": "Semaine deux : première vague. Quinze mille salariés exposés. Les rémunérations des dirigeants, les évaluations, les plans de réorganisation — publiés. La CNIL ouvre une enquête, les syndicats exigent des comptes. La crise est devenue humaine.",
+      "eyebrow": "Acte II — Semaine 2 · Première vague",
+      "heading": "La vague RH",
+      "camera": { "center": [3.0, 46.5], "scale": 22 },
+      "epicenter": [2.24, 48.83], "impactAt": 1.5,
+      "dotAnchors": [[2.24,48.83],[4.85,45.75],[-1.55,47.22],[5.37,43.30],[3.06,50.63],[7.27,43.70],[-0.58,44.84],[-3.70,40.42],[23.59,46.77],[-6.84,34.02]],
+      "stat": { "value": 15000 }, "statAt": 2.6,
+      "statLabel": "salariés exposés — données RH publiées dans cinq pays",
+      "bullets": [
+        { "text": "Rémunérations des dirigeants", "at": 5.2 },
+        { "text": "Évaluations · plans de réorganisation", "at": 7.2 },
+        { "text": "La CNIL ouvre une enquête", "at": 10.3 },
+        { "text": "Les syndicats exigent des comptes", "at": 12.2 }
+      ]
+    },
+    {
+      "id": "s4", "type": "map-spread", "mood": "grim",
+      "vo": "Puis les vagues s'enchaînent, dans l'ordre choisi pour faire mal. Les remises commerciales — jusqu'à vingt-huit pour cent : le réseau se sent trahi. Un défaut d'ingénierie corrigé devient « Helios savait ». Puis la roadmap électrique 2030 : des années d'avance dévoilées. Le titre perd neuf pour cent.",
+      "eyebrow": "Acte II — Semaines 3 à 6",
+      "heading": "Des vagues orchestrées",
+      "origin": [2.35, 48.86],
+      "stamps": [
+        { "name": "COMMERCE", "fig": "remises jusqu’à 28 % · le réseau trahi", "coords": [-0.13, 51.51], "at": 4.2 },
+        { "name": "INGÉNIERIE", "fig": "un défaut corrigé devient « Helios savait »", "coords": [-83.05, 42.33], "at": 8.6 },
+        { "name": "ALLIANCE", "fig": "Nissan · partenaires chinois exposés", "coords": [139.64, 35.44], "at": 11.0 },
+        { "name": "PRODUIT", "fig": "designs 3D · roadmap EV 2030 dévoilés", "coords": [121.47, 31.23], "at": 12.4 },
+        { "name": "BOURSE", "fig": "−9 % en séance", "coords": [2.35, 48.86], "at": 14.6 }
+      ],
+      "bottom": { "text": "Chaque vague rouvre la crise.", "strong": "#HeliosLeaks" }
+    },
+    {
+      "id": "s5", "type": "map-trace", "mood": "hope",
+      "vo": "Les enquêteurs remontent la piste : des serveurs en Turquie, des relais en Russie, des cryptomonnaies à Dubaï. Un collectif revendique — « Black Torque ». Mais derrière la façade, les services soupçonnent un État. Il ne s'agissait jamais d'argent.",
+      "eyebrow": "Acte III — L’attribution",
+      "heading": "La traque",
+      "trail": [
+        { "coords": [28.98, 41.01], "label": "ISTANBUL · SERVEURS C2", "dx": -470, "dy": 36, "at": 1.4 },
+        { "coords": [37.62, 55.75], "label": "MOSCOU · RELAIS", "at": 2.8 },
+        { "coords": [55.27, 25.20], "label": "DUBAÏ · FLUX CRYPTO", "dy": 36, "at": 4.2 }
+      ],
+      "big": "« Black Torque »", "bigAt": 6.4,
+      "sub": "Un collectif revendique. Derrière la façade, les services soupçonnent un État.",
+      "strip": "Serveurs : Turquie · Relais : Russie\nCryptomonnaies : Dubaï",
+      "footer": "Il ne s’agissait jamais d’argent."
+    },
+    {
+      "id": "s6", "type": "stat-grid", "mood": "cold",
+      "vo": "Semaine huit : les attaquants détiennent encore le plus sensible — codes sources, données de tests, contrats fournisseurs. Ultimatum : soixante-douze heures. Négocier, ignorer, communiquer — trois voies, aucune bonne. Le comité exécutif siège en continu.",
+      "eyebrow": "Acte III — Semaine 8",
+      "heading": "Le chantage final",
+      "facts": [
+        { "tag": "Ce qu’ils détiennent encore", "big": "Codes sources ·\ntests · contrats", "sub": "le plus sensible n’est pas encore public", "at": 1.4 },
+        { "tag": "L’ultimatum", "big": "72 H", "counter": { "to": 72, "suffix": " H" }, "sub": "avant publication totale", "at": 6.6 },
+        { "tag": "Le dilemme", "big": "Trois voies.", "sub": "négocier, ignorer, communiquer — aucune bonne", "at": 9.2 },
+        { "tag": "Le comex", "big": "En session continue", "sub": "la gestion de crise est devenue le produit principal de l’entreprise", "at": 13.6 }
+      ]
+    },
+    {
+      "id": "s7", "type": "lessons", "mood": "resolve",
+      "vo": "Trois leçons pour le comex. La crise commence bien avant la première alerte. L'attaquant choisit le récit : chaque vague la relance. Ce n'est jamais seulement une crise cyber : toute l'entreprise est en première ligne. Ce scénario est fictif. La méthode, elle, ne l'est pas.",
+      "eyebrow": "Ce que ça signifie pour le comex",
+      "lessons": [
+        { "text": "La crise commence bien avant la première alerte.", "at": 1.6 },
+        { "text": "L’attaquant choisit le récit : chaque vague la relance.", "at": 4.6 },
+        { "text": "Jamais « seulement » cyber : toute l’entreprise est en première ligne.", "at": 8.4 }
+      ],
+      "finalLine1": "Ce scénario est fictif.",
+      "finalLine2": "La méthode ne l’est pas.",
+      "finalAt": 12.6
+    },
+    {
+      "id": "s8", "type": "endcard", "vo": "", "minDuration": 4.2,
+      "title": "HELIOS LEAKS",
+      "subtitle": "Scénario fictif · Exercice de crise",
+      "brand": "Crisis Debrief · Wavestone"
+    }
+  ]
+}

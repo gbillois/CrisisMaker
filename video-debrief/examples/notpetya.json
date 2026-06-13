@@ -1,0 +1,105 @@
+{
+  "meta": { "title": "NotPetya", "slug": "notpetya", "lang": "en" },
+  "theme": { "preset": "wavestone" },
+  "audio": { "voice": "en-US-AndrewNeural", "rate": "+4%" },
+  "target": { "duration": 120 },
+  "pacing": { "lead": 0.8, "gap": 0.55, "tail": 1.6 },
+  "scenes": [
+    {
+      "id": "s1", "type": "cold-open", "mood": "dark",
+      "vo": "June 27th, 2017. In seventeen minutes, the world's largest shipping company is about to lose every computer it owns. This is the story of NotPetya — the most destructive cyberattack in history.",
+      "eyebrow": "Wavestone · Cyber Crisis Debrief",
+      "dateLine": "27.06.2017",
+      "kicker": "17 MINUTES TO LOSE EVERYTHING",
+      "title": "NOTPETYA", "titleSize": 218, "titleAt": 8.8,
+      "subtitle": "The most destructive cyberattack in history"
+    },
+    {
+      "id": "s2", "type": "chain", "mood": "tension",
+      "vo": "The weapon wasn't built by criminals. EternalBlue — an exploit developed inside the NSA — was stolen, and dumped on the internet. Microsoft had shipped a patch. Much of the world never applied it. WannaCry was the warning shot. The world ignored it.",
+      "eyebrow": "Act I — The Weapon",
+      "heading": "Built by a state. Lost by a state.",
+      "nodes": [
+        { "date": "c. 2013", "title": "NSA builds EternalBlue", "sub": "A Windows exploit, weaponized in secret", "at": 1.6 },
+        { "date": "Aug 2016", "title": "Stolen", "sub": "“Shadow Brokers” breach the NSA arsenal", "at": 4.3 },
+        { "date": "Mar 2017", "title": "Microsoft patches", "sub": "MS17-010 ships — much of the world won’t apply it", "at": 7.6 },
+        { "date": "Apr 2017", "title": "Dumped online", "sub": "The exploit becomes free for anyone", "at": 5.9 },
+        { "date": "May 2017", "title": "WannaCry", "sub": "The warning shot — ignored", "at": 11.2 }
+      ]
+    },
+    {
+      "id": "s3", "type": "map-focus", "mood": "impact",
+      "vo": "June 27th. Russian military hackers detonate a poisoned update inside M.E.Doc — the tax software used by nearly every company in Ukraine. One trusted supplier. Within an hour, ten percent of the country's computers are wiped. Banks. Airports. Even Chernobyl's radiation monitors.",
+      "eyebrow": "Act II — Day 0 · Kyiv · 10:30",
+      "heading": "One poisoned update",
+      "camera": { "center": [25.5, 49.2], "scale": 26 },
+      "epicenter": [30.52, 50.45], "impactAt": 2.8,
+      "dotAnchors": [[30.52,50.45],[36.23,49.99],[30.73,46.48],[35.04,48.46],[24.03,49.84],[34.55,49.59],[32.06,49.44],[37.55,47.1]],
+      "stat": { "value": 10, "suffix": "%" }, "statSize": 230, "statAt": 10.6,
+      "statLabel": "of all computers in Ukraine — wiped within the hour",
+      "bullets": [
+        { "text": "Banks · ATMs display skulls", "at": 13.8 },
+        { "text": "Boryspil airport · Kyiv metro", "at": 14.7 },
+        { "text": "Government ministries", "at": 15.5 },
+        { "text": "Chernobyl radiation monitors", "at": 16.3 }
+      ]
+    },
+    {
+      "id": "s4", "type": "map-spread", "mood": "grim",
+      "vo": "And the worm doesn't stop at the border. It rides every V P N it finds. Maersk loses forty-nine thousand laptops — in seventeen minutes. Merck halts vaccine production. FedEx. Saint-Gobain. Mondelez. None of them were targets. All of them were collateral damage.",
+      "eyebrow": "Act II — Global Contagion",
+      "heading": "The worm ignores borders",
+      "origin": [30.52, 50.45],
+      "stamps": [
+        { "name": "MAERSK", "fig": "49,000 laptops destroyed · 17 minutes", "coords": [12.57, 55.68], "at": 4.6 },
+        { "name": "MERCK", "fig": "vaccine production halted", "coords": [-74.29, 40.68], "at": 8.9 },
+        { "name": "FEDEX / TNT", "fig": "Europe paralyzed · $400M", "coords": [4.69, 52.30], "at": 11.0 },
+        { "name": "SAINT-GOBAIN", "fig": "€250M lost", "coords": [2.35, 48.85], "at": 12.0 },
+        { "name": "MONDELĒZ", "fig": "24,000 laptops · $180M", "coords": [-87.63, 41.88], "at": 13.0 }
+      ],
+      "bottom": { "text": "None were targets.", "strong": "All were collateral damage." }
+    },
+    {
+      "id": "s5", "type": "map-trace", "mood": "hope",
+      "vo": "Maersk survives because of one domain controller in Ghana — offline that day, during a power outage. From that single surviving server, the entire company is rebuilt in ten days — running on WhatsApp, and paper.",
+      "eyebrow": "The Recovery",
+      "heading": "Saved by an accident",
+      "trail": [ { "coords": [-0.19, 5.60], "label": "GHANA · 1 DOMAIN CONTROLLER", "at": 2.0 } ],
+      "big": "1 surviving server", "bigAt": 1.9,
+      "sub": "a domain controller in Ghana — offline during a power outage",
+      "strip": "10 days · 4,000 servers\n45,000 PCs rebuilt",
+      "footer": "…running on WhatsApp and paper"
+    },
+    {
+      "id": "s6", "type": "stat-grid", "mood": "cold",
+      "vo": "There was never a ransom. NotPetya was a wiper, dressed as cybercrime. Total damage: over ten billion dollars. Five nations name the attacker: Russian military intelligence. Insurers call it an act of war — and refuse to pay. Merck fights five years for its one point four billion.",
+      "eyebrow": "Act III — The Fallout",
+      "heading": "Not crime. A weapon.",
+      "facts": [
+        { "tag": "The truth", "big": "A wiper —\nnot ransomware", "sub": "Recovery was never possible. The ransom note was a disguise.", "at": 1.6 },
+        { "tag": "The bill", "big": "$10B+", "counter": { "to": 10, "suffix": "B+" }, "sub": "the costliest cyberattack in history", "at": 5.4 },
+        { "tag": "The attacker", "big": "GRU Unit 74455\n“Sandworm”", "sub": "named by five nations — February 2018", "at": 9.0 },
+        { "tag": "The aftershock", "big": "“Act of war”", "sub": "insurers refuse to pay — Merck fights 5 years to win its $1.4B", "at": 12.2 }
+      ]
+    },
+    {
+      "id": "s7", "type": "lessons", "mood": "resolve",
+      "vo": "Three lessons for the board. You don't have to be the target, to be destroyed. Your most trusted supplier can be the way in. And resilience can hang on a single offline server. NotPetya wasn't the last of its kind. It was the first.",
+      "eyebrow": "What this means for the board",
+      "lessons": [
+        { "text": "You don’t have to be the target to be destroyed.", "at": 2.2 },
+        { "text": "Your most trusted supplier can be the way in.", "at": 5.3 },
+        { "text": "Resilience can hang on a single offline server.", "at": 8.2 }
+      ],
+      "finalLine1": "NotPetya wasn’t the last.",
+      "finalLine2": "It was the first.",
+      "finalAt": 10.9
+    },
+    {
+      "id": "s8", "type": "endcard", "vo": "", "minDuration": 4.2,
+      "title": "NOTPETYA",
+      "subtitle": "27 · 06 · 2017",
+      "brand": "Cyber Crisis Debrief · Wavestone"
+    }
+  ]
+}

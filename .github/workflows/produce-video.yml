@@ -1,0 +1,78 @@
+name: produce-video
+
+on:
+  push:
+    paths: ["video-debrief/requests/**.json"]
+  workflow_dispatch:
+    inputs:
+      project_path:
+        description: "Chemin du projet JSON dans le repo (ex: video-debrief/examples/notpetya.json)"
+        required: true
+        default: "video-debrief/examples/notpetya.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: produce-video
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg + deps python
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          pip install --quiet edge-tts numpy scipy
+
+      - name: Resolve project file
+        id: project
+        run: |
+          if [ -n "${{ github.event.inputs.project_path }}" ]; then
+            P="${{ github.event.inputs.project_path }}"
+          else
+            P=$(git diff --name-only HEAD^ HEAD -- 'video-debrief/requests/*.json' 'video-debrief/requests/**/*.json' | head -1)
+          fi
+          if [ -z "$P" ] || [ ! -f "$P" ]; then echo "Projet introuvable: '$P'" >&2; exit 1; fi
+          echo "path=$P" >> "$GITHUB_OUTPUT"
+          echo "Projet: $P"
+
+      - name: Produce video
+        env:
+          CI: "true"
+        run: python3 video-debrief/pipeline/build.py "${{ steps.project.outputs.path }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: video-debrief/out/*.mp4
+          retention-days: 30
+
+      - name: Publish to rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view videos >/dev/null 2>&1 || \
+            gh release create videos --title "Vidéos du studio" \
+              --notes "Vidéos produites par le workflow produce-video (release continue)."
+          for f in video-debrief/out/*.mp4; do
+            base=$(basename "$f" .mp4)
+            cp "$f" "/tmp/${base}-r${{ github.run_number }}.mp4"
+            gh release upload videos "/tmp/${base}-r${{ github.run_number }}.mp4" --clobber
+          done

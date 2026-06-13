@@ -1,4 +1,4 @@
-name: Node.js Syntax Check
+name: Code checks
 
 on:
   push:
@@ -17,6 +17,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Check JavaScript syntax
         run: |
           echo "Running node --check on all .js files..."
@@ -32,3 +37,9 @@ jobs:
             exit 1
           fi
           echo "All JavaScript files passed syntax check."
+
+      - name: Check Video Debrief Python syntax
+        run: python3 -m py_compile video-debrief/pipeline/*.py
+
+      - name: Run tests
+        run: node --test tests/*.test.js

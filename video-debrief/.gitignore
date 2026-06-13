@@ -1,0 +1,5 @@
+pipeline/node_modules/
+pipeline/package*.json
+out/*
+!out/.gitkeep
+.DS_Store
