@@ -231,8 +231,8 @@
               <div class="launch-hero">
                 <button class="launch-hero-close" data-action="close-launch-screen" title="${tt('Close', 'Fermer', 'Schließen')}">✕</button>
                 <span class="hero-kicker">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span>
-                <h1 class="launch-hero-title">${tt('Accelerate crisis exercises inject creation.', 'Accélérez la création d\'injects pour les exercices de crise.', 'Beschleunigen Sie die Erstellung von Injects für Krisenübungen.')}</h1>
-                <p class="launch-hero-desc">${tt('A complete studio to prepare realistic scenarios, generate crisis injects, and export polished deliverables — all from your browser, with no server required.', 'Un studio complet pour préparer des scénarios réalistes, générer des injects de crise et exporter des livrables soignés — depuis votre navigateur, sans serveur requis.', 'Ein vollständiges Studio zur Vorbereitung realistischer Szenarien, Generierung von Krisen-Injects und Export fertiger Lieferobjekte — alles im Browser, ohne Server.')}</p>
+                <h1 class="launch-hero-title">${tt('Design, run, and debrief crisis exercises.', 'Concevez, animez et débriefez vos exercices de crise.', 'Entwerfen, leiten und debriefen Sie Krisenübungen.')}</h1>
+                <p class="launch-hero-desc">${tt('A complete studio to prepare realistic scenarios, create crisis injects, audit timelines, and produce polished interactive or video debriefs.', 'Un studio complet pour préparer des scénarios réalistes, créer des injects, auditer des chronogrammes et produire des débriefs interactifs ou vidéo soignés.', 'Ein vollständiges Studio zur Vorbereitung realistischer Szenarien, Erstellung von Krisen-Injects, Prüfung von Zeitplänen und Produktion interaktiver oder videobasierter Debriefs.')}</p>
                 <div class="launch-hero-stats">
                   <div class="hero-stat">
                     <strong>${tt('Stand alone or AI powered', 'Autonome ou propulsé par l\'IA', 'Eigenständig oder KI-gestützt')}</strong>
@@ -244,7 +244,7 @@
                   </div>
                   <div class="hero-stat">
                     <strong>${tt('Export-ready', 'Prêt à l\'export', 'Exportbereit')}</strong>
-                    <span>${tt('.json · .zip · styled images · interactive debrief HTML', '.json · .zip · images stylées · HTML de debrief interactif', '.json · .zip · gestaltete Bilder · interaktives Debrief-HTML')}</span>
+                    <span>${tt('.json · .zip · styled images · interactive HTML · MP4 video', '.json · .zip · images stylées · HTML interactif · vidéo MP4', '.json · .zip · gestaltete Bilder · interaktives HTML · MP4-Video')}</span>
                   </div>
                 </div>
               </div>
@@ -279,6 +279,11 @@
                       <p>${tt('Reconstruct the complete hidden scenario story without AI or generate an editable reconstruction with AI, then reveal it through an interactive timeline.', 'Reconstruisez toute l’histoire cachée du scénario sans IA ou générez une reconstruction éditable avec l’IA, puis révélez-la dans une timeline interactive.', 'Rekonstruieren Sie die vollständige verborgene Szenario-Handlung ohne KI oder erstellen Sie eine bearbeitbare Rekonstruktion mit KI und zeigen Sie sie in einem interaktiven Zeitplan.')}</p>
                     </div>
                     <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgVideo()}</div>
+                      <strong>${tt('Video Debrief', 'Video Debrief', 'Video-Debrief')}</strong>
+                      <p>${tt('Turn the crisis story into an editable documentary video, preview every scene, then produce an MP4 locally or through GitHub Actions.', 'Transformez le récit de crise en vidéo documentaire éditable, prévisualisez chaque scène puis produisez un MP4 localement ou via GitHub Actions.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo, zeigen Sie jede Szene in der Vorschau an und produzieren Sie anschließend lokal oder über GitHub Actions eine MP4-Datei.')}</p>
+                    </div>
+                    <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgShieldCheck()}</div>
                       <strong>${tt('Crisis Checker', 'Crisis Checker', 'Krisen-Prüfer')}</strong>
                       <p>${tt('Audit any crisis exercise chronogram — import an .xlsx, .xls or .pptx file (or use your current scenario) and let the AI analyze coverage, pacing, actor balance and realism, then export a quality report.', 'Auditez n\'importe quel chronogramme — importez un fichier .xlsx, .xls ou .pptx (ou utilisez votre scénario actuel) et laissez l\'IA analyser la couverture, le rythme, l\'équilibre des acteurs et le réalisme, puis exportez un rapport qualité.', 'Prüfen Sie beliebige Krisenübungs-Chronogramme — importieren Sie eine .xlsx-, .xls- oder .pptx-Datei (oder verwenden Sie Ihr aktuelles Szenario) und lassen Sie die KI Abdeckung, Tempo, Akteur-Balance und Realismus analysieren, dann exportieren Sie einen Qualitätsbericht.')}</p>
@@ -300,6 +305,10 @@
                     <div class="launch-tip">
                       <div class="launch-tip-num">3</div>
                       <span>${tt('<strong>Export your deliverables</strong> — use the Injects view to preview everything, then export a ZIP with all styled injects ready for facilitation.', '<strong>Exportez vos livrables</strong> — utilisez la vue Injects pour tout prévisualiser, puis exportez un ZIP avec tous les injects prêts pour l\'animation.', '<strong>Exportieren Sie Ihre Lieferobjekte</strong> — verwenden Sie die Injects-Ansicht zur Vorschau, dann exportieren Sie ein ZIP mit allen gestalteten Injects für die Übungsleitung.')}</span>
+                    </div>
+                    <div class="launch-tip">
+                      <div class="launch-tip-num">4</div>
+                      <span>${tt('<strong>Build the debrief</strong> — reconstruct the hidden story as an interactive timeline or turn it into a documentary-style video.', '<strong>Construisez le débrief</strong> — reconstruisez l’histoire cachée dans une timeline interactive ou transformez-la en vidéo documentaire.', '<strong>Erstellen Sie das Debrief</strong> — rekonstruieren Sie die verborgene Geschichte als interaktiven Zeitplan oder verwandeln Sie sie in ein Dokumentarvideo.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">★</div>
@@ -348,6 +357,10 @@
           debrief: {
             title: tt('Crisis Debrief', 'Debrief de crise', 'Krisen-Debrief'),
             subtitle: tt('Reconstruct the hidden scenario story and reveal what truly happened.', 'Reconstruisez l’histoire cachée du scénario et révélez ce qui s’est réellement passé.', 'Rekonstruieren Sie die verborgene Szenario-Handlung und zeigen Sie, was wirklich geschah.')
+          },
+          'video-debrief': {
+            title: tt('Video Debrief', 'Video Debrief', 'Video-Debrief'),
+            subtitle: tt('Turn the crisis story into an editable documentary-style video.', 'Transformez le récit de crise en une vidéo documentaire éditable.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo.')
           }
         };
         return map[appState.route] || null;

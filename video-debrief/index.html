@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Video Debriefer — Studio</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.toggle('integrated', new URLSearchParams(location.search).has('integrated'));</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -126,6 +127,80 @@
              white-space: pre-wrap; margin-top: 10px; }
   .step-view { display: none; }
   .step-view.active { display: block; }
+
+  html.integrated body {
+    background: #edf6f8;
+  }
+  html.integrated .topbar {
+    min-height: 62px;
+    padding: 10px 16px;
+    gap: 12px;
+    color: var(--text);
+    background: rgba(255,255,255,0.94);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 8px 22px rgba(11,47,74,0.08);
+  }
+  html.integrated .brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-strong), var(--primary));
+    border: 0;
+    letter-spacing: -0.06em;
+  }
+  html.integrated .brand-eyebrow {
+    color: var(--muted);
+    font-size: 0.62rem;
+    letter-spacing: 0.13em;
+  }
+  html.integrated .brand-name {
+    color: var(--primary-strong);
+    font-size: 0.92rem;
+  }
+  html.integrated .steps {
+    margin-left: 18px;
+    gap: 7px;
+  }
+  html.integrated .step-btn {
+    border-color: var(--border);
+    background: #f6fafb;
+    color: var(--muted);
+    padding: 7px 15px;
+  }
+  html.integrated .step-btn:hover {
+    border-color: rgba(15,109,143,0.34);
+    color: var(--primary);
+  }
+  html.integrated .step-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: 0 5px 14px rgba(15,109,143,0.22);
+  }
+  html.integrated .server-pill {
+    color: var(--muted);
+    background: #f6fafb;
+    border-color: var(--border);
+  }
+  html.integrated .workspace {
+    padding: 14px;
+    gap: 14px;
+  }
+  html.integrated .panel,
+  html.integrated .preview-frame,
+  html.integrated .scrub-bar {
+    box-shadow: 0 8px 24px rgba(11,47,74,0.08);
+  }
+
+  @media (max-width: 1050px) {
+    .workspace { grid-template-columns: minmax(340px, 42%) minmax(0, 1fr); }
+    html.integrated .brand-eyebrow { display: none; }
+    html.integrated .brand-name { max-width: 130px; line-height: 1.15; }
+    html.integrated .steps { margin-left: 4px; }
+    html.integrated .step-btn { padding: 7px 10px; }
+    html.integrated .server-pill { font-size: 0; padding: 8px; }
+  }
 </style>
 </head>
 <body>
@@ -947,7 +1022,7 @@ const open = new Set();
 function renderSceneCards(){
   const host = $('scene-list');
   host.innerHTML = '';
-  (project.scenes || []).forEach((s, i) => {
+  (project?.scenes || []).forEach((s, i) => {
     const card = document.createElement('div');
     card.className = 'scene-card';
     const head = document.createElement('header');

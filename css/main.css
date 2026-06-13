@@ -452,7 +452,7 @@
     }
     .launch-features {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
     }
     .launch-feature-card {
@@ -2851,11 +2851,18 @@
     }
 
     /* ── Video Debrief studio ── */
-    .video-debrief-workspace {
-      height: calc(100vh - 72px);
+    .app-shell:has(.content-video-debrief) {
+      height: 100vh;
       min-height: 0;
       overflow: hidden;
+    }
+    .video-debrief-workspace {
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid rgba(15,109,143,0.14);
+      border-radius: var(--radius);
       background: #edf6f8;
+      box-shadow: var(--shadow);
     }
     .video-debrief-frame {
       display: block;
@@ -2865,8 +2872,8 @@
       background: #edf6f8;
     }
     .content.content-video-debrief {
-      padding: 0;
-      gap: 0;
+      min-height: 0;
+      grid-template-rows: auto minmax(0, 1fr);
       align-content: stretch;
       overflow: hidden;
     }
