@@ -152,6 +152,17 @@
         return result;
       }
 
+      function restoreApiKeysFromStorage(settings) {
+        const apiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
+        if (apiKey) settings.ai_api_key = apiKey;
+        const azureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
+        if (azureApiKey) settings.azure_api_key = azureApiKey;
+        const speechKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
+        if (speechKey) settings.azure_speech_key = speechKey;
+        const speechRegion = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion);
+        if (speechRegion) settings.azure_speech_region = speechRegion;
+      }
+
       function persistProviderSettings(settings) {
         localStorage.setItem(PROVIDER_STORAGE_KEYS.aiProvider, settings.ai_provider || 'anthropic');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureEndpoint, settings.azure_endpoint || '');
@@ -658,15 +669,7 @@
           appState.scenario = mergeScenario(migrated);
           appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
           appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
-          // restore API keys from dedicated localStorage keys (never stored in project files)
-          const savedApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
-          if (savedApiKey) appState.scenario.settings.ai_api_key = savedApiKey;
-          const savedAzureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
-          if (savedAzureApiKey) appState.scenario.settings.azure_api_key = savedAzureApiKey;
-          const savedSpeechKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
-          if (savedSpeechKey) appState.scenario.settings.azure_speech_key = savedSpeechKey;
-          const savedSpeechRegion = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion);
-          if (savedSpeechRegion) appState.scenario.settings.azure_speech_region = savedSpeechRegion;
+          restoreApiKeysFromStorage(appState.scenario.settings);
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
           // Restore LLM prompt texts from saved data
           appState.llmState = makeDefaultLLMState();

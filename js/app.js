@@ -585,6 +585,7 @@
             case 'nav-debrief': appState.route = 'debrief'; App.render(); break;
             case 'new-scenario': {
               appState.scenario = emptyScenario();
+              restoreApiKeysFromStorage(appState.scenario.settings);
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = null;
@@ -597,6 +598,7 @@
             }
             case 'load-example': {
               appState.scenario = defaultScenario();
+              restoreApiKeysFromStorage(appState.scenario.settings);
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
