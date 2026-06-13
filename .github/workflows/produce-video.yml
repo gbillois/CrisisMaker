@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       project_path:
-        description: "Chemin du projet JSON dans le repo (ex: video-debrief/examples/notpetya.json)"
+        description: "Chemin du projet JSON dans le repo (ex: video-debrief/examples/stonawave.json)"
         required: true
-        default: "video-debrief/examples/notpetya.json"
+        default: "video-debrief/examples/stonawave.json"
 
 permissions:
   contents: write

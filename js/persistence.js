@@ -5,6 +5,8 @@
       const supportsFileSystemAccess = () => typeof window !== 'undefined' && 'showSaveFilePicker' in window;
 
       function buildProjectFileData() {
+        if (typeof captureVideoDebriefProjectState === 'function') captureVideoDebriefProjectState();
+        appState.scenario.video_debrief = loadVideoDebriefDraft(appState.scenario.video_debrief);
         const exportData = JSON.parse(JSON.stringify(appState.scenario));
         exportData.debrief = normalizeDebrief(exportData.debrief, exportData);
         exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
@@ -654,6 +656,7 @@
             appState.scenario.custom_templates = migrated.custom_templates;
           }
           appState.scenario = mergeScenario(migrated);
+          appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
           appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
           // restore API keys from dedicated localStorage keys (never stored in project files)
           const savedApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);

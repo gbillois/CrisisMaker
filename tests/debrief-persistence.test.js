@@ -61,6 +61,14 @@ const result = vm.runInContext(`(() => {
   scenario.debrief.events[1].t = 0.12345;
   scenario.debrief.events[1].coords = [12.34, 56.78];
   scenario.debrief.events[1].artifacts = ['Custom evidence'];
+  scenario.video_debrief.source_material = 'Saved Video Debrief source';
+  scenario.video_debrief.setup.duration = 95;
+  scenario.video_debrief.setup.language = 'en';
+  scenario.video_debrief.project = {
+    meta: { title: 'Saved documentary', slug: 'saved-documentary', lang: 'en' },
+    theme: { preset: 'wavestone' },
+    scenes: [{ id: 's1', type: 'cold-open', vo: 'Saved voice-over', title: 'SAVED' }]
+  };
   appState = {
     scenario,
     llmState: {
@@ -96,12 +104,20 @@ for (const project of [result.project, result.loaded, result.locallySaved]) {
   assert.equal(project.debrief.map.mode, 'region');
   assert.equal(project.debrief.phases[0].range, 'Custom prelude range');
   assert.equal(project.debrief.phases[0].color, '#123456');
+  assert.equal(project.video_debrief.source_material, 'Saved Video Debrief source');
+  assert.equal(project.video_debrief.setup.duration, 95);
+  assert.equal(project.video_debrief.setup.language, 'en');
+  assert.equal(project.video_debrief.project.meta.title, 'Saved documentary');
+  assert.equal(project.video_debrief.project.scenes[0].vo, 'Saved voice-over');
 }
 assert.equal(result.project.llm_prompts.debrief, 'custom debrief prompt');
 assert.equal(result.locallySaved.llm_prompts.debrief, 'custom debrief prompt');
 assert.equal(result.appliedLoad.debrief.meta.title, 'Loaded through project import');
 assert.equal(result.appliedLoad.debrief.events[1].t, 0.12345);
+assert.equal(result.appliedLoad.video_debrief.project.meta.title, 'Saved documentary');
 assert.ok(result.legacy.debrief.events.length > 0);
+assert.equal(result.legacy.video_debrief.project, null);
+assert.equal(result.legacy.video_debrief.setup.duration, 120);
 assert.equal(result.project.settings.ai_api_key, '');
 assert.equal(result.project.settings.azure_api_key, '');
 assert.equal(result.project.settings.azure_speech_key, '');
@@ -115,4 +131,4 @@ assert.match(editorFrame.srcdoc, /window\.CRISISMAKER_INITIAL_CONFIG = /);
 assert.match(editorFrame.srcdoc, /Saved custom debrief/);
 assert.equal(editorFrame.src, undefined);
 
-console.log('Debrief project persistence round-trip passed.');
+console.log('Debrief and Video Debrief project persistence round-trip passed.');

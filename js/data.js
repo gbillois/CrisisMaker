@@ -137,6 +137,7 @@
         ];
         scenario.stimuli = samples;
         scenario.debrief = buildDebriefFromScenario(scenario);
+        scenario.video_debrief = normalizeVideoDebrief({ source_material: scenario.scenario.summary });
         return scenario;
       }
 
@@ -151,6 +152,7 @@
           actors: [],
           stimuli: [],
           debrief: makeEmptyDebrief({ ...base, client: { ...base.client, name: '' } }),
+          video_debrief: normalizeVideoDebrief(null),
           settings: { ...base.settings, ...settingsOverrides }
         };
       }
@@ -207,6 +209,7 @@
           scenario.settings.inject_language = scenario.settings.language || 'en';
         }
         scenario.settings = { ...scenario.settings, ...providerSettings };
+        scenario.video_debrief = loadVideoDebriefDraft(scenario.video_debrief);
         normalizeProviderSettingsInPlace(scenario.settings);
         // Preserve llm_prompts for restoration after appState init
         if (saved) {
@@ -229,10 +232,49 @@
           actors: Array.isArray(input.actors) && input.actors.length ? input.actors : base.actors,
           stimuli: Array.isArray(input.stimuli) ? input.stimuli.map(normalizeStimulus) : base.stimuli,
           debrief: normalizeDebrief(input.debrief, { ...base, ...input }),
+          video_debrief: normalizeVideoDebrief(input.video_debrief),
           custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : []
         };
         normalizeProviderSettingsInPlace(merged.settings);
         return merged;
+      }
+
+      function normalizeVideoDebrief(value) {
+        const input = value && typeof value === 'object' ? value : {};
+        const setup = input.setup && typeof input.setup === 'object' ? input.setup : {};
+        return {
+          source_material: typeof input.source_material === 'string' ? input.source_material : '',
+          setup: {
+            duration: Number(setup.duration) || 120,
+            language: setup.language || 'fr',
+            theme: setup.theme || 'wavestone',
+            voice: setup.voice || '',
+            tone: setup.tone || 'documentaire sobre',
+            audience: setup.audience || 'comité exécutif'
+          },
+          project: input.project && typeof input.project === 'object'
+            ? JSON.parse(JSON.stringify(input.project))
+            : null
+        };
+      }
+
+      function loadVideoDebriefDraft(fallback = null) {
+        try {
+          const saved = localStorage.getItem(VIDEO_DEBRIEF_STORAGE_KEY);
+          return saved ? normalizeVideoDebrief(JSON.parse(saved)) : normalizeVideoDebrief(fallback);
+        } catch (error) {
+          return normalizeVideoDebrief(fallback);
+        }
+      }
+
+      function persistVideoDebriefDraft(value) {
+        const normalized = normalizeVideoDebrief(value);
+        try {
+          localStorage.setItem(VIDEO_DEBRIEF_STORAGE_KEY, JSON.stringify(normalized));
+        } catch (error) {
+          console.warn('Unable to persist the Video Debrief browser draft.', error);
+        }
+        return normalized;
       }
 
       function normalizeStimulus(stimulus) {

@@ -158,7 +158,7 @@
         </div>
         <div class="row2">
           <button class="btn" id="btn-load-json">Charger un fichier…</button>
-          <button class="btn" id="btn-load-example">Exemple Helios Leaks</button>
+          <button class="btn" id="btn-load-example">Exemple StonaWave</button>
         </div>
         <input type="file" id="file-input" accept=".json,.txt,.md" style="display:none">
 
@@ -203,23 +203,25 @@
 
         <div class="divider"></div>
         <h3>Génération du scénario</h3>
-        <div class="hint">L’IA n’est utilisée <b>que pour cette étape</b> (rédaction du
+        <div class="hint" id="generation-help">L’IA n’est utilisée <b>que pour cette étape</b> (rédaction du
           brouillon). Le gabarit sans IA construit la structure depuis votre timeline ;
           vous rédigez ensuite la voix off vous-même.</div>
-        <div class="row2">
-          <div class="field"><label>Fournisseur IA</label>
-            <select id="ai-provider">
-              <option value="none">Aucun (gabarit)</option>
-              <option value="anthropic" selected>Claude (Anthropic)</option>
-              <option value="openai">OpenAI</option>
-            </select></div>
-          <div class="field"><label>Modèle
-              <button class="mini-btn" id="btn-models" title="Rafraîchir la liste depuis l’API">⟳</button></label>
-            <select id="ai-model"></select></div>
+        <div class="scene-card" style="padding:12px 14px; margin-bottom:12px;">
+          <strong style="font-size:0.82rem;">Réglages IA CrisisMaker</strong>
+          <div class="hint" id="models-status" style="margin:4px 0 0;">
+            En attente des réglages CrisisMaker…
+          </div>
+          <div class="hint" style="margin:6px 0 0;">
+            La matière première, les réglages et les scènes vidéo sont inclus dans les sauvegardes et chargements du projet CrisisMaker.
+          </div>
         </div>
-        <div class="field"><label>Clé API (stockée uniquement dans ce navigateur)</label>
-          <input type="password" id="ai-key" placeholder="sk-… / sk-ant-…"></div>
-        <div class="hint" id="models-status"></div>
+        <select id="ai-provider" hidden>
+          <option value="none" selected>Aucun</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="openai">OpenAI</option>
+        </select>
+        <select id="ai-model" hidden></select>
+        <input type="password" id="ai-key" hidden>
         <div class="row2">
           <button class="btn btn-primary" id="btn-generate">✦ Générer le scénario (IA)</button>
           <button class="btn" id="btn-skeleton">Gabarit sans IA</button>
@@ -255,7 +257,7 @@
       <!-- ════════ STEP 3 — PRODUCTION ════════ -->
       <div class="step-view" id="view-3">
         <h3>Produire en local</h3>
-        <div class="hint">La production tourne <b>en local</b> (voix neurale, rendu
+        <div class="hint" id="local-production-help">La production tourne <b>en local</b> (voix neurale, rendu
           1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.</div>
 
         <div id="prod-server-ok" style="display:none">
@@ -279,7 +281,7 @@ python3 server.py</div>
 
         <div class="divider"></div>
         <h3>Cloud GitHub</h3>
-        <div class="hint">Production sur <b>GitHub Actions</b> (~12 min) : le projet est
+        <div class="hint" id="github-production-help">Production sur <b>GitHub Actions</b> (~12 min) : le projet est
           poussé dans <code>video-debrief/requests/</code>, le workflow produit le MP4 et le publie dans
           la release <code>videos</code>. Token : <i>fine-grained PAT</i> du repo avec
           permissions <b>Contents (read/write)</b> et <b>Actions (read)</b>.</div>
@@ -317,6 +319,182 @@ let totalDur = 0, playing = false, playT = 0, lastTick = 0;
 let engineReady = false;
 const SERVER = 'http://localhost:8765';
 let serverOn = false;
+let applyingCrisisMakerState = false;
+let interfaceLanguage = 'fr';
+
+const UI_TEXT = {
+  en: {
+    '1 · Scénario': '1 · Scenario', '2 · Adaptation': '2 · Editing', '3 · Production': '3 · Production',
+    'serveur local : hors ligne': 'local server: offline',
+    'Matière première': 'Source material',
+    'Collez une timeline (format Crisis Debriefer / TIMELINE_EVENTS), un compte-rendu, des notes… Tout texte qui raconte la crise.': 'Paste a timeline (Crisis Debriefer / TIMELINE_EVENTS format), a report, notes… Any text that tells the story of the crisis.',
+    'Charger un fichier…': 'Load a file…', 'Exemple StonaWave': 'StonaWave example',
+    'Réglages de la vidéo': 'Video settings', 'Durée cible (s)': 'Target duration (s)', 'Langue': 'Language',
+    'Style graphique': 'Visual style', 'Voix': 'Voice', 'Ton': 'Tone', 'Public': 'Audience',
+    'Wavestone (indigo / néon)': 'Wavestone (indigo / neon)', 'Cyber dark (sépia / rouge)': 'Cyber dark (sepia / red)',
+    'Français': 'French', 'Documentaire sobre': 'Factual documentary', 'Dramatique': 'Dramatic',
+    'Pédagogique': 'Educational', 'Executive brief': 'Executive brief', 'Comex': 'Executive committee',
+    'Équipes cyber': 'Cyber teams', 'Tous collaborateurs': 'All employees',
+    'Génération du scénario': 'Scenario generation',
+    'L’IA n’est utilisée que pour cette étape (rédaction du brouillon). Le gabarit sans IA construit la structure depuis votre timeline ; vous rédigez ensuite la voix off vous-même.': 'AI is only used for this step (draft writing). The no-AI template builds the structure from your timeline; you then write the voice-over yourself.',
+    'Réglages IA CrisisMaker': 'CrisisMaker AI settings',
+    'En attente des réglages CrisisMaker…': 'Waiting for CrisisMaker settings…',
+    'La matière première, les réglages et les scènes vidéo sont inclus dans les sauvegardes et chargements du projet CrisisMaker.': 'Source material, settings and video scenes are included when saving and loading the CrisisMaker project.',
+    '✦ Générer le scénario (IA)': '✦ Generate scenario (AI)', 'Gabarit sans IA': 'Template without AI',
+    'Projet': 'Project', 'Titre': 'Title', 'Style': 'Style', 'Scènes': 'Scenes',
+    'JSON du projet': 'Project JSON',
+    'Édition libre — toutes les options avancées (cues at, caméra, moods, couleurs…) sont là.': 'Free editing — all advanced options (at cues, camera, moods, colors…) are available here.',
+    'Appliquer le JSON': 'Apply JSON', 'Télécharger le projet': 'Download project',
+    'Produire en local': 'Produce locally',
+    'La production tourne en local (voix neurale, rendu 1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.': 'Production runs locally (neural voice, 1080p24 rendering, synthesized music, mixing, H.264) — no AI, no cloud.',
+    '▶ Lancer la production': '▶ Start production', '⬇ Télécharger le MP4': '⬇ Download MP4',
+    'Serveur local non détecté. Lancez-le dans un terminal :': 'Local server not detected. Start it in a terminal:',
+    '…puis revenez ici. Ou en ligne de commande directe :': '…then come back here. Or use the command line directly:',
+    'Télécharger le projet JSON': 'Download project JSON', 'Cloud GitHub': 'GitHub Cloud',
+    'Repo (owner/nom)': 'Repository (owner/name)',
+    'Token GitHub (stocké uniquement dans ce navigateur)': 'GitHub token (stored only in this browser)',
+    '☁ Produire via GitHub Actions': '☁ Produce via GitHub Actions', 'Voir le run': 'View run',
+    'Auto (selon langue)': 'Auto (based on language)', 'Aucun': 'None'
+  },
+  de: {
+    '1 · Scénario': '1 · Szenario', '2 · Adaptation': '2 · Bearbeitung', '3 · Production': '3 · Produktion',
+    'serveur local : hors ligne': 'Lokaler Server: offline',
+    'Matière première': 'Ausgangsmaterial',
+    'Collez une timeline (format Crisis Debriefer / TIMELINE_EVENTS), un compte-rendu, des notes… Tout texte qui raconte la crise.': 'Fügen Sie einen Zeitplan (Crisis Debriefer / TIMELINE_EVENTS), einen Bericht oder Notizen ein, die die Krise beschreiben.',
+    'Charger un fichier…': 'Datei laden…', 'Exemple StonaWave': 'StonaWave-Beispiel',
+    'Réglages de la vidéo': 'Videoeinstellungen', 'Durée cible (s)': 'Zieldauer (s)', 'Langue': 'Sprache',
+    'Style graphique': 'Grafikstil', 'Voix': 'Stimme', 'Ton': 'Ton', 'Public': 'Zielgruppe',
+    'Wavestone (indigo / néon)': 'Wavestone (Indigo / Neon)', 'Cyber dark (sépia / rouge)': 'Cyber Dark (Sepia / Rot)',
+    'Français': 'Französisch', 'Documentaire sobre': 'Sachliche Dokumentation', 'Dramatique': 'Dramatisch',
+    'Pédagogique': 'Lehrreich', 'Executive brief': 'Executive Brief', 'Comex': 'Vorstand',
+    'Équipes cyber': 'Cyber-Teams', 'Tous collaborateurs': 'Alle Mitarbeitenden',
+    'Génération du scénario': 'Szenarioerstellung',
+    'L’IA n’est utilisée que pour cette étape (rédaction du brouillon). Le gabarit sans IA construit la structure depuis votre timeline ; vous rédigez ensuite la voix off vous-même.': 'KI wird nur für diesen Schritt verwendet. Die Vorlage ohne KI erstellt die Struktur aus Ihrem Zeitplan; den Sprechertext schreiben Sie anschließend selbst.',
+    'Réglages IA CrisisMaker': 'CrisisMaker-KI-Einstellungen',
+    'En attente des réglages CrisisMaker…': 'Warten auf CrisisMaker-Einstellungen…',
+    'La matière première, les réglages et les scènes vidéo sont inclus dans les sauvegardes et chargements du projet CrisisMaker.': 'Ausgangsmaterial, Einstellungen und Videoszenen werden beim Speichern und Laden des CrisisMaker-Projekts berücksichtigt.',
+    '✦ Générer le scénario (IA)': '✦ Szenario generieren (KI)', 'Gabarit sans IA': 'Vorlage ohne KI',
+    'Projet': 'Projekt', 'Titre': 'Titel', 'Style': 'Stil', 'Scènes': 'Szenen',
+    'JSON du projet': 'Projekt-JSON',
+    'Édition libre — toutes les options avancées (cues at, caméra, moods, couleurs…) sont là.': 'Freie Bearbeitung — alle erweiterten Optionen sind hier verfügbar.',
+    'Appliquer le JSON': 'JSON anwenden', 'Télécharger le projet': 'Projekt herunterladen',
+    'Produire en local': 'Lokal produzieren',
+    'La production tourne en local (voix neurale, rendu 1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.': 'Die Produktion läuft lokal — ohne KI und ohne Cloud.',
+    '▶ Lancer la production': '▶ Produktion starten', '⬇ Télécharger le MP4': '⬇ MP4 herunterladen',
+    'Serveur local non détecté. Lancez-le dans un terminal :': 'Lokaler Server nicht erkannt. Starten Sie ihn in einem Terminal:',
+    '…puis revenez ici. Ou en ligne de commande directe :': '…und kehren Sie dann hierher zurück. Oder direkt über die Befehlszeile:',
+    'Télécharger le projet JSON': 'Projekt-JSON herunterladen', 'Cloud GitHub': 'GitHub Cloud',
+    'Repo (owner/nom)': 'Repository (Owner/Name)',
+    'Token GitHub (stocké uniquement dans ce navigateur)': 'GitHub-Token (nur in diesem Browser gespeichert)',
+    '☁ Produire via GitHub Actions': '☁ Über GitHub Actions produzieren', 'Voir le run': 'Run anzeigen',
+    'Auto (selon langue)': 'Auto (je nach Sprache)', 'Aucun': 'Keiner'
+  }
+};
+const originalInterfaceText = new WeakMap();
+function uiText(fr, en, de){
+  if (interfaceLanguage === 'en') return en || UI_TEXT.en[fr] || fr;
+  if (interfaceLanguage === 'de') return de || UI_TEXT.de[fr] || UI_TEXT.en[fr] || fr;
+  return fr;
+}
+function applyInterfaceLanguage(language){
+  interfaceLanguage = ['fr', 'en', 'de'].includes(language) ? language : 'en';
+  document.documentElement.lang = interfaceLanguage;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (['SCRIPT', 'STYLE', 'TEXTAREA'].includes(node.parentElement?.tagName)) continue;
+    if (!originalInterfaceText.has(node)) originalInterfaceText.set(node, node.nodeValue);
+    const original = originalInterfaceText.get(node);
+    const normalized = original.trim().replace(/\s+/g, ' ');
+    const translated = UI_TEXT[interfaceLanguage]?.[normalized];
+    node.nodeValue = translated
+      ? `${original.match(/^\s*/)?.[0] || ''}${translated}${original.match(/\s*$/)?.[0] || ''}`
+      : original;
+  }
+  const richText = {
+    fr: {
+      generation: 'L’IA n’est utilisée <b>que pour cette étape</b> (rédaction du brouillon). Le gabarit sans IA construit la structure depuis votre timeline ; vous rédigez ensuite la voix off vous-même.',
+      local: 'La production tourne <b>en local</b> (voix neurale, rendu 1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.',
+      github: 'Production sur <b>GitHub Actions</b> (~12 min) : le projet est poussé dans <code>video-debrief/requests/</code>, le workflow produit le MP4 et le publie dans la release <code>videos</code>. Token : <i>fine-grained PAT</i> du repo avec permissions <b>Contents (read/write)</b> et <b>Actions (read)</b>.'
+    },
+    en: {
+      generation: 'AI is used <b>only for this step</b> (draft writing). The no-AI template builds the structure from your timeline; you then write the voice-over yourself.',
+      local: 'Production runs <b>locally</b> (neural voice, 1080p24 rendering, synthesized music, mixing, H.264) — no AI, no cloud.',
+      github: 'Production through <b>GitHub Actions</b> (~12 min): the project is pushed to <code>video-debrief/requests/</code>, the workflow produces the MP4 and publishes it in the <code>videos</code> release. Token: repository <i>fine-grained PAT</i> with <b>Contents (read/write)</b> and <b>Actions (read)</b> permissions.'
+    },
+    de: {
+      generation: 'KI wird <b>nur für diesen Schritt</b> verwendet. Die Vorlage ohne KI erstellt die Struktur aus Ihrem Zeitplan; den Sprechertext schreiben Sie anschließend selbst.',
+      local: 'Die Produktion läuft <b>lokal</b> (neuronale Stimme, 1080p24-Rendering, synthetisierte Musik, Mischung, H.264) — ohne KI und ohne Cloud.',
+      github: 'Produktion über <b>GitHub Actions</b> (~12 Min.): Das Projekt wird nach <code>video-debrief/requests/</code> übertragen, der Workflow erstellt die MP4-Datei und veröffentlicht sie im Release <code>videos</code>. Token: <i>Fine-grained PAT</i> des Repositorys mit den Berechtigungen <b>Contents (read/write)</b> und <b>Actions (read)</b>.'
+    }
+  }[interfaceLanguage];
+  $('generation-help').innerHTML = richText.generation;
+  $('local-production-help').innerHTML = richText.local;
+  $('github-production-help').innerHTML = richText.github;
+  $('src-material').placeholder = interfaceLanguage === 'fr'
+    ? '[{"title": "…", "headline": "…", …}] ou texte libre'
+    : interfaceLanguage === 'de'
+      ? '[{"title": "…", "headline": "…", …}] oder Freitext'
+      : '[{"title": "…", "headline": "…", …}] or free text';
+  fillVoices();
+  checkServer();
+}
+
+function videoDebriefState(){
+  return {
+    source_material: $('src-material').value,
+    setup: {
+      duration: parseFloat($('set-duration').value) || 120,
+      language: $('set-lang').value,
+      theme: $('set-theme').value,
+      voice: $('set-voice').value,
+      tone: $('set-tone').value,
+      audience: $('set-audience').value
+    },
+    project: project ? JSON.parse(JSON.stringify(project)) : null
+  };
+}
+function notifyCrisisMakerProjectChange(){
+  const state = videoDebriefState();
+  try { localStorage.setItem('crisismaker_video_debrief_draft_v1', JSON.stringify(state)); } catch (error) {}
+  if (window.frameElement) window.frameElement._videoDebriefState = state;
+  if (applyingCrisisMakerState || window.parent === window) return;
+  try {
+    if (typeof window.parent.CrisisMakerVideoDebrief?.setProjectState === 'function') {
+      window.parent.CrisisMakerVideoDebrief.setProjectState(state);
+    }
+  } catch (error) {}
+  const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+  window.parent.postMessage({ type:'video-debrief-project-change', state }, targetOrigin);
+}
+function applyCrisisMakerProjectState(state){
+  if (!state || typeof state !== 'object') return;
+  applyingCrisisMakerState = true;
+  try {
+    if (typeof state.source_material === 'string') $('src-material').value = state.source_material;
+    const setup = state.setup || {};
+    if (setup.duration) $('set-duration').value = setup.duration;
+    if (setup.language) $('set-lang').value = setup.language;
+    if (setup.theme) $('set-theme').value = setup.theme;
+    if (setup.voice !== undefined) $('set-voice').value = setup.voice;
+    if (setup.tone) $('set-tone').value = setup.tone;
+    if (setup.audience) $('set-audience').value = setup.audience;
+    fillVoices();
+    if (setup.voice !== undefined) $('set-voice').value = setup.voice;
+    if (state.project) {
+      applyProject(JSON.parse(JSON.stringify(state.project)));
+    } else if (!state.source_material) {
+      project = null;
+      $('p-title').value = '';
+      $('json-editor').value = '';
+      renderSceneCards();
+      pushProject();
+    }
+  } finally {
+    applyingCrisisMakerState = false;
+    if (window.frameElement) window.frameElement._videoDebriefState = videoDebriefState();
+  }
+}
 
 /* ═══════════════ preview iframe scaling & messaging ═══════════════ */
 function fitPreview(){
@@ -368,13 +546,6 @@ document.querySelectorAll('.step-btn').forEach(b => b.addEventListener('click', 
   document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
   $('view-' + b.dataset.step).classList.add('active');
 }));
-
-/* ═══════════════════ settings persistence ═══════════════════ */
-['ai-provider','ai-model','ai-key'].forEach(id => {
-  const saved = localStorage.getItem('vd-' + id);
-  if (saved) $(id).value = saved;
-  $(id).addEventListener('change', () => localStorage.setItem('vd-' + id, $(id).value));
-});
 
 /* ─────────── dynamic model list (fetched from the provider API) ─────────── */
 const FALLBACK_MODELS = {
@@ -430,7 +601,6 @@ async function fetchModels(){
     status.textContent = 'Liste par défaut (API : ' + e.message + ').';
   }
 }
-$('btn-models').addEventListener('click', e => { e.preventDefault(); fetchModels(); });
 $('ai-provider').addEventListener('change', () => {
   fillModels(FALLBACK_MODELS[$('ai-provider').value] || [],
              (FALLBACK_MODELS[$('ai-provider').value] || [])[0]);
@@ -438,6 +608,97 @@ $('ai-provider').addEventListener('change', () => {
 });
 $('ai-key').addEventListener('change', fetchModels);
 fetchModels();
+
+/* ═══════════════ CrisisMaker settings bridge ═══════════════ */
+function applyCrisisMakerAISettings(settings){
+  if (settings?.uiLanguage) applyInterfaceLanguage(settings.uiLanguage);
+  const provider = settings && settings.provider;
+  const supported = settings && settings.supported && ['anthropic', 'openai'].includes(provider);
+  if (!supported){
+    $('ai-provider').value = 'none';
+    $('ai-key').value = '';
+    fillModels([]);
+    $('models-status').textContent = settings && settings.sourceProvider
+      ? uiText(
+          `Le fournisseur ${settings.sourceProvider} configuré dans CrisisMaker n’est pas pris en charge par Video Debrief.`,
+          `The ${settings.sourceProvider} provider configured in CrisisMaker is not supported by Video Debrief.`,
+          `Der in CrisisMaker konfigurierte Anbieter ${settings.sourceProvider} wird von Video Debrief nicht unterstützt.`
+        )
+      : uiText(
+          'Configurez un fournisseur IA dans les réglages CrisisMaker.',
+          'Configure an AI provider in CrisisMaker settings.',
+          'Konfigurieren Sie einen KI-Anbieter in den CrisisMaker-Einstellungen.'
+        );
+    return;
+  }
+
+  $('ai-provider').value = provider;
+  $('ai-key').value = settings.apiKey || '';
+  fillModels(FALLBACK_MODELS[provider] || [], settings.model || '');
+  const providerLabel = provider === 'anthropic' ? 'Anthropic' : 'OpenAI';
+  const modelLabel = settings.model ? ` · ${settings.model}` : '';
+  $('models-status').textContent = settings.apiKey
+    ? uiText(
+        `${providerLabel}${modelLabel} · clé API reprise des réglages CrisisMaker.`,
+        `${providerLabel}${modelLabel} · API key inherited from CrisisMaker settings.`,
+        `${providerLabel}${modelLabel} · API-Schlüssel aus den CrisisMaker-Einstellungen übernommen.`
+      )
+    : uiText(
+        `${providerLabel}${modelLabel} · aucune clé API configurée dans CrisisMaker.`,
+        `${providerLabel}${modelLabel} · no API key configured in CrisisMaker.`,
+        `${providerLabel}${modelLabel} · kein API-Schlüssel in CrisisMaker konfiguriert.`
+      );
+}
+function storedCrisisMakerAISettings(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('crisismaker_settings_v1') || '{}');
+    const sourceProvider = localStorage.getItem('aiProvider') || saved.ai_provider || 'anthropic';
+    const supported = ['anthropic', 'openai'].includes(sourceProvider);
+    return {
+      provider: supported ? sourceProvider : 'none',
+      model: supported ? (saved.ai_model || '') : '',
+      apiKey: supported ? (localStorage.getItem('crisismaker_api_key') || '') : '',
+      sourceProvider,
+      supported
+    };
+  } catch (error) {
+    return { provider: 'none', model: '', apiKey: '', sourceProvider: '', supported: false };
+  }
+}
+window.addEventListener('message', event => {
+  if (event.source !== window.parent) return;
+  if (event.origin !== window.location.origin && event.origin !== 'null') return;
+  if (event.data?.type === 'crisismaker-ai-settings') {
+    applyCrisisMakerAISettings(event.data.settings || {});
+  }
+  if (event.data?.type === 'crisismaker-video-debrief-project') {
+    applyCrisisMakerProjectState(event.data.state || {});
+  }
+});
+if (window.parent !== window){
+  applyCrisisMakerAISettings(storedCrisisMakerAISettings());
+  try {
+    const savedProjectState = localStorage.getItem('crisismaker_video_debrief_draft_v1');
+    if (savedProjectState) applyCrisisMakerProjectState(JSON.parse(savedProjectState));
+  } catch (error) {}
+  try {
+    if (typeof window.parent.CrisisMakerVideoDebrief?.getAISettings === 'function') {
+      applyCrisisMakerAISettings(window.parent.CrisisMakerVideoDebrief.getAISettings());
+      applyInterfaceLanguage(window.parent.CrisisMakerVideoDebrief.getInterfaceLanguage?.());
+      applyCrisisMakerProjectState(window.parent.CrisisMakerVideoDebrief.getProjectState());
+    } else {
+      const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+      window.parent.postMessage({ type: 'video-debrief-request-ai-settings' }, targetOrigin);
+      window.parent.postMessage({ type: 'video-debrief-request-project-state' }, targetOrigin);
+    }
+  } catch (error) {
+    const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+    window.parent.postMessage({ type: 'video-debrief-request-ai-settings' }, targetOrigin);
+    window.parent.postMessage({ type: 'video-debrief-request-project-state' }, targetOrigin);
+  }
+  const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+  window.parent.postMessage({ type: 'video-debrief-request-project-state' }, targetOrigin);
+}
 
 /* ─────────── voix par langue (synchronisées avec le sélecteur) ─────────── */
 const VOICE_CHOICES = {
@@ -454,7 +715,7 @@ function fillVoices(){
   const sel = $('set-voice'), keep = sel.value;
   sel.innerHTML = '';
   const auto = document.createElement('option');
-  auto.value = ''; auto.textContent = 'Auto (selon langue)';
+  auto.value = ''; auto.textContent = uiText('Auto (selon langue)', 'Auto (based on language)', 'Auto (je nach Sprache)');
   sel.appendChild(auto);
   (VOICE_CHOICES[$('set-lang').value] || []).forEach(([v, label]) => {
     const o = document.createElement('option');
@@ -465,6 +726,10 @@ function fillVoices(){
 }
 $('set-lang').addEventListener('change', fillVoices);
 fillVoices();
+['src-material','set-duration','set-lang','set-theme','set-voice','set-tone','set-audience'].forEach(id => {
+  const eventName = id === 'src-material' || id === 'set-duration' ? 'input' : 'change';
+  $(id).addEventListener(eventName, notifyCrisisMakerProjectChange);
+});
 
 /* ─────────── les réglages de l'étape 1 sont IMPOSÉS au projet généré ───────────
    (même si l'IA dévie : style, langue, durée et voix font foi) */
@@ -487,7 +752,7 @@ $('file-input').addEventListener('change', e => {
   f.text().then(t => { $('src-material').value = t; });
 });
 $('btn-load-example').addEventListener('click', () => {
-  fetch('examples/helios-leaks.json').then(r => r.json()).then(p => {
+  fetch('examples/stonawave.json').then(r => r.json()).then(p => {
     applyProject(p);
     setStep(2);
   }).catch(() => alert('Ouvrez le studio via le serveur local pour charger l’exemple (python3 pipeline/server.py).'));
@@ -529,7 +794,7 @@ coords = [longitude, latitude]. Dramaturgie : accroche → montée → bascule �
 
 async function callAI(systemPrompt, userPrompt){
   const provider = $('ai-provider').value, key = $('ai-key').value.trim(), model = $('ai-model').value.trim();
-  if (!key) throw new Error('Renseignez une clé API (ou utilisez le gabarit sans IA).');
+  if (!key) throw new Error('Configurez une clé API compatible dans les réglages CrisisMaker (ou utilisez le gabarit sans IA).');
   if (provider === 'anthropic'){
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -646,6 +911,7 @@ function applyProject(p){
   $('json-editor').value = JSON.stringify(p, null, 2);
   renderSceneCards();
   pushProject();
+  notifyCrisisMakerProjectChange();
 }
 function commit(){
   $('json-editor').value = JSON.stringify(project, null, 2);
@@ -654,7 +920,7 @@ function commit(){
 }
 $('p-title').addEventListener('input', () => { if (project){ project.meta.title = $('p-title').value; commitJsonOnly(); pushProject(); } });
 $('p-theme').addEventListener('change', () => { if (project){ project.theme.preset = $('p-theme').value; commitJsonOnly(); pushProject(); } });
-function commitJsonOnly(){ $('json-editor').value = JSON.stringify(project, null, 2); }
+function commitJsonOnly(){ $('json-editor').value = JSON.stringify(project, null, 2); notifyCrisisMakerProjectChange(); }
 
 const CPS = { fr: 15.0, en: 14.2, es: 14.5, de: 13.5, it: 14.5, pt: 14.5 };
 function estDur(s){ return s.vo ? Math.max(3, s.vo.length / (CPS[(project.meta||{}).lang] || 14.5)) : (s.minDuration || 3); }
@@ -774,7 +1040,9 @@ async function checkServer(){
     serverOn = (await r.json()).ok;
   } catch (e) { serverOn = false; }
   $('server-dot').classList.toggle('on', serverOn);
-  $('server-label').textContent = 'serveur local : ' + (serverOn ? 'connecté' : 'hors ligne');
+  $('server-label').textContent = serverOn
+    ? uiText('serveur local : connecté', 'local server: connected', 'Lokaler Server: verbunden')
+    : uiText('serveur local : hors ligne', 'local server: offline', 'Lokaler Server: offline');
   $('prod-server-ok').style.display = serverOn ? 'block' : 'none';
   $('prod-server-no').style.display = serverOn ? 'none' : 'block';
 }
@@ -881,6 +1149,7 @@ $('btn-gh-produce').addEventListener('click', async () => {
 });
 
 /* boot */
+applyInterfaceLanguage((navigator.language || 'en').toLowerCase().slice(0, 2));
 fitPreview();
 </script>
 </body>

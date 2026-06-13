@@ -50,11 +50,16 @@
           }
           this.bindBeforeUnload();
           this.bindDebriefEditorBridge();
+          this.installVideoDebriefBridge();
+          this.bindVideoDebriefBridge();
           this.startAutosave();
           this.render();
         },
         bindBeforeUnload() {
-          window.addEventListener('beforeunload', () => saveLocal());
+          window.addEventListener('beforeunload', () => {
+            captureVideoDebriefProjectState();
+            saveLocal();
+          });
         },
         startAutosave() {
           startAutoSave();
@@ -68,6 +73,30 @@
             clearTimeout(window._debriefEditorSaveTimer);
             window._debriefEditorSaveTimer = setTimeout(() => saveLocal(false), 350);
           });
+        },
+        bindVideoDebriefBridge() {
+          window.addEventListener('message', (event) => {
+            const frame = document.getElementById('video-debrief-frame');
+            if (!frame) return;
+            if (event.origin !== window.location.origin && event.origin !== 'null') return;
+            if (event.data?.type === 'video-debrief-request-ai-settings') {
+              syncVideoDebriefAISettings(frame);
+            }
+            if (event.data?.type === 'video-debrief-request-project-state') {
+              syncVideoDebriefProjectState(frame);
+            }
+            if (event.data?.type === 'video-debrief-project-change') {
+              applyVideoDebriefProjectState(event.data.state);
+            }
+          });
+        },
+        installVideoDebriefBridge() {
+          window.CrisisMakerVideoDebrief = {
+            getAISettings: () => videoDebriefAISettings(),
+            getInterfaceLanguage: () => currentLanguage(),
+            getProjectState: () => normalizeVideoDebrief(appState.scenario.video_debrief),
+            setProjectState: (state) => applyVideoDebriefProjectState(state)
+          };
         },
         render() {
           const root = document.getElementById('app');
@@ -86,9 +115,66 @@
           bindStimuliSplitters();
           bindStimulusModalSplitter();
           mountDebriefEditor();
+          mountVideoDebrief();
           renderToasts();
         }
       };
+
+      function videoDebriefAISettings() {
+        const settings = appState.scenario.settings;
+        const supported = ['anthropic', 'openai'].includes(settings.ai_provider);
+        return {
+          provider: supported ? settings.ai_provider : 'none',
+          model: supported ? settings.ai_model : '',
+          apiKey: supported ? settings.ai_api_key : '',
+          sourceProvider: settings.ai_provider,
+          supported,
+          uiLanguage: currentLanguage()
+        };
+      }
+
+      function syncVideoDebriefAISettings(frame = document.getElementById('video-debrief-frame')) {
+        if (!frame?.contentWindow) return;
+        const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+        frame.contentWindow.postMessage({
+          type: 'crisismaker-ai-settings',
+          settings: videoDebriefAISettings()
+        }, targetOrigin);
+      }
+
+      function syncVideoDebriefProjectState(frame = document.getElementById('video-debrief-frame')) {
+        if (!frame?.contentWindow) return;
+        appState.scenario.video_debrief = loadVideoDebriefDraft(appState.scenario.video_debrief);
+        const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+        frame.contentWindow.postMessage({
+          type: 'crisismaker-video-debrief-project',
+          state: appState.scenario.video_debrief
+        }, targetOrigin);
+      }
+
+      function applyVideoDebriefProjectState(state) {
+        appState.scenario.video_debrief = persistVideoDebriefDraft(state);
+        clearTimeout(window._videoDebriefSaveTimer);
+        window._videoDebriefSaveTimer = setTimeout(() => saveLocal(false), 350);
+      }
+
+      function captureVideoDebriefProjectState() {
+        const frame = document.getElementById('video-debrief-frame');
+        const state = frame?._videoDebriefState;
+        if (state) appState.scenario.video_debrief = persistVideoDebriefDraft(state);
+        return appState.scenario.video_debrief;
+      }
+
+      function mountVideoDebrief() {
+        const frame = document.getElementById('video-debrief-frame');
+        if (!frame) return;
+        frame.addEventListener('load', () => {
+          syncVideoDebriefAISettings(frame);
+          syncVideoDebriefProjectState(frame);
+        }, { once: true });
+        syncVideoDebriefAISettings(frame);
+        syncVideoDebriefProjectState(frame);
+      }
 
       function ensureHDFonts() {
         // All fonts (including HD variants) are now bundled locally in fonts/fonts.css
@@ -158,6 +244,7 @@
       function bindGlobalEvents() {
         document.querySelectorAll('[data-route]').forEach((button) => {
           button.addEventListener('click', () => {
+            captureVideoDebriefProjectState();
             appState.route = button.dataset.route;
             App.render();
           });
@@ -427,6 +514,7 @@
       function clearScenarioData() {
         const preservedSettings = { ...appState.scenario.settings };
         appState.scenario = emptyScenario(preservedSettings);
+        appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
         appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
         appState.selectedStimulusId = null;
         appState.slideshowIndex = 0;
@@ -489,6 +577,7 @@
             case 'nav-debrief': appState.route = 'debrief'; App.render(); break;
             case 'new-scenario': {
               appState.scenario = emptyScenario();
+              appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = null;
               appState.route = 'project';
@@ -500,6 +589,7 @@
             }
             case 'load-example': {
               appState.scenario = defaultScenario();
+              appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
               appState.route = 'project';

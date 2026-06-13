@@ -368,8 +368,9 @@
         return `
           <section class="video-debrief-workspace">
             <iframe
+              id="video-debrief-frame"
               class="video-debrief-frame"
-              src="video-debrief/index.html"
+              src="video-debrief/index.html?integrated=2"
               title="${tt('Video Debrief studio', 'Studio Video Debrief', 'Video-Debrief-Studio')}"
               allow="clipboard-write"
             ></iframe>

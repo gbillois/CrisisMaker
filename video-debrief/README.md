@@ -86,7 +86,7 @@ video-debrief/
 │   ├── server.py         ← serveur local (production en un clic)
 │   ├── render.js         ← capture Playwright 1080p24
 │   └── make_music.py     ← musique paramétrique par moods (synthèse pure)
-├── examples/             ← notpetya.json (EN) · helios-leaks.json (FR, fictif)
+├── examples/             ← stonawave.json (EN, défaut) · notpetya.json (EN) · helios-leaks.json (FR)
 └── requests/             ← projets poussés par le studio (déclenche le workflow)
 ```
 

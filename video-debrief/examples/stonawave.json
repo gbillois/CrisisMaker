@@ -1,0 +1,110 @@
+{
+  "meta": { "title": "StonaWave — Operation Bitter Pill", "slug": "stonawave-operation-bitter-pill", "lang": "en" },
+  "theme": { "preset": "wavestone" },
+  "audio": { "voice": "en-US-AndrewNeural", "rate": "+6%" },
+  "target": { "duration": 120 },
+  "pacing": { "lead": 0.8, "gap": 0.55, "tail": 1.6 },
+  "scenes": [
+    {
+      "id": "s1", "type": "cold-open", "mood": "dark",
+      "vo": "March fifteenth, 2026. Sunday morning, seven forty-five Eastern Time. Across three continents, pharmaceutical production systems begin to disappear. StonaWave has six hours to understand what PharmLeaks has already spent weeks preparing. This is Operation Bitter Pill.",
+      "eyebrow": "Wavestone · Cyber Crisis Debrief",
+      "dateLine": "15.03.2026",
+      "kicker": "07:45 ET · SUNDAY",
+      "title": "BITTER PILL", "titleSize": 190, "titleAt": 9.2,
+      "subtitle": "The StonaWave ransomware crisis"
+    },
+    {
+      "id": "s2", "type": "chain", "mood": "tension",
+      "vo": "The visible crisis starts on Sunday. The real attack started three weeks earlier, with one valid contractor V P N credential. PharmLeaks moves through Active Directory, maps the backup infrastructure, exfiltrates clinical data, and stages ransomware through trusted deployment tools. At seven forty-five, everything detonates at once.",
+      "eyebrow": "Act I — The silent preparation",
+      "heading": "Twenty-one days of advantage.",
+      "nodes": [
+        { "date": "D-21", "title": "Valid access purchased", "sub": "A contractor VPN credential opens the first door", "at": 1.4 },
+        { "date": "D-18", "title": "Lateral movement", "sub": "Excessive trust exposes corporate and industrial identity", "at": 4.2 },
+        { "date": "D-12", "title": "Backups mapped", "sub": "Catalogs, replication jobs and recovery paths identified", "at": 7.0 },
+        { "date": "D-8", "title": "Data exfiltrated", "sub": "Patient records, clinical trials and regulatory files", "at": 9.7 },
+        { "date": "D0 · 07:45", "title": "Coordinated encryption", "sub": "Ransomware deployed through trusted tooling", "at": 13.0 }
+      ]
+    },
+    {
+      "id": "s3", "type": "map-focus", "mood": "impact",
+      "vo": "The blast crosses StonaWave's global operating model. Manufacturing execution systems stop in New Jersey, Frankfurt, and Hyderabad. The clinical trial platform, E R P, and identity services fail. At headquarters near Paris, the crisis team cannot yet tell whether medicines, research, or patient data are safe.",
+      "eyebrow": "Act II — H0 · Global disruption",
+      "heading": "One identity plane. Four sites.",
+      "camera": { "center": [15.0, 35.0], "scale": 9 },
+      "epicenter": [2.35, 48.86], "impactAt": 1.8,
+      "dotAnchors": [[2.35,48.86],[-74.50,40.05],[8.68,50.11],[78.49,17.39]],
+      "stat": { "value": 4 }, "statAt": 3.0,
+      "statLabel": "sites in crisis across three continents",
+      "bullets": [
+        { "text": "MES · manufacturing halted", "at": 5.4 },
+        { "text": "CTMS · clinical trials inaccessible", "at": 7.6 },
+        { "text": "ERP · supply-chain flows blocked", "at": 9.8 },
+        { "text": "Identity · global coordination degraded", "at": 12.0 }
+      ]
+    },
+    {
+      "id": "s4", "type": "stat-grid", "mood": "cold",
+      "vo": "By midday, this is no longer only a recovery problem. PharmLeaks demands twenty-five million dollars and claims to hold two point four terabytes of patient and clinical-trial data. Critical oncology supply is at risk. The company faces operational disruption, extortion, and a data breach at the same time.",
+      "eyebrow": "Act II — H4 · Double extortion",
+      "heading": "Three crises. One clock.",
+      "facts": [
+        { "tag": "Ransom demand", "big": "$25M", "counter": { "to": 25, "prefix": "$", "suffix": "M" }, "sub": "for a decryptor and a promise of deletion", "at": 1.5 },
+        { "tag": "Data claimed stolen", "big": "2.4 TB", "sub": "patient records, clinical trials and regulatory submissions", "at": 4.8 },
+        { "tag": "Operational risk", "big": "Critical medicines", "sub": "quality release and partner supply flows are blocked", "at": 8.0 },
+        { "tag": "The decision", "big": "Pay or rebuild?", "sub": "while the attacker controls the public narrative", "at": 11.4 }
+      ]
+    },
+    {
+      "id": "s5", "type": "map-spread", "mood": "grim",
+      "vo": "The crisis escapes the network. A manufacturing partner reports disruption. CERT France and international regulators request immediate facts. News coverage appears in French, English, and German. Then PharmLeaks threatens to publish stolen patient data. Every new audience creates a new deadline.",
+      "eyebrow": "Act II — H6 · The crisis goes public",
+      "heading": "Every border adds pressure",
+      "origin": [2.35, 48.86],
+      "stamps": [
+        { "name": "PARTNERS", "fig": "manufacturing and supply flows disrupted", "coords": [-74.50, 40.05], "at": 3.0 },
+        { "name": "CERT-FR", "fig": "regulatory alert and situation reporting", "coords": [2.35, 48.86], "at": 5.8 },
+        { "name": "MEDIA", "fig": "French · English · German coverage", "coords": [8.68, 50.11], "at": 8.4 },
+        { "name": "REGULATORS", "fig": "patient and clinical data at risk", "coords": [-77.04, 38.91], "at": 10.8 },
+        { "name": "PHARMLEAKS", "fig": "publish-or-pay escalation", "coords": [78.49, 17.39], "at": 13.0 }
+      ],
+      "bottom": { "text": "The outage stops systems.", "strong": "The leak threat drives the crisis." }
+    },
+    {
+      "id": "s6", "type": "map-trace", "mood": "hope",
+      "vo": "StonaWave refuses payment after Hyderabad isolates early and investigators find a clean immutable backup. Recovery moves into a clean room: identity first, then E R P, clinical systems, and manufacturing. PharmLeaks publishes a first data sample on day two. Critical oncology production resumes in stages by day five.",
+      "eyebrow": "Act III — Recovery",
+      "heading": "Rebuild trust before systems",
+      "trail": [
+        { "coords": [78.49, 17.39], "label": "HYDERABAD · EARLY ISOLATION", "at": 1.6 },
+        { "coords": [2.35, 48.86], "label": "PARIS · CLEAN-ROOM COMMAND", "at": 4.4 },
+        { "coords": [8.68, 50.11], "label": "FRANKFURT · STAGED RECOVERY", "at": 7.0 },
+        { "coords": [-74.50, 40.05], "label": "NEW JERSEY · PRODUCTION RESUMES", "at": 9.6 }
+      ],
+      "big": "Day +5", "bigAt": 10.2,
+      "sub": "critical oncology production resumes in stages",
+      "strip": "Immutable backup · clean identities\ncontrolled restoration · monitored production",
+      "footer": "Recovery is a sequence of trusted decisions."
+    },
+    {
+      "id": "s7", "type": "lessons", "mood": "resolve",
+      "vo": "Three lessons for the board. A stolen credential is only the entry point; excessive shared trust creates the blast radius. Backups are a governance system, not just storage. And a global recovery plan only exists if every site has tested it. Resilience begins before the crisis.",
+      "eyebrow": "What this means for the board",
+      "lessons": [
+        { "text": "Control partner access and reduce shared trust.", "at": 1.8 },
+        { "text": "Protect and govern recovery infrastructure as a critical service.", "at": 5.0 },
+        { "text": "Test global recovery with every business and manufacturing site.", "at": 8.6 }
+      ],
+      "finalLine1": "The credential opened the door.",
+      "finalLine2": "The architecture determined the crisis.",
+      "finalAt": 12.2
+    },
+    {
+      "id": "s8", "type": "endcard", "vo": "", "minDuration": 4.2,
+      "title": "OPERATION BITTER PILL",
+      "subtitle": "StonaWave · Ransomware crisis exercise",
+      "brand": "Cyber Crisis Debrief · Wavestone"
+    }
+  ]
+}
