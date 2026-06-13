@@ -1,3 +1,4 @@
+      const initialScenario = loadInitialScenario();
       const appState = {
         route: 'project',
         selectedStimulusId: null,
@@ -5,9 +6,9 @@
         slideshowIndex: 0,
         settingsDrawerOpen: false,
         launchScreenOpen: true,
-        scenario: loadInitialScenario(),
+        scenario: initialScenario,
         toasts: [],
-        videoFiles: {},  // stimulusId → { objectUrl, fileName } — in-memory only, never persisted
+        videoFiles: makeDefaultVideoFiles(initialScenario),  // stimulusId → { objectUrl, fileName }
         audioFiles: {},  // stimulusId → { objectUrl, fileName, blob } — in-memory only, never persisted
         libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
         historyModalStimulusId: null,
@@ -426,6 +427,7 @@
       function clearScenarioData() {
         const preservedSettings = { ...appState.scenario.settings };
         appState.scenario = emptyScenario(preservedSettings);
+        appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
         appState.selectedStimulusId = null;
         appState.slideshowIndex = 0;
         appState.historyModalStimulusId = null;
@@ -487,6 +489,7 @@
             case 'nav-debrief': appState.route = 'debrief'; App.render(); break;
             case 'new-scenario': {
               appState.scenario = emptyScenario();
+              appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = null;
               appState.route = 'project';
               appState.launchScreenOpen = false;
@@ -497,6 +500,7 @@
             }
             case 'load-example': {
               appState.scenario = defaultScenario();
+              appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
               appState.route = 'project';
               appState.launchScreenOpen = false;
@@ -1287,6 +1291,7 @@
         copy.id = uid('stimulus');
         copy.timestamp_offset_minutes += 15;
         appState.scenario.stimuli.push(copy);
+        setDefaultVideoForStimulus(copy);
         appState.selectedStimulusId = copy.id;
         appState.stimulusModalId = copy.id;
         App.render();
@@ -1960,6 +1965,12 @@
         stimulus.channel = newChannel;
         stimulus.template_id = template.template_id;
         stimulus.fields = deepClone(template.defaults);
+        setDefaultVideoForStimulus(stimulus);
+      }
+
+      function setDefaultVideoForStimulus(stimulus) {
+        if (stimulus?.channel !== 'breaking_news_tv' || appState.videoFiles[stimulus.id]) return;
+        appState.videoFiles[stimulus.id] = { ...DEFAULT_NEWS_VIDEO };
       }
 
       function replaceArticleVariant(stimulus, templateId) {
@@ -2267,6 +2278,7 @@
             if (value !== undefined && value !== null) stimulus.fields[key] = value;
           });
         }
+        setDefaultVideoForStimulus(stimulus);
         stimulus.updated_at = new Date().toISOString();
       }
 

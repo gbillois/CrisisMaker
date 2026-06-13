@@ -654,6 +654,7 @@
             appState.scenario.custom_templates = migrated.custom_templates;
           }
           appState.scenario = mergeScenario(migrated);
+          appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
           // restore API keys from dedicated localStorage keys (never stored in project files)
           const savedApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
           if (savedApiKey) appState.scenario.settings.ai_api_key = savedApiKey;

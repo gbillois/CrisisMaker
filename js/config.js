@@ -343,7 +343,7 @@
           label: 'Breaking news banner',
           template_id: 'bfm',
           defaults: {
-            headline: 'CYBERATTACK ON STONAWAVE: DRUG PRODUCTION HALTED',
+            headline: 'STONAWAVE: ONGOING CYBERATTACK',
             subline: 'Hackers demand $25M ransom and threaten to publish stolen patient data',
             ticker: 'PharmLeaks ransomware group claims 2.4TB of patient data stolen from StonaWave - Manufacturing halted at sites in New Jersey, Frankfurt, and Hyderabad - FDA and EMA seeking urgent answers on drug supply - CERT-FR links attack to critical VPN vulnerability - Company activates crisis cell, engages external forensics',
             time: '11:30',

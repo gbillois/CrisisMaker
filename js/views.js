@@ -1014,9 +1014,9 @@
           <div style="margin-top:16px; border:1px solid var(--border, #e5e7eb); border-radius:8px; padding:14px 16px;">
             <p style="margin:0 0 10px; font-size:0.88rem; font-weight:600; color:var(--text-muted, #6b7280);">${tt('Background video', 'Vidéo de fond', 'Hintergrundvideo')}</p>
             <p style="margin:0 0 10px; font-size:0.8rem; color:var(--text-muted, #6b7280);">${tt(
-              'Select a local video file to play behind the overlay. The video is kept in memory only and will not be saved to the project.',
-              'Sélectionnez un fichier vidéo local qui sera lu derrière les incrustations. La vidéo reste en mémoire uniquement et ne sera pas sauvegardée dans le projet.',
-              'Wählen Sie eine lokale Videodatei, die hinter dem Overlay abgespielt wird. Das Video wird nur im Speicher gehalten und nicht im Projekt gespeichert.'
+              'The bundled anchor video loads by default. Select a local video file to replace it for this inject.',
+              'La vidéo présentateur intégrée est chargée par défaut. Sélectionnez un fichier vidéo local pour la remplacer pour cet inject.',
+              'Das integrierte Nachrichtensprecher-Video wird standardmäßig geladen. Wählen Sie eine lokale Videodatei, um es für diesen Inject zu ersetzen.'
             )}</p>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <label class="btn btn-secondary" style="cursor:pointer; margin:0;">

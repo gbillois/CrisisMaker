@@ -1,3 +1,17 @@
+      const DEFAULT_NEWS_VIDEO = {
+        objectUrl: 'media/stonawave-news-anchor.mp4',
+        fileName: 'stonawave-news-anchor.mp4',
+        isBundledDefault: true
+      };
+
+      function makeDefaultVideoFiles(scenario) {
+        return Object.fromEntries(
+          (scenario?.stimuli || [])
+            .filter((stimulus) => stimulus.channel === 'breaking_news_tv')
+            .map((stimulus) => [stimulus.id, { ...DEFAULT_NEWS_VIDEO }])
+        );
+      }
+
       function detectBrowserLanguage() {
         const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase().slice(0, 2);
         if (nav === 'fr') return 'fr';
