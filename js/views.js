@@ -356,11 +356,11 @@
           },
           debrief: {
             title: tt('Crisis Debrief', 'Debrief de crise', 'Krisen-Debrief'),
-            subtitle: tt('Reconstruct the hidden scenario story and reveal what truly happened.', 'Reconstruisez l’histoire cachée du scénario et révélez ce qui s’est réellement passé.', 'Rekonstruieren Sie die verborgene Szenario-Handlung und zeigen Sie, was wirklich geschah.')
+            subtitle: tt(‘Reconstruct the hidden scenario story and reveal what truly happened.’, ‘Reconstruisez l’histoire cachée du scénario et révélez ce qui s’est réellement passé.’, ‘Rekonstruieren Sie die verborgene Szenario-Handlung und zeigen Sie, was wirklich geschah.’) + ‘ This page generates an autonomous HTML file that you can download and display during the debrief to tell the story visually.’
           },
           'video-debrief': {
             title: tt('Video Debrief', 'Video Debrief', 'Video-Debrief'),
-            subtitle: tt('Turn the crisis story into an editable documentary-style video.', 'Transformez le récit de crise en une vidéo documentaire éditable.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo.')
+            subtitle: tt('Turn the crisis story into an editable documentary-style video.', 'Transformez le récit de crise en une vidéo documentaire éditable.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo.') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">Exemple of video generated</a>. (It requires a local version of CrisisMaker and Python3 on the computer)'
           }
         };
         return map[appState.route] || null;
