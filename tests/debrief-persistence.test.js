@@ -106,4 +106,13 @@ assert.equal(result.project.settings.ai_api_key, '');
 assert.equal(result.project.settings.azure_api_key, '');
 assert.equal(result.project.settings.azure_speech_key, '');
 
+const editorFrame = { srcdoc: '' };
+context.document.getElementById = (id) => id === 'debrief-editor-frame' ? editorFrame : null;
+context.appState = { scenario: result.project };
+vm.runInContext('mountDebriefEditor()', context);
+assert.match(editorFrame.srcdoc, /<title>Crisis Debriefer — Timeline Generator<\/title>/);
+assert.match(editorFrame.srcdoc, /window\.CRISISMAKER_INITIAL_CONFIG = /);
+assert.match(editorFrame.srcdoc, /Saved custom debrief/);
+assert.equal(editorFrame.src, undefined);
+
 console.log('Debrief project persistence round-trip passed.');

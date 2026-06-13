@@ -183,9 +183,7 @@
       function mountDebriefEditor() {
         const frame = document.getElementById('debrief-editor-frame');
         if (!frame || !appState?.scenario?.debrief) return;
-        if (window._debriefEditorUrl) URL.revokeObjectURL(window._debriefEditorUrl);
-        window._debriefEditorUrl = URL.createObjectURL(new Blob([buildDebriefEditorHTML(appState.scenario.debrief)], { type:'text/html' }));
-        frame.src = window._debriefEditorUrl;
+        frame.srcdoc = buildDebriefEditorHTML(appState.scenario.debrief);
       }
 
       function applyDebriefEditorConfig(config, scenario) {
