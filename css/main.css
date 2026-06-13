@@ -1295,6 +1295,63 @@
     .bfm-channel { background: #0d3a75; display: grid; place-items: center; font-size: 28px; }
     @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
+    /* ── International TV news styles ──────────────────── */
+    .tv-news-banner { width: 1280px; height: 720px; position: relative; overflow: hidden; color: #fff; font-family: Inter, Arial, sans-serif; background: linear-gradient(145deg, #19202a, #52606d 55%, #10151b); }
+    .tv-news-banner.tv-overlay { background: transparent; }
+    .tv-news-banner .cnn-ticker,
+    .tv-news-banner .bloomberg-ticker,
+    .tv-news-banner .cna-ticker { white-space: nowrap; display: inline-block; padding-left: 100%; animation: marquee 22s linear infinite; }
+
+    .cnn-banner { background: radial-gradient(circle at 72% 30%, #697682, #202932 58%, #0e1217); }
+    .cnn-banner.tv-overlay { background: transparent; }
+    .cnn-live { position: absolute; top: 26px; right: 28px; background: #cc0000; padding: 8px 15px 7px; font-size: 22px; line-height: 1; font-weight: 900; letter-spacing: 0.08em; }
+    .cnn-location { position: absolute; top: 26px; left: 28px; border-left: 6px solid #cc0000; background: rgba(0,0,0,0.78); padding: 9px 16px; font-size: 21px; line-height: 1; font-weight: 800; text-transform: uppercase; }
+    .cnn-lower-third { position: absolute; left: 0; right: 0; bottom: 0; }
+    .cnn-breaking { display: inline-block; margin-left: 40px; padding: 10px 22px 9px; background: #cc0000; font-size: 24px; font-weight: 900; letter-spacing: 0.04em; }
+    .cnn-story { margin: 0 40px; background: rgba(255,255,255,0.97); color: #0b0b0b; border-top: 5px solid #cc0000; padding: 15px 22px 13px; }
+    .cnn-headline { font-size: 43px; line-height: 1.04; font-weight: 900; letter-spacing: -0.035em; text-transform: uppercase; }
+    .cnn-subline { margin-top: 7px; font-size: 23px; line-height: 1.15; font-weight: 500; color: #303030; }
+    .cnn-footer { height: 48px; display: grid; grid-template-columns: 155px 1fr 112px; background: #111; align-items: stretch; overflow: hidden; }
+    .cnn-time { display: grid; place-items: center; font-size: 18px; font-weight: 800; border-right: 1px solid #555; }
+    .cnn-ticker-wrap { display: flex; align-items: center; overflow: hidden; font-size: 18px; font-weight: 600; }
+    .cnn-logo { display: grid; place-items: center; background: #cc0000; font-family: Arial Black, Arial, sans-serif; font-size: 36px; font-weight: 900; font-style: italic; letter-spacing: -0.16em; padding-right: 8px; }
+
+    .bloomberg-banner { background: radial-gradient(circle at 32% 26%, #5c676d, #222b2f 50%, #111); }
+    .bloomberg-banner.tv-overlay { background: transparent; }
+    .bloomberg-bug { position: absolute; top: 24px; right: 24px; display: flex; align-items: center; background: #050505; border-bottom: 5px solid #f5b400; box-shadow: 0 4px 15px rgba(0,0,0,0.35); }
+    .bloomberg-bug strong { padding: 12px 16px 10px; font-size: 24px; letter-spacing: -0.06em; }
+    .bloomberg-bug span { align-self: stretch; display: grid; place-items: center; padding: 0 12px; color: #101010; background: #f5b400; font-size: 14px; font-weight: 900; }
+    .bloomberg-lower-third { position: absolute; left: 32px; right: 32px; bottom: 24px; box-shadow: 0 6px 22px rgba(0,0,0,0.4); }
+    .bloomberg-kicker { display: inline-block; background: #f5b400; color: #111; padding: 8px 15px; font-size: 18px; font-weight: 900; letter-spacing: 0.06em; }
+    .bloomberg-story { background: rgba(7,7,7,0.96); border-top: 1px solid #555; padding: 15px 20px 14px; }
+    .bloomberg-headline { font-size: 40px; line-height: 1.06; font-weight: 800; letter-spacing: -0.035em; text-transform: uppercase; }
+    .bloomberg-subline { margin-top: 7px; color: #d8d8d8; font-size: 21px; line-height: 1.15; font-weight: 500; }
+    .bloomberg-market { min-height: 54px; display: grid; grid-template-columns: 120px 150px 150px 1fr; background: #f7f7f5; color: #080808; border-top: 5px solid #f5b400; }
+    .bloomberg-market > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 11px; border-right: 1px solid #bbb; font-size: 16px; }
+    .bloomberg-market b { font-size: 14px; }
+    .bloomberg-market span { font-weight: 800; }
+    .market-up { color: #00845a; }
+    .market-down { color: #c21f30; }
+    .bloomberg-market .bloomberg-ticker-wrap { overflow: hidden; display: flex; align-items: center; padding: 0; border-right: 0; }
+    .bloomberg-ticker { font-size: 16px; padding-right: 20px; }
+
+    .cna-banner { background: linear-gradient(145deg, #5f6d78, #c6cbd0 46%, #474f56); }
+    .cna-banner.tv-overlay { background: transparent; }
+    .cna-bug { position: absolute; top: 25px; right: 28px; display: flex; align-items: center; gap: 8px; color: #fff; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55)); }
+    .cna-mark { width: 41px; height: 30px; background: #df171d; clip-path: polygon(0 100%, 47% 0, 65% 42%, 78% 20%, 100% 100%); }
+    .cna-bug strong { font-size: 30px; letter-spacing: -0.06em; }
+    .cna-bug em { margin-left: 4px; padding: 4px 7px; background: #df171d; font-size: 13px; line-height: 1; font-style: normal; font-weight: 900; }
+    .cna-lower-third { position: absolute; left: 36px; right: 36px; bottom: 24px; filter: drop-shadow(0 5px 16px rgba(0,0,0,0.28)); }
+    .cna-category { display: inline-block; position: relative; padding: 9px 18px 8px 28px; background: #df171d; font-size: 18px; font-weight: 900; letter-spacing: 0.07em; text-transform: uppercase; }
+    .cna-category::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 16px; background: #9f0a0e; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+    .cna-story { position: relative; background: rgba(255,255,255,0.97); color: #111; padding: 16px 21px 15px 28px; border-top: 4px solid #df171d; }
+    .cna-story::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: #df171d; }
+    .cna-headline { font-size: 39px; line-height: 1.08; font-weight: 800; letter-spacing: -0.028em; }
+    .cna-subline { margin-top: 7px; color: #424242; font-size: 21px; line-height: 1.16; }
+    .cna-footer { height: 46px; display: grid; grid-template-columns: 155px 1fr; background: rgba(241,241,239,0.98); color: #111; border-top: 1px solid #bbb; }
+    .cna-time { display: grid; place-items: center; background: #df171d; color: #fff; font-size: 17px; font-weight: 800; }
+    .cna-ticker-wrap { overflow: hidden; display: flex; align-items: center; font-size: 17px; font-weight: 600; }
+
     .authority-email { width: 800px; display: grid; grid-template-columns: 12px 1fr; font-family: "Source Sans 3", Arial, sans-serif; }
     .authority-strip { background: #b91c1c; }
     .authority-body { background: #fff; }
@@ -1374,9 +1431,10 @@
     .bfm-hd-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 900; color: rgba(255,255,255,0.03); letter-spacing: 0.1em; pointer-events: none; }
     .bfm-hd-overlay { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%, rgba(0,0,0,0.08) 100%); }
 
-    /* ── BFM overlay mode (transparent background for video composite) ──── */
+    /* ── TV overlay mode (transparent background for video composite) ──── */
     .bfm-banner.bfm-overlay { background: transparent; }
-    .bfm-video-frame { background: #000; }
+    .bfm-video-frame,
+    .tv-video-frame { background: #000; }
 
     /* ── Audio message ──────────────────── */
     .audio-message-card { width: 520px; min-height: 320px; }
@@ -1643,6 +1701,11 @@
         padding: 14px;
       }
       .bfm-banner {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+      }
+      .tv-news-banner {
         width: 100%;
         height: auto;
         aspect-ratio: 16 / 9;

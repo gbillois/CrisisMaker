@@ -16,7 +16,7 @@
             case 'post_twitter': return this.twitter(f);
             case 'post_linkedin': return this.linkedin(f);
             case 'post_reddit': return this.reddit(f);
-            case 'breaking_news_tv': return this.bfm(f);
+            case 'breaking_news_tv': return this.tvNews(stimulus.template_id, f);
             case 'email_authority': return this.authority(f);
             case 'press_release': return this.pressRelease(f);
             case 'sms_notification': return this.sms(f);
@@ -40,7 +40,7 @@
             case 'post_twitter': return this.twitterHD(f);
             case 'post_linkedin': return this.linkedinHD(f);
             case 'post_reddit': return this.redditHD(f);
-            case 'breaking_news_tv': return this.bfmHD(f);
+            case 'breaking_news_tv': return this.tvNewsHD(stimulus.template_id, f);
             case 'email_authority': return this.authorityHD(f);
             case 'press_release': return this.pressReleaseHD(f);
             case 'sms_notification': return this.smsHD(f);
@@ -52,7 +52,7 @@
           const f = stimulus.fields || {};
           const quality = scenario?.settings?.template_quality || 'basic';
           if (stimulus.channel === 'breaking_news_tv') {
-            return quality === 'hd' ? this.bfmOverlayHD(f) : this.bfmOverlay(f);
+            return quality === 'hd' ? this.tvNewsOverlayHD(stimulus.template_id, f) : this.tvNewsOverlay(stimulus.template_id, f);
           }
           return null;
         },
@@ -422,6 +422,88 @@
                 <div class="bfm-time">${escapeHtml(f.time || '')}</div>
                 <div class="bfm-ticker-wrap"><div class="bfm-ticker">${escapeHtml(f.ticker || '')}</div></div>
                 <div class="bfm-channel">DIRECT</div>
+              </div>
+            </article>
+          `;
+        },
+        tvNews(templateId, f) {
+          if (templateId === 'cnn') return this.cnn(f);
+          if (templateId === 'bloomberg') return this.bloomberg(f);
+          if (templateId === 'cna') return this.cna(f);
+          return this.bfm(f);
+        },
+        tvNewsHD(templateId, f) {
+          if (templateId === 'cnn') return this.cnn(f, true);
+          if (templateId === 'bloomberg') return this.bloomberg(f, true);
+          if (templateId === 'cna') return this.cna(f, true);
+          return this.bfmHD(f);
+        },
+        tvNewsOverlay(templateId, f) {
+          if (templateId === 'cnn') return this.cnn(f, false, true);
+          if (templateId === 'bloomberg') return this.bloomberg(f, false, true);
+          if (templateId === 'cna') return this.cna(f, false, true);
+          return this.bfmOverlay(f);
+        },
+        tvNewsOverlayHD(templateId, f) {
+          if (templateId === 'cnn') return this.cnn(f, true, true);
+          if (templateId === 'bloomberg') return this.bloomberg(f, true, true);
+          if (templateId === 'cna') return this.cna(f, true, true);
+          return this.bfmOverlayHD(f);
+        },
+        cnn(f, hd = false, overlay = false) {
+          return `
+            <article class="tv-news-banner cnn-banner${hd ? ' hd' : ''}${overlay ? ' tv-overlay' : ''}">
+              <div class="cnn-live">LIVE</div>
+              <div class="cnn-location">${escapeHtml(f.category || 'BREAKING NEWS')}</div>
+              <div class="cnn-lower-third">
+                <div class="cnn-breaking">BREAKING NEWS</div>
+                <div class="cnn-story">
+                  <div class="cnn-headline">${escapeHtml(f.headline || '')}</div>
+                  <div class="cnn-subline">${escapeHtml(f.subline || '')}</div>
+                </div>
+                <div class="cnn-footer">
+                  <div class="cnn-time">${escapeHtml(f.time || '')} ET</div>
+                  <div class="cnn-ticker-wrap"><div class="cnn-ticker">${escapeHtml(f.ticker || '')}</div></div>
+                  <div class="cnn-logo">CNN</div>
+                </div>
+              </div>
+            </article>
+          `;
+        },
+        bloomberg(f, hd = false, overlay = false) {
+          return `
+            <article class="tv-news-banner bloomberg-banner${hd ? ' hd' : ''}${overlay ? ' tv-overlay' : ''}">
+              <div class="bloomberg-bug"><strong>Bloomberg</strong><span>LIVE</span></div>
+              <div class="bloomberg-lower-third">
+                <div class="bloomberg-kicker">${escapeHtml(f.category || 'TOP NEWS')}</div>
+                <div class="bloomberg-story">
+                  <div class="bloomberg-headline">${escapeHtml(f.headline || '')}</div>
+                  <div class="bloomberg-subline">${escapeHtml(f.subline || '')}</div>
+                </div>
+                <div class="bloomberg-market">
+                  <div><b>LIVE</b><span>${escapeHtml(f.time || '')}</span></div>
+                  <div><b>WORLD</b><span class="market-up">+0.72%</span></div>
+                  <div><b>TECH</b><span class="market-down">-1.18%</span></div>
+                  <div class="bloomberg-ticker-wrap"><div class="bloomberg-ticker">${escapeHtml(f.ticker || '')}</div></div>
+                </div>
+              </div>
+            </article>
+          `;
+        },
+        cna(f, hd = false, overlay = false) {
+          return `
+            <article class="tv-news-banner cna-banner${hd ? ' hd' : ''}${overlay ? ' tv-overlay' : ''}">
+              <div class="cna-bug"><span class="cna-mark"></span><strong>CNA</strong><em>LIVE</em></div>
+              <div class="cna-lower-third">
+                <div class="cna-category">${escapeHtml(f.category || 'BREAKING NEWS')}</div>
+                <div class="cna-story">
+                  <div class="cna-headline">${escapeHtml(f.headline || '')}</div>
+                  <div class="cna-subline">${escapeHtml(f.subline || '')}</div>
+                </div>
+                <div class="cna-footer">
+                  <div class="cna-time">${escapeHtml(f.time || '')} SGT</div>
+                  <div class="cna-ticker-wrap"><div class="cna-ticker">${escapeHtml(f.ticker || '')}</div></div>
+                </div>
               </div>
             </article>
           `;
@@ -1191,4 +1273,3 @@
           `;
         }
       };
-

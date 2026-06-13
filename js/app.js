@@ -201,7 +201,10 @@
             if (!stimulus) return;
             if (property === 'timestamp_offset_minutes') stimulus.timestamp_offset_minutes = Number(input.value);
             else if (property === 'channel') replaceStimulusTemplate(stimulus, input.value);
-            else if (property === 'template_id') replaceArticleVariant(stimulus, input.value);
+            else if (property === 'template_id') {
+              if (stimulus.channel === 'breaking_news_tv') replaceTVVariant(stimulus, input.value);
+              else replaceArticleVariant(stimulus, input.value);
+            }
             else stimulus[property] = input.value;
             App.render();
           });
@@ -1969,6 +1972,10 @@
         if (prevHasPhoto !== undefined) stimulus.fields.has_photo = prevHasPhoto;
       }
 
+      function replaceTVVariant(stimulus, templateId) {
+        stimulus.template_id = TV_TEMPLATE_LIBRARY[templateId] ? templateId : 'bfm';
+      }
+
       function nextStimulusOffset() {
         return (Math.max(0, ...appState.scenario.stimuli.map((item) => item.timestamp_offset_minutes)) || 0) + 30;
       }
@@ -2239,6 +2246,9 @@
         }
         if (config.template_id && config.channel === 'article_press') {
           replaceArticleVariant(stimulus, config.template_id);
+        }
+        if (config.template_id && config.channel === 'breaking_news_tv') {
+          replaceTVVariant(stimulus, config.template_id);
         }
         const resolvedActor = resolveActorFromName(config.actor_id);
         if (resolvedActor) {

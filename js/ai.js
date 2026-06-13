@@ -292,7 +292,7 @@ AVAILABLE TEMPLATES:
 - post_twitter: twitter
 - post_linkedin: linkedin
 - post_reddit: reddit
-- breaking_news_tv: bfm
+- breaking_news_tv: bfm, cnn, bloomberg, cna
 - press_release: generic_pr
 - sms_notification: sms
 - internal_memo: memo

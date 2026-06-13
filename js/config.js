@@ -233,6 +233,25 @@
         }
       };
 
+      const TV_TEMPLATE_LIBRARY = {
+        bfm: {
+          label: 'BFM TV',
+          template_id: 'bfm'
+        },
+        cnn: {
+          label: 'CNN',
+          template_id: 'cnn'
+        },
+        bloomberg: {
+          label: 'Bloomberg Television',
+          template_id: 'bloomberg'
+        },
+        cna: {
+          label: 'Channel News Asia (CNA)',
+          template_id: 'cna'
+        }
+      };
+
       const TEMPLATE_LIBRARY = {
         email_internal: {
           label: 'Internal Outlook',

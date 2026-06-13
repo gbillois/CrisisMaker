@@ -144,6 +144,8 @@
       function makeStimulus(channel, actorId, offsetMinutes, templateId = null) {
         const template = channel === 'article_press'
           ? (ARTICLE_TEMPLATE_LIBRARY[templateId] || ARTICLE_TEMPLATE_LIBRARY[TEMPLATE_LIBRARY.article_press.template_id] || ARTICLE_TEMPLATE_LIBRARY.nyt)
+          : channel === 'breaking_news_tv'
+            ? { ...TEMPLATE_LIBRARY.breaking_news_tv, ...(TV_TEMPLATE_LIBRARY[templateId] || {}) }
           : (TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal);
         const now = new Date().toISOString();
         return {
@@ -221,7 +223,11 @@
 
       function normalizeStimulus(stimulus) {
         const channel = stimulus.channel || 'email_internal';
-        const templateId = channel === 'article_press' ? (stimulus.template_id || 'nyt') : (stimulus.template_id || (TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal).template_id);
+        const templateId = channel === 'article_press'
+          ? (stimulus.template_id || 'nyt')
+          : channel === 'breaking_news_tv'
+            ? (TV_TEMPLATE_LIBRARY[stimulus.template_id] ? stimulus.template_id : 'bfm')
+            : (stimulus.template_id || (TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal).template_id);
         const library = getTemplateDefinition({ channel, template_id: templateId }) || TEMPLATE_LIBRARY.email_internal;
         const now = new Date().toISOString();
         return {
@@ -325,6 +331,7 @@
 
       function getTemplateDefinition(stimulus) {
         if (stimulus?.channel === 'article_press') return ARTICLE_TEMPLATE_LIBRARY[stimulus.template_id] || ARTICLE_TEMPLATE_LIBRARY.nyt;
+        if (stimulus?.channel === 'breaking_news_tv') return TEMPLATE_LIBRARY.breaking_news_tv;
         if (TEMPLATE_LIBRARY[stimulus?.channel]) return TEMPLATE_LIBRARY[stimulus.channel];
         // Check custom templates
         const custom = (appState?.scenario?.custom_templates || []).find(

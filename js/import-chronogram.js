@@ -319,7 +319,7 @@ CHANNEL → TEMPLATE_ID MAPPING:
 - email_external → "generic"
 - email_authority → "anssi" (FR) | "bsi" (DE) | "generic"
 - article_press → "lemonde" (FR) | "nyt" (EN) | "faz" (DE) | "generic_press"
-- breaking_news_tv → "bfm" (FR) | "cnn" (EN)
+- breaking_news_tv → "bfm" (FR) | "cnn" (US/international) | "bloomberg" (business/markets) | "cna" (Asia)
 - post_twitter → "twitter"
 - post_linkedin → "linkedin"
 - press_release → "generic"
@@ -346,7 +346,7 @@ post_linkedin (linkedin):
 article_press (all):
   headline, subheadline, author, date, category, body, image_caption, read_time
 
-breaking_news_tv (bfm/cnn):
+breaking_news_tv (bfm/cnn/bloomberg/cna):
   headline, subline, ticker, time, category
 
 press_release (generic):

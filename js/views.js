@@ -973,6 +973,8 @@
             </label>
             ${stimulus.channel === 'article_press' ? `<label class="field">${tt('Press template', 'Template presse', 'Presse-Vorlage')}
               <select data-stimulus-bind="${stimulus.id}.template_id">${Object.values(ARTICLE_TEMPLATE_LIBRARY).map((template) => `<option value="${template.template_id}" ${stimulus.template_id === template.template_id ? 'selected' : ''}>${escapeHtml(template.label)}</option>`).join('')}</select>
+            </label>` : stimulus.channel === 'breaking_news_tv' ? `<label class="field">${tt('TV channel style', 'Style de chaîne TV', 'TV-Senderstil')}
+              <select data-stimulus-bind="${stimulus.id}.template_id">${Object.values(TV_TEMPLATE_LIBRARY).map((template) => `<option value="${template.template_id}" ${stimulus.template_id === template.template_id ? 'selected' : ''}>${escapeHtml(template.label)}</option>`).join('')}</select>
             </label>` : '<div></div>'}
             <label class="field">${tt('Source actor', 'Acteur émetteur', 'Absender-Akteur')}
               <select data-stimulus-bind="${stimulus.id}.actor_id">${actorOptions}</select>
@@ -1489,9 +1491,9 @@
 
         if (hasVideo) {
           const overlayBody = TemplateEngine.renderOverlay(stimulus, appState.scenario);
-          return `<div id="${wrapperId}" class="render-frame bfm-video-frame" style="position:relative; width:1280px; height:720px; transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center; overflow:hidden;">
-            <video class="bfm-video-bg" src="${escapeAttribute(videoInfo.objectUrl)}" ${thumbnail ? '' : 'autoplay loop'} playsinline style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;"></video>
-            <div class="bfm-overlay-layer" style="position:absolute; inset:0; z-index:2;">${overlayBody}</div>
+          return `<div id="${wrapperId}" class="render-frame tv-video-frame" style="position:relative; width:1280px; height:720px; transform:${thumbnail ? 'scale(0.22)' : 'none'}; transform-origin: top center; overflow:hidden;">
+            <video class="tv-video-bg" src="${escapeAttribute(videoInfo.objectUrl)}" ${thumbnail ? '' : 'autoplay loop'} playsinline style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;"></video>
+            <div class="tv-overlay-layer" style="position:absolute; inset:0; z-index:2;">${overlayBody}</div>
             <div style="position:absolute; inset:0; z-index:3;">${watermark}</div>
           </div>`;
         }

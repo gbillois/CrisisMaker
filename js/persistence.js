@@ -429,7 +429,7 @@
           pushToast(tt('Audio exported.', 'Audio exporté.', 'Audio exportiert.'), 'success');
         },
 
-        // ── Video export: composite video + BFM overlay → WebM ──
+        // ── Video export: composite video + TV overlay → WebM ──
         async exportVideo(stimulus) {
           if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.', 'Kein Stimulus ausgewählt.'));
           const videoInfo = appState.videoFiles?.[stimulus.id];
@@ -453,7 +453,7 @@
           canvas.height = H;
           const ctx = canvas.getContext('2d');
 
-          // 2. Render the BFM overlay to a static PNG image
+          // 2. Render the selected TV overlay to a static PNG image
           const overlayPng = await this._renderOverlayImage(stimulus, W, H);
 
           // 3. Also render the watermark overlay
