@@ -1,3 +1,98 @@
+      function makeDefaultAIModelCatalog() {
+        return { provider: '', status: 'idle', models: [], error: '', loadedAt: null, requestId: 0 };
+      }
+
+      function resetAIModelCatalog() {
+        appState.aiModelCatalog = makeDefaultAIModelCatalog();
+      }
+
+      function availableAIModels(settings = appState.scenario.settings) {
+        const fallback = DEFAULT_MODELS[settings.ai_provider] || [];
+        const catalog = appState.aiModelCatalog;
+        const dynamic = catalog?.provider === settings.ai_provider && catalog.models?.length ? catalog.models : fallback;
+        return [...new Set([settings.ai_model, ...dynamic].filter(Boolean))];
+      }
+
+      function filterOpenAIChatModels(models) {
+        return models
+          .map((model) => model.id)
+          .filter((id) => /^(gpt-|o\d|chatgpt)/.test(id))
+          .filter((id) => !/(audio|realtime|search|transcribe|tts|embed|image|moderation|instruct)/i.test(id));
+      }
+
+      async function fetchAIModels(settings = appState.scenario.settings) {
+        const { ai_provider: provider, ai_api_key: apiKey } = settings;
+        if (!apiKey?.trim()) {
+          throw new Error(tt(
+            'Enter the provider API key to load its models.',
+            'Saisissez la clé API du fournisseur pour charger ses modèles.',
+            'Geben Sie den API-Schlüssel des Anbieters ein, um seine Modelle zu laden.'
+          ));
+        }
+
+        let response;
+        if (provider === 'anthropic') {
+          response = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+            headers: {
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            }
+          });
+        } else if (provider === 'openai') {
+          response = await fetch('https://api.openai.com/v1/models', {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+          });
+        } else if (provider === 'google_gemini') {
+          response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+        } else {
+          return [];
+        }
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error?.message || `HTTP ${response.status}`);
+
+        let models = [];
+        if (provider === 'openai') {
+          models = filterOpenAIChatModels(data.data || []);
+        } else if (provider === 'google_gemini') {
+          models = (data.models || [])
+            .filter((model) => model.supportedGenerationMethods?.includes('generateContent'))
+            .map((model) => String(model.name || '').replace(/^models\//, ''));
+        } else {
+          models = (data.data || []).map((model) => model.id);
+        }
+        return [...new Set(models.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      }
+
+      async function refreshAIModelCatalog(force = false) {
+        const settings = appState.scenario.settings;
+        const provider = settings.ai_provider;
+        if (provider === 'azure_openai') return;
+
+        const current = appState.aiModelCatalog || makeDefaultAIModelCatalog();
+        if (!force && current.provider === provider && ['loading', 'success'].includes(current.status)) return;
+
+        const requestId = (current.requestId || 0) + 1;
+        const catalog = { provider, status: 'loading', models: current.provider === provider ? current.models : [], error: '', loadedAt: null, requestId };
+        appState.aiModelCatalog = catalog;
+        App.render();
+
+        try {
+          const models = await fetchAIModels(settings);
+          if (appState.aiModelCatalog !== catalog || appState.scenario.settings.ai_provider !== provider) return;
+          if (!models.length) throw new Error(tt('The provider returned no compatible models.', 'Le fournisseur n’a renvoyé aucun modèle compatible.', 'Der Anbieter hat keine kompatiblen Modelle zurückgegeben.'));
+          catalog.status = 'success';
+          catalog.models = models;
+          catalog.loadedAt = new Date().toISOString();
+        } catch (error) {
+          if (appState.aiModelCatalog !== catalog || appState.scenario.settings.ai_provider !== provider) return;
+          catalog.status = settings.ai_api_key?.trim() ? 'error' : 'missing-key';
+          catalog.error = error.message || String(error);
+        }
+        App.render();
+      }
+
       const AITextGenerator = {
         async testConnection() {
           const { ai_provider, ai_api_key, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;

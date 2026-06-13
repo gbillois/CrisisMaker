@@ -22,6 +22,7 @@
           actionLoading: {}
         },
         connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' },
+        aiModelCatalog: makeDefaultAIModelCatalog(),
         chronogramImportAutonomy: 'mostly_autonomous',
         chronogramImport: null,
         checkerState: {
@@ -267,7 +268,10 @@
               appState.connectionTest = { status: 'idle', message: '', checkedAt: null, provider: '' };
             }
             persistProviderSettings(appState.scenario.settings);
+            const refreshModels = ['settings.ai_provider', 'settings.ai_api_key'].includes(input.dataset.bind);
+            if (refreshModels) resetAIModelCatalog();
             App.render();
+            if (refreshModels) refreshAIModelCatalog();
           });
         });
 
@@ -543,6 +547,7 @@
             case 'toggle-settings-drawer':
               appState.settingsDrawerOpen = !appState.settingsDrawerOpen;
               App.render();
+              if (appState.settingsDrawerOpen) refreshAIModelCatalog();
               break;
             case 'toggle-confidentiality-acknowledged': {
               appState.scenario.settings.confidentiality_acknowledged = event.currentTarget.checked;
@@ -561,6 +566,9 @@
               break;
             }
             case 'save-local': saveLocal(); break;
+            case 'refresh-ai-models':
+              await refreshAIModelCatalog(true);
+              break;
             case 'save-file': {
               if (_fileHandle) {
                 await writeToFile();
@@ -2097,7 +2105,7 @@
       function normalizeProviderSettingsInPlace(settings) {
         if (!['anthropic', 'openai', 'azure_openai', 'google_gemini'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
         const providerModels = DEFAULT_MODELS[settings.ai_provider] || DEFAULT_MODELS.anthropic;
-        if (!providerModels.includes(settings.ai_model)) settings.ai_model = providerModels[0];
+        if (!settings.ai_model) settings.ai_model = providerModels[0];
         settings.ai_api_key = settings.ai_api_key || '';
         settings.azure_endpoint = settings.azure_endpoint || '';
         settings.azure_api_key = settings.azure_api_key || '';

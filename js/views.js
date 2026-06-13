@@ -572,11 +572,23 @@
 
       function renderSettingsView() {
         const settings = appState.scenario.settings;
-        const models = DEFAULT_MODELS[settings.ai_provider] || [];
+        const models = availableAIModels(settings);
         const isAnthropic = settings.ai_provider === 'anthropic';
         const isOpenAI = settings.ai_provider === 'openai';
         const isAzure = settings.ai_provider === 'azure_openai';
         const isGemini = settings.ai_provider === 'google_gemini';
+        const modelCatalog = appState.aiModelCatalog || makeDefaultAIModelCatalog();
+        const modelCatalogApplies = modelCatalog.provider === settings.ai_provider;
+        const modelCatalogStatus = modelCatalogApplies ? modelCatalog.status : 'idle';
+        const modelCatalogMessage = modelCatalogStatus === 'loading'
+          ? tt('Loading models from the provider…', 'Chargement des modèles depuis le fournisseur…', 'Modelle werden vom Anbieter geladen…')
+          : modelCatalogStatus === 'success'
+          ? tt(`${modelCatalog.models.length} models loaded from the provider.`, `${modelCatalog.models.length} modèles chargés depuis le fournisseur.`, `${modelCatalog.models.length} Modelle vom Anbieter geladen.`)
+          : modelCatalogStatus === 'error'
+          ? tt(`Default list shown. Provider API: ${modelCatalog.error}`, `Liste de repli affichée. API fournisseur : ${modelCatalog.error}`, `Standardliste wird angezeigt. Anbieter-API: ${modelCatalog.error}`)
+          : modelCatalogStatus === 'missing-key'
+          ? tt('Default list shown. Enter an API key to load available models.', 'Liste de repli affichée. Saisissez une clé API pour charger les modèles disponibles.', 'Standardliste wird angezeigt. Geben Sie einen API-Schlüssel ein, um verfügbare Modelle zu laden.')
+          : tt('The model list will be loaded dynamically from the provider.', 'La liste des modèles sera chargée dynamiquement depuis le fournisseur.', 'Die Modellliste wird dynamisch vom Anbieter geladen.');
         const connectionTest = appState.connectionTest || { status: 'idle', message: '', checkedAt: null, provider: '' };
         const connectionStatusLabels = {
           testing: tt('Testing…', 'Test en cours…', 'Wird getestet…'),
@@ -620,9 +632,13 @@
                 </label>
                 ${(isAnthropic || isOpenAI || isGemini) ? `
                   <label class="field">${tt('Model', 'Modèle', 'Modell')}
-                    <select data-bind="settings.ai_model">
-                      ${models.map((model) => `<option value="${model}" ${settings.ai_model === model ? 'selected' : ''}>${model}</option>`).join('')}
-                    </select>
+                    <div style="display:flex;gap:8px;">
+                      <select data-bind="settings.ai_model" style="min-width:0;">
+                        ${models.map((model) => `<option value="${escapeAttribute(model)}" ${settings.ai_model === model ? 'selected' : ''}>${escapeHtml(model)}</option>`).join('')}
+                      </select>
+                      <button class="btn btn-secondary" data-action="refresh-ai-models" title="${tt('Refresh model list', 'Actualiser la liste des modèles', 'Modellliste aktualisieren')}" ${modelCatalogStatus === 'loading' ? 'disabled' : ''}>⟳</button>
+                    </div>
+                    <p class="helper">${escapeHtml(modelCatalogMessage)}</p>
                   </label>
                   <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
@@ -676,7 +692,7 @@
                 </div>
               ` : ''}
               <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`, `Die ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'}-Einstellungen verbleiben in Ihrem Browser und werden nur an den ausgewählten Anbieter übermittelt.`)}</p>
-              ${(isOpenAI || isAzure) ? `<p class="helper">${tt('The OpenAI model dropdown is a curated list of current general-purpose chat-compatible model IDs. Azure availability still depends on your deployed model and region.', 'La liste déroulante OpenAI propose une sélection de modèles généralistes récents compatibles chat. La disponibilité dans Azure dépend toujours de votre déploiement et de votre région.', 'Das OpenAI-Modell-Dropdown ist eine kuratierte Liste aktueller Allzweck-Chat-kompatibler Modell-IDs. Die Azure-Verfügbarkeit hängt weiterhin von Ihrem bereitgestellten Modell und Ihrer Region ab.')}</p>` : ''}
+              ${isAzure ? `<p class="helper">${tt('Azure OpenAI uses your deployment name; availability depends on your Azure resource and region.', 'Azure OpenAI utilise le nom de votre déploiement ; la disponibilité dépend de votre ressource Azure et de votre région.', 'Azure OpenAI verwendet Ihren Bereitstellungsnamen; die Verfügbarkeit hängt von Ihrer Azure-Ressource und Region ab.')}</p>` : ''}
               ${isGemini ? `<p class="helper">${tt('Get your Gemini API key from Google AI Studio (aistudio.google.com).', 'Obtenez votre clé API Gemini depuis Google AI Studio (aistudio.google.com).', 'Holen Sie sich Ihren Gemini-API-Schlüssel von Google AI Studio (aistudio.google.com).')}</p>` : ''}
             </article>
             <article class="card">
