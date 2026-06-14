@@ -5,7 +5,7 @@ en **vidéo documentaire 1080p de ~2 minutes** : voix off neurale, musique
 originale synthétisée, scènes animées (cartes, statistiques, leçons, photos).
 
 **Philosophie : le moins d'IA possible.** L'IA (Claude ou OpenAI, votre clé,
-stockée uniquement dans votre navigateur) ne sert qu'à rédiger le *brouillon*
+conservée uniquement pour la session du navigateur) ne sert qu'à rédiger le *brouillon*
 de scénario — étape même optionnelle (gabarit déterministe). Toute la
 production (voix, images, musique, montage) est déterministe, en local ou
 sur GitHub Actions.
@@ -20,6 +20,9 @@ cd video-debrief/pipeline
 python3 server.py            # → http://localhost:8765/studio
 ```
 Pré-requis locaux : `brew install ffmpeg node` (ou apt), `pip3 install edge-tts numpy scipy`.
+Par défaut, le serveur de production n’accepte que les appels issus de `localhost`.
+Pour autoriser une instance CrisisMaker hébergée, définissez explicitement
+`CRISISMAKER_ALLOWED_ORIGINS=https://crisismaker.example`.
 
 ## Les 3 étapes
 

@@ -4,7 +4,7 @@
     python3 server.py          # http://localhost:8765
 
 The studio (studio.html) detects it and offers one-click production.
-Endpoints (CORS open, localhost only):
+Endpoints (CORS restricted to local origins):
   GET  /status    → {ok, busy}
   POST /build     → start a build from the posted project JSON
   GET  /progress  → {stage, pct, done, error, output, log}
@@ -13,6 +13,7 @@ Also serves the studio statically: http://localhost:8765/studio
 """
 import json, os, threading, traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse
 
 import build as builder
 
@@ -20,6 +21,38 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 STATE = {"busy": False, "stage": "", "pct": 0, "done": False,
          "error": None, "output": None, "log": []}
+MAX_PROJECT_BYTES = 25 * 1024 * 1024
+EXTRA_ALLOWED_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("CRISISMAKER_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+}
+
+
+def is_local_origin(origin):
+    if not origin:
+        return True
+    if origin.rstrip("/") in EXTRA_ALLOWED_ORIGINS:
+        return True
+    try:
+        parsed = urlparse(origin)
+        return parsed.scheme in ("http", "https") and parsed.hostname in ("localhost", "127.0.0.1", "::1")
+    except ValueError:
+        return False
+
+
+def validate_project(project):
+    if not isinstance(project, dict):
+        return "Le projet doit être un objet JSON."
+    scenes = project.get("scenes")
+    if not isinstance(scenes, list) or not scenes:
+        return "Le projet doit contenir au moins une scène."
+    if len(scenes) > 100:
+        return "Le projet contient trop de scènes."
+    for scene in scenes:
+        if not isinstance(scene, dict) or not isinstance(scene.get("id"), str) or not scene["id"].strip():
+            return "Chaque scène doit avoir un identifiant texte."
+    return None
 
 
 def run_build(project):
@@ -47,13 +80,20 @@ class Handler(BaseHTTPRequestHandler):
         data = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin")
+        if origin and is_local_origin(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
 
     def do_OPTIONS(self):
+        if not is_local_origin(self.headers.get("Origin")):
+            return self._send(403, {"error": "origine non autorisée"})
         self._send(204, b"")
 
     def do_GET(self):
@@ -75,8 +115,8 @@ class Handler(BaseHTTPRequestHandler):
         else:
             # static: engine assets for the preview iframe
             safe = os.path.normpath(p).lstrip("/")
-            full = os.path.join(ROOT, safe)
-            if os.path.isfile(full) and full.startswith(ROOT):
+            full = os.path.abspath(os.path.join(ROOT, safe))
+            if os.path.isfile(full) and os.path.commonpath((ROOT, full)) == ROOT:
                 ctype = {"html": "text/html; charset=utf-8", "js": "text/javascript",
                          "css": "text/css", "json": "application/json",
                          "woff2": "font/woff2", "png": "image/png"}.get(full.rsplit(".", 1)[-1], "application/octet-stream")
@@ -88,13 +128,23 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path != "/build":
             return self._send(404, {"error": "not found"})
+        if not is_local_origin(self.headers.get("Origin")):
+            return self._send(403, {"error": "origine non autorisée"})
         if STATE["busy"]:
             return self._send(409, {"error": "production déjà en cours"})
-        n = int(self.headers.get("Content-Length", 0))
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            return self._send(400, {"error": "Content-Length invalide"})
+        if n <= 0 or n > MAX_PROJECT_BYTES:
+            return self._send(413, {"error": "projet vide ou trop volumineux"})
         try:
             project = json.loads(self.rfile.read(n))
         except Exception:
             return self._send(400, {"error": "JSON invalide"})
+        validation_error = validate_project(project)
+        if validation_error:
+            return self._send(400, {"error": validation_error})
         threading.Thread(target=run_build, args=(project,), daemon=True).start()
         self._send(200, {"started": True})
 

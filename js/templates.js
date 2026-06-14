@@ -57,7 +57,9 @@
           return null;
         },
         renderCustom(templateDef, fields) {
-          let html = templateDef.render_html || '';
+          let html = sanitizeBody(templateDef.render_html || '')
+            .replace(/<style[\s>][\s\S]*?<\/style\s*>/gi, '')
+            .replace(/<style[\s>\/][^>]*>/gi, '');
           const rawKeys = new Set(['body']);
           for (const fieldDef of (templateDef.fields || [])) {
             const key = fieldDef.key || fieldDef.name;
@@ -70,7 +72,9 @@
               html = html.split(placeholder).join(escapeHtml(String(value ?? '')));
             }
           }
-          const css = templateDef.render_css ? `<style>${templateDef.render_css}</style>` : '';
+          const rawCss = String(templateDef.render_css || '');
+          const unsafeCss = /<\/?style[\s>]|url\s*\(|@import|expression\s*\(|behavior\s*:|-moz-binding\s*:/i.test(rawCss);
+          const css = rawCss && !unsafeCss ? `<style>${rawCss}</style>` : '';
           return `<div class="crisismaker-template-sandbox" style="all: initial;">${css}${html}</div>`;
         },
         emailInternal(f) {

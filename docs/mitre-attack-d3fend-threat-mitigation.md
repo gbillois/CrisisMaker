@@ -6,11 +6,12 @@ This document provides a practical threat and mitigation assessment for **Crisis
 
 The assessment is based on the implementation currently visible in `index.html`, notably:
 
-- browser-side storage of scenario data and provider settings in `localStorage`;
+- browser-side storage of scenario data and non-secret provider settings in `localStorage`;
+- session-only storage of live API credentials in `sessionStorage`;
 - direct browser calls to Anthropic and Azure OpenAI APIs;
 - export features that generate PNG and ZIP artifacts;
 - rendered outputs that imitate emails, social posts, news banners, SMS messages, and authority notices;
-- third-party JavaScript loaded from public CDNs.
+- declared local third-party JavaScript paths with SRI-protected public CDN fallback.
 
 ## High-level architecture and trust boundaries
 
@@ -30,9 +31,9 @@ The assessment is based on the implementation currently visible in `index.html`,
 
 ### Trust boundaries
 
-- **Browser storage boundary:** scenario data and provider settings are persisted in the user’s browser.
+- **Browser storage boundary:** scenario data and non-secret provider settings persist in the browser; live credentials remain available for the browser session.
 - **External AI provider boundary:** prompts and generated content cross into Anthropic or Azure OpenAI services.
-- **Third-party dependency boundary:** rendering/export behavior depends on scripts fetched from CDNs.
+- **Third-party dependency boundary:** rendering/export behavior depends on vendored scripts, with pinned SRI-protected CDN fallback.
 - **Human distribution boundary:** exported exercise content may be shared, re-used, or forwarded outside intended exercise channels.
 
 ## Assumptions
@@ -45,9 +46,9 @@ The assessment is based on the implementation currently visible in `index.html`,
 
 | # | Threat scenario | ATT&CK technique(s) | How it applies to this project | Recommended D3Fend-aligned mitigations |
 |---|---|---|---|---|
-| 1 | Theft of browser-stored API credentials or sensitive scenario data | **T1552 – Unsecured Credentials**; **T1078 – Valid Accounts** | The app stores scenario settings and provider details in `localStorage`. A malicious browser extension, injected script, shared workstation user, or compromised origin could extract keys and reuse them. | **Credential Hardening**: avoid persistent storage of live API keys when possible; prefer ephemeral entry or short-lived tokens. **Credential Rotation**: rotate Anthropic/Azure keys after exercises and after suspected exposure. **Application Configuration Hardening**: disable unnecessary browser features and avoid production use from unmanaged browsers. |
+| 1 | Theft of browser-stored API credentials or sensitive scenario data | **T1552 – Unsecured Credentials**; **T1078 – Valid Accounts** | Live API keys are stored in `sessionStorage`, while scenario data and non-secret provider details persist in `localStorage`. A malicious browser extension, injected script, shared workstation user, or compromised origin could still extract session credentials and scenario data. | **Credential Hardening**: prefer short-lived or tightly scoped tokens. **Credential Rotation**: rotate provider keys after exercises and after suspected exposure. **Application Configuration Hardening**: disable unnecessary browser features and avoid production use from unmanaged browsers. |
 | 2 | Abuse of the app to create realistic phishing or disinformation content | **T1566 – Phishing** | The app intentionally generates realistic email, SMS, social, and press-style stimuli. If governance is weak, the same outputs could be repurposed for malicious social engineering. | **Access Modeling** and **Operational Risk Assessment**: restrict who can use the tool and under what scenarios. **Application Configuration Hardening**: add clear exercise labeling, export warnings, and safe-use banners. **User Behavior Analytics** / process monitoring in the host environment can help detect unusual mass export or misuse patterns. |
-| 3 | Compromise of third-party CDN dependencies used by the page | **T1195.001 – Compromise Software Dependencies and Development Tools** | The page loads `html-to-image` and `JSZip` from public CDNs. If a dependency or delivery path is tampered with, malicious script could execute in the app origin and access local data/API keys. | **Software Inventory**: maintain an explicit dependency list and approved versions. **File Integrity Monitoring**: pin versions and detect unexpected asset changes. **Application Hardening**: use Subresource Integrity (SRI), self-host vetted assets, and enforce a restrictive Content Security Policy (CSP). |
+| 3 | Compromise of third-party dependency delivery | **T1195.001 – Compromise Software Dependencies and Development Tools** | The app attempts local bundles first and uses pinned, SRI-protected CDN fallback. A compromised approved dependency version could still execute in the app origin and access local data/session credentials. | **Software Inventory**: maintain an explicit dependency list and approved versions. **File Integrity Monitoring**: detect unexpected asset changes. **Application Hardening**: vendor reviewed bundles where possible and enforce a restrictive Content Security Policy (CSP). |
 | 4 | Exploitation of a hosted deployment of the static app | **T1190 – Exploit Public-Facing Application** | If this single-page app is deployed on an internal or public web server without hardened headers, access controls, or origin restrictions, an attacker may exploit the hosting stack or inject content via the delivery layer. | **Application Hardening** and **Application Configuration Hardening**: secure HTTP headers, CSP, HTTPS, and controlled hosting. **System Vulnerability Assessment** and **Network Vulnerability Assessment**: regularly assess the hosting platform even if the app itself is static. |
 | 5 | Sensitive scenario data disclosure through exported artifacts | **T1537 – Transfer Data to Cloud Account** or general exfiltration behavior; **T1567 – Exfiltration Over Web Service** (conceptually relevant) | The app can export PNG, ZIP, and JSON files containing scenario data and highly realistic crisis communications. Once exported, those files are easy to forward through email, chat, or cloud sharing. | **Data Inventory**: classify exported exercise artifacts as sensitive. **File Encryption** and **File Access Policy Enforcement** where available in the organization. **Operational Risk Assessment**: define retention, approved sharing channels, and mandatory sanitization before external distribution. |
 | 6 | Leakage of sensitive prompt content to external AI providers | **T1041 – Exfiltration Over C2 Channel** is not a perfect fit, but ATT&CK-style data exposure risk exists through outbound API calls | Prompts include scenario summaries, actor names, and event details, and are sent directly from the browser to Anthropic or Azure OpenAI. That can expose confidential exercise content to third-party processing or logging layers. | **Data Inventory** and **Sensitive Data Minimization**: avoid including regulated or unnecessary data in prompts. **Network Traffic Policy Mapping**: restrict allowed destinations to approved AI endpoints. **Credential Hardening** plus tenant-specific Azure routing can reduce exposure. |
@@ -57,12 +58,12 @@ The assessment is based on the implementation currently visible in `index.html`,
 
 ### 1) Protect secrets and provider credentials
 
-**Observed exposure:** provider settings are loaded from and written back to `localStorage`, including the Azure API key and endpoint metadata.
+**Current control:** live provider keys are migrated out of `localStorage` and kept in `sessionStorage`; non-secret endpoint metadata remains persistent.
 
 **Recommended controls:**
 
-- Remove persistent API key storage entirely, or make it opt-in and clearly labeled as insecure.
-- Prefer session-only memory storage for secrets.
+- Prefer short-lived, scoped provider credentials over long-lived keys.
+- Keep session-only browser storage as a fallback, not a substitute for a backend broker.
 - If organizationally possible, replace direct browser-to-provider API calls with a minimal backend broker that:
   - stores provider secrets server-side;
   - issues short-lived scoped tokens;
@@ -119,7 +120,7 @@ The assessment is based on the implementation currently visible in `index.html`,
 
 ### Priority 0 — immediate
 
-1. Stop persisting live API keys in `localStorage` by default.
+1. Replace long-lived provider keys with short-lived or brokered credentials.
 2. Add user-facing guidance that exported artifacts are exercise-only and may contain sensitive content.
 3. Add dependency integrity controls for CDN-loaded assets, preferably SRI or self-hosting.
 
@@ -151,8 +152,8 @@ Accordingly, governance, endpoint trust, and secret-handling improvements are at
 
 The current codebase would benefit most from the following implementation changes:
 
-1. Replace `localStorage` persistence for API secrets with session memory.
-2. Add CSP and SRI support to the static page.
+1. Move provider access behind a controlled backend broker.
+2. Tighten CSP and add SRI support for any remaining CDN fallback.
 3. Add exercise labeling to renderers and exports.
 4. Add a security section to the README linking to this assessment and safe-use practices.
 

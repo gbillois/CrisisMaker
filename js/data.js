@@ -137,7 +137,10 @@
         ];
         scenario.stimuli = samples;
         scenario.debrief = buildDebriefFromScenario(scenario);
-        scenario.video_debrief = normalizeVideoDebrief({ source_material: scenario.scenario.summary });
+        scenario.video_debrief = normalizeVideoDebrief(
+          { source_material: scenario.scenario.summary },
+          scenario.settings.inject_language || scenario.client.language || scenario.settings.language
+        );
         return scenario;
       }
 
@@ -152,7 +155,7 @@
           actors: [],
           stimuli: [],
           debrief: makeEmptyDebrief({ ...base, client: { ...base.client, name: '' } }),
-          video_debrief: normalizeVideoDebrief(null),
+          video_debrief: normalizeVideoDebrief(null, settingsOverrides.inject_language || settingsOverrides.language || 'en'),
           settings: { ...base.settings, ...settingsOverrides }
         };
       }
@@ -209,7 +212,11 @@
           scenario.settings.inject_language = scenario.settings.language || 'en';
         }
         scenario.settings = { ...scenario.settings, ...providerSettings };
-        scenario.video_debrief = loadVideoDebriefDraft(scenario.video_debrief);
+        scenario.video_debrief = loadVideoDebriefDraft(
+          scenario.video_debrief,
+          scenario.settings.inject_language || scenario.client.language || scenario.settings.language,
+          !saved
+        );
         normalizeProviderSettingsInPlace(scenario.settings);
         // Preserve llm_prompts for restoration after appState init
         if (saved) {
@@ -232,21 +239,28 @@
           actors: Array.isArray(input.actors) && input.actors.length ? input.actors : base.actors,
           stimuli: Array.isArray(input.stimuli) ? input.stimuli.map(normalizeStimulus) : base.stimuli,
           debrief: normalizeDebrief(input.debrief, { ...base, ...input }),
-          video_debrief: normalizeVideoDebrief(input.video_debrief),
+          video_debrief: normalizeVideoDebrief(
+            input.video_debrief,
+            input.settings?.inject_language || input.client?.language || input.settings?.language || base.settings.inject_language
+          ),
           custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : []
         };
         normalizeProviderSettingsInPlace(merged.settings);
         return merged;
       }
 
-      function normalizeVideoDebrief(value) {
+      function normalizeVideoDebrief(value, fallbackLanguage = 'fr') {
         const input = value && typeof value === 'object' ? value : {};
         const setup = input.setup && typeof input.setup === 'object' ? input.setup : {};
+        const supportedLanguages = ['fr', 'en', 'es', 'de', 'it', 'pt'];
+        const language = supportedLanguages.includes(setup.language)
+          ? setup.language
+          : (supportedLanguages.includes(fallbackLanguage) ? fallbackLanguage : 'en');
         return {
           source_material: typeof input.source_material === 'string' ? input.source_material : '',
           setup: {
             duration: Number(setup.duration) || 120,
-            language: setup.language || 'fr',
+            language,
             theme: setup.theme || 'wavestone',
             voice: setup.voice || '',
             tone: setup.tone || 'documentaire sobre',
@@ -254,16 +268,24 @@
           },
           project: input.project && typeof input.project === 'object'
             ? JSON.parse(JSON.stringify(input.project))
-            : null
+            : null,
+          ui: {
+            active_step: [1, 2, 3].includes(Number(input.ui?.active_step)) ? Number(input.ui.active_step) : 1
+          }
         };
       }
 
-      function loadVideoDebriefDraft(fallback = null) {
+      function loadVideoDebriefDraft(fallback = null, fallbackLanguage = 'fr', preferSavedDraft = false) {
+        // In the integrated app, the current project is authoritative. The
+        // standalone browser draft is only a legacy recovery fallback.
+        if (!preferSavedDraft && fallback && typeof fallback === 'object') {
+          return normalizeVideoDebrief(fallback, fallbackLanguage);
+        }
         try {
           const saved = localStorage.getItem(VIDEO_DEBRIEF_STORAGE_KEY);
-          return saved ? normalizeVideoDebrief(JSON.parse(saved)) : normalizeVideoDebrief(fallback);
+          return saved ? normalizeVideoDebrief(JSON.parse(saved), fallbackLanguage) : normalizeVideoDebrief(fallback, fallbackLanguage);
         } catch (error) {
-          return normalizeVideoDebrief(fallback);
+          return normalizeVideoDebrief(fallback, fallbackLanguage);
         }
       }
 

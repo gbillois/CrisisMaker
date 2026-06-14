@@ -177,7 +177,13 @@
 
       function buildDebriefEditorHTML(debrief) {
         const configJson = JSON.stringify(debriefToTimelineConfig(debrief)).replace(/</g, '\\u003c').replace(/-->/g, '--\\u003e');
-        return CRISIS_DEBRIEF_EDITOR_SOURCE.replace('</head>', `<script>window.CRISISMAKER_INITIAL_CONFIG = ${configJson};<\/script></head>`);
+        const language = currentLanguage();
+        const integratedLabel = tt('Integrated project workspace', 'Espace intégré au projet', 'Integrierter Projektbereich');
+        const integratedStyles = '<style>.group:has(#btn-load){display:none}</style>';
+        return CRISIS_DEBRIEF_EDITOR_SOURCE
+          .replace('<html lang="fr">', `<html lang="${language}">`)
+          .replace('Standalone workspace', integratedLabel)
+          .replace('</head>', `${integratedStyles}<script>window.CRISISMAKER_INITIAL_CONFIG = ${configJson};<\/script></head>`);
       }
 
       function mountDebriefEditor() {
