@@ -102,6 +102,10 @@
   .btn-ghost { background: transparent; border: 1px dashed var(--border); }
   .btn-danger { background: transparent; color: var(--danger); }
   .btn:disabled { opacity: 0.5; cursor: default; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+    outline: 3px solid rgba(48,195,143,0.72);
+    outline-offset: 2px;
+  }
   .hint { font-size: 0.74rem; color: var(--muted); line-height: 1.5; margin: 6px 0 14px; }
   .divider { border-top: 1px solid var(--border); margin: 18px 0; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 999px;
@@ -200,6 +204,19 @@
     html.integrated .steps { margin-left: 4px; }
     html.integrated .step-btn { padding: 7px 10px; }
     html.integrated .server-pill { font-size: 0; padding: 8px; }
+  }
+  @media (max-width: 760px) {
+    body { overflow: auto; }
+    .shell { min-height: 100vh; height: auto; }
+    .topbar { align-items: flex-start; flex-wrap: wrap; padding: 12px; }
+    .steps { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
+    .step-btn { flex: 0 0 auto; }
+    .server-pill { margin-left: auto; }
+    .workspace { grid-template-columns: 1fr; padding: 10px; }
+    .panel { max-height: none; overflow: visible; }
+    .preview-side { min-height: 360px; }
+    .preview-frame { min-height: 300px; }
+    .row2, .row3 { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -362,20 +379,20 @@ python3 server.py</div>
           permissions <b>Contents (read/write)</b> et <b>Actions (read)</b>.</div>
         <div class="field"><label>Repo (owner/nom)</label>
           <input type="text" id="gh-repo" value="gbillois/CrisisMaker"></div>
-        <div class="field"><label>Token GitHub (stocké uniquement dans ce navigateur)</label>
+        <div class="field"><label>Token GitHub (conservé pour cette session)</label>
           <input type="password" id="gh-token" placeholder="github_pat_…"></div>
         <button class="btn btn-primary" id="btn-gh-produce" style="width:100%">☁ Produire via GitHub Actions</button>
         <div class="hint" id="gh-stage"></div>
         <div id="gh-done" style="display:none; margin-top:8px">
-          <a class="btn btn-accent" id="gh-link" href="#" target="_blank" style="text-decoration:none; display:inline-block">⬇ Télécharger le MP4</a>
-          <a class="btn" id="gh-run-link" href="#" target="_blank" style="text-decoration:none; display:inline-block">Voir le run</a>
+          <a class="btn btn-accent" id="gh-link" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-block">⬇ Télécharger le MP4</a>
+          <a class="btn" id="gh-run-link" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-block">Voir le run</a>
         </div>
       </div>
     </aside>
 
     <main class="preview-side">
       <div class="preview-frame" id="preview-frame">
-        <iframe id="preview" src="engine/scene.html?preview=1"></iframe>
+        <iframe id="preview" src="engine/scene.html?preview=1" title="Aperçu de la vidéo de débrief"></iframe>
       </div>
       <div class="scrub-bar">
         <button class="play-btn" id="btn-play">▶</button>
@@ -427,7 +444,7 @@ const UI_TEXT = {
     '…puis revenez ici. Ou en ligne de commande directe :': '…then come back here. Or use the command line directly:',
     'Télécharger le projet JSON': 'Download project JSON', 'Cloud GitHub': 'GitHub Cloud',
     'Repo (owner/nom)': 'Repository (owner/name)',
-    'Token GitHub (stocké uniquement dans ce navigateur)': 'GitHub token (stored only in this browser)',
+    'Token GitHub (conservé pour cette session)': 'GitHub token (kept for this session)',
     '☁ Produire via GitHub Actions': '☁ Produce via GitHub Actions', 'Voir le run': 'View run',
     'Auto (selon langue)': 'Auto (based on language)', 'Aucun': 'None'
   },
@@ -460,7 +477,7 @@ const UI_TEXT = {
     '…puis revenez ici. Ou en ligne de commande directe :': '…und kehren Sie dann hierher zurück. Oder direkt über die Befehlszeile:',
     'Télécharger le projet JSON': 'Projekt-JSON herunterladen', 'Cloud GitHub': 'GitHub Cloud',
     'Repo (owner/nom)': 'Repository (Owner/Name)',
-    'Token GitHub (stocké uniquement dans ce navigateur)': 'GitHub-Token (nur in diesem Browser gespeichert)',
+    'Token GitHub (conservé pour cette session)': 'GitHub-Token (nur für diese Sitzung gespeichert)',
     '☁ Produire via GitHub Actions': '☁ Über GitHub Actions produzieren', 'Voir le run': 'Run anzeigen',
     'Auto (selon langue)': 'Auto (je nach Sprache)', 'Aucun': 'Keiner'
   }
@@ -516,6 +533,7 @@ function applyInterfaceLanguage(language){
 }
 
 function videoDebriefState(){
+  const activeStep = Number(document.querySelector('.step-btn.active')?.dataset.step) || 1;
   return {
     source_material: $('src-material').value,
     setup: {
@@ -526,7 +544,8 @@ function videoDebriefState(){
       tone: $('set-tone').value,
       audience: $('set-audience').value
     },
-    project: project ? JSON.parse(JSON.stringify(project)) : null
+    project: project ? JSON.parse(JSON.stringify(project)) : null,
+    ui: { active_step: activeStep }
   };
 }
 function notifyCrisisMakerProjectChange(){
@@ -565,6 +584,7 @@ function applyCrisisMakerProjectState(state){
       renderSceneCards();
       pushProject();
     }
+    if ([1, 2, 3].includes(Number(state.ui?.active_step))) setStep(Number(state.ui.active_step));
   } finally {
     applyingCrisisMakerState = false;
     if (window.frameElement) window.frameElement._videoDebriefState = videoDebriefState();
@@ -583,9 +603,12 @@ window.addEventListener('resize', fitPreview);
 
 function pushProject(){
   if (!project) return;
-  $('preview').contentWindow.postMessage({ type:'project', project, t: playT }, '*');
+  const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+  $('preview').contentWindow.postMessage({ type:'project', project, t: playT }, targetOrigin);
 }
 window.addEventListener('message', ev => {
+  if (ev.source !== $('preview').contentWindow) return;
+  if (ev.origin !== window.location.origin && ev.origin !== 'null') return;
   const m = ev.data || {};
   if (m.type === 'engine-hello'){ engineReady = true; pushProject(); }
   if (m.type === 'engine-ready'){
@@ -597,7 +620,8 @@ window.addEventListener('message', ev => {
 });
 function seekPreview(t){
   playT = Math.max(0, Math.min(t, totalDur));
-  $('preview').contentWindow.postMessage({ type:'seek', t: playT }, '*');
+  const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+  $('preview').contentWindow.postMessage({ type:'seek', t: playT }, targetOrigin);
   $('scrub').value = playT;
   $('scrub-time').textContent = playT.toFixed(1) + ' / ' + totalDur.toFixed(1) + ' s';
 }
@@ -620,6 +644,7 @@ document.querySelectorAll('.step-btn').forEach(b => b.addEventListener('click', 
   document.querySelectorAll('.step-btn').forEach(x => x.classList.toggle('active', x === b));
   document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
   $('view-' + b.dataset.step).classList.add('active');
+  if (!applyingCrisisMakerState) notifyCrisisMakerProjectChange();
 }));
 
 /* ─────────── dynamic model list (fetched from the provider API) ─────────── */
@@ -732,7 +757,7 @@ function storedCrisisMakerAISettings(){
     return {
       provider: supported ? sourceProvider : 'none',
       model: supported ? (saved.ai_model || '') : '',
-      apiKey: supported ? (localStorage.getItem('crisismaker_api_key') || '') : '',
+      apiKey: supported ? ((typeof sessionStorage !== 'undefined' ? sessionStorage : localStorage).getItem('crisismaker_api_key') || '') : '',
       sourceProvider,
       supported
     };
@@ -824,7 +849,10 @@ $('btn-load-json').addEventListener('click', () => $('file-input').click());
 $('file-input').addEventListener('change', e => {
   const f = e.target.files[0];
   if (!f) return;
-  f.text().then(t => { $('src-material').value = t; });
+  f.text().then(t => {
+    $('src-material').value = t;
+    notifyCrisisMakerProjectChange();
+  });
 });
 $('btn-load-example').addEventListener('click', () => {
   fetch('examples/stonawave.json').then(r => r.json()).then(p => {
@@ -913,7 +941,11 @@ $('btn-generate').addEventListener('click', async () => {
     $('gen-status').innerHTML = '<span class="badge">Scénario généré</span> — passez à l’adaptation.';
     setStep(2);
   } catch (e) {
-    $('gen-status').innerHTML = '<span class="badge warn">Erreur</span> ' + e.message;
+    $('gen-status').replaceChildren();
+    const badge = document.createElement('span');
+    badge.className = 'badge warn';
+    badge.textContent = 'Erreur';
+    $('gen-status').append(badge, document.createTextNode(' ' + (e.message || String(e))));
   } finally {
     $('btn-generate').disabled = false;
   }
@@ -992,6 +1024,7 @@ function commit(){
   $('json-editor').value = JSON.stringify(project, null, 2);
   renderSceneCards();
   pushProject();
+  notifyCrisisMakerProjectChange();
 }
 $('p-title').addEventListener('input', () => { if (project){ project.meta.title = $('p-title').value; commitJsonOnly(); pushProject(); } });
 $('p-theme').addEventListener('change', () => { if (project){ project.theme.preset = $('p-theme').value; commitJsonOnly(); pushProject(); } });
@@ -1026,9 +1059,16 @@ function renderSceneCards(){
     const card = document.createElement('div');
     card.className = 'scene-card';
     const head = document.createElement('header');
-    head.innerHTML = `<span class="scene-type">${s.type}</span>
-      <span class="scene-title">${s.heading || s.title || s.id}</span>
-      <span class="scene-dur">${estDur(s).toFixed(0)}s</span>`;
+    const type = document.createElement('span');
+    type.className = 'scene-type';
+    type.textContent = s.type || '';
+    const title = document.createElement('span');
+    title.className = 'scene-title';
+    title.textContent = s.heading || s.title || s.id || '';
+    const duration = document.createElement('span');
+    duration.className = 'scene-dur';
+    duration.textContent = `${estDur(s).toFixed(0)}s`;
+    head.append(type, title, duration);
     const up = document.createElement('button'); up.className = 'mini-btn'; up.textContent = '▲';
     const down = document.createElement('button'); down.className = 'mini-btn'; down.textContent = '▼';
     const del = document.createElement('button'); del.className = 'mini-btn'; del.textContent = '✕';
@@ -1152,10 +1192,19 @@ $('btn-produce').addEventListener('click', async () => {
 
 
 /* ═══════════════ production cloud (GitHub Actions) ═══════════════ */
-['gh-repo','gh-token'].forEach(id => {
-  const saved = localStorage.getItem('vd-' + id);
-  if (saved) $(id).value = saved;
-  $(id).addEventListener('change', () => localStorage.setItem('vd-' + id, $(id).value));
+const savedRepo = localStorage.getItem('vd-gh-repo');
+if (savedRepo) $('gh-repo').value = savedRepo;
+$('gh-repo').addEventListener('change', () => localStorage.setItem('vd-gh-repo', $('gh-repo').value));
+const legacyGithubToken = localStorage.getItem('vd-gh-token');
+if (legacyGithubToken) {
+  sessionStorage.setItem('vd-gh-token', legacyGithubToken);
+  localStorage.removeItem('vd-gh-token');
+}
+$('gh-token').value = sessionStorage.getItem('vd-gh-token') || '';
+$('gh-token').addEventListener('change', () => {
+  const token = $('gh-token').value;
+  if (token) sessionStorage.setItem('vd-gh-token', token);
+  else sessionStorage.removeItem('vd-gh-token');
 });
 async function gh(path, opts = {}){
   const tok = $('gh-token').value.trim();

@@ -3,14 +3,21 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const storage = new Map();
+const sessionStorageValues = new Map();
 const localStorage = {
   getItem: (key) => storage.get(key) ?? null,
   setItem: (key, value) => storage.set(key, String(value)),
   removeItem: (key) => storage.delete(key)
 };
+const sessionStorage = {
+  getItem: (key) => sessionStorageValues.get(key) ?? null,
+  setItem: (key, value) => sessionStorageValues.set(key, String(value)),
+  removeItem: (key) => sessionStorageValues.delete(key)
+};
 const context = {
   console,
   localStorage,
+  sessionStorage,
   navigator: { language: 'en' },
   window: {},
   document: { getElementById: () => null },
@@ -69,6 +76,7 @@ const result = vm.runInContext(`(() => {
     theme: { preset: 'wavestone' },
     scenes: [{ id: 's1', type: 'cold-open', vo: 'Saved voice-over', title: 'SAVED' }]
   };
+  scenario.video_debrief.ui.active_step = 2;
   appState = {
     scenario,
     llmState: {
@@ -89,7 +97,17 @@ const result = vm.runInContext(`(() => {
     name: 'Legacy project', client: { name: 'Other' }, scenario: { type: 'Crisis' },
     actors: [], stimuli: [], settings: {}
   }));
-  return { project, loaded, locallySaved, appliedLoad, legacy };
+  localStorage.setItem(VIDEO_DEBRIEF_STORAGE_KEY, JSON.stringify({
+    source_material: 'Draft from another project',
+    setup: { language: 'fr' }
+  }));
+  const authoritativeProject = loadVideoDebriefDraft(project.video_debrief, 'en');
+  const recoveredStandaloneDraft = loadVideoDebriefDraft(project.video_debrief, 'en', true);
+  const germanLegacy = mergeScenario(migrateScenario({
+    name: 'German legacy project', client: { name: 'Kunde', language: 'de' },
+    scenario: { type: 'Crisis' }, actors: [], stimuli: [], settings: { language: 'de', inject_language: 'de' }
+  }));
+  return { project, loaded, locallySaved, appliedLoad, legacy, authoritativeProject, recoveredStandaloneDraft, germanLegacy };
 })()`, context);
 
 for (const project of [result.project, result.loaded, result.locallySaved]) {
@@ -109,6 +127,7 @@ for (const project of [result.project, result.loaded, result.locallySaved]) {
   assert.equal(project.video_debrief.setup.language, 'en');
   assert.equal(project.video_debrief.project.meta.title, 'Saved documentary');
   assert.equal(project.video_debrief.project.scenes[0].vo, 'Saved voice-over');
+  assert.equal(project.video_debrief.ui.active_step, 2);
 }
 assert.equal(result.project.llm_prompts.debrief, 'custom debrief prompt');
 assert.equal(result.locallySaved.llm_prompts.debrief, 'custom debrief prompt');
@@ -118,9 +137,33 @@ assert.equal(result.appliedLoad.video_debrief.project.meta.title, 'Saved documen
 assert.ok(result.legacy.debrief.events.length > 0);
 assert.equal(result.legacy.video_debrief.project, null);
 assert.equal(result.legacy.video_debrief.setup.duration, 120);
+assert.equal(result.legacy.video_debrief.ui.active_step, 1);
+assert.equal(result.authoritativeProject.source_material, 'Saved Video Debrief source');
+assert.equal(result.authoritativeProject.setup.language, 'en');
+assert.equal(result.recoveredStandaloneDraft.source_material, 'Draft from another project');
+assert.equal(result.recoveredStandaloneDraft.setup.language, 'fr');
+assert.equal(result.germanLegacy.video_debrief.setup.language, 'de');
 assert.equal(result.project.settings.ai_api_key, '');
 assert.equal(result.project.settings.azure_api_key, '');
 assert.equal(result.project.settings.azure_speech_key, '');
+
+const secretStorageResult = vm.runInContext(`(() => {
+  persistProviderSettings({
+    ai_provider: 'openai',
+    ai_api_key: 'session-ai-key',
+    azure_api_key: 'session-azure-key',
+    azure_speech_key: 'session-speech-key',
+    azure_speech_region: 'westeurope'
+  });
+  return {
+    localApiKey: localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey),
+    sessionApiKey: sessionStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey),
+    loaded: loadProviderSettings()
+  };
+})()`, context);
+assert.equal(secretStorageResult.localApiKey, null);
+assert.equal(secretStorageResult.sessionApiKey, 'session-ai-key');
+assert.equal(secretStorageResult.loaded.ai_api_key, 'session-ai-key');
 
 const editorFrame = { srcdoc: '' };
 context.document.getElementById = (id) => id === 'debrief-editor-frame' ? editorFrame : null;
@@ -129,6 +172,9 @@ vm.runInContext('mountDebriefEditor()', context);
 assert.match(editorFrame.srcdoc, /<title>Crisis Debriefer — Timeline Generator<\/title>/);
 assert.match(editorFrame.srcdoc, /window\.CRISISMAKER_INITIAL_CONFIG = /);
 assert.match(editorFrame.srcdoc, /Saved custom debrief/);
+assert.match(editorFrame.srcdoc, /Integrated project workspace/);
+assert.match(editorFrame.srcdoc, /\.group:has\(#btn-load\)\{display:none\}/);
+assert.doesNotMatch(editorFrame.srcdoc, /Standalone workspace/);
 assert.equal(editorFrame.src, undefined);
 
 console.log('Debrief and Video Debrief project persistence round-trip passed.');

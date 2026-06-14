@@ -78,7 +78,7 @@
         bindVideoDebriefBridge() {
           window.addEventListener('message', (event) => {
             const frame = document.getElementById('video-debrief-frame');
-            if (!frame) return;
+            if (!frame || event.source !== frame.contentWindow) return;
             if (event.origin !== window.location.origin && event.origin !== 'null') return;
             if (event.data?.type === 'video-debrief-request-ai-settings') {
               syncVideoDebriefAISettings(frame);
@@ -2284,7 +2284,7 @@
       function sanitizeBody(html) {
         const raw = String(html ?? '');
         if (!raw) return '';
-        return raw
+        const cleaned = raw
           .replace(/<script[\s>][\s\S]*?<\/script\s*>/gi, '')
           .replace(/<script[\s>\/][^>]*>/gi, '')
           .replace(/<iframe[\s>][\s\S]*?<\/iframe\s*>/gi, '')
@@ -2298,6 +2298,33 @@
           .replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
           .replace(/javascript\s*:/gi, 'about:invalid')
           .replace(/data\s*:\s*text\/html/gi, 'about:invalid');
+        if (typeof DOMParser === 'undefined') return cleaned;
+
+        const doc = new DOMParser().parseFromString(cleaned, 'text/html');
+        doc.querySelectorAll('script,iframe,object,embed,link,meta,base,form,style').forEach((node) => node.remove());
+        const urlAttributes = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'poster']);
+        doc.body.querySelectorAll('*').forEach((element) => {
+          for (const attribute of [...element.attributes]) {
+            const name = attribute.name.toLowerCase();
+            const value = attribute.value.trim();
+            if (name.startsWith('on') || name === 'srcdoc') {
+              element.removeAttribute(attribute.name);
+              continue;
+            }
+            if (name === 'style' && /url\s*\(|@import|expression\s*\(|behavior\s*:|-moz-binding\s*:/i.test(value)) {
+              element.removeAttribute(attribute.name);
+              continue;
+            }
+            if (urlAttributes.has(name)) {
+              const normalized = value.replace(/[\u0000-\u0020]+/g, '').toLowerCase();
+              if (/^(javascript|vbscript|data:text\/html):/.test(normalized)) element.removeAttribute(attribute.name);
+            }
+          }
+          if (element.getAttribute('target') === '_blank') {
+            element.setAttribute('rel', 'noopener noreferrer');
+          }
+        });
+        return doc.body.innerHTML;
       }
 
       function iconReply() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"></path></svg>'; }

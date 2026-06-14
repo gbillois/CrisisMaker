@@ -171,7 +171,7 @@
               </div>
             </nav>
 
-            <div class="settings-drawer ${appState.settingsDrawerOpen ? 'open' : ''}">
+            <div class="settings-drawer ${appState.settingsDrawerOpen ? 'open' : ''}" role="dialog" aria-modal="true" aria-label="${tt('Settings', 'Paramètres', 'Einstellungen')}" aria-hidden="${appState.settingsDrawerOpen ? 'false' : 'true'}" ${appState.settingsDrawerOpen ? '' : 'inert'}>
               <div class="settings-drawer-header">
                 <h3>${tt('Settings', 'Paramètres', 'Einstellungen')}</h3>
                 <button class="btn btn-secondary" data-action="toggle-settings-drawer">✕</button>
@@ -225,7 +225,7 @@
       function renderLaunchScreen() {
         const llmAvailable = isLLMAvailable();
         return `
-          <div class="launch-screen-overlay" data-action="close-launch-screen">
+          <div class="launch-screen-overlay" data-action="close-launch-screen" role="dialog" aria-modal="true" aria-label="${tt('CrisisMaker welcome', 'Bienvenue dans CrisisMaker', 'Willkommen bei CrisisMaker')}">
             <div class="launch-screen" onclick="event.stopPropagation()">
 
               <div class="launch-hero">

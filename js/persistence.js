@@ -130,7 +130,13 @@
       }
 
       function loadProviderSettings() {
-        // Clean up legacy separate API key storage
+        const secrets = typeof sessionStorage !== 'undefined' ? sessionStorage : localStorage;
+        // Migrate legacy persistent secrets to session-only storage.
+        for (const key of [PROVIDER_STORAGE_KEYS.apiKey, PROVIDER_STORAGE_KEYS.azureApiKeyStore, PROVIDER_STORAGE_KEYS.azureSpeechKeyStore]) {
+          const legacyValue = localStorage.getItem(key);
+          if (legacyValue && !secrets.getItem(key)) secrets.setItem(key, legacyValue);
+          if (secrets !== localStorage) localStorage.removeItem(key);
+        }
         localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKey);
         localStorage.removeItem('crisisstim_api_key');
         const result = {
@@ -141,11 +147,11 @@
         };
         // Only include API keys in result if they are actually stored in dedicated keys,
         // otherwise leave them undefined so embedded values in the scenario JSON are preserved
-        const apiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
+        const apiKey = secrets.getItem(PROVIDER_STORAGE_KEYS.apiKey);
         if (apiKey) result.ai_api_key = apiKey;
-        const azureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
+        const azureApiKey = secrets.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
         if (azureApiKey) result.azure_api_key = azureApiKey;
-        const azureSpeechKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
+        const azureSpeechKey = secrets.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
         if (azureSpeechKey) result.azure_speech_key = azureSpeechKey;
         const azureSpeechRegion = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion);
         if (azureSpeechRegion) result.azure_speech_region = azureSpeechRegion;
@@ -153,35 +159,37 @@
       }
 
       function restoreApiKeysFromStorage(settings) {
-        const apiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.apiKey);
+        const secrets = typeof sessionStorage !== 'undefined' ? sessionStorage : localStorage;
+        const apiKey = secrets.getItem(PROVIDER_STORAGE_KEYS.apiKey);
         if (apiKey) settings.ai_api_key = apiKey;
-        const azureApiKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
+        const azureApiKey = secrets.getItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
         if (azureApiKey) settings.azure_api_key = azureApiKey;
-        const speechKey = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
+        const speechKey = secrets.getItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
         if (speechKey) settings.azure_speech_key = speechKey;
         const speechRegion = localStorage.getItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion);
         if (speechRegion) settings.azure_speech_region = speechRegion;
       }
 
       function persistProviderSettings(settings) {
+        const secrets = typeof sessionStorage !== 'undefined' ? sessionStorage : localStorage;
         localStorage.setItem(PROVIDER_STORAGE_KEYS.aiProvider, settings.ai_provider || 'anthropic');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureEndpoint, settings.azure_endpoint || '');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureDeployment, settings.azure_deployment || '');
         // API keys are stored in dedicated keys, separate from project data (never exported in project files)
         if (settings.ai_api_key) {
-          localStorage.setItem(PROVIDER_STORAGE_KEYS.apiKey, settings.ai_api_key);
+          secrets.setItem(PROVIDER_STORAGE_KEYS.apiKey, settings.ai_api_key);
         } else {
-          localStorage.removeItem(PROVIDER_STORAGE_KEYS.apiKey);
+          secrets.removeItem(PROVIDER_STORAGE_KEYS.apiKey);
         }
         if (settings.azure_api_key) {
-          localStorage.setItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore, settings.azure_api_key);
+          secrets.setItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore, settings.azure_api_key);
         } else {
-          localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
+          secrets.removeItem(PROVIDER_STORAGE_KEYS.azureApiKeyStore);
         }
         if (settings.azure_speech_key) {
-          localStorage.setItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore, settings.azure_speech_key);
+          secrets.setItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore, settings.azure_speech_key);
         } else {
-          localStorage.removeItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
+          secrets.removeItem(PROVIDER_STORAGE_KEYS.azureSpeechKeyStore);
         }
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureSpeechRegion, settings.azure_speech_region || 'westeurope');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.confidentialityAcknowledged, settings.confidentiality_acknowledged ? 'true' : 'false');

@@ -1,6 +1,6 @@
 # CrisisMaker
 
-CrisisMaker by Wavestone is a single-file HTML web app for designing and exporting cyber crisis exercise stimuli.
+CrisisMaker by Wavestone is a static browser application for designing and exporting cyber crisis exercise stimuli.
 
 ## Video Debrief
 
@@ -14,6 +14,8 @@ To run local MP4 production:
 cd video-debrief/pipeline
 python3 server.py
 ```
+
+Local production requires `ffmpeg`, `node`, and the Python packages documented in [`video-debrief/README.md`](video-debrief/README.md).
 
 Cloud production pushes project files to `video-debrief/requests/` and is
 handled by [`.github/workflows/produce-video.yml`](.github/workflows/produce-video.yml).
