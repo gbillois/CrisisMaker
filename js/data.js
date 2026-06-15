@@ -1,6 +1,6 @@
       const DEFAULT_NEWS_VIDEO = {
-        objectUrl: 'media/stonawave-news-anchor.mp4',
-        fileName: 'stonawave-news-anchor.mp4',
+        objectUrl: 'media/anchor.mp4',
+        fileName: 'anchor.mp4',
         isBundledDefault: true
       };
 
