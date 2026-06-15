@@ -246,7 +246,7 @@
                   <ul class="chronogram-implicit-list">
                     ${implicit.slice(0, 10).map(s => `<li>
                       <span class="pill" style="background:${CHANNEL_META[s.channel]?.color || '#888'}; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${channelLabel(s.channel)}</span>
-                      ${escapeHtml(s.generation_prompt || s.fields?.text?.slice(0, 60) || s.fields?.subject || '...')}
+                      ${escapeHtml(s.generation_prompt || s.fields?.text?.slice(0, 60) || s.fields?.subject || s.fields?.thread_title || '...')}
                     </li>`).join('')}
                     ${implicit.length > 10 ? `<li class="subtle">+${implicit.length - 10} ${tt('more...', 'autres...', 'weitere...')}</li>` : ''}
                   </ul>
@@ -335,7 +335,7 @@
                   <div class="chronogram-validation-card">
                     <span class="pill" style="background:${channelColor}; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${channelLabel(item.channel)}</span>
                     ${item.is_implicit ? `<span class="pill" style="background:#f59e0b; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:8px;">${tt('Implicit', 'Implicite', 'Implizit')}</span>` : ''}
-                    <h4>${escapeHtml(item.generation_prompt || item.fields?.subject || item.fields?.headline || '...')}</h4>
+                    <h4>${escapeHtml(item.generation_prompt || item.fields?.subject || item.fields?.headline || item.fields?.thread_title || '...')}</h4>
                     <div class="chronogram-info-grid">
                       <div><strong>H+${item.timestamp_offset_minutes || 0}</strong></div>
                       <div><strong>${tt('From', 'De', 'Von')} :</strong> ${escapeHtml(item.fields?.from_name || item.fields?.display_name || item.fields?.author_name || '?')}</div>

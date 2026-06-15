@@ -171,6 +171,7 @@ AVAILABLE CHANNELS in CrisisStim:
 - breaking_news_tv: urgent TV news banner
 - post_twitter: X/Twitter post
 - post_linkedin: LinkedIn post
+- dark_web_forum: dark web breach-market or leak-forum thread
 - press_release: official press release
 - sms_notification: SMS or push notification
 - internal_memo: internal note / service memo
@@ -304,7 +305,7 @@ CRISISSTIM DATA MODEL:
 A CrisisStim stimulus has the following structure:
 {
   "id": "string (placeholder, will be replaced)",
-  "channel": "email_internal | email_external | email_authority | article_press | breaking_news_tv | post_twitter | post_linkedin | press_release | sms_notification | internal_memo",
+  "channel": "email_internal | email_external | email_authority | article_press | breaking_news_tv | post_twitter | post_linkedin | dark_web_forum | press_release | sms_notification | internal_memo",
   "template_id": "see mapping below",
   "actor_id": "string (placeholder)",
   "timestamp_offset_minutes": number,
@@ -322,6 +323,7 @@ CHANNEL → TEMPLATE_ID MAPPING:
 - breaking_news_tv → "bfm" (FR) | "cnn" (US/international) | "bloomberg" (business/markets) | "cna" (Asia)
 - post_twitter → "twitter"
 - post_linkedin → "linkedin"
+- dark_web_forum → "breach_forum"
 - press_release → "generic"
 - sms_notification → "iphone"
 - internal_memo → "generic"
@@ -342,6 +344,9 @@ post_twitter (twitter):
 
 post_linkedin (linkedin):
   display_name, title, avatar_initials, avatar_color, text, date, reactions_count, comments_count, reposts_count
+
+dark_web_forum (breach_forum):
+  thread_title, leaker_name, leaker_rank, post_date, message_content, victim, victim_domain, breach_date, records_count, data_size, price, escrow, sample_status, files, replies_count, views_count
 
 article_press (all):
   headline, subheadline, author, date, category, body, image_caption, read_time
@@ -473,7 +478,7 @@ Convert these stimuli into complete CrisisStim objects. For stimuli with content
 
             projectData.stimuli.push({
               id: realId,
-              name: stim.generation_prompt || stim.fields?.subject || stim.fields?.headline || stim.fields?.text || tt('Imported stimulus', 'Stimulus importé', 'Importierter Stimulus'),
+              name: stim.generation_prompt || stim.fields?.subject || stim.fields?.headline || stim.fields?.thread_title || stim.fields?.text || tt('Imported stimulus', 'Stimulus importé', 'Importierter Stimulus'),
               channel: stim.channel || 'email_internal',
               template_id: stim.template_id || 'outlook',
               actor_id: realActorId,

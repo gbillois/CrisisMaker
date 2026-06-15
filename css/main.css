@@ -1276,6 +1276,73 @@
     .reddit-comment-text { font-family: 'Noto Sans', sans-serif; font-size: 14px; line-height: 1.5; color: #1c1c1c; margin-top: 8px; }
     .reddit-comment-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 10px; font-weight: 700; color: #878a8c; }
 
+    /* ── Dark web breach forum ──────────────────── */
+    .breach-forum { width: 980px; overflow: hidden; border: 1px solid #151922; background: #0c0e13; color: #c6c9d0; font-family: "IBM Plex Sans", Inter, Arial, sans-serif; box-shadow: 0 24px 70px rgba(0,0,0,.38); }
+    .bf-browser { height: 34px; padding: 0 12px; display: flex; align-items: center; gap: 6px; background: #171a21; border-bottom: 1px solid #292d36; }
+    .bf-browser > span { width: 8px; height: 8px; border-radius: 50%; background: #5d616b; }
+    .bf-browser > span:first-child { background: #a34848; }
+    .bf-address { flex: 1; margin-left: 8px; padding: 5px 12px; overflow: hidden; border: 1px solid #30343e; border-radius: 3px; background: #0e1016; color: #707681; font: 10px/1.2 monospace; white-space: nowrap; }
+    .bf-header { height: 82px; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; background: radial-gradient(circle at 10% -100%, #542020, transparent 48%), #10131a; border-bottom: 1px solid #2b303a; }
+    .bf-brand { display: flex; align-items: center; gap: 12px; }
+    .bf-brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid #a43f3f; border-radius: 4px; color: #fff; background: linear-gradient(145deg, #8e2525, #3a1518); font: 800 25px/1 Inter, sans-serif; box-shadow: 0 0 25px rgba(174,45,45,.25); }
+    .bf-brand strong { display: block; color: #f0f1f3; font-size: 21px; letter-spacing: -.04em; }
+    .bf-brand small { display: block; margin-top: 3px; color: #777e89; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+    .bf-account { color: #777e89; font-size: 11px; }
+    .bf-account b { color: #d75d5d; }
+    .bf-nav { display: flex; gap: 0; padding: 0 18px; background: #181b22; border-bottom: 1px solid #30343c; }
+    .bf-nav span { padding: 11px 14px; color: #aeb2ba; font-size: 11px; font-weight: 600; border-right: 1px solid #262a32; }
+    .bf-nav span:nth-child(2), .bf-nav span:nth-child(3) { color: #fff; background: #242831; }
+    .bf-notice { padding: 8px 22px; color: #b5a4a4; background: #251719; border-bottom: 1px solid #4a292d; font-size: 10px; }
+    .bf-notice strong { color: #e07777; }
+    .bf-page { padding: 18px; }
+    .bf-breadcrumb { margin-bottom: 12px; color: #727884; font-size: 10px; }
+    .bf-thread-head { padding: 15px 17px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: #151820; border: 1px solid #292e38; }
+    .bf-thread-head > div:first-child { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+    .bf-thread-head h1 { margin: 0; color: #ebedf0; font-size: 15px; line-height: 1.35; }
+    .bf-prefix { padding: 3px 7px; flex-shrink: 0; border: 1px solid #993a3a; border-radius: 2px; background: #3a181b; color: #e36b6b; font-size: 9px; font-weight: 800; }
+    .bf-thread-stats { flex-shrink: 0; color: #707681; font-size: 9px; text-align: right; }
+    .bf-thread-stats strong { display: inline-block; margin-left: 7px; color: #c2c5cb; font-size: 11px; }
+    .bf-post { display: grid; grid-template-columns: 168px 1fr; border: 1px solid #292e38; border-top: 0; background: #11141a; }
+    .bf-user { padding: 18px 14px; background: #0e1117; border-right: 1px solid #292e38; text-align: center; }
+    .bf-avatar { width: 64px; height: 64px; margin: 0 auto 10px; display: grid; place-items: center; border: 2px solid #672b30; border-radius: 4px; background: linear-gradient(145deg,#3c2024,#15171d); color: #e17b7b; font-size: 20px; font-weight: 800; }
+    .bf-username { color: #e06363; font-size: 13px; font-weight: 800; }
+    .bf-rank { margin-top: 3px; color: #a9adb5; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+    .bf-user-status { margin: 8px 0 14px; color: #666c76; font-size: 8px; letter-spacing: .08em; }
+    .bf-user-status.online { color: #4da36c; }
+    .bf-user-status.banned { color: #d24545; }
+    .bf-user dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; margin: 0; padding-top: 11px; border-top: 1px solid #242832; font-size: 9px; text-align: left; }
+    .bf-user dt { color: #686e78; }
+    .bf-user dd { margin: 0; color: #b4b8c0; text-align: right; }
+    .bf-user dd.positive { color: #57a873; }
+    .bf-post-main { min-width: 0; }
+    .bf-post-meta { padding: 8px 12px; display: flex; justify-content: space-between; color: #666d77; background: #181b22; border-bottom: 1px solid #292e38; font-size: 9px; }
+    .bf-message { padding: 18px 19px 8px; color: #c5c8ce; font-size: 11px; line-height: 1.6; }
+    .bf-message p { margin: 0 0 10px; }
+    .bf-message strong { color: #f0f1f3; }
+    .bf-message ul { margin: 6px 0 12px; padding-left: 20px; }
+    .bf-message li::marker { color: #a44040; }
+    .bf-deal-grid { margin: 5px 19px 15px; display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #303540; background: #0d1015; }
+    .bf-deal-grid > div { padding: 10px; border-right: 1px solid #292e38; }
+    .bf-deal-grid > div:last-child { border-right: 0; }
+    .bf-deal-grid small, .bf-deal-grid strong, .bf-deal-grid span { display: block; }
+    .bf-deal-grid small { color: #686e78; font-size: 7px; font-weight: 800; letter-spacing: .09em; }
+    .bf-deal-grid strong { margin: 5px 0 3px; overflow: hidden; color: #e4e6e9; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .bf-deal-grid span { color: #7d838d; font-size: 8px; }
+    .bf-files { margin: 0 19px 17px; border: 1px solid #303540; background: #0d1015; }
+    .bf-files-title { padding: 9px 11px; display: flex; justify-content: space-between; background: #181c23; border-bottom: 1px solid #303540; color: #b7bbc2; font-size: 9px; font-weight: 700; }
+    .bf-files-title b { color: #d45959; }
+    .bf-file { padding: 8px 10px; display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 9px; border-bottom: 1px solid #252a33; }
+    .bf-file-icon { padding: 4px 3px; border: 1px solid #633035; border-radius: 2px; color: #cf6a6a; background: #281719; font: 700 7px/1 monospace; text-align: center; }
+    .bf-file strong, .bf-file small { display: block; }
+    .bf-file strong { color: #c9ccd2; font-size: 9px; }
+    .bf-file small { margin-top: 2px; color: #626974; font: 7px/1.3 monospace; }
+    .bf-download { padding: 5px 7px; border: 1px solid #3c654b; border-radius: 2px; color: #72b48b; background: #14231a; font-size: 7px; font-weight: 800; }
+    .bf-links { padding: 9px 10px; display: grid; grid-template-columns: 95px 1fr; gap: 5px 8px; color: #6e747e; font-size: 8px; }
+    .bf-links code { overflow: hidden; color: #9da2aa; font: 7px/1.3 monospace; text-overflow: ellipsis; white-space: nowrap; }
+    .bf-signature { margin: 0 19px 15px; padding-top: 9px; border-top: 1px dashed #313641; color: #666d77; font: italic 8px/1.4 monospace; }
+    .bf-thread-footer { padding: 9px 12px; border: 1px solid #292e38; border-top: 0; color: #656c76; background: #151820; font-size: 8px; }
+    .breach-forum.hd { width: 1080px; }
+
     .linkedin-card { width: 555px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     .li-header { display: flex; gap: 12px; }
     .li-meta { flex: 1; }
@@ -1664,6 +1731,7 @@
       .ft-article,
       .nikkei-article,
       .reddit-page,
+      .breach-forum,
       .linkedin-card,
       .authority-email,
       .press-release,

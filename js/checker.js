@@ -379,7 +379,7 @@ Response format (strict JSON):
                     const m = mins % 60;
                     const tLabel = `H+${h}${m ? ':' + String(m).padStart(2, '0') : ''}`;
                     const content = s.name
-                      || s.fields?.subject || s.fields?.headline
+                      || s.fields?.subject || s.fields?.headline || s.fields?.thread_title
                       || s.fields?.breaking_headline || s.fields?.tweet_text
                       || s.fields?.post_text || s.fields?.content_text || '—';
                     return `<tr>
@@ -767,7 +767,7 @@ Response format (strict JSON):
             : (s.source_label || '—');
           const channel = channelLabel(s.channel);
           const content = s.name
-            || s.fields?.subject || s.fields?.headline
+            || s.fields?.subject || s.fields?.headline || s.fields?.thread_title
             || s.fields?.breaking_headline || s.fields?.tweet_text
             || s.fields?.post_text || s.fields?.content_text || '—';
           const type = s.channel || '—';

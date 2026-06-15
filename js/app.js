@@ -1400,7 +1400,7 @@
       function deleteStimulus(stimulusId, requireConfirm = false) {
         if (requireConfirm) {
           const s = getStimulus(stimulusId);
-          const label = s ? (s.fields.subject || s.fields.headline || s.fields.title || channelLabel(s.channel)) : '';
+          const label = s ? (s.fields.subject || s.fields.headline || s.fields.thread_title || s.fields.title || channelLabel(s.channel)) : '';
           const msg = tt(`Delete this stimulus?\n"${label}"`, `Supprimer ce stimulus ?\n"${label}"`, `Diesen Stimulus löschen?\n„${label}"`);
           if (!window.confirm(msg)) return;
         }

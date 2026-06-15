@@ -74,6 +74,7 @@
           post_twitter: ['X/Twitter post', 'Post X/Twitter', 'X/Twitter-Beitrag'],
           post_linkedin: ['LinkedIn post', 'Post LinkedIn', 'LinkedIn-Beitrag'],
           post_reddit: ['Reddit post', 'Post Reddit', 'Reddit-Beitrag'],
+          dark_web_forum: ['Dark web forum', 'Forum dark web', 'Dark-Web-Forum'],
           press_release: ['Press release', 'Communiqué de presse', 'Pressemitteilung'],
           sms_notification: ['SMS / Notification', 'SMS / Notification', 'SMS / Benachrichtigung'],
           internal_memo: ['Internal memo', 'Note interne', 'Internes Memo'],

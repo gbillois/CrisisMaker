@@ -387,6 +387,7 @@ AVAILABLE TEMPLATES:
 - post_twitter: twitter
 - post_linkedin: linkedin
 - post_reddit: reddit
+- dark_web_forum: breach_forum
 - breaking_news_tv: bfm, cnn, bloomberg, cna
 - press_release: generic_pr
 - sms_notification: sms
@@ -409,6 +410,7 @@ AUTHOR/SENDER CONSISTENCY by channel:
 - email_internal / internal_memo: from_name must be an internal employee first+last name, from_email with client organization domain
 - email_authority: from_name must be an official body (ANSSI, CERT-FR, BSI, CISA…)
 - post_twitter / post_linkedin / post_reddit: display_name and handle consistent with actor role
+- dark_web_forum: leaker_name must be a fictional handle; never use real credentials, live download links, or operational infrastructure
 - press_release: logo_text and contact_name consistent with the issuing organization
 - sms_notification: short recognizable sender (e.g. "BANK-ALERT")
 
@@ -423,6 +425,7 @@ FIELDS TO FILL IN "fields" by channel (generate realistic complete content):
 - post_twitter: text (≤280 chars), display_name, handle, date, verified (true|false), replies, retweets, likes, views
 - post_linkedin: text, display_name, title, date, reactions_count, comments_count
 - post_reddit: title, body (HTML), subreddit, author, date, upvotes, comments_count
+- dark_web_forum: thread_title, leaker_name, leaker_rank, post_date, message_content (HTML), victim, victim_domain, breach_date, records_count, data_size, price, escrow, sample_status, files (JSON array), replies_count, views_count
 - breaking_news_tv: headline, subline, category, time, ticker
 - press_release: title, body (HTML), logo_text, date, contact_name, contact_email, contact_phone
 - sms_notification: sender, text, time
@@ -450,7 +453,7 @@ Stimulus format:
             .map((stimulus) => ({
               offset_minutes: Number(stimulus.timestamp_offset_minutes || 0),
               channel: stimulus.channel,
-              title: cleanDebriefText(stimulus.fields?.subject || stimulus.fields?.headline || stimulus.fields?.title || stimulus.fields?.text || stimulus.name || ''),
+              title: cleanDebriefText(stimulus.fields?.subject || stimulus.fields?.headline || stimulus.fields?.thread_title || stimulus.fields?.title || stimulus.fields?.text || stimulus.name || ''),
               content: debriefStimulusText(stimulus).slice(0, 600)
             }));
           return {
@@ -535,7 +538,7 @@ Return this structure:
             actorRole: actor?.role || 'internal',
             language: (() => { const l = scenario.settings.inject_language || scenario.settings.language || 'en'; return { fr: 'French', de: 'German', en: 'English', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[l] || 'English'; })()
           };
-          const eventDescription = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || 'New development in the cyber crisis';
+          const eventDescription = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.thread_title || stimulus.fields.text || stimulus.fields.title || 'New development in the cyber crisis';
           const guidedSuffix = guidedPrompt ? ` Additional instruction from the operator: ${guidedPrompt}` : '';
           let result;
           switch (stimulus.channel) {
@@ -576,6 +579,12 @@ Return this structure:
               };
               break;
             }
+            case 'dark_web_forum':
+              result = {
+                systemPrompt: `Generate a realistic fictional breach-market forum post for a cyber crisis exercise. Scenario: ${common.scenarioSummary}. Event: ${eventDescription}. Timeline: ${common.timestamp}. Instructions: use an anonymous fictional leaker handle, concise underground-forum tone, HTML message with claimed access and dataset summary, plausible but fictional counts and file manifest, non-routable example domains only, no real credentials, no live download links, and no actionable intrusion instructions. Write in ${common.language}. Reply only with JSON containing thread_title, leaker_name, leaker_rank, post_date, message_content, victim, victim_domain, breach_date, records_count, data_size, price, escrow, sample_status, files, replies_count, views_count.`,
+                userPrompt: fieldName ? `Improve field ${fieldName} while keeping the JSON schema and safety constraints.` : 'Write the full fictional forum thread.'
+              };
+              break;
             case 'email_internal':
               result = {
                 systemPrompt: `Write an internal email during a cyber crisis. Sender: ${stimulus.fields.from_name || common.actorName}. Recipient: ${stimulus.fields.to || 'Crisis Committee'}. Context: ${common.scenarioSummary}. Goal: status update and instructions. Time: ${common.timestamp}. Instructions: clear subject line, structured HTML body using <p>, <ul>, <strong>, write in ${common.language}. Reply only with JSON {"subject":"...","body":"..."}.`,

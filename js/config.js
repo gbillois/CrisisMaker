@@ -129,6 +129,7 @@
         post_twitter: { label: 'X/Twitter post', color: '#16a34a', category: 'Social' },
         post_linkedin: { label: 'LinkedIn post', color: '#0a66c2', category: 'Social' },
         post_reddit: { label: 'Reddit post', color: '#ff4500', category: 'Social' },
+        dark_web_forum: { label: 'Dark web forum', color: '#7f1d1d', category: 'Threat' },
         press_release: { label: 'Press release', color: '#7c3aed', category: 'Corporate' },
         sms_notification: { label: 'SMS / Notification', color: '#f59e0b', category: 'Mobile' },
         internal_memo: { label: 'Internal memo', color: '#4b5563', category: 'Corporate' },
@@ -339,6 +340,46 @@
             top_comment: { author: 'u/soc_manager_42', flair: 'SOC Lead', text: 'Can confirm — two of our pharma clients have started isolating their StonaWave EDI/API connections as a precaution. MediChem is reportedly scrambling to reroute supply chain orders manually. This is going to have downstream impact on drug supply within days if manufacturing doesn\'t come back online.', upvotes: 2891, date: '1 hour ago' }
           },
           fields: [field('subreddit', 'Subreddit', 'text'), field('subreddit_icon_color', 'Subreddit icon color', 'text'), field('author', 'Author', 'text'), field('author_flair', 'Author flair', 'text'), field('flair_color', 'Author flair color', 'text'), field('post_flair', 'Post flair', 'text'), field('post_flair_color', 'Post flair color', 'text'), field('title', 'Title', 'text'), field('body', 'HTML body', 'textarea'), field('link_url', 'Link URL', 'text'), field('link_domain', 'Link domain', 'text'), field('upvotes', 'Upvotes', 'number'), field('upvote_ratio', 'Upvote ratio', 'text'), field('comments_count', 'Comments', 'number'), field('awards', 'Awards (JSON array)', 'textarea'), field('date', 'Relative date', 'text'), field('is_pinned', 'Pinned post', 'checkbox'), field('top_comment', 'Top comment (JSON object)', 'textarea')]
+        },
+        dark_web_forum: {
+          label: 'Breach forum',
+          template_id: 'breach_forum',
+          defaults: {
+            forum_name: 'Breach Forums',
+            forum_tagline: 'Databases · Marketplace · Intelligence',
+            breadcrumb: 'Home › Marketplace › Databases › Leaks',
+            thread_prefix: 'SELLING',
+            thread_title: '[EXCLUSIVE] StonaWave — patient records, clinical trials & internal documents — 2.4 TB',
+            leaker_name: 'pharmghost',
+            leaker_rank: 'God User',
+            leaker_status: 'ONLINE',
+            leaker_avatar: 'PG',
+            join_date: 'Nov 2024',
+            posts_count: 1842,
+            reputation: 127,
+            credits: 4380,
+            post_date: 'March 15, 2026, 14:37 UTC',
+            message_content: '<p>Hello BreachForums,</p><p>Today I am releasing a verified sample from <strong>StonaWave</strong>, a multinational pharmaceutical group. Access was maintained for 16 days before the company detected us.</p><p><strong>Data includes:</strong></p><ul><li>14.8 million patient and clinical-trial records</li><li>Internal legal, finance and executive documents</li><li>Manufacturing and supply-chain exports</li><li>Employee directory and identity data</li></ul><p>The sample contains 50,000 sanitized rows and selected internal documents. Full archive is available through escrow only. Serious buyers may contact me by forum PM.</p>',
+            breach_date: 'March 2026',
+            victim: 'StonaWave',
+            victim_domain: 'stonawave.example',
+            records_count: '14,800,000',
+            data_size: '2.4 TB',
+            price: '8 BTC',
+            escrow: 'Required',
+            sample_status: 'VERIFIED SAMPLE',
+            download_url: 'https://download.example.invalid/stonawave-sample',
+            mirror_url: 'http://breachsample00000000000000000000000000000000000000000000000000000000.onion',
+            files: [
+              { name: 'stonawave_patient_sample.csv', size: '86.4 MB', type: 'CSV', checksum: 'SHA256 9f2c…71ae' },
+              { name: 'clinical_trials_index.json', size: '18.7 MB', type: 'JSON', checksum: 'SHA256 32d1…0c44' },
+              { name: 'executive_documents_sample.7z', size: '241 MB', type: '7Z', checksum: 'SHA256 a18b…92f0' }
+            ],
+            replies_count: 47,
+            views_count: 12684,
+            last_reply: '12 minutes ago'
+          },
+          fields: [field('forum_name', 'Forum name', 'text'), field('forum_tagline', 'Forum tagline', 'text'), field('breadcrumb', 'Breadcrumb', 'text'), field('thread_prefix', 'Thread prefix', 'select', { options: ['SELLING', 'LEAK', 'FREE', 'WANTED', 'INFO'] }), field('thread_title', 'Thread title', 'text'), field('leaker_name', 'Leaker name', 'text'), field('leaker_rank', 'Leaker rank', 'text'), field('leaker_status', 'Leaker status', 'select', { options: ['ONLINE', 'OFFLINE', 'BANNED'] }), field('leaker_avatar', 'Avatar initials', 'text'), field('join_date', 'Join date', 'text'), field('posts_count', 'Posts', 'number'), field('reputation', 'Reputation', 'number'), field('credits', 'Credits', 'number'), field('post_date', 'Post date', 'text'), field('message_content', 'Message content (HTML)', 'textarea'), field('victim', 'Victim organization', 'text'), field('victim_domain', 'Victim domain', 'text'), field('breach_date', 'Breach date', 'text'), field('records_count', 'Records', 'text'), field('data_size', 'Data size', 'text'), field('price', 'Price', 'text'), field('escrow', 'Escrow', 'text'), field('sample_status', 'Sample status', 'text'), field('download_url', 'Sample download URL', 'text'), field('mirror_url', 'Tor mirror', 'text'), field('files', 'Files to download (JSON array)', 'textarea'), field('replies_count', 'Replies', 'number'), field('views_count', 'Views', 'number'), field('last_reply', 'Last reply', 'text')]
         },
         breaking_news_tv: {
           label: 'Breaking news banner',

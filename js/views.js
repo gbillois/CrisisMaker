@@ -554,7 +554,7 @@
         const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
         const versionCount = stimulus.history ? stimulus.history.length : 0;
         const isExpanded = appState.libraryExpandedId === stimulus.id;
-        const titleText = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.text || stimulus.fields.title || '—';
+        const titleText = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.thread_title || stimulus.fields.text || stimulus.fields.title || '—';
         return `
           <div class="library-card${isExpanded ? ' expanded' : ''}">
             <div class="library-card-header" style="background:${meta.color};">
@@ -964,7 +964,7 @@
                       const actor = getActor(s.actor_id);
                       const h = Math.floor(s.timestamp_offset_minutes / 60);
                       const m = String(s.timestamp_offset_minutes % 60).padStart(2, '0');
-                      const titleText = s.fields?.subject || s.fields?.headline || s.fields?.title || s.fields?.text || s.name || '—';
+                      const titleText = s.fields?.subject || s.fields?.headline || s.fields?.thread_title || s.fields?.title || s.fields?.text || s.name || '—';
                       const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
                       return `
                         <tr class="stimuli-table-row${appState.selectedStimulusId === s.id ? ' selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}">

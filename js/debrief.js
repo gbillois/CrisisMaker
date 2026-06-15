@@ -105,7 +105,7 @@
       }
 
       function cleanDebriefText(value) { return String(value || '').replace(/<br\s*\/?>/gi,' ').replace(/<\/p>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/\s+/g,' ').trim(); }
-      function debriefStimulusText(stimulus) { const fields=stimulus?.fields || {}; return cleanDebriefText(fields.body || fields.text || fields.subheadline || fields.description || fields.headline || fields.subject || stimulus?.generation_prompt || ''); }
+      function debriefStimulusText(stimulus) { const fields=stimulus?.fields || {}; return cleanDebriefText(fields.body || fields.message_content || fields.text || fields.subheadline || fields.description || fields.headline || fields.thread_title || fields.subject || stimulus?.generation_prompt || ''); }
       function formatDebriefOffset(offsetMinutes) { const minutes=Math.max(0,Number(offsetMinutes||0)),hours=Math.floor(minutes/60),remainder=minutes%60; return `H+${String(hours).padStart(2,'0')}:${String(remainder).padStart(2,'0')}`; }
       function refreshDebriefPositions(debrief) { const events=[...(debrief.events||[])].sort((a,b)=>Number(a.order||0)-Number(b.order||0)); events.forEach((event,index)=>{event.order=index;event.t=events.length===1?0:index/(events.length-1);}); debrief.events=events; return debrief; }
 

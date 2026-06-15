@@ -16,6 +16,7 @@
             case 'post_twitter': return this.twitter(f);
             case 'post_linkedin': return this.linkedin(f);
             case 'post_reddit': return this.reddit(f);
+            case 'dark_web_forum': return this.darkWebForum(f);
             case 'breaking_news_tv': return this.tvNews(stimulus.template_id, f);
             case 'email_authority': return this.authority(f);
             case 'press_release': return this.pressRelease(f);
@@ -40,6 +41,7 @@
             case 'post_twitter': return this.twitterHD(f);
             case 'post_linkedin': return this.linkedinHD(f);
             case 'post_reddit': return this.redditHD(f);
+            case 'dark_web_forum': return this.darkWebForum(f, true);
             case 'breaking_news_tv': return this.tvNewsHD(stimulus.template_id, f);
             case 'email_authority': return this.authorityHD(f);
             case 'press_release': return this.pressReleaseHD(f);
@@ -338,6 +340,60 @@
                   <div class="reddit-comment-text">${escapeHtml(topComment.text || '')}</div>
                   <div class="reddit-comment-actions"><span>▲ ${formatMetric(topComment.upvotes)}</span><span>Reply</span><span>Share</span><span>···</span></div>
                 </div>` : ''}
+            </article>
+          `;
+        },
+        darkWebForum(f, hd = false) {
+          const files = parseArrayField(f.files).filter(file => file && (typeof file === 'string' || file.name));
+          const statusClass = String(f.leaker_status || 'OFFLINE').toLowerCase();
+          return `
+            <article class="breach-forum ${hd ? 'hd' : ''}">
+              <div class="bf-browser">
+                <span></span><span></span><span></span>
+                <div class="bf-address">breachforumxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.onion/thread/88421</div>
+              </div>
+              <header class="bf-header">
+                <div class="bf-brand"><span class="bf-brand-mark">B</span><div><strong>${escapeHtml(f.forum_name || 'Breach Forums')}</strong><small>${escapeHtml(f.forum_tagline || '')}</small></div></div>
+                <div class="bf-account">Private Messages <b>2</b> · Alerts <b>4</b> · Log Out</div>
+              </header>
+              <nav class="bf-nav"><span>Forums</span><span>Marketplace</span><span>Databases</span><span>Leaks</span><span>Members</span><span>Search</span></nav>
+              <div class="bf-notice"><strong>Security notice:</strong> Use escrow for all transactions. Staff will never contact you outside the forum.</div>
+              <div class="bf-page">
+                <div class="bf-breadcrumb">${escapeHtml(f.breadcrumb || '')}</div>
+                <div class="bf-thread-head">
+                  <div><span class="bf-prefix">${escapeHtml(f.thread_prefix || 'LEAK')}</span><h1>${escapeHtml(f.thread_title || '')}</h1></div>
+                  <div class="bf-thread-stats"><strong>${formatMetric(f.replies_count)}</strong> replies <strong>${formatMetric(f.views_count)}</strong> views</div>
+                </div>
+                <section class="bf-post">
+                  <aside class="bf-user">
+                    <div class="bf-avatar">${escapeHtml(f.leaker_avatar || '??')}</div>
+                    <div class="bf-username">${escapeHtml(f.leaker_name || '')}</div>
+                    <div class="bf-rank">${escapeHtml(f.leaker_rank || '')}</div>
+                    <div class="bf-user-status ${statusClass}">● ${escapeHtml(f.leaker_status || '')}</div>
+                    <dl><dt>Joined</dt><dd>${escapeHtml(f.join_date || '')}</dd><dt>Posts</dt><dd>${formatMetric(f.posts_count)}</dd><dt>Reputation</dt><dd class="positive">+${formatMetric(f.reputation)}</dd><dt>Credits</dt><dd>${formatMetric(f.credits)}</dd></dl>
+                  </aside>
+                  <div class="bf-post-main">
+                    <div class="bf-post-meta"><span>#1 · ${escapeHtml(f.post_date || '')}</span><span>Quote · Report</span></div>
+                    <div class="bf-message">${sanitizeBody(f.message_content)}</div>
+                    <div class="bf-deal-grid">
+                      <div><small>VICTIM</small><strong>${escapeHtml(f.victim || '')}</strong><span>${escapeHtml(f.victim_domain || '')}</span></div>
+                      <div><small>BREACH DATE</small><strong>${escapeHtml(f.breach_date || '')}</strong><span>${escapeHtml(f.records_count || '')} records</span></div>
+                      <div><small>DATA VOLUME</small><strong>${escapeHtml(f.data_size || '')}</strong><span>${escapeHtml(f.sample_status || '')}</span></div>
+                      <div><small>ASKING PRICE</small><strong>${escapeHtml(f.price || '')}</strong><span>Escrow: ${escapeHtml(f.escrow || '')}</span></div>
+                    </div>
+                    <div class="bf-files">
+                      <div class="bf-files-title"><span>Attached files / sample package</span><b>${files.length} files</b></div>
+                      ${files.map(file => {
+                        const item = typeof file === 'string' ? { name: file } : file;
+                        return `<div class="bf-file"><span class="bf-file-icon">${escapeHtml(item.type || 'FILE')}</span><div><strong>${escapeHtml(item.name || '')}</strong><small>${escapeHtml(item.size || '')}${item.checksum ? ` · ${escapeHtml(item.checksum)}` : ''}</small></div><span class="bf-download">DOWNLOAD</span></div>`;
+                      }).join('')}
+                      <div class="bf-links"><span>Clearnet sample</span><code>${escapeHtml(f.download_url || '')}</code><span>Tor mirror</span><code>${escapeHtml(f.mirror_url || '')}</code></div>
+                    </div>
+                    <div class="bf-signature">Transactions through forum escrow only · PGP available on profile</div>
+                  </div>
+                </section>
+                <div class="bf-thread-footer">Users browsing this thread: 18 guests, 7 members · Last reply ${escapeHtml(f.last_reply || '')}</div>
+              </div>
             </article>
           `;
         },
