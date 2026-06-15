@@ -1342,6 +1342,97 @@
     .bf-signature { margin: 0 19px 15px; padding-top: 9px; border-top: 1px dashed #313641; color: #666d77; font: italic 8px/1.4 monospace; }
     .bf-thread-footer { padding: 9px 12px; border: 1px solid #292e38; border-top: 0; color: #656c76; background: #151820; font-size: 8px; }
     .breach-forum.hd { width: 1080px; }
+    /* ── RAMP-style forum ──────────────────── */
+    .ramp-forum { width:1000px; overflow:hidden; border:1px solid #252b31; background:#292e36; color:#d2d5d8; font:11px/1.45 Arial,sans-serif; box-shadow:0 25px 70px rgba(0,0,0,.45); }
+    .ramp-forum.hd { width:1080px; }
+    .ramp-header { height:58px; padding:0 22px; display:flex; align-items:center; justify-content:space-between; background:#272c34; border-bottom:1px solid #41464f; }
+    .ramp-logo { display:flex; align-items:center; gap:9px; }
+    .ramp-logo span { color:#f1f1f1; font:25px/1 Impact,Arial Black,sans-serif; letter-spacing:.03em; }
+    .ramp-logo em { color:#87c442; font-size:15px; font-style:normal; }
+    .ramp-user { color:#9298a1; font-size:9px; }
+    .ramp-user b { color:#8dc94a; }
+    .ramp-nav { padding:0 18px; display:flex; background:#22272e; border-bottom:1px solid #424750; }
+    .ramp-nav span { padding:10px 13px; border-right:1px solid #353b43; color:#d3d6d9; font-size:9px; font-weight:bold; }
+    .ramp-nav span:first-child { color:#8dcc49; }
+    .ramp-subnav { padding:7px 28px; color:#a4a9af; background:#353b44; border-bottom:1px solid #474d56; font-size:8px; word-spacing:8px; }
+    .ramp-page { padding:16px; }
+    .ramp-path { margin-bottom:10px; color:#a8adb3; font-size:9px; }
+    .ramp-topic { padding:12px 14px; display:flex; align-items:center; gap:10px; border:1px solid #4a5059; background:#3a4049; }
+    .ramp-topic span { padding:3px 7px; color:#27301f; background:#91ce4b; font-size:8px; font-weight:bold; }
+    .ramp-topic h1 { flex:1; margin:0; color:#f0f1f2; font-size:14px; }
+    .ramp-topic small { color:#9ca2aa; font-size:8px; }
+    .ramp-post { display:grid; grid-template-columns:160px 1fr; border:1px solid #4a5059; border-top:0; }
+    .ramp-post aside { padding:16px 12px; background:#333942; border-right:1px solid #4a5059; text-align:center; }
+    .ramp-avatar { width:58px; height:58px; margin:0 auto 9px; display:grid; place-items:center; border:1px solid #68717b; background:#464d57; color:#9bd257; font:bold 15px/1 monospace; }
+    .ramp-post aside strong,.ramp-post aside em { display:block; }
+    .ramp-post aside strong { color:#dfe2e5; }
+    .ramp-post aside em { margin:3px 0 12px; color:#9ba1a8; font-size:8px; font-style:normal; text-transform:uppercase; }
+    .ramp-post dl { display:grid; grid-template-columns:1fr auto; gap:4px; padding-top:10px; border-top:1px solid #4a5059; color:#999fa7; font-size:8px; text-align:left; }
+    .ramp-post dd { margin:0; color:#d0d3d6; }
+    .ramp-content { min-width:0; background:#383e47; }
+    .ramp-meta { padding:7px 10px; border-bottom:1px solid #4a5059; background:#333941; color:#999fa7; font-size:8px; }
+    .ramp-meta span { float:right; }
+    .ramp-message { padding:17px; color:#d5d8db; }
+    .ramp-message pre { padding:9px 11px; border:1px solid #565d66; background:#30363e; color:#c9d8b7; font:9px/1.5 monospace; }
+    .ramp-offer { margin:0 17px 14px; display:grid; grid-template-columns:repeat(3,1fr); border:1px solid #535a64; background:#333942; }
+    .ramp-offer div { padding:9px; border-right:1px solid #535a64; }
+    .ramp-offer small,.ramp-offer b,.ramp-offer code { display:block; }
+    .ramp-offer small { color:#9ba1a8; font-size:7px; }
+    .ramp-offer b { margin:4px 0; color:#e1e3e5; }
+    .ramp-offer code { color:#aab0b6; font-size:7px; }
+    .ramp-files { margin:0 17px 14px; border:1px solid #535a64; }
+    .ramp-files h3 { margin:0; padding:7px 9px; background:#333942; color:#d2d5d8; font-size:8px; }
+    .ramp-files div { padding:7px 9px; display:grid; grid-template-columns:1fr 1fr auto; border-top:1px solid #4b525c; font-size:8px; }
+    .ramp-files code { color:#a0a6ad; }
+    .ramp-files b { color:#91ce4b; font-size:7px; }
+    .ramp-sign { margin:0 17px 15px; padding-top:8px; border-top:1px dashed #59616b; color:#9ba1a8; font:italic 8px/1 monospace; }
+
+    /* ── Dread-style forum ──────────────────── */
+    .dread-forum { width:940px; overflow:hidden; border:1px solid #c7c7c7; background:#f0f0f0; color:#1a1a1b; font-family:Arial,sans-serif; box-shadow:0 25px 70px rgba(0,0,0,.35); }
+    .dread-forum.hd { width:1040px; }
+    .dread-header { height:48px; padding:0 14px; display:flex; align-items:center; gap:9px; background:#16191d; border-bottom:1px solid #2d3035; color:#fff; }
+    .dread-logo { width:25px; height:25px; display:grid; place-items:center; border-radius:50%; background:#8b3db2; color:#fff; font-weight:bold; }
+    .dread-header strong { font-size:17px; color:#eee; }
+    .dread-search { flex:1; margin:0 15px; padding:7px 12px; border:1px solid #33373d; background:#22262b; color:#92979e; font-size:10px; }
+    .dread-header span { color:#aaaeb4; font-size:9px; }
+    .dread-community { margin-top:18px; padding:12px 20px; display:flex; align-items:center; gap:10px; background:#fff; border-top:1px solid #ccc; }
+    .dread-community-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:50%; background:#8b3db2; color:#fff; font-weight:bold; }
+    .dread-community strong,.dread-community small { display:block; }
+    .dread-community small { margin-top:3px; color:#777; font-size:9px; }
+    .dread-community button { margin-left:auto; padding:5px 16px; border:0; border-radius:2px; background:#9b42b5; color:#fff; font-size:9px; text-transform:uppercase; }
+    .dread-tabs { padding:7px 20px; display:flex; gap:14px; border-top:1px solid #eee; border-bottom:1px solid #ccc; background:#fff; color:#777; font-size:9px; }
+    .dread-tabs b { color:#111; }
+    .dread-layout { padding:12px 18px 18px; display:grid; grid-template-columns:minmax(0,1fr) 205px; gap:12px; }
+    .dread-post { margin:0 0 7px; display:grid; grid-template-columns:38px 1fr; border:1px solid #ccc; background:#fff; }
+    .dread-votes { padding:8px 0; display:flex; flex-direction:column; align-items:center; gap:4px; background:#f5f6f7; color:#777; font-size:11px; }
+    .dread-votes span:first-child { color:#b43b32; }
+    .dread-post main { padding:10px 12px 12px; min-width:0; }
+    .dread-domain { float:right; color:#888; font-size:8px; }
+    .dread-post h1 { margin:0 0 4px; color:#222; font-size:15px; font-weight:500; }
+    .dread-byline { color:#888; font-size:8px; }
+    .dread-byline b { color:#555; }
+    .dread-byline strong { color:#7d36a1; }
+    .dread-body { margin-top:12px; color:#333; font-size:10px; line-height:1.5; }
+    .dread-body pre { padding:8px 10px; border-left:2px solid #333; background:#f4f4f4; color:#333; font:8px/1.5 monospace; }
+    .dread-proof { margin-top:10px; border:1px solid #ddd; }
+    .dread-proof h3 { margin:0; padding:6px 8px; background:#f2f2f2; font-size:8px; text-transform:uppercase; }
+    .dread-proof div { padding:6px 8px; display:grid; grid-template-columns:1fr 70px 1fr; border-top:1px solid #eee; font-size:8px; }
+    .dread-proof code { color:#777; font-size:7px; }
+    .dread-actions { margin-top:9px; color:#777; font-size:8px; font-weight:bold; }
+    .dread-comments { margin:0; padding:10px 12px; border:1px solid #ccc; background:#fff; }
+    .dread-comments h3 { margin:0 0 8px; font-size:10px; }
+    .dread-comments div { padding:8px 0 5px 12px; border-left:1px solid #ccc; color:#777; font-size:8px; }
+    .dread-comments div + div { margin-top:7px; }
+    .dread-comments b { color:#7d36a1; }
+    .dread-comments p { margin:4px 0 0; color:#333; font-size:9px; }
+    .dread-sidebar { align-self:start; border:1px solid #ccc; background:#fff; }
+    .dread-sidebar button { width:calc(100% - 18px); margin:9px; padding:8px; border:0; background:#a444b8; color:#fff; font-size:8px; font-weight:bold; }
+    .dread-sidebar h3 { margin:0; padding:8px 10px; border-top:1px solid #ddd; border-bottom:1px solid #ddd; color:#555; font-size:9px; }
+    .dread-sidebar div { padding:8px 10px; display:flex; gap:8px; border-bottom:1px solid #eee; }
+    .dread-sidebar div::before { content:"d"; width:18px; height:18px; display:grid; place-items:center; flex-shrink:0; border-radius:50%; background:#8b3db2; color:#fff; font-size:8px; font-weight:bold; }
+    .dread-sidebar b,.dread-sidebar span { display:block; }
+    .dread-sidebar b { color:#555; font-size:8px; }
+    .dread-sidebar span { margin-top:2px; color:#999; font-size:7px; }
 
     .linkedin-card { width: 555px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     .li-header { display: flex; gap: 12px; }
@@ -1732,12 +1823,20 @@
       .nikkei-article,
       .reddit-page,
       .breach-forum,
+      .ramp-forum,
+      .dread-forum,
       .linkedin-card,
       .authority-email,
       .press-release,
       .sms-shell {
         width: 100%;
         max-width: 100%;
+      }
+      .dread-layout {
+        grid-template-columns: 1fr;
+      }
+      .dread-sidebar {
+        display: none;
       }
       .outlook-subject,
       .press-headline,

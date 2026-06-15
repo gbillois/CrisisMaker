@@ -344,6 +344,8 @@
           `;
         },
         darkWebForum(f, hd = false) {
+          if (f.forum_style === 'ramp4u') return this.darkWebForumRamp(f, hd);
+          if (f.forum_style === 'dread') return this.darkWebForumDread(f, hd);
           const files = parseArrayField(f.files).filter(file => file && (typeof file === 'string' || file.name));
           const statusClass = String(f.leaker_status || 'OFFLINE').toLowerCase();
           return `
@@ -353,10 +355,10 @@
                 <div class="bf-address">breachforumxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.onion/thread/88421</div>
               </div>
               <header class="bf-header">
-                <div class="bf-brand"><span class="bf-brand-mark">B</span><div><strong>${escapeHtml(f.forum_name || 'Breach Forums')}</strong><small>${escapeHtml(f.forum_tagline || '')}</small></div></div>
+                <div class="bf-brand"><span class="bf-brand-mark">B</span><div><strong>${escapeHtml(f.forum_name || 'BreachForums')}</strong><small>${escapeHtml(f.forum_tagline || '')}</small></div></div>
                 <div class="bf-account">Private Messages <b>2</b> · Alerts <b>4</b> · Log Out</div>
               </header>
-              <nav class="bf-nav"><span>Forums</span><span>Marketplace</span><span>Databases</span><span>Leaks</span><span>Members</span><span>Search</span></nav>
+              <nav class="bf-nav"><span>Forums</span><span>Databases</span><span>Leaks</span><span>Marketplace</span><span>Cracking</span><span>Tutorials</span><span>Search</span></nav>
               <div class="bf-notice"><strong>Security notice:</strong> Use escrow for all transactions. Staff will never contact you outside the forum.</div>
               <div class="bf-page">
                 <div class="bf-breadcrumb">${escapeHtml(f.breadcrumb || '')}</div>
@@ -393,6 +395,77 @@
                   </div>
                 </section>
                 <div class="bf-thread-footer">Users browsing this thread: 18 guests, 7 members · Last reply ${escapeHtml(f.last_reply || '')}</div>
+              </div>
+            </article>
+          `;
+        },
+        darkWebForumRamp(f, hd = false) {
+          const files = parseArrayField(f.files).filter(file => file && (typeof file === 'string' || file.name));
+          return `
+            <article class="ramp-forum ${hd ? 'hd' : ''}">
+              <header class="ramp-header">
+                <div class="ramp-logo"><span>RAMP<em>4U.IO</em></span></div>
+                <div class="ramp-user">${escapeHtml(f.leaker_name || 'guest')} &nbsp; Inbox: <b>2</b> &nbsp; Log out</div>
+              </header>
+              <nav class="ramp-nav"><span>Forums</span><span>What's new</span><span>Members</span></nav>
+              <div class="ramp-subnav">New posts &nbsp; Find threads &nbsp; Watched &nbsp; Search forums &nbsp; Mark forums read</div>
+              <main class="ramp-page">
+                <div class="ramp-path">Forums › Market \ 市场 › Data base & leakage \ 数据库和泄漏</div>
+                <div class="ramp-topic"><span>${escapeHtml(f.thread_prefix || 'SALE')}</span><h1>${escapeHtml(f.thread_title || '')}</h1><small>Replies: ${formatMetric(f.replies_count)} · Views: ${formatMetric(f.views_count)}</small></div>
+                <section class="ramp-post">
+                  <aside>
+                    <div class="ramp-avatar">${escapeHtml(f.leaker_avatar || '0x')}</div>
+                    <strong>${escapeHtml(f.leaker_name || '')}</strong>
+                    <em>${escapeHtml(f.leaker_rank || '')}</em>
+                    <dl><dt>Регистрация</dt><dd>${escapeHtml(f.join_date || '')}</dd><dt>Сообщений</dt><dd>${formatMetric(f.posts_count)}</dd><dt>Репутация</dt><dd>+${formatMetric(f.reputation)}</dd></dl>
+                  </aside>
+                  <div class="ramp-content">
+                    <div class="ramp-meta">#1 · ${escapeHtml(f.post_date || '')} <span>[цитата] [жалоба]</span></div>
+                    <div class="ramp-message">${sanitizeBody(f.message_content)}</div>
+                    <div class="ramp-offer">
+                      <div><small>ЦЕЛЬ</small><b>${escapeHtml(f.victim || '')}</b><code>${escapeHtml(f.victim_domain || '')}</code></div>
+                      <div><small>ОБЪЕМ</small><b>${escapeHtml(f.data_size || '')}</b><code>${escapeHtml(f.records_count || '')} rows</code></div>
+                      <div><small>ЦЕНА</small><b>${escapeHtml(f.price || '')}</b><code>${escapeHtml(f.escrow || '')}</code></div>
+                    </div>
+                    <div class="ramp-files"><h3>ВЛОЖЕНИЯ / PROOF</h3>${files.map(file => {
+                      const item = typeof file === 'string' ? { name: file } : file;
+                      return `<div><span>${escapeHtml(item.name || '')}</span><code>${escapeHtml(item.size || '')} :: ${escapeHtml(item.checksum || '')}</code><b>[СКАЧАТЬ]</b></div>`;
+                    }).join('')}</div>
+                    <div class="ramp-sign">jabber: disabled // tox: disabled // forum escrow only</div>
+                  </div>
+                </section>
+              </main>
+            </article>
+          `;
+        },
+        darkWebForumDread(f, hd = false) {
+          const files = parseArrayField(f.files).filter(file => file && (typeof file === 'string' || file.name));
+          const breadcrumb = String(f.breadcrumb || '');
+          const community = /^d\//i.test(breadcrumb) ? breadcrumb.split('/').filter(Boolean).slice(-1)[0] : 'dataleaks';
+          return `
+            <article class="dread-forum ${hd ? 'hd' : ''}">
+              <header class="dread-header"><div class="dread-logo">D</div><strong>dread</strong><div class="dread-search">search dread</div><span>all · saved · inbox (2) · ${escapeHtml(f.leaker_name || '')}</span></header>
+              <div class="dread-community"><div class="dread-community-icon">d/</div><div><strong>d/${escapeHtml(community)}</strong><small>anonymous discussion · 42,801 subscribers</small></div><button>subscribe</button></div>
+              <div class="dread-tabs"><b>hot</b><span>new</span><span>top</span><span>controversial</span></div>
+              <div class="dread-layout">
+                <div>
+                  <section class="dread-post">
+                    <aside class="dread-votes"><span>▲</span><b>${formatMetric(f.reputation || f.views_count)}</b><span>▼</span></aside>
+                    <main>
+                      <div class="dread-domain">(${escapeHtml(f.victim_domain || 'example.invalid')})</div>
+                      <h1>${escapeHtml(f.thread_title || '')}</h1>
+                      <div class="dread-byline">submitted ${escapeHtml(f.last_reply || '')} by <b>${escapeHtml(f.leaker_name || '')}</b> to <strong>d/${escapeHtml(community)}</strong> · ${formatMetric(f.replies_count)} comments</div>
+                      <div class="dread-body">${sanitizeBody(f.message_content)}</div>
+                      <div class="dread-proof"><h3>proof pack · ${escapeHtml(f.sample_status || '')}</h3>${files.map(file => {
+                        const item = typeof file === 'string' ? { name: file } : file;
+                        return `<div><b>${escapeHtml(item.name || '')}</b><span>${escapeHtml(item.size || '')}</span><code>${escapeHtml(item.checksum || '')}</code></div>`;
+                      }).join('')}</div>
+                      <div class="dread-actions">permalink · source · save · hide · report · reply</div>
+                    </main>
+                  </section>
+                  <section class="dread-comments"><h3>all ${formatMetric(f.replies_count)} comments</h3><div><b>AutoModerator</b> · stickied comment<p>Verify mirrors and signatures. Never trust links sent by private message.</p></div><div><b>marketwatch_0x</b> · ${escapeHtml(f.last_reply || '')}<p>staff verification badge confirmed. watching for victim statement.</p></div></section>
+                </div>
+                <aside class="dread-sidebar"><button>CREATE A SUBDREAD</button><h3>Suggestions</h3><div><b>d/Dread</b><span>386,588 subscribers</span></div><div><b>d/DarkNetMarkets</b><span>36,465 subscribers</span></div><div><b>d/OpSec</b><span>17,316 subscribers</span></div><div><b>d/Leaks</b><span>9,802 subscribers</span></div></aside>
               </div>
             </article>
           `;
