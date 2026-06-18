@@ -114,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, f.read(), "text/html; charset=utf-8")
         else:
             # static: engine assets for the preview iframe
-            safe = os.path.normpath(p).lstrip("/")
+            safe = p.lstrip("/")
             full = os.path.abspath(os.path.join(ROOT, safe))
             if os.path.isfile(full) and os.path.commonpath((ROOT, full)) == ROOT:
                 ctype = {"html": "text/html; charset=utf-8", "js": "text/javascript",
