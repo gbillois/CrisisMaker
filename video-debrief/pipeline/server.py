@@ -32,6 +32,9 @@ EXTRA_ALLOWED_ORIGINS = {
 def is_local_origin(origin):
     if not origin:
         return True
+    # "null" is the Origin sent by browsers for file:// pages
+    if origin == "null":
+        return True
     if origin.rstrip("/") in EXTRA_ALLOWED_ORIGINS:
         return True
     try:
