@@ -11,7 +11,7 @@ Endpoints (CORS restricted to local origins):
   GET  /video     → the finished MP4
 Also serves the studio statically: http://localhost:8765/studio
 """
-import json, os, threading, traceback
+import json, os, socket, threading, traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 
@@ -152,6 +152,19 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class _DualStackServer(HTTPServer):
+    """Listens on both IPv4 and IPv6 so that localhost resolves correctly on Windows."""
+    address_family = socket.AF_INET6
+    def server_bind(self):
+        if hasattr(socket, "IPV6_V6ONLY"):
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        super().server_bind()
+
+
 if __name__ == "__main__":
     print("Video Debriefer server → http://localhost:8765/studio")
-    HTTPServer(("127.0.0.1", 8765), Handler).serve_forever()
+    try:
+        srv = _DualStackServer(("::", 8765), Handler)
+    except OSError:
+        srv = HTTPServer(("0.0.0.0", 8765), Handler)
+    srv.serve_forever()

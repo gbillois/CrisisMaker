@@ -365,9 +365,11 @@
         <div id="prod-server-no">
           <div class="hint"><b>Serveur local non détecté.</b> Lancez-le dans un terminal :</div>
           <div class="log-box" style="display:block">cd video-debrief/pipeline
-python3 server.py</div>
+python server.py        # Windows
+python3 server.py       # macOS / Linux</div>
           <div class="hint">…puis revenez ici. Ou en ligne de commande directe :</div>
-          <div class="log-box" style="display:block">python3 pipeline/build.py mon-projet.json</div>
+          <div class="log-box" style="display:block">python pipeline/build.py mon-projet.json   # Windows
+python3 pipeline/build.py mon-projet.json  # macOS / Linux</div>
           <button class="btn" id="btn-download2" style="margin-top:8px">Télécharger le projet JSON</button>
         </div>
 
