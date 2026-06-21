@@ -20,7 +20,8 @@ vm.runInContext(`const DEFAULT_MODELS = {
   anthropic: ['claude-fallback'],
   openai: ['gpt-fallback'],
   azure_openai: ['gpt-fallback'],
-  google_gemini: ['gemini-fallback']
+  google_gemini: ['gemini-fallback'],
+  mistral: ['mistral-fallback']
 };`, context);
 vm.runInContext(fs.readFileSync('js/ai.js', 'utf8'), context, { filename: 'js/ai.js' });
 
@@ -55,6 +56,19 @@ async function run() {
     ai_api_key: 'test-key'
   })`, context);
   assert.deepEqual(Array.from(gemini), ['gemini-2.5-pro']);
+
+  responses.push(response({
+    data: [
+      { id: 'mistral-large-latest', capabilities: { completion_chat: true } },
+      { id: 'mistral-embed', capabilities: { completion_chat: false } },
+      { id: 'voxtral-mini-transcribe', capabilities: { completion_chat: false } }
+    ]
+  }));
+  const mistral = await vm.runInContext(`fetchAIModels({
+    ai_provider: 'mistral',
+    ai_api_key: 'test-key'
+  })`, context);
+  assert.deepEqual(Array.from(mistral), ['mistral-large-latest']);
 
   context.appState = {
     scenario: { settings: { ai_provider: 'anthropic', ai_model: 'claude-custom', ai_api_key: '' } },

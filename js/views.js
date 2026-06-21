@@ -590,6 +590,8 @@
         const isOpenAI = settings.ai_provider === 'openai';
         const isAzure = settings.ai_provider === 'azure_openai';
         const isGemini = settings.ai_provider === 'google_gemini';
+        const isMistral = settings.ai_provider === 'mistral';
+        const providerLabel = isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isMistral ? 'Mistral' : isOpenAI ? 'OpenAI' : 'Anthropic';
         const modelCatalog = appState.aiModelCatalog || makeDefaultAIModelCatalog();
         const modelCatalogApplies = modelCatalog.provider === settings.ai_provider;
         const modelCatalogStatus = modelCatalogApplies ? modelCatalog.status : 'idle';
@@ -641,9 +643,10 @@
                     <option value="openai" ${settings.ai_provider === 'openai' ? 'selected' : ''}>OpenAI</option>
                     <option value="azure_openai" ${settings.ai_provider === 'azure_openai' ? 'selected' : ''}>Azure OpenAI</option>
                     <option value="google_gemini" ${settings.ai_provider === 'google_gemini' ? 'selected' : ''}>Google Gemini</option>
+                    <option value="mistral" ${settings.ai_provider === 'mistral' ? 'selected' : ''}>Mistral</option>
                   </select>
                 </label>
-                ${(isAnthropic || isOpenAI || isGemini) ? `
+                ${(isAnthropic || isOpenAI || isGemini || isMistral) ? `
                   <label class="field">${tt('Model', 'Modèle', 'Modell')}
                     <div style="display:flex;gap:8px;">
                       <select data-bind="settings.ai_model" style="min-width:0;">
@@ -653,9 +656,10 @@
                     </div>
                     <p class="helper">${escapeHtml(modelCatalogMessage)}</p>
                   </label>
-                  <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
+                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://gbillois.github.io/HowToWavestone/api-key.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://gbillois.github.io/HowToWavestone/api-key.html</a></div>
+                  <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
-                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isGemini ? 'AIza...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
+                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
                       <button class="btn btn-secondary" data-action="toggle-api-key">👁️</button>
                     </div>
                   </label>
@@ -667,6 +671,7 @@
                   <label class="field">${tt('Deployment name', 'Nom du déploiement', 'Bereitstellungsname')}
                     <input type="text" data-bind="settings.azure_deployment" value="${escapeAttribute(settings.azure_deployment || '')}" placeholder="gpt-4o">
                   </label>
+                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://gbillois.github.io/HowToWavestone/api-key.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://gbillois.github.io/HowToWavestone/api-key.html</a></div>
                   <label class="field" style="grid-column: 1 / -1;">${tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
                       <input id="api-key-input" type="password" data-bind="settings.azure_api_key" value="${escapeAttribute(settings.azure_api_key || '')}" placeholder="Azure API key">
@@ -704,9 +709,10 @@
                   <div style="margin-top:6px;font-size:13px;line-height:1.4;">${escapeHtml(connectionTest.message)}</div>
                 </div>
               ` : ''}
-              <p class="helper" style="margin-top:14px;">${tt(`The ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`, `Die ${isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isOpenAI ? 'OpenAI' : 'Anthropic'}-Einstellungen verbleiben in Ihrem Browser und werden nur an den ausgewählten Anbieter übermittelt.`)}</p>
+              <p class="helper" style="margin-top:14px;">${tt(`The ${providerLabel} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${providerLabel} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`, `Die ${providerLabel}-Einstellungen verbleiben in Ihrem Browser und werden nur an den ausgewählten Anbieter übermittelt.`)}</p>
               ${isAzure ? `<p class="helper">${tt('Azure OpenAI uses your deployment name; availability depends on your Azure resource and region.', 'Azure OpenAI utilise le nom de votre déploiement ; la disponibilité dépend de votre ressource Azure et de votre région.', 'Azure OpenAI verwendet Ihren Bereitstellungsnamen; die Verfügbarkeit hängt von Ihrer Azure-Ressource und Region ab.')}</p>` : ''}
               ${isGemini ? `<p class="helper">${tt('Get your Gemini API key from Google AI Studio (aistudio.google.com).', 'Obtenez votre clé API Gemini depuis Google AI Studio (aistudio.google.com).', 'Holen Sie sich Ihren Gemini-API-Schlüssel von Google AI Studio (aistudio.google.com).')}</p>` : ''}
+              ${isMistral ? `<p class="helper">${tt('Get your Mistral API key from La Plateforme / Mistral AI Console.', 'Obtenez votre clé API Mistral depuis La Plateforme / la console Mistral AI.', 'Holen Sie sich Ihren Mistral-API-Schlüssel über La Plateforme / die Mistral AI Console.')}</p>` : ''}
             </article>
             <article class="card">
               <div class="section-header"><h3>${tt('Export watermark', 'Filigrane d\'export', 'Export-Wasserzeichen')}</h3></div>
@@ -766,6 +772,7 @@
                 'Azure Cognitive Services Speech bietet hochwertige neuronale Stimmen für die Audio-Nachrichtengenerierung. Konfigurieren Sie Ihren API-Schlüssel hier und wählen Sie dann "Azure Speech" als TTS-Anbieter in jedem Audio-Inject.'
               )}</p>
               <div class="field-grid cols-2">
+                <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://gbillois.github.io/HowToWavestone/api-key.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://gbillois.github.io/HowToWavestone/api-key.html</a></div>
                 <label class="field">${tt('Azure Speech API key', 'Clé API Azure Speech', 'Azure Speech API-Schlüssel')}
                   <div style="display:flex; gap:10px;">
                     <input id="azure-speech-key-input" type="password" data-bind="settings.azure_speech_key" value="${escapeAttribute(settings.azure_speech_key || '')}" placeholder="${tt('Enter your Azure Speech key', 'Entrez votre clé Azure Speech', 'Geben Sie Ihren Azure Speech-Schlüssel ein')}">

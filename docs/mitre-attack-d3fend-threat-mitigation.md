@@ -8,7 +8,7 @@ The assessment is based on the implementation currently visible in `index.html`,
 
 - browser-side storage of scenario data and non-secret provider settings in `localStorage`;
 - session-only storage of live API credentials in `sessionStorage`;
-- direct browser calls to Anthropic and Azure OpenAI APIs;
+- direct browser calls to configured AI provider APIs, including Anthropic, OpenAI, Azure OpenAI, Google Gemini, and Mistral;
 - export features that generate PNG and ZIP artifacts;
 - rendered outputs that imitate emails, social posts, news banners, SMS messages, and authority notices;
 - declared local third-party JavaScript paths with SRI-protected public CDN fallback.
@@ -20,8 +20,8 @@ The assessment is based on the implementation currently visible in `index.html`,
 1. **Scenario content**
    - client names, timeline details, actors, crisis context, generated messaging;
 2. **Secrets and access material**
-   - Anthropic API keys;
-   - Azure OpenAI endpoint, deployment, and API key;
+   - AI provider API keys;
+   - Azure OpenAI endpoint and deployment metadata;
 3. **Generated artifacts**
    - exported PNG files;
    - JSON scenario exports;
@@ -32,7 +32,7 @@ The assessment is based on the implementation currently visible in `index.html`,
 ### Trust boundaries
 
 - **Browser storage boundary:** scenario data and non-secret provider settings persist in the browser; live credentials remain available for the browser session.
-- **External AI provider boundary:** prompts and generated content cross into Anthropic or Azure OpenAI services.
+- **External AI provider boundary:** prompts and generated content cross into the configured AI provider service.
 - **Third-party dependency boundary:** rendering/export behavior depends on vendored scripts, with pinned SRI-protected CDN fallback.
 - **Human distribution boundary:** exported exercise content may be shared, re-used, or forwarded outside intended exercise channels.
 
@@ -51,7 +51,7 @@ The assessment is based on the implementation currently visible in `index.html`,
 | 3 | Compromise of third-party dependency delivery | **T1195.001 – Compromise Software Dependencies and Development Tools** | The app attempts local bundles first and uses pinned, SRI-protected CDN fallback. A compromised approved dependency version could still execute in the app origin and access local data/session credentials. | **Software Inventory**: maintain an explicit dependency list and approved versions. **File Integrity Monitoring**: detect unexpected asset changes. **Application Hardening**: vendor reviewed bundles where possible and enforce a restrictive Content Security Policy (CSP). |
 | 4 | Exploitation of a hosted deployment of the static app | **T1190 – Exploit Public-Facing Application** | If this single-page app is deployed on an internal or public web server without hardened headers, access controls, or origin restrictions, an attacker may exploit the hosting stack or inject content via the delivery layer. | **Application Hardening** and **Application Configuration Hardening**: secure HTTP headers, CSP, HTTPS, and controlled hosting. **System Vulnerability Assessment** and **Network Vulnerability Assessment**: regularly assess the hosting platform even if the app itself is static. |
 | 5 | Sensitive scenario data disclosure through exported artifacts | **T1537 – Transfer Data to Cloud Account** or general exfiltration behavior; **T1567 – Exfiltration Over Web Service** (conceptually relevant) | The app can export PNG, ZIP, and JSON files containing scenario data and highly realistic crisis communications. Once exported, those files are easy to forward through email, chat, or cloud sharing. | **Data Inventory**: classify exported exercise artifacts as sensitive. **File Encryption** and **File Access Policy Enforcement** where available in the organization. **Operational Risk Assessment**: define retention, approved sharing channels, and mandatory sanitization before external distribution. |
-| 6 | Leakage of sensitive prompt content to external AI providers | **T1041 – Exfiltration Over C2 Channel** is not a perfect fit, but ATT&CK-style data exposure risk exists through outbound API calls | Prompts include scenario summaries, actor names, and event details, and are sent directly from the browser to Anthropic or Azure OpenAI. That can expose confidential exercise content to third-party processing or logging layers. | **Data Inventory** and **Sensitive Data Minimization**: avoid including regulated or unnecessary data in prompts. **Network Traffic Policy Mapping**: restrict allowed destinations to approved AI endpoints. **Credential Hardening** plus tenant-specific Azure routing can reduce exposure. |
+| 6 | Leakage of sensitive prompt content to external AI providers | **T1041 – Exfiltration Over C2 Channel** is not a perfect fit, but ATT&CK-style data exposure risk exists through outbound API calls | Prompts include scenario summaries, actor names, and event details, and are sent directly from the browser to the configured AI provider. That can expose confidential exercise content to third-party processing or logging layers. | **Data Inventory** and **Sensitive Data Minimization**: avoid including regulated or unnecessary data in prompts. **Network Traffic Policy Mapping**: restrict allowed destinations to approved AI endpoints. **Credential Hardening** plus tenant-specific Azure routing can reduce exposure. |
 | 7 | Malicious or vulnerable browser environment capturing app content | **T1056 – Input Capture**; **T1113 – Screen Capture** | Because this is a browser-native tool, a compromised endpoint can capture entered API keys, prompt content, or on-screen rendered exercise artifacts. | **Multi-factor Authentication** for the workstation/browser profile where possible, **Credential Hardening**, **Process Analysis**, and endpoint protections such as EDR, browser isolation, and managed-browser policies. |
 
 ## Detailed mitigation guidance

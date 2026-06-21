@@ -20,6 +20,13 @@
           .filter((id) => !/(audio|realtime|search|transcribe|tts|embed|image|moderation|instruct)/i.test(id));
       }
 
+      function filterMistralChatModels(models) {
+        return models
+          .filter((model) => model.capabilities?.completion_chat !== false)
+          .map((model) => model.id)
+          .filter((id) => id && !/(embed|moderation|ocr|transcribe|tts|voxtral|codestral-embed)/i.test(id));
+      }
+
       async function fetchAIModels(settings = appState.scenario.settings) {
         const { ai_provider: provider, ai_api_key: apiKey } = settings;
         if (!apiKey?.trim()) {
@@ -45,6 +52,10 @@
           });
         } else if (provider === 'google_gemini') {
           response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+        } else if (provider === 'mistral') {
+          response = await fetch('https://api.mistral.ai/v1/models', {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+          });
         } else {
           return [];
         }
@@ -59,6 +70,8 @@
           models = (data.models || [])
             .filter((model) => model.supportedGenerationMethods?.includes('generateContent'))
             .map((model) => String(model.name || '').replace(/^models\//, ''));
+        } else if (provider === 'mistral') {
+          models = filterMistralChatModels(data.data || []);
         } else {
           models = (data.data || []).map((model) => model.id);
         }
@@ -96,11 +109,13 @@
       const AITextGenerator = {
         async testConnection() {
           const { ai_provider, ai_api_key, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
-          if (['anthropic', 'openai', 'google_gemini'].includes(ai_provider) && !ai_api_key) {
+          if (['anthropic', 'openai', 'google_gemini', 'mistral'].includes(ai_provider) && !ai_api_key) {
             throw new Error(ai_provider === 'openai'
               ? tt('Please enter an OpenAI API key before testing the connection.', 'Veuillez saisir une clé API OpenAI avant de tester la connexion.', 'Bitte geben Sie einen OpenAI-API-Schlüssel ein, bevor Sie die Verbindung testen.')
               : ai_provider === 'google_gemini'
               ? tt('Please enter a Google Gemini API key before testing the connection.', 'Veuillez saisir une clé API Google Gemini avant de tester la connexion.', 'Bitte geben Sie einen Google Gemini-API-Schlüssel ein, bevor Sie die Verbindung testen.')
+              : ai_provider === 'mistral'
+              ? tt('Please enter a Mistral API key before testing the connection.', 'Veuillez saisir une clé API Mistral avant de tester la connexion.', 'Bitte geben Sie einen Mistral-API-Schlüssel ein, bevor Sie die Verbindung testen.')
               : tt('Please enter an Anthropic API key before testing the connection.', 'Veuillez saisir une clé API Anthropic avant de tester la connexion.', 'Bitte geben Sie einen Anthropic-API-Schlüssel ein, bevor Sie die Verbindung testen.'));
           }
           if (ai_provider === 'azure_openai') {
@@ -193,6 +208,23 @@
             return parseLLMJson(fullText);
           }
 
+          if (ai_provider === 'mistral') {
+            if (!ai_api_key) throw new Error(tt('Missing Mistral API key.', 'Clé API Mistral manquante.', 'Fehlender Mistral-API-Schlüssel.'));
+            const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
+              body: JSON.stringify({
+                model: ai_model,
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
+                max_tokens: maxTokens,
+                response_format: { type: 'json_object' },
+                stream: true
+              })
+            });
+            const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
+            return parseLLMJson(fullText);
+          }
+
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
@@ -227,6 +259,7 @@
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
           if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
           if (ai_provider === 'google_gemini' && !ai_api_key) throw new Error(tt('Missing Google Gemini API key.', 'Clé API Google Gemini manquante.', 'Fehlender Google Gemini-API-Schlüssel.'));
+          if (ai_provider === 'mistral' && !ai_api_key) throw new Error(tt('Missing Mistral API key.', 'Clé API Mistral manquante.', 'Fehlender Mistral-API-Schlüssel.'));
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
@@ -278,6 +311,25 @@
             if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.', 'Leere OpenAI-Antwort.'));
             const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with OpenAI.', 'Contenu généré avec OpenAI.', 'Inhalt mit OpenAI generiert.'), 'success');
+            return parsed;
+          }
+          if (ai_provider === 'mistral') {
+            const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
+              body: JSON.stringify({
+                model: ai_model,
+                messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
+                max_tokens: maxTokens,
+                response_format: { type: 'json_object' }
+              })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error?.message || 'Mistral API error');
+            const content = data.choices?.[0]?.message?.content;
+            if (!content) throw new Error(tt('Empty Mistral response.', 'Réponse Mistral vide.', 'Leere Mistral-Antwort.'));
+            const parsed = parseLLMJson(content);
+            if (!quiet) pushToast(tt('Content generated with Mistral.', 'Contenu généré avec Mistral.', 'Inhalt mit Mistral generiert.'), 'success');
             return parsed;
           }
           if (ai_provider === 'google_gemini') {
