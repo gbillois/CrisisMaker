@@ -22,6 +22,7 @@
             case 'press_release': return this.pressRelease(f);
             case 'sms_notification': return this.sms(f);
             case 'audio_message': return this.audioMessage(f);
+            case 'post_darkweb': return this.darkweb(f);
             default: {
               // Check custom templates before returning "not implemented"
               const customTpl = (scenario?.custom_templates || []).find(
@@ -47,6 +48,7 @@
             case 'press_release': return this.pressReleaseHD(f);
             case 'sms_notification': return this.smsHD(f);
             case 'audio_message': return this.audioMessageHD(f);
+            case 'post_darkweb': return this.darkwebHD(f);
             default: return null;
           }
         },
@@ -1054,6 +1056,107 @@
                   <div class="reddit-comment-text">${escapeHtml(topComment.text || '')}</div>
                   <div class="reddit-comment-actions"><span>▲ ${formatMetric(topComment.upvotes)}</span><span>Reply</span><span>Share</span><span>···</span></div>
                 </div>` : ''}
+            </article>
+          `;
+        },
+        darkweb(f) {
+          const msgLines = String(f.message || '').split('\n');
+          const avatarHtml = f.has_avatar && f.author_avatar && String(f.author_avatar).startsWith('data:')
+            ? `<img src="${escapeAttribute(f.author_avatar)}" class="dw-avatar-img" alt="avatar">`
+            : `<div class="dw-avatar-placeholder">${escapeHtml(String(f.author_name || '?').slice(0, 2).toUpperCase())}</div>`;
+          return `
+            <article class="dw-page">
+              <div class="dw-header">
+                <span class="dw-logo">${escapeHtml(f.forum_name || 'BreachTalk')}</span>
+                <span class="dw-tagline">${escapeHtml(f.forum_tagline || '')}</span>
+                <span class="dw-nav-items"><span>Forums</span><span>Search</span><span>Login</span></span>
+              </div>
+              <div class="dw-breadcrumb">Index › ${escapeHtml(f.thread_category || 'Data Leaks')} › Thread</div>
+              <div class="dw-thread-title">${escapeHtml(f.thread_title || '')}</div>
+              <div class="dw-post">
+                <div class="dw-user-panel">
+                  ${avatarHtml}
+                  <div class="dw-username">${escapeHtml(f.author_name || '')}</div>
+                  <div class="dw-user-rank">${escapeHtml(f.author_rank || '')}</div>
+                  <div class="dw-user-stat"><span class="dw-stat-label">Posts:</span> ${escapeHtml(f.author_posts || '0')}</div>
+                  <div class="dw-user-stat"><span class="dw-stat-label">Rep:</span> ${escapeHtml(f.author_reputation || '')}</div>
+                </div>
+                <div class="dw-post-body">
+                  <div class="dw-post-meta">
+                    <span class="dw-post-num">#1</span>
+                    <span class="dw-post-date">${escapeHtml(f.date || '')}</span>
+                  </div>
+                  <div class="dw-post-content">${msgLines.map(l => l === '' ? '<br>' : `<p>${escapeHtml(l)}</p>`).join('')}</div>
+                  <div class="dw-post-actions">
+                    <span class="dw-action">Quote</span>
+                    <span class="dw-action">+Rep</span>
+                    <span class="dw-action">Report</span>
+                  </div>
+                </div>
+              </div>
+              <div class="dw-footer">
+                <span>Replies: <strong>${escapeHtml(f.reply_count || '0')}</strong></span>
+                <span>Views: <strong>${escapeHtml(f.views_count || '0')}</strong></span>
+              </div>
+            </article>
+          `;
+        },
+        darkwebHD(f) {
+          const msgLines = String(f.message || '').split('\n');
+          const avatarHtml = f.has_avatar && f.author_avatar && String(f.author_avatar).startsWith('data:')
+            ? `<img src="${escapeAttribute(f.author_avatar)}" class="dw-avatar-img" alt="avatar">`
+            : `<div class="dw-avatar-placeholder">${escapeHtml(String(f.author_name || '?').slice(0, 2).toUpperCase())}</div>`;
+          return `
+            <article class="dw-page hd">
+              <div class="dw-header">
+                <span class="dw-logo">${escapeHtml(f.forum_name || 'BreachTalk')}</span>
+                <span class="dw-tagline">${escapeHtml(f.forum_tagline || '')}</span>
+                <div class="dw-hd-nav">
+                  <span>Home</span><span>Forums</span><span>Members</span><span>Search</span>
+                  <span class="dw-hd-login-btn">[ Login ]</span>
+                  <span class="dw-hd-reg-btn">[ Register ]</span>
+                </div>
+              </div>
+              <div class="dw-hd-stats-bar">
+                <span>Online: <strong>1,247</strong></span>
+                <span>Threads: <strong>89,412</strong></span>
+                <span>Posts: <strong>2,341,087</strong></span>
+                <span>Members: <strong>54,203</strong></span>
+              </div>
+              <div class="dw-breadcrumb">Index › ${escapeHtml(f.thread_category || 'Data Leaks')} › Thread</div>
+              <div class="dw-thread-title">${escapeHtml(f.thread_title || '')}</div>
+              <div class="dw-hd-thread-meta">
+                <span>Category: <strong>${escapeHtml(f.thread_category || '')}</strong></span>
+                <span>Replies: <strong>${escapeHtml(f.reply_count || '0')}</strong></span>
+                <span>Views: <strong>${escapeHtml(f.views_count || '0')}</strong></span>
+              </div>
+              <div class="dw-post">
+                <div class="dw-user-panel">
+                  ${avatarHtml}
+                  <div class="dw-username">${escapeHtml(f.author_name || '')}</div>
+                  <div class="dw-user-rank">${escapeHtml(f.author_rank || '')}</div>
+                  <div class="dw-user-stat"><span class="dw-stat-label">Posts:</span> ${escapeHtml(f.author_posts || '0')}</div>
+                  <div class="dw-user-stat"><span class="dw-stat-label">Rep:</span> ${escapeHtml(f.author_reputation || '')}</div>
+                  <div class="dw-hd-pgp-badge">PGP Verified</div>
+                </div>
+                <div class="dw-post-body">
+                  <div class="dw-post-meta">
+                    <span class="dw-post-num">#1</span>
+                    <span class="dw-post-date">${escapeHtml(f.date || '')}</span>
+                  </div>
+                  <div class="dw-post-content">${msgLines.map(l => l === '' ? '<br>' : `<p>${escapeHtml(l)}</p>`).join('')}</div>
+                  <div class="dw-post-actions">
+                    <span class="dw-action">Quote</span>
+                    <span class="dw-action">+Rep</span>
+                    <span class="dw-action">Report</span>
+                    <span class="dw-action dw-action-mirror">Mirror</span>
+                  </div>
+                </div>
+              </div>
+              <div class="dw-footer">
+                <span>« Previous Thread</span>
+                <span>Next Thread »</span>
+              </div>
             </article>
           `;
         },
