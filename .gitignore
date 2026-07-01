@@ -1,0 +1,6 @@
+# Generated single-file build (see tools/build_inline_html.mjs)
+/crisismaker.html
+/crisismaker-*.html
+
+# Local tooling
+/node_modules/
