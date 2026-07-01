@@ -10,7 +10,7 @@ on:
       include_video:
         description: "Embed the default news video (true = ~8 MB, false = ~3 MB)"
         required: false
-        default: "true"
+        default: "false"
       output_file:
         description: "Output filename"
         required: false

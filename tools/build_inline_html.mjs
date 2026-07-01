@@ -23,8 +23,8 @@
  *
  * Tunables (env vars, also exposed as workflow inputs):
  *     OUTPUT_FILE     output filename            (default crisismaker.html)
- *     INCLUDE_VIDEO   embed media/anchor.mp4     (default 1; set 0 to omit and
- *                                                 shrink the file by ~5 MB)
+ *     INCLUDE_VIDEO   embed media/anchor.mp4     (default 0; set 1 to embed the
+ *                                                 ~3.8 MB default news video)
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -35,8 +35,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 
 const OUTPUT_FILE = process.env.OUTPUT_FILE || 'crisismaker.html';
-const INCLUDE_VIDEO = !['0', 'false', 'no'].includes(
-  (process.env.INCLUDE_VIDEO || '1').toLowerCase()
+const INCLUDE_VIDEO = ['1', 'true', 'yes'].includes(
+  (process.env.INCLUDE_VIDEO || '0').toLowerCase()
 );
 const OUTPUT = resolve(ROOT, process.argv[2] || OUTPUT_FILE);
 

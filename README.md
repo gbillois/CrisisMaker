@@ -27,8 +27,8 @@ consolidates the whole app — CSS, fonts, JS modules, third-party libs and the
 default news video — into a single self-contained document:
 
 ```sh
-node tools/build_inline_html.mjs                   # -> crisismaker.html (~8 MB)
-INCLUDE_VIDEO=0 node tools/build_inline_html.mjs   # -> ~3 MB, video omitted
+node tools/build_inline_html.mjs                   # -> crisismaker.html (~3 MB)
+INCLUDE_VIDEO=1 node tools/build_inline_html.mjs   # -> ~8 MB, embeds the default video
 ```
 
 Or run the **Build inline HTML** GitHub Action (Actions tab → *Run workflow*)
