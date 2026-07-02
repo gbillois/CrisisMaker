@@ -1,0 +1,49 @@
+name: Build inline HTML
+
+# Manually triggered from the repo's "Actions" tab (Run workflow button).
+# Consolidates CrisisMaker into a single self-contained crisismaker.html with
+# every asset (CSS, fonts, JS, libs and the default video) inlined, then
+# uploads it as a downloadable artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      include_video:
+        description: "Embed the default news video (true = ~8 MB, false = ~3 MB)"
+        required: false
+        default: "false"
+      output_file:
+        description: "Output filename"
+        required: false
+        default: "crisismaker.html"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build consolidated inline HTML
+        env:
+          INCLUDE_VIDEO: ${{ inputs.include_video }}
+          OUTPUT_FILE: ${{ inputs.output_file }}
+        run: node tools/build_inline_html.mjs
+
+      - name: Report file size
+        run: ls -lh "${{ inputs.output_file }}"
+
+      - name: Upload consolidated HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: crisismaker-inline-html
+          path: ${{ inputs.output_file }}
+          if-no-files-found: error
+          retention-days: 30
