@@ -656,7 +656,7 @@
                     </div>
                     <p class="helper">${escapeHtml(modelCatalogMessage)}</p>
                   </label>
-                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://gbillois.github.io/HowToWavestone/api-key.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://gbillois.github.io/HowToWavestone/api-key.html</a></div>
+                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
                   <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
                       <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
@@ -671,7 +671,7 @@
                   <label class="field">${tt('Deployment name', 'Nom du déploiement', 'Bereitstellungsname')}
                     <input type="text" data-bind="settings.azure_deployment" value="${escapeAttribute(settings.azure_deployment || '')}" placeholder="gpt-4o">
                   </label>
-                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://gbillois.github.io/HowToWavestone/api-key.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://gbillois.github.io/HowToWavestone/api-key.html</a></div>
+                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
                   <label class="field" style="grid-column: 1 / -1;">${tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
                       <input id="api-key-input" type="password" data-bind="settings.azure_api_key" value="${escapeAttribute(settings.azure_api_key || '')}" placeholder="Azure API key">
@@ -772,7 +772,7 @@
                 'Azure Cognitive Services Speech bietet hochwertige neuronale Stimmen für die Audio-Nachrichtengenerierung. Konfigurieren Sie Ihren API-Schlüssel hier und wählen Sie dann "Azure Speech" als TTS-Anbieter in jedem Audio-Inject.'
               )}</p>
               <div class="field-grid cols-2">
-                <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://gbillois.github.io/HowToWavestone/api-key.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://gbillois.github.io/HowToWavestone/api-key.html</a></div>
+                <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
                 <label class="field">${tt('Azure Speech API key', 'Clé API Azure Speech', 'Azure Speech API-Schlüssel')}
                   <div style="display:flex; gap:10px;">
                     <input id="azure-speech-key-input" type="password" data-bind="settings.azure_speech_key" value="${escapeAttribute(settings.azure_speech_key || '')}" placeholder="${tt('Enter your Azure Speech key', 'Entrez votre clé Azure Speech', 'Geben Sie Ihren Azure Speech-Schlüssel ein')}">
