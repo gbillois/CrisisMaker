@@ -14,7 +14,7 @@
         if (msg.includes('401') || msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('api key')) return 'auth';
         if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('rate')) return 'quota';
         if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('connection')) return 'network';
-        return 'malformed';
+        return CrisisError.format(err, { operation: 'LLM generation' });
       }
 
       function renderLLMConfigBlock(zone, placeholder, options = {}) {
@@ -43,6 +43,13 @@
 
         const errorHtml = state.error && state.error !== 'empty'
           ? `<div class="llm-error-banner${['quota', 'network', 'malformed'].includes(state.error) ? ' llm-warning' : ''}">${escapeHtml(getLLMErrorMessage(state.error))}</div>`
+          : '';
+
+        const rawResponseHtml = state.rawResponse
+          ? `<details class="llm-raw-response"${state.error ? ' open' : ''}>
+              <summary>${tt('LLM response', 'Retour du LLM', 'LLM-Antwort')}</summary>
+              <pre>${escapeHtml(state.rawResponse)}</pre>
+             </details>`
           : '';
 
         const pendingActorsHtml = (zone === 'actors' && state.pendingActors && state.pendingActors.length > 0)
@@ -76,6 +83,7 @@
                 class="${state.error === 'empty' ? 'textarea-error' : ''}"
               >${escapeHtml(state.text || '')}</textarea>
               ${errorHtml}
+              ${rawResponseHtml}
               <div class="llm-config-actions">
                 <button class="btn-llm-generate" data-action="llm-generate-${zone}" ${disabledAttr}
                   ${noKeyTooltip ? `title="${noKeyTooltip}"` : ''}

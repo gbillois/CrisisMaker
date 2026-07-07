@@ -3,12 +3,17 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const responses = [];
+const requests = [];
 const context = {
   console,
   appState: null,
   tt: (en) => en,
-  fetch: async () => responses.shift(),
+  fetch: async (...args) => {
+    requests.push(args);
+    return responses.shift();
+  },
   App: { render: () => {} },
+  pushToast: () => {},
   URL,
   TextDecoder
 };
@@ -23,6 +28,7 @@ vm.runInContext(`const DEFAULT_MODELS = {
   google_gemini: ['gemini-fallback'],
   mistral: ['mistral-fallback']
 };`, context);
+vm.runInContext(fs.readFileSync('js/errors.js', 'utf8'), context, { filename: 'js/errors.js' });
 vm.runInContext(fs.readFileSync('js/ai.js', 'utf8'), context, { filename: 'js/ai.js' });
 
 function response(data, ok = true, status = 200) {
@@ -88,6 +94,30 @@ async function run() {
   await vm.runInContext('refreshAIModelCatalog()', context);
   assert.equal(context.appState.aiModelCatalog.status, 'missing-key');
   assert.match(context.appState.aiModelCatalog.error, /API key/);
+
+  context.appState = {
+    scenario: {
+      settings: { ai_provider: 'anthropic', ai_model: 'claude-test', ai_api_key: 'test-key', language: 'en' },
+      client: { name: 'Acme', sector: 'Energy', language: 'en' },
+      scenario: { summary: 'Ransomware incident affecting production systems.' },
+      actors: []
+    }
+  };
+  responses.push(response({
+    content: [{
+      text: JSON.stringify({
+        channel: 'email_internal',
+        template_id: 'outlook',
+        timestamp_offset_minutes: 60,
+        generation_mode: 'ai_guided',
+        fields: { subject: 'Status update', body: '<p>Production is degraded.</p>' }
+      })
+    }]
+  }));
+  await vm.runInContext(`AITextGenerator.generateStimulusConfig('create 3 injects', appState.scenario, [], 8000)`, context);
+  const [, anthropicOptions] = requests[requests.length - 1];
+  assert.equal(JSON.parse(anthropicOptions.body).max_tokens, 8000);
+  assert.match(vm.runInContext('AITextGenerator.lastRawResponse', context), /Status update/);
 
   console.log('Dynamic AI model catalog tests passed.');
 }

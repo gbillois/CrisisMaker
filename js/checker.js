@@ -629,7 +629,12 @@ Response format (strict JSON):
             pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`, `Datei geladen: ${file.name}`), 'success');
           }
         } catch (err) {
-          appState.checkerState._fileError = err.message;
+          appState.checkerState._fileError = CrisisError.format(err, {
+            operation: 'Import checker file',
+            fileName: file.name,
+            fileSize: file.size
+          });
+          CrisisError.log(err, { operation: 'Import checker file', fileName: file.name, fileSize: file.size });
           App.render();
         }
       }
@@ -1276,6 +1281,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
             finishLog('done');
           } catch (firstErr) {
             finishLog('error');
+            CrisisError.log(firstErr, { operation: 'Crisis Checker analysis first LLM attempt' });
             // Retry with lower max_tokens and concise instruction
             const concisePrompt = checkerBuildPrompt(serialized, detectedCols, missingCols, true);
             startLog(concisePrompt.slice(0, 400));
@@ -1291,7 +1297,8 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         } catch (err) {
           finishLog('error');
           cs.analysisLoading = false;
-          cs.analysisError = err.message;
+          cs.analysisError = CrisisError.format(err, { operation: 'Crisis Checker analysis' });
+          CrisisError.log(err, { operation: 'Crisis Checker analysis' });
           App.render();
         }
       }
@@ -1741,17 +1748,18 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
       // ─── Export Markdown report ───────────────────────────────────────────────────
 
       function checkerExportReport() {
-        const cs = appState.checkerState;
-        const r = cs.analysisResult;
-        const mode = cs.mode || 'file';
-        const fileName = mode === 'scenario'
-          ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel', 'Aktuelles Szenario'))
-          : (cs.file ? cs.file.name : 'unknown');
-        const date = new Date().toISOString().slice(0, 10);
-        const categories = checkerGetChecklistCategories();
-        const cl = cs.checklist || {};
-        const checked = cl.checked || {};
-        const customItems = cl.customItems || {};
+        try {
+          const cs = appState.checkerState;
+          const r = cs.analysisResult;
+          const mode = cs.mode || 'file';
+          const fileName = mode === 'scenario'
+            ? (appState.scenario.name || tt('Current Scenario', 'Scénario actuel', 'Aktuelles Szenario'))
+            : (cs.file ? cs.file.name : 'unknown');
+          const date = new Date().toISOString().slice(0, 10);
+          const categories = checkerGetChecklistCategories();
+          const cl = cs.checklist || {};
+          const checked = cl.checked || {};
+          const customItems = cl.customItems || {};
 
         const verdictLabels = {
           satisfactory: tt('✅ Satisfactory', '✅ Satisfaisant', '✅ Zufriedenstellend'),
@@ -1838,7 +1846,10 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         const safeName = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
         const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
         downloadBlob(blob, `crisis_check_${safeName}_${date}.md`);
-        pushToast(tt('Report exported.', 'Rapport exporté.', 'Bericht exportiert.'), 'success');
+          pushToast(tt('Report exported.', 'Rapport exporté.', 'Bericht exportiert.'), 'success');
+        } catch (error) {
+          CrisisError.toast(error, { operation: 'Export Crisis Checker Markdown report' });
+        }
       }
 
       // ─── Export DOCX report ───────────────────────────────────────────────────
@@ -2118,5 +2129,8 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
             const safeName = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
             downloadBlob(blob, `crisis_check_${safeName}_${date}.docx`);
             pushToast(tt('Report exported.', 'Rapport exporté.', 'Bericht exportiert.'), 'success');
+          })
+          .catch(error => {
+            CrisisError.toast(error, { operation: 'Export Crisis Checker DOCX report', detail: `Source=${fileName}` });
           });
       }

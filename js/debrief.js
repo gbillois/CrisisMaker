@@ -150,16 +150,30 @@
       }
 
       function exportDebriefHTML() {
-        const debrief = normalizeDebrief(appState.scenario.debrief, appState.scenario);
-        appState.scenario.debrief = debrief;
-        downloadBlob(new Blob([buildDebriefHTML(debrief)], { type: 'text/html' }), `${slugify(debrief.meta.title || 'crisis-debrief')}.debrief.html`);
-        pushToast(tt('Debrief HTML exported.', 'HTML de debrief exporté.', 'Debrief-HTML exportiert.'), 'success');
+        try {
+          const debrief = normalizeDebrief(appState.scenario.debrief, appState.scenario);
+          appState.scenario.debrief = debrief;
+          downloadBlob(new Blob([buildDebriefHTML(debrief)], { type: 'text/html' }), `${slugify(debrief.meta.title || 'crisis-debrief')}.debrief.html`);
+          pushToast(tt('Debrief HTML exported.', 'HTML de debrief exporté.', 'Debrief-HTML exportiert.'), 'success');
+        } catch (error) {
+          throw CrisisError.wrap(error, {
+            operation: 'Export debrief HTML',
+            detail: `Debrief=${appState.scenario?.debrief?.meta?.title || 'untitled'}`
+          });
+        }
       }
 
       function exportDebriefConfig() {
-        const config = debriefToTimelineConfig(appState.scenario.debrief);
-        downloadBlob(new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' }), `${slugify(config.meta?.title || 'crisis-debrief')}.debrief.json`);
-        pushToast(tt('Debrief configuration exported.', 'Configuration du debrief exportée.', 'Debrief-Konfiguration exportiert.'), 'success');
+        try {
+          const config = debriefToTimelineConfig(appState.scenario.debrief);
+          downloadBlob(new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' }), `${slugify(config.meta?.title || 'crisis-debrief')}.debrief.json`);
+          pushToast(tt('Debrief configuration exported.', 'Configuration du debrief exportée.', 'Debrief-Konfiguration exportiert.'), 'success');
+        } catch (error) {
+          throw CrisisError.wrap(error, {
+            operation: 'Export debrief JSON configuration',
+            detail: `Debrief=${appState.scenario?.debrief?.meta?.title || 'untitled'}`
+          });
+        }
       }
 
       function applyLLMDebrief(result, scenario) {

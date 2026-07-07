@@ -68,13 +68,14 @@
             } catch (err) {
               if (attempt === maxRetries) {
                 if (onLog) onLog({ type: 'error', message: err.message });
-                throw new Error(
-                  tt(
+                throw CrisisError.wrap(err, {
+                  operation: 'Chronogram AI import LLM call',
+                  message: tt(
                     `AI import failed after ${maxRetries + 1} attempts. Last error: ${err.message}`,
                     `Import IA échoué après ${maxRetries + 1} tentatives. Dernière erreur : ${err.message}`,
                     `KI-Import nach ${maxRetries + 1} Versuchen fehlgeschlagen. Letzter Fehler: ${err.message}`
                   )
-                );
+                });
               }
               await new Promise(r => setTimeout(r, 2000));
             }

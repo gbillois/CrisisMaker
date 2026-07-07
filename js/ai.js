@@ -37,9 +37,21 @@
           ));
         }
 
+        const requestModels = async (url, options = {}) => {
+          try {
+            return await fetch(url, options);
+          } catch (networkError) {
+            throw CrisisError.wrap(networkError, {
+              operation: 'Load AI model list',
+              provider,
+              message: `Model list network error: ${networkError.message}`
+            });
+          }
+        };
+
         let response;
         if (provider === 'anthropic') {
-          response = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+          response = await requestModels('https://api.anthropic.com/v1/models?limit=100', {
             headers: {
               'x-api-key': apiKey,
               'anthropic-version': '2023-06-01',
@@ -47,21 +59,23 @@
             }
           });
         } else if (provider === 'openai') {
-          response = await fetch('https://api.openai.com/v1/models', {
+          response = await requestModels('https://api.openai.com/v1/models', {
             headers: { 'Authorization': `Bearer ${apiKey}` }
           });
         } else if (provider === 'google_gemini') {
-          response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+          response = await requestModels(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
         } else if (provider === 'mistral') {
-          response = await fetch('https://api.mistral.ai/v1/models', {
+          response = await requestModels('https://api.mistral.ai/v1/models', {
             headers: { 'Authorization': `Bearer ${apiKey}` }
           });
         } else {
           return [];
         }
 
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error?.message || `HTTP ${response.status}`);
+        const data = await CrisisError.responseJson(response, {
+          operation: 'Load AI model list',
+          provider
+        });
 
         let models = [];
         if (provider === 'openai') {
@@ -107,6 +121,7 @@
       }
 
       const AITextGenerator = {
+        lastRawResponse: '',
         async testConnection() {
           const { ai_provider, ai_api_key, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (['anthropic', 'openai', 'google_gemini', 'mistral'].includes(ai_provider) && !ai_api_key) {
@@ -136,9 +151,9 @@
           const { systemPrompt, userPrompt } = LLMConfigPrompts.debrief(userInput, scenario);
           return this.generate('llm_config_debrief', systemPrompt, userPrompt, false, 5000);
         },
-        async generateStimulusConfig(userInput, scenario, actors) {
+        async generateStimulusConfig(userInput, scenario, actors, maxTokens = 3000) {
           const { systemPrompt, userPrompt } = LLMConfigPrompts.stimulus(userInput, scenario, actors);
-          return this.generate('llm_config_stimulus', systemPrompt, userPrompt);
+          return this.generate('llm_config_stimulus', systemPrompt, userPrompt, false, maxTokens);
         },
         async generateForStimulus(stimulus, fieldName = null, guidedPrompt = null) {
           const actor = getActor(stimulus.actor_id);
@@ -150,8 +165,11 @@
 
           const readSSE = async (response, extractDelta) => {
             if (!response.ok) {
-              const errData = await response.json().catch(() => ({}));
-              throw new Error(errData.error?.message || `HTTP ${response.status}`);
+              throw await CrisisError.fromHttpResponse(response, {
+                operation: 'Stream LLM response',
+                provider: ai_provider,
+                model: ai_provider === 'azure_openai' ? azure_deployment : ai_model
+              });
             }
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -180,16 +198,28 @@
                 }
               }
             }
+            this.lastRawResponse = fullText;
             return fullText;
+          };
+
+          const requestStream = async (url, options, context) => {
+            try {
+              return await fetch(url, options);
+            } catch (networkError) {
+              throw CrisisError.wrap(networkError, {
+                ...context,
+                message: `${context.provider || 'LLM'} streaming network error: ${networkError.message}`
+              });
+            }
           };
 
           if (ai_provider === 'anthropic') {
             if (!ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
+            const response = await requestStream('https://api.anthropic.com/v1/messages', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'x-api-key': ai_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
               body: JSON.stringify({ model: ai_model, max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
-            });
+            }, { operation: 'Stream Anthropic response', provider: 'anthropic', model: ai_model });
             const fullText = await readSSE(response, (event) => {
               if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') return event.delta.text;
               return null;
@@ -199,18 +229,18 @@
 
           if (ai_provider === 'openai') {
             if (!ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            const response = await requestStream('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
               body: JSON.stringify({ model: ai_model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
-            });
+            }, { operation: 'Stream OpenAI response', provider: 'openai', model: ai_model });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return parseLLMJson(fullText);
           }
 
           if (ai_provider === 'mistral') {
             if (!ai_api_key) throw new Error(tt('Missing Mistral API key.', 'Clé API Mistral manquante.', 'Fehlender Mistral-API-Schlüssel.'));
-            const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            const response = await requestStream('https://api.mistral.ai/v1/chat/completions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
               body: JSON.stringify({
@@ -220,7 +250,7 @@
                 response_format: { type: 'json_object' },
                 stream: true
               })
-            });
+            }, { operation: 'Stream Mistral response', provider: 'mistral', model: ai_model });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return parseLLMJson(fullText);
           }
@@ -228,22 +258,22 @@
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
-            const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
+            const response = await requestStream(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
               body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
-            });
+            }, { operation: 'Stream Azure OpenAI response', provider: 'azure_openai', model: azure_deployment });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return parseLLMJson(fullText);
           }
 
           if (ai_provider === 'google_gemini') {
             if (!ai_api_key) throw new Error(tt('Missing Google Gemini API key.', 'Clé API Google Gemini manquante.', 'Fehlender Google Gemini-API-Schlüssel.'));
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai_model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(ai_api_key)}`, {
+            const response = await requestStream(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai_model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(ai_api_key)}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + (userPrompt || 'Reply in strict JSON.') }] }], generationConfig: { maxOutputTokens: maxTokens } })
-            });
+            }, { operation: 'Stream Google Gemini response', provider: 'google_gemini', model: ai_model });
             const fullText = await readSSE(response, (event) => {
               const parts = event.candidates?.[0]?.content?.parts;
               return parts?.[0]?.text || null;
@@ -270,78 +300,108 @@
               if (urlErr.message.includes('HTTPS') || urlErr.message.includes('HTTPS')) throw urlErr;
               throw new Error(tt('Invalid Azure endpoint URL.', 'URL d\'endpoint Azure invalide.', 'Ungültige Azure-Endpunkt-URL.'));
             }
-            const response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
-              body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'Erreur API Azure OpenAI');
+            let response;
+            try {
+              response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
+                body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
+              });
+            } catch (networkError) {
+              throw CrisisError.wrap(networkError, { operation: 'Call Azure OpenAI', provider: 'azure_openai', model: azure_deployment, message: `Azure OpenAI network error: ${networkError.message}` });
+            }
+            const data = await CrisisError.responseJson(response, { operation: 'Call Azure OpenAI', provider: 'azure_openai', model: azure_deployment });
+            this.lastRawResponse = JSON.stringify(data, null, 2);
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.', 'Leere Azure-OpenAI-Antwort.'));
+            this.lastRawResponse = content;
             const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Azure OpenAI.', 'Contenu généré avec Azure OpenAI.', 'Inhalt mit Azure OpenAI generiert.'), 'success');
             return parsed;
           }
           if (ai_provider === 'anthropic') {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-api-key': ai_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-              body: JSON.stringify({ model: ai_model, max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }] })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'Erreur API Anthropic');
+            let response;
+            try {
+              response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-api-key': ai_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+                body: JSON.stringify({ model: ai_model, max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }] })
+              });
+            } catch (networkError) {
+              throw CrisisError.wrap(networkError, { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model, message: `Anthropic network error: ${networkError.message}` });
+            }
+            const data = await CrisisError.responseJson(response, { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model });
+            this.lastRawResponse = JSON.stringify(data, null, 2);
             const text = data.content?.[0]?.text || '{}';
+            this.lastRawResponse = text;
             const parsed = parseLLMJson(text);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');
             return parsed;
           }
           if (ai_provider === 'openai') {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
-              body: JSON.stringify({
-                model: ai_model,
-                messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])]
-              })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'OpenAI API error');
+            let response;
+            try {
+              response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
+                body: JSON.stringify({
+                  model: ai_model,
+                  messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])]
+                })
+              });
+            } catch (networkError) {
+              throw CrisisError.wrap(networkError, { operation: 'Call OpenAI', provider: 'openai', model: ai_model, message: `OpenAI network error: ${networkError.message}` });
+            }
+            const data = await CrisisError.responseJson(response, { operation: 'Call OpenAI', provider: 'openai', model: ai_model });
+            this.lastRawResponse = JSON.stringify(data, null, 2);
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.', 'Leere OpenAI-Antwort.'));
+            this.lastRawResponse = content;
             const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with OpenAI.', 'Contenu généré avec OpenAI.', 'Inhalt mit OpenAI generiert.'), 'success');
             return parsed;
           }
           if (ai_provider === 'mistral') {
-            const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
-              body: JSON.stringify({
-                model: ai_model,
-                messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
-                max_tokens: maxTokens,
-                response_format: { type: 'json_object' }
-              })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'Mistral API error');
+            let response;
+            try {
+              response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
+                body: JSON.stringify({
+                  model: ai_model,
+                  messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
+                  max_tokens: maxTokens,
+                  response_format: { type: 'json_object' }
+                })
+              });
+            } catch (networkError) {
+              throw CrisisError.wrap(networkError, { operation: 'Call Mistral', provider: 'mistral', model: ai_model, message: `Mistral network error: ${networkError.message}` });
+            }
+            const data = await CrisisError.responseJson(response, { operation: 'Call Mistral', provider: 'mistral', model: ai_model });
+            this.lastRawResponse = JSON.stringify(data, null, 2);
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Mistral response.', 'Réponse Mistral vide.', 'Leere Mistral-Antwort.'));
+            this.lastRawResponse = content;
             const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Mistral.', 'Contenu généré avec Mistral.', 'Inhalt mit Mistral generiert.'), 'success');
             return parsed;
           }
           if (ai_provider === 'google_gemini') {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai_model)}:generateContent?key=${encodeURIComponent(ai_api_key)}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + (userPrompt || 'Reply in strict JSON.') }] }], generationConfig: { maxOutputTokens: maxTokens } })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'Google Gemini API error');
+            let response;
+            try {
+              response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai_model)}:generateContent?key=${encodeURIComponent(ai_api_key)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + (userPrompt || 'Reply in strict JSON.') }] }], generationConfig: { maxOutputTokens: maxTokens } })
+              });
+            } catch (networkError) {
+              throw CrisisError.wrap(networkError, { operation: 'Call Google Gemini', provider: 'google_gemini', model: ai_model, message: `Google Gemini network error: ${networkError.message}` });
+            }
+            const data = await CrisisError.responseJson(response, { operation: 'Call Google Gemini', provider: 'google_gemini', model: ai_model });
+            this.lastRawResponse = JSON.stringify(data, null, 2);
             const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!content) throw new Error(tt('Empty Google Gemini response.', 'Réponse Google Gemini vide.', 'Leere Google Gemini-Antwort.'));
+            this.lastRawResponse = content;
             const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Google Gemini.', 'Contenu généré avec Google Gemini.', 'Inhalt mit Google Gemini generiert.'), 'success');
             return parsed;
@@ -570,13 +630,24 @@ Return this structure:
 
       function parseLLMJson(text) {
         const trimmed = String(text || '').trim();
-        if (!trimmed) throw new Error(tt('LLM response was empty.', 'La réponse du LLM était vide.', 'LLM-Antwort war leer.'));
+        if (!trimmed) throw CrisisError.create(tt('LLM response was empty.', 'La réponse du LLM était vide.', 'LLM-Antwort war leer.'), { operation: 'Parse LLM JSON response' });
         try {
           return JSON.parse(trimmed);
         } catch (err) {
           const match = trimmed.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-          if (!match) throw new Error(tt('LLM response was not valid JSON.', 'La réponse du LLM n\'était pas un JSON valide.', 'LLM-Antwort war kein gültiges JSON.'));
-          return JSON.parse(match[0]);
+          if (!match) throw CrisisError.create(tt('LLM response was not valid JSON.', 'La réponse du LLM n\'était pas un JSON valide.', 'LLM-Antwort war kein gültiges JSON.'), {
+            operation: 'Parse LLM JSON response',
+            detail: trimmed
+          });
+          try {
+            return JSON.parse(match[0]);
+          } catch (innerErr) {
+            throw CrisisError.wrap(innerErr, {
+              operation: 'Parse extracted LLM JSON',
+              message: tt('LLM response contained malformed JSON.', 'La réponse du LLM contenait un JSON mal formé.', 'Die LLM-Antwort enthielt fehlerhaftes JSON.'),
+              detail: match[0]
+            });
+          }
         }
       }
 

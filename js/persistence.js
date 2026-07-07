@@ -24,7 +24,7 @@
           });
           return await writeToFile();
         } catch (e) {
-          if (e.name !== 'AbortError') console.warn('File picker error', e);
+          if (e.name !== 'AbortError') CrisisError.log(e, { operation: 'Open save file picker' });
           return false;
         }
       }
@@ -38,7 +38,7 @@
           await writable.close();
           return true;
         } catch (e) {
-          console.warn('File write failed', e);
+          CrisisError.log(e, { operation: 'Write project file' });
           _fileHandle = null; // handle invalidated
           return false;
         }
@@ -349,6 +349,11 @@
             dataUrl = PngMetadata.injectMetadata(dataUrl);
             this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
             pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.', 'Stimulus als PNG exportiert.'), 'success');
+          } catch (error) {
+            throw CrisisError.wrap(error, {
+              operation: 'Export stimulus PNG',
+              detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}`
+            });
           } finally {
             if (sandbox) document.body.removeChild(sandbox);
           }
@@ -356,10 +361,17 @@
         async exportRawEmail(stimulus) {
           if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.', 'Kein Stimulus ausgewählt.'));
           if (!this.isEmailStimulus(stimulus)) throw new Error(tt('Only email stimuli can be exported as .eml.', 'Seuls les stimuli e-mail peuvent être exportés en .eml.', 'Nur E-Mail-Stimuli können als .eml exportiert werden.'));
-          const content = this.buildRawEmailContent(stimulus);
-          const blob = new Blob([content], { type: 'message/rfc822' });
-          downloadBlob(blob, this.filenameForRawEmail(stimulus));
-          pushToast(tt('Email exported as .eml.', 'E-mail exporté en .eml.', 'E-Mail als .eml exportiert.'), 'success');
+          try {
+            const content = this.buildRawEmailContent(stimulus);
+            const blob = new Blob([content], { type: 'message/rfc822' });
+            downloadBlob(blob, this.filenameForRawEmail(stimulus));
+            pushToast(tt('Email exported as .eml.', 'E-mail exporté en .eml.', 'E-Mail als .eml exportiert.'), 'success');
+          } catch (error) {
+            throw CrisisError.wrap(error, {
+              operation: 'Export email EML',
+              detail: `Stimulus id=${stimulus.id}, subject=${stimulus.fields?.subject || stimulus.channel}`
+            });
+          }
         },
         async exportAll() {
           const zip = new JSZip();
@@ -370,21 +382,37 @@
           sandbox.style.left = '-99999px';
           sandbox.style.top = '0';
           document.body.appendChild(sandbox);
-          for (const stimulus of stimuli) {
-            sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
-            const node = sandbox.firstElementChild;
-            let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
-            dataUrl = PngMetadata.injectMetadata(dataUrl);
-            zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
+          try {
+            for (const stimulus of stimuli) {
+              try {
+                sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
+                const node = sandbox.firstElementChild;
+                if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
+                let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+                dataUrl = PngMetadata.injectMetadata(dataUrl);
+                zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
+              } catch (error) {
+                throw CrisisError.wrap(error, {
+                  operation: 'Render stimulus for ZIP export',
+                  detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}`
+                });
+              }
+            }
+            const exportData = buildProjectFileData();
+            const json = JSON.stringify(exportData, null, 2);
+            const crisisSlug = slugify(appState.scenario.name);
+            zip.file(`${crisisSlug}.json`, json);
+            const blob = await zip.generateAsync({ type: 'blob' });
+            downloadBlob(blob, `${crisisSlug}.zip`);
+            pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
+          } catch (error) {
+            throw CrisisError.wrap(error, {
+              operation: 'Export all stimuli ZIP',
+              detail: `Stimuli=${stimuli.length}, project=${appState.scenario.name || 'untitled'}`
+            });
+          } finally {
+            document.body.removeChild(sandbox);
           }
-          document.body.removeChild(sandbox);
-          const exportData = buildProjectFileData();
-          const json = JSON.stringify(exportData, null, 2);
-          const crisisSlug = slugify(appState.scenario.name);
-          zip.file(`${crisisSlug}.json`, json);
-          const blob = await zip.generateAsync({ type: 'blob' });
-          downloadBlob(blob, `${crisisSlug}.zip`);
-          pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
         },
         filenameForStimulus(stimulus) {
           const actor = getActor(stimulus.actor_id);
@@ -439,15 +467,25 @@
           const ext = (audioInfo.fileName || '').split('.').pop() || 'wav';
           const voiceLabel = stimulus.fields.audio_character || stimulus.fields.voice_type || 'custom';
           const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_audio_${slugify(voiceLabel)}_${slugify(actor?.name || 'actor')}.${ext}`;
-          if (audioInfo.blob) {
-            downloadBlob(audioInfo.blob, filename);
-          } else {
-            // Fetch from objectUrl
-            const resp = await fetch(audioInfo.objectUrl);
-            const blob = await resp.blob();
-            downloadBlob(blob, filename);
+          try {
+            if (audioInfo.blob) {
+              downloadBlob(audioInfo.blob, filename);
+            } else {
+              // Fetch from objectUrl
+              const resp = await fetch(audioInfo.objectUrl).catch((error) => {
+                throw CrisisError.wrap(error, { operation: 'Read audio object URL for export', detail: `Stimulus id=${stimulus.id}` });
+              });
+              if (!resp.ok) throw await CrisisError.fromHttpResponse(resp, { operation: 'Read audio object URL for export' });
+              const blob = await resp.blob();
+              downloadBlob(blob, filename);
+            }
+            pushToast(tt('Audio exported.', 'Audio exporté.', 'Audio exportiert.'), 'success');
+          } catch (error) {
+            throw CrisisError.wrap(error, {
+              operation: 'Export audio file',
+              detail: `Stimulus id=${stimulus.id}, file=${audioInfo.fileName || filename}`
+            });
           }
-          pushToast(tt('Audio exported.', 'Audio exporté.', 'Audio exportiert.'), 'success');
         },
 
         // ── Video export: composite video + TV overlay → WebM ──
@@ -457,77 +495,84 @@
           if (!videoInfo?.objectUrl) throw new Error(tt('No video file attached to this inject.', 'Aucun fichier vidéo attaché à cet inject.', 'Keine Videodatei an diesen Inject angehängt.'));
 
           // 1. Create an offscreen video element to read source frames
-          const srcVideo = document.createElement('video');
-          srcVideo.src = videoInfo.objectUrl;
-          srcVideo.muted = false;
-          srcVideo.playsInline = true;
-          srcVideo.crossOrigin = 'anonymous';
-          await new Promise((resolve, reject) => {
-            srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
-            srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
-            srcVideo.load();
-          });
+          try {
+            const srcVideo = document.createElement('video');
+            srcVideo.src = videoInfo.objectUrl;
+            srcVideo.muted = false;
+            srcVideo.playsInline = true;
+            srcVideo.crossOrigin = 'anonymous';
+            await new Promise((resolve, reject) => {
+              srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
+              srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
+              srcVideo.load();
+            });
 
-          const W = 1280, H = 720;
-          const canvas = document.createElement('canvas');
-          canvas.width = W;
-          canvas.height = H;
-          const ctx = canvas.getContext('2d');
+            const W = 1280, H = 720;
+            const canvas = document.createElement('canvas');
+            canvas.width = W;
+            canvas.height = H;
+            const ctx = canvas.getContext('2d');
 
           // 2. Render the selected TV overlay to a static PNG image
-          const overlayPng = await this._renderOverlayImage(stimulus, W, H);
+            const overlayPng = await this._renderOverlayImage(stimulus, W, H);
 
           // 3. Also render the watermark overlay
-          const watermarkPng = await this._renderWatermarkImage(stimulus, W, H);
+            const watermarkPng = await this._renderWatermarkImage(stimulus, W, H);
 
           // 4. Set up MediaRecorder on the canvas stream (+ audio tracks from source video)
-          const fps = 30;
-          const stream = canvas.captureStream(fps);
-          if (srcVideo.captureStream) {
-            srcVideo.captureStream().getAudioTracks().forEach(track => stream.addTrack(track));
-          }
-          const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
-            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
-            : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
-            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
-            : 'video/webm';
-          const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
-          const chunks = [];
-          recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+            const fps = 30;
+            const stream = canvas.captureStream(fps);
+            if (srcVideo.captureStream) {
+              srcVideo.captureStream().getAudioTracks().forEach(track => stream.addTrack(track));
+            }
+            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
+              : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
+              : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+              : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
+              : 'video/webm';
+            const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+            const chunks = [];
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
-          const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
+            const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
 
           // 5. Start recording + playing
-          recorder.start();
-          srcVideo.currentTime = 0;
-          await srcVideo.play();
+            recorder.start();
+            srcVideo.currentTime = 0;
+            await srcVideo.play();
 
           // 6. Draw loop: video frame + overlay on each animation frame
-          let stopped = false;
-          const drawFrame = () => {
-            if (stopped) return;
-            ctx.drawImage(srcVideo, 0, 0, W, H);
-            if (overlayPng) ctx.drawImage(overlayPng, 0, 0, W, H);
-            if (watermarkPng) ctx.drawImage(watermarkPng, 0, 0, W, H);
-            requestAnimationFrame(drawFrame);
-          };
-          drawFrame();
+            let stopped = false;
+            const drawFrame = () => {
+              if (stopped) return;
+              ctx.drawImage(srcVideo, 0, 0, W, H);
+              if (overlayPng) ctx.drawImage(overlayPng, 0, 0, W, H);
+              if (watermarkPng) ctx.drawImage(watermarkPng, 0, 0, W, H);
+              requestAnimationFrame(drawFrame);
+            };
+            drawFrame();
 
           // 7. Wait for video to end
-          await new Promise((resolve) => {
-            srcVideo.addEventListener('ended', resolve, { once: true });
-          });
-          stopped = true;
-          recorder.stop();
-          srcVideo.pause();
-          await recordingDone;
+            await new Promise((resolve) => {
+              srcVideo.addEventListener('ended', resolve, { once: true });
+            });
+            stopped = true;
+            recorder.stop();
+            srcVideo.pause();
+            await recordingDone;
 
           // 8. Download the composited video
-          const blob = new Blob(chunks, { type: mimeType });
-          const actor = getActor(stimulus.actor_id);
-          const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.webm`;
-          downloadBlob(blob, filename);
-          pushToast(tt('Video exported with overlays.', 'Vidéo exportée avec les incrustations.', 'Video mit Overlay exportiert.'), 'success');
+            const blob = new Blob(chunks, { type: mimeType });
+            const actor = getActor(stimulus.actor_id);
+            const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.webm`;
+            downloadBlob(blob, filename);
+            pushToast(tt('Video exported with overlays.', 'Vidéo exportée avec les incrustations.', 'Video mit Overlay exportiert.'), 'success');
+          } catch (error) {
+            throw CrisisError.wrap(error, {
+              operation: 'Export video with overlays',
+              detail: `Stimulus id=${stimulus?.id || 'unknown'}, source=${videoInfo?.fileName || videoInfo?.objectUrl || 'attached video'}`
+            });
+          }
         },
 
         async _renderOverlayImage(stimulus, w, h) {
@@ -577,11 +622,15 @@
 
 
       async function saveScenarioToFile() {
-        const exportData = buildProjectFileData();
-        const json = JSON.stringify(exportData, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        downloadBlob(blob, `${slugify(appState.scenario.name)}.json`);
-        pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.', 'Szenario als JSON exportiert.'), 'success');
+        try {
+          const exportData = buildProjectFileData();
+          const json = JSON.stringify(exportData, null, 2);
+          const blob = new Blob([json], { type: 'application/json' });
+          downloadBlob(blob, `${slugify(appState.scenario.name)}.json`);
+          pushToast(tt('Scenario exported as JSON.', 'Scénario exporté en JSON.', 'Szenario als JSON exportiert.'), 'success');
+        } catch (error) {
+          throw CrisisError.wrap(error, { operation: 'Export scenario JSON', detail: `Project=${appState.scenario.name || 'untitled'}` });
+        }
       }
 
       async function loadScenarioFromFile() {
@@ -593,7 +642,7 @@
             applyLoadedScenario(data);
             return;
           } catch (e) {
-            console.warn('File System Access API failed, falling back to classic input', e);
+            CrisisError.log(e, { operation: 'Open project with File System Access API' });
             // fall through to classic file input below
           }
         }
@@ -615,7 +664,11 @@
             parseProjectFile(file)
               .then((data) => applyLoadedScenario(data))
               .catch((error) => {
-                pushToast(tt(`Import failed: ${error.message}`, `Import échoué : ${error.message}`, `Importieren fehlgeschlagen: ${error.message}`), 'error');
+                CrisisError.toast(error, {
+                  operation: 'Import project file',
+                  fileName: file.name,
+                  fileSize: file.size
+                });
               })
               .finally(() => resolve());
           }, { once: true });
@@ -630,7 +683,12 @@
         try {
           return JSON.parse(await file.text());
         } catch (error) {
-          throw new Error(tt(`Invalid JSON file: ${error.message}`, `Fichier JSON invalide : ${error.message}`, `Ungültige JSON-Datei: ${error.message}`));
+          throw CrisisError.wrap(error, {
+            operation: 'Parse project JSON',
+            fileName: file.name,
+            fileSize: file.size,
+            message: tt(`Invalid JSON file: ${error.message}`, `Fichier JSON invalide : ${error.message}`, `Ungültige JSON-Datei: ${error.message}`)
+          });
         }
       }
 
@@ -642,7 +700,12 @@
         try {
           zip = await JSZip.loadAsync(file);
         } catch (error) {
-          throw new Error(tt(`Invalid ZIP file: ${error.message}`, `Fichier ZIP invalide : ${error.message}`, `Ungültige ZIP-Datei: ${error.message}`));
+          throw CrisisError.wrap(error, {
+            operation: 'Open project ZIP',
+            fileName: file.name,
+            fileSize: file.size,
+            message: tt(`Invalid ZIP file: ${error.message}`, `Fichier ZIP invalide : ${error.message}`, `Ungültige ZIP-Datei: ${error.message}`)
+          });
         }
 
         const entries = Object.values(zip.files).filter((entry) => !entry.dir && /\.json$/i.test(entry.name));
@@ -661,7 +724,11 @@
           };
           return parsed;
         } catch (error) {
-          throw new Error(tt(`Invalid JSON in ZIP: ${error.message}`, `JSON invalide dans le ZIP : ${error.message}`, `Ungültiges JSON in der ZIP-Datei: ${error.message}`));
+          throw CrisisError.wrap(error, {
+            operation: 'Parse JSON inside project ZIP',
+            fileName: preferred.name,
+            message: tt(`Invalid JSON in ZIP: ${error.message}`, `JSON invalide dans le ZIP : ${error.message}`, `Ungültiges JSON in der ZIP-Datei: ${error.message}`)
+          });
         }
       }
 
@@ -699,7 +766,7 @@
             );
           }
         } catch (error) {
-          pushToast(tt(`Load failed: ${error.message}`, `Chargement échoué : ${error.message}`, `Laden fehlgeschlagen: ${error.message}`), 'error');
+          CrisisError.toast(error, { operation: 'Apply imported project data' });
         }
       }
 

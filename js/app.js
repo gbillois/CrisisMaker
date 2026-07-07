@@ -233,7 +233,7 @@
               App.render();
               pushToast(tt(`Template "${data.name || data.label}" imported.`, `Template "${data.name || data.label}" importé.`, `Vorlage „${data.name || data.label}" importiert.`), 'success');
             } catch (err) {
-              pushToast(tt(`Import failed: ${err.message}`, `Import échoué : ${err.message}`, `Import fehlgeschlagen: ${err.message}`), 'error');
+              CrisisError.toast(err, { operation: 'Import custom template', fileName: file.name, fileSize: file.size });
             }
             resolve();
           }, { once: true });
@@ -499,12 +499,16 @@
 
       function makeDefaultLLMState() {
         return {
-          scenario:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
-          actors:        { text: '', collapsed: false, loading: false, error: null, pendingActors: null },
-          stimulus:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
-          stimuli_batch: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 },
-          debrief:       { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0 }
+          scenario:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' },
+          actors:        { text: '', collapsed: false, loading: false, error: null, pendingActors: null, rawResponse: '' },
+          stimulus:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' },
+          stimuli_batch: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' },
+          debrief:       { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' }
         };
+      }
+
+      function captureLLMRawResponse(state) {
+        state.rawResponse = AITextGenerator.lastRawResponse || '';
       }
 
       function confirmClearData() {
@@ -571,10 +575,15 @@
               break;
             case 'save-file': {
               if (_fileHandle) {
-                await writeToFile();
-                pushToast(tt('Saved to file.', 'Sauvegardé dans le fichier.', 'In Datei gespeichert.'), 'success');
+                const saved = await writeToFile();
+                if (saved) {
+                  pushToast(tt('Saved to file.', 'Sauvegardé dans le fichier.', 'In Datei gespeichert.'), 'success');
+                } else {
+                  throw CrisisError.create(tt('Could not write to the selected project file.', 'Impossible d’écrire dans le fichier projet sélectionné.', 'In die ausgewählte Projektdatei konnte nicht geschrieben werden.'), { operation: 'Save project file' });
+                }
               } else {
-                await saveToFileFirstTime();
+                const saved = await saveToFileFirstTime();
+                if (!saved) pushToast(tt('Save cancelled or unavailable.', 'Sauvegarde annulée ou indisponible.', 'Speichern abgebrochen oder nicht verfügbar.'), 'info');
                 App.render();
               }
               break;
@@ -938,6 +947,7 @@
               appState.llmState[zone].text = '';
               appState.llmState[zone].error = null;
               appState.llmState[zone].lastFilledCount = 0;
+              appState.llmState[zone].rawResponse = '';
               if (zone === 'actors') appState.llmState.actors.pendingActors = null;
               App.render();
               break;
@@ -951,9 +961,10 @@
             case 'llm-generate-scenario': {
               const state = appState.llmState.scenario;
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
-              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
               try {
                 const result = await AITextGenerator.generateScenario(state.text);
+                captureLLMRawResponse(state);
                 let filled = 0;
                 if (result.client) {
                   if (result.client.name) { appState.scenario.client.name = result.client.name; filled++; }
@@ -972,6 +983,7 @@
                 App.render();
                 highlightLLMFields(['client.name', 'client.sector', 'client.language', 'scenario.type', 'scenario.summary', 'scenario.detailed_context', 'scenario.start_date', 'scenario.timezone']);
               } catch (err) {
+                captureLLMRawResponse(state);
                 state.loading = false;
                 state.error = classifyLLMError(err);
                 App.render();
@@ -981,14 +993,16 @@
             case 'llm-generate-actors': {
               const state = appState.llmState.actors;
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
-              state.loading = true; state.error = null; state.pendingActors = null; App.render();
+              state.loading = true; state.error = null; state.pendingActors = null; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
               try {
                 const result = await AITextGenerator.generateActors(state.text, appState.scenario);
+                captureLLMRawResponse(state);
                 const actors = Array.isArray(result) ? result : (result.actors || []);
                 state.loading = false;
                 state.pendingActors = actors;
                 App.render();
               } catch (err) {
+                captureLLMRawResponse(state);
                 state.loading = false;
                 state.error = classifyLLMError(err);
                 App.render();
@@ -1000,9 +1014,10 @@
               const selected = getStimulus(appState.stimulusModalId) || getSelectedStimulus();
               if (!selected) break;
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
-              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
               try {
                 const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors);
+                captureLLMRawResponse(state);
                 const multiple = Array.isArray(result) ? result : (Array.isArray(result?.stimuli) ? result.stimuli : null);
                 if (multiple) {
                   await handleMultiStimulusResult(multiple, state.text);
@@ -1015,6 +1030,7 @@
                 state.loading = false;
                 App.render();
               } catch (err) {
+                captureLLMRawResponse(state);
                 state.loading = false;
                 state.error = classifyLLMError(err);
                 App.render();
@@ -1024,15 +1040,17 @@
             case 'llm-generate-stimuli_batch': {
               const state = appState.llmState.stimuli_batch;
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
-              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
               try {
-                const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors);
+                const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors, 8000);
+                captureLLMRawResponse(state);
                 const configs = Array.isArray(result) ? result : (Array.isArray(result?.stimuli) ? result.stimuli : [result]);
                 const addedCount = await handleMultiStimulusResult(configs, state.text);
                 state.loading = false;
                 state.lastFilledCount = addedCount;
                 App.render();
               } catch (err) {
+                captureLLMRawResponse(state);
                 state.loading = false;
                 state.error = classifyLLMError(err);
                 App.render();
@@ -1041,15 +1059,17 @@
             }
             case 'llm-generate-debrief': {
               const state = appState.llmState.debrief;
-              state.loading = true; state.error = null; state.lastFilledCount = 0; App.render();
+              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
               try {
                 const result = await AITextGenerator.generateDebrief(state.text, appState.scenario);
+                captureLLMRawResponse(state);
                 const debrief = applyLLMDebrief(result, appState.scenario);
                 state.loading = false;
                 state.lastFilledCount = debrief.events.length;
                 saveLocal(false);
                 App.render();
               } catch (err) {
+                captureLLMRawResponse(state);
                 state.loading = false;
                 state.error = classifyLLMError(err);
                 App.render();
@@ -1124,7 +1144,7 @@
                   };
                   App.render();
                 } catch (err) {
-                  pushToast(err.message || tt('Failed to read Excel file.', 'Impossible de lire le fichier Excel.', 'Excel-Datei konnte nicht gelesen werden.'), 'error');
+                  CrisisError.toast(err, { operation: 'Read chronogram Excel file', fileName: file.name, fileSize: file.size });
                 }
               });
               input.click();
@@ -1234,10 +1254,10 @@
                     App.render();
                   }
                 } catch (err) {
-                  state.error = err.message;
+                  state.error = CrisisError.format(err, { operation: 'Import chronogram with AI' });
                   state.phase = 'result';
                   App.render();
-                  pushToast(err.message, 'error');
+                  CrisisError.toast(err, { operation: 'Import chronogram with AI' });
                 }
               })();
               break;
@@ -1326,8 +1346,8 @@
             default: console.warn(tt('Unhandled action', 'Action non gérée', 'Nicht behandelte Aktion'), action);
           }
         } catch (error) {
-          console.error(error);
-          pushToast(error.message || 'Une erreur est survenue.', 'error');
+          CrisisError.log(error, { operation: `Handle action "${action || 'unknown'}"` });
+          CrisisError.toast(error, { operation: `Handle action "${action || 'unknown'}"` });
         }
       }
 
@@ -1425,6 +1445,11 @@
         try {
           const guided = stimulus.generation_mode === 'ai_guided' ? stimulus.generation_prompt : null;
           generated = await AITextGenerator.generateForStimulus(stimulus, fieldName, guided);
+        } catch (error) {
+          throw CrisisError.wrap(error, {
+            operation: fieldName ? `Generate stimulus field "${fieldName}"` : 'Generate stimulus content',
+            detail: `Stimulus id=${stimulus.id}, channel=${stimulus.channel}`
+          });
         } finally {
           appState.ui.generatingField = null;
         }
@@ -1555,8 +1580,8 @@
           });
           pushToast(tt('Audio generated successfully.', 'Audio généré avec succès.', 'Audio erfolgreich generiert.'), 'success');
         } catch (err) {
-          console.error('TTS generation failed', err);
-          pushToast(tt(`Audio generation failed: ${err.message}`, `La génération audio a échoué : ${err.message}`, `Audio-Generierung fehlgeschlagen: ${err.message}`), 'error');
+          CrisisError.log(err, { operation: 'Generate audio' });
+          CrisisError.toast(err, { operation: 'Generate audio', detail: `Stimulus id=${stimulus.id}, provider=${ttsProvider}, language=${ttsLang}` });
         }
         App.render();
       }
@@ -1596,12 +1621,20 @@
             body: ssml
           });
         } catch (networkErr) {
-          throw new Error(`Azure Speech network error: ${networkErr.message}. Check your internet connection and Azure region (${region}).`);
+          throw CrisisError.wrap(networkErr, {
+            operation: 'Call Azure Speech',
+            provider: 'azure_speech',
+            model: voiceName,
+            message: `Azure Speech network error: ${networkErr.message}. Check your internet connection and Azure region (${region}).`
+          });
         }
 
         if (!response.ok) {
-          const errText = await response.text().catch(() => '');
-          throw new Error(`Azure Speech API error ${response.status}: ${errText || response.statusText}`);
+          throw await CrisisError.fromHttpResponse(response, {
+            operation: 'Call Azure Speech',
+            provider: 'azure_speech',
+            model: voiceName
+          });
         }
 
         const arrayBuffer = await response.arrayBuffer();

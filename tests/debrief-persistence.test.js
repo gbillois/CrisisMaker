@@ -47,6 +47,7 @@ vm.createContext(context);
 for (const file of [
   'js/data.js',
   'js/config.js',
+  'js/errors.js',
   'js/debrief-renderer.js',
   'js/debrief-editor-source.js',
   'js/debrief.js',
