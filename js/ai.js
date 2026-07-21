@@ -58,8 +58,8 @@
               'anthropic-dangerous-direct-browser-access': 'true'
             }
           });
-        } else if (provider === 'openai') {
-          response = await requestModels('https://api.openai.com/v1/models', {
+        } else if (provider === 'openai' || provider === 'openrouter') {
+          response = await requestModels(provider === 'openrouter' ? 'https://openrouter.ai/api/v1/models' : 'https://api.openai.com/v1/models', {
             headers: { 'Authorization': `Bearer ${apiKey}` }
           });
         } else if (provider === 'google_gemini') {
@@ -80,6 +80,10 @@
         let models = [];
         if (provider === 'openai') {
           models = filterOpenAIChatModels(data.data || []);
+        } else if (provider === 'openrouter') {
+          models = (data.data || [])
+            .filter((model) => !model.architecture?.output_modalities || model.architecture.output_modalities.includes('text'))
+            .map((model) => model.id);
         } else if (provider === 'google_gemini') {
           models = (data.models || [])
             .filter((model) => model.supportedGenerationMethods?.includes('generateContent'))
@@ -124,8 +128,10 @@
         lastRawResponse: '',
         async testConnection() {
           const { ai_provider, ai_api_key, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
-          if (['anthropic', 'openai', 'google_gemini', 'mistral'].includes(ai_provider) && !ai_api_key) {
-            throw new Error(ai_provider === 'openai'
+          if (['anthropic', 'openai', 'openrouter', 'google_gemini', 'mistral'].includes(ai_provider) && !ai_api_key) {
+            throw new Error(ai_provider === 'openrouter'
+              ? tt('Please enter an OpenRouter API key before testing the connection.', 'Veuillez saisir une clé API OpenRouter avant de tester la connexion.', 'Bitte geben Sie einen OpenRouter-API-Schlüssel ein, bevor Sie die Verbindung testen.')
+              : ai_provider === 'openai'
               ? tt('Please enter an OpenAI API key before testing the connection.', 'Veuillez saisir une clé API OpenAI avant de tester la connexion.', 'Bitte geben Sie einen OpenAI-API-Schlüssel ein, bevor Sie die Verbindung testen.')
               : ai_provider === 'google_gemini'
               ? tt('Please enter a Google Gemini API key before testing the connection.', 'Veuillez saisir une clé API Google Gemini avant de tester la connexion.', 'Bitte geben Sie einen Google Gemini-API-Schlüssel ein, bevor Sie die Verbindung testen.')
@@ -227,13 +233,14 @@
             return parseLLMJson(fullText);
           }
 
-          if (ai_provider === 'openai') {
-            if (!ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
-            const response = await requestStream('https://api.openai.com/v1/chat/completions', {
+          if (ai_provider === 'openai' || ai_provider === 'openrouter') {
+            const label = ai_provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
+            if (!ai_api_key) throw new Error(tt(`Missing ${label} API key.`, `Clé API ${label} manquante.`, `Fehlender ${label}-API-Schlüssel.`));
+            const response = await requestStream(ai_provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
-              body: JSON.stringify({ model: ai_model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
-            }, { operation: 'Stream OpenAI response', provider: 'openai', model: ai_model });
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}`, ...(ai_provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker' } : {}) },
+              body: JSON.stringify({ model: ai_model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], response_format: { type: 'json_object' }, stream: true })
+            }, { operation: `Stream ${label} response`, provider: ai_provider, model: ai_model });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return parseLLMJson(fullText);
           }
@@ -288,6 +295,7 @@
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
           if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
+          if (ai_provider === 'openrouter' && !ai_api_key) throw new Error(tt('Missing OpenRouter API key.', 'Clé API OpenRouter manquante.', 'Fehlender OpenRouter-API-Schlüssel.'));
           if (ai_provider === 'google_gemini' && !ai_api_key) throw new Error(tt('Missing Google Gemini API key.', 'Clé API Google Gemini manquante.', 'Fehlender Google Gemini-API-Schlüssel.'));
           if (ai_provider === 'mistral' && !ai_api_key) throw new Error(tt('Missing Mistral API key.', 'Clé API Mistral manquante.', 'Fehlender Mistral-API-Schlüssel.'));
           if (ai_provider === 'azure_openai') {
@@ -338,27 +346,29 @@
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');
             return parsed;
           }
-          if (ai_provider === 'openai') {
+          if (ai_provider === 'openai' || ai_provider === 'openrouter') {
+            const label = ai_provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
             let response;
             try {
-              response = await fetch('https://api.openai.com/v1/chat/completions', {
+              response = await fetch(ai_provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}`, ...(ai_provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker' } : {}) },
                 body: JSON.stringify({
                   model: ai_model,
-                  messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])]
+                  messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
+                  response_format: { type: 'json_object' }
                 })
               });
             } catch (networkError) {
-              throw CrisisError.wrap(networkError, { operation: 'Call OpenAI', provider: 'openai', model: ai_model, message: `OpenAI network error: ${networkError.message}` });
+              throw CrisisError.wrap(networkError, { operation: `Call ${label}`, provider: ai_provider, model: ai_model, message: `${label} network error: ${networkError.message}` });
             }
-            const data = await CrisisError.responseJson(response, { operation: 'Call OpenAI', provider: 'openai', model: ai_model });
+            const data = await CrisisError.responseJson(response, { operation: `Call ${label}`, provider: ai_provider, model: ai_model });
             this.lastRawResponse = JSON.stringify(data, null, 2);
             const content = data.choices?.[0]?.message?.content;
-            if (!content) throw new Error(tt('Empty OpenAI response.', 'Réponse OpenAI vide.', 'Leere OpenAI-Antwort.'));
+            if (!content) throw new Error(tt(`Empty ${label} response.`, `Réponse ${label} vide.`, `Leere ${label}-Antwort.`));
             this.lastRawResponse = content;
             const parsed = parseLLMJson(content);
-            if (!quiet) pushToast(tt('Content generated with OpenAI.', 'Contenu généré avec OpenAI.', 'Inhalt mit OpenAI generiert.'), 'success');
+            if (!quiet) pushToast(tt(`Content generated with ${label}.`, `Contenu généré avec ${label}.`, `Inhalt mit ${label} generiert.`), 'success');
             return parsed;
           }
           if (ai_provider === 'mistral') {

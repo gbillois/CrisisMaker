@@ -596,10 +596,11 @@
         const models = availableAIModels(settings);
         const isAnthropic = settings.ai_provider === 'anthropic';
         const isOpenAI = settings.ai_provider === 'openai';
+        const isOpenRouter = settings.ai_provider === 'openrouter';
         const isAzure = settings.ai_provider === 'azure_openai';
         const isGemini = settings.ai_provider === 'google_gemini';
         const isMistral = settings.ai_provider === 'mistral';
-        const providerLabel = isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isMistral ? 'Mistral' : isOpenAI ? 'OpenAI' : 'Anthropic';
+        const providerLabel = isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isMistral ? 'Mistral' : isOpenRouter ? 'OpenRouter' : isOpenAI ? 'OpenAI' : 'Anthropic';
         const modelCatalog = appState.aiModelCatalog || makeDefaultAIModelCatalog();
         const modelCatalogApplies = modelCatalog.provider === settings.ai_provider;
         const modelCatalogStatus = modelCatalogApplies ? modelCatalog.status : 'idle';
@@ -649,12 +650,13 @@
                   <select data-bind="settings.ai_provider">
                     <option value="anthropic" ${settings.ai_provider === 'anthropic' ? 'selected' : ''}>Anthropic</option>
                     <option value="openai" ${settings.ai_provider === 'openai' ? 'selected' : ''}>OpenAI</option>
+                    <option value="openrouter" ${settings.ai_provider === 'openrouter' ? 'selected' : ''}>OpenRouter</option>
                     <option value="azure_openai" ${settings.ai_provider === 'azure_openai' ? 'selected' : ''}>Azure OpenAI</option>
                     <option value="google_gemini" ${settings.ai_provider === 'google_gemini' ? 'selected' : ''}>Google Gemini</option>
                     <option value="mistral" ${settings.ai_provider === 'mistral' ? 'selected' : ''}>Mistral</option>
                   </select>
                 </label>
-                ${(isAnthropic || isOpenAI || isGemini || isMistral) ? `
+                ${(isAnthropic || isOpenAI || isOpenRouter || isGemini || isMistral) ? `
                   <label class="field">${tt('Model', 'Modèle', 'Modell')}
                     <div style="display:flex;gap:8px;">
                       <select data-bind="settings.ai_model" style="min-width:0;">
@@ -665,9 +667,9 @@
                     <p class="helper">${escapeHtml(modelCatalogMessage)}</p>
                   </label>
                   <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
-                  <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
+                  <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
-                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
+                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
                       <button class="btn btn-secondary" data-action="toggle-api-key">👁️</button>
                     </div>
                   </label>

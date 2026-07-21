@@ -12,5 +12,7 @@ assert.match(fileLoad, /notifyCrisisMakerProjectChange\(\)/);
 assert.match(source, /\['src-material','set-duration','set-lang','set-theme','set-voice','set-tone','set-audience'\]/);
 assert.match(source, /ui: \{ active_step: activeStep \}/);
 assert.match(source, /setStep\(Number\(state\.ui\.active_step\)\)/);
+assert.match(source, /<option value="openrouter">OpenRouter<\/option>/);
+assert.match(source, /https:\/\/openrouter\.ai\/api\/v1\/chat\/completions/);
 
 console.log('Video Debrief project bridge coverage passed.');

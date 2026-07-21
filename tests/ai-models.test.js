@@ -15,7 +15,8 @@ const context = {
   App: { render: () => {} },
   pushToast: () => {},
   URL,
-  TextDecoder
+  TextDecoder,
+  location: { origin: 'https://crisismaker.example' }
 };
 context.window = context;
 context.globalThis = context;
@@ -24,6 +25,7 @@ vm.createContext(context);
 vm.runInContext(`const DEFAULT_MODELS = {
   anthropic: ['claude-fallback'],
   openai: ['gpt-fallback'],
+  openrouter: ['openrouter/auto'],
   azure_openai: ['gpt-fallback'],
   google_gemini: ['gemini-fallback'],
   mistral: ['mistral-fallback']
@@ -50,6 +52,20 @@ async function run() {
     ai_api_key: 'test-key'
   })`, context);
   assert.deepEqual(Array.from(openAI), ['gpt-4o', 'gpt-4o-mini', 'o4-mini']);
+
+  responses.push(response({
+    data: [
+      { id: 'openrouter/auto', architecture: { output_modalities: ['text'] } },
+      { id: 'openai/gpt-5', architecture: { output_modalities: ['text'] } },
+      { id: 'black-forest-labs/flux', architecture: { output_modalities: ['image'] } }
+    ]
+  }));
+  const openRouter = await vm.runInContext(`fetchAIModels({
+    ai_provider: 'openrouter',
+    ai_api_key: 'test-key'
+  })`, context);
+  assert.deepEqual(Array.from(openRouter), ['openai/gpt-5', 'openrouter/auto']);
+  assert.equal(requests[requests.length - 1][0], 'https://openrouter.ai/api/v1/models');
 
   responses.push(response({
     models: [
@@ -118,6 +134,22 @@ async function run() {
   const [, anthropicOptions] = requests[requests.length - 1];
   assert.equal(JSON.parse(anthropicOptions.body).max_tokens, 8000);
   assert.match(vm.runInContext('AITextGenerator.lastRawResponse', context), /Status update/);
+
+  context.appState.scenario.settings = {
+    ...context.appState.scenario.settings,
+    ai_provider: 'openrouter',
+    ai_model: 'openrouter/auto',
+    ai_api_key: 'or-key'
+  };
+  responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
+  await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1000)`, context);
+  const [openRouterUrl, openRouterOptions] = requests[requests.length - 1];
+  const openRouterBody = JSON.parse(openRouterOptions.body);
+  assert.equal(openRouterUrl, 'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal(openRouterOptions.headers.Authorization, 'Bearer or-key');
+  assert.equal(openRouterOptions.headers['HTTP-Referer'], 'https://crisismaker.example');
+  assert.equal(openRouterOptions.headers['X-OpenRouter-Title'], 'CrisisMaker');
+  assert.deepEqual(openRouterBody.response_format, { type: 'json_object' });
 
   console.log('Dynamic AI model catalog tests passed.');
 }

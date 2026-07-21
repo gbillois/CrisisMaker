@@ -8,7 +8,7 @@ The assessment is based on the implementation currently visible in `index.html`,
 
 - browser-side storage of scenario data and non-secret provider settings in `localStorage`;
 - session-only storage of live API credentials in `sessionStorage`;
-- direct browser calls to configured AI provider APIs, including Anthropic, OpenAI, Azure OpenAI, Google Gemini, and Mistral;
+- direct browser calls to configured AI provider APIs, including Anthropic, OpenAI, OpenRouter, Azure OpenAI, Google Gemini, and Mistral;
 - export features that generate PNG and ZIP artifacts;
 - rendered outputs that imitate emails, social posts, news banners, SMS messages, and authority notices;
 - declared local third-party JavaScript paths with SRI-protected public CDN fallback.

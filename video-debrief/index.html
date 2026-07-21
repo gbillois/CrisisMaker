@@ -311,6 +311,7 @@
           <option value="none" selected>Aucun</option>
           <option value="anthropic">Anthropic</option>
           <option value="openai">OpenAI</option>
+          <option value="openrouter">OpenRouter</option>
           <option value="mistral">Mistral</option>
         </select>
         <select id="ai-model" hidden></select>
@@ -652,6 +653,7 @@ document.querySelectorAll('.step-btn').forEach(b => b.addEventListener('click', 
 const FALLBACK_MODELS = {
   anthropic: ['claude-fable-5', 'claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
   openai: ['gpt-4o', 'gpt-4o-mini'],
+  openrouter: ['openrouter/auto', '~openai/gpt-latest', 'anthropic/claude-sonnet-4.6'],
   mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
 };
 function fillModels(list, keep){
@@ -686,17 +688,18 @@ async function fetchModels(){
                    'anthropic-dangerous-direct-browser-access': 'true' } });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       ids = (await r.json()).data.map(m => m.id);
-    } else if (provider === 'openai' || provider === 'mistral') {
-      const endpoint = provider === 'mistral' ? 'https://api.mistral.ai/v1/models' : 'https://api.openai.com/v1/models';
+    } else if (provider === 'openai' || provider === 'openrouter' || provider === 'mistral') {
+      const endpoint = provider === 'mistral' ? 'https://api.mistral.ai/v1/models' : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/models' : 'https://api.openai.com/v1/models';
       const r = await fetch(endpoint, {
         headers: { 'Authorization': 'Bearer ' + key } });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       ids = (await r.json()).data
         .filter(m => provider !== 'mistral' || m.capabilities?.completion_chat !== false)
+        .filter(m => provider !== 'openrouter' || !m.architecture?.output_modalities || m.architecture.output_modalities.includes('text'))
         .map(m => m.id)
         .filter(id => provider === 'mistral'
           ? !/(embed|moderation|ocr|transcribe|tts|voxtral|codestral-embed)/i.test(id)
-          : /^(gpt-|o\d|chatgpt)/.test(id)
+          : provider === 'openrouter' ? Boolean(id) : /^(gpt-|o\d|chatgpt)/.test(id)
             && !/(audio|realtime|search|transcribe|tts|embed|image|moderation|instruct)/i.test(id))
         .sort().reverse();
     }
@@ -720,7 +723,7 @@ fetchModels();
 function applyCrisisMakerAISettings(settings){
   if (settings?.uiLanguage) applyInterfaceLanguage(settings.uiLanguage);
   const provider = settings && settings.provider;
-  const supported = settings && settings.supported && ['anthropic', 'openai', 'mistral'].includes(provider);
+  const supported = settings && settings.supported && ['anthropic', 'openai', 'openrouter', 'mistral'].includes(provider);
   if (!supported){
     $('ai-provider').value = 'none';
     $('ai-key').value = '';
@@ -742,7 +745,7 @@ function applyCrisisMakerAISettings(settings){
   $('ai-provider').value = provider;
   $('ai-key').value = settings.apiKey || '';
   fillModels(FALLBACK_MODELS[provider] || [], settings.model || '');
-  const providerLabel = provider === 'anthropic' ? 'Anthropic' : provider === 'mistral' ? 'Mistral' : 'OpenAI';
+  const providerLabel = provider === 'anthropic' ? 'Anthropic' : provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
   const modelLabel = settings.model ? ` · ${settings.model}` : '';
   $('models-status').textContent = settings.apiKey
     ? uiText(
@@ -760,7 +763,7 @@ function storedCrisisMakerAISettings(){
   try {
     const saved = JSON.parse(localStorage.getItem('crisismaker_settings_v1') || '{}');
     const sourceProvider = localStorage.getItem('aiProvider') || saved.ai_provider || 'anthropic';
-    const supported = ['anthropic', 'openai', 'mistral'].includes(sourceProvider);
+    const supported = ['anthropic', 'openai', 'openrouter', 'mistral'].includes(sourceProvider);
     return {
       provider: supported ? sourceProvider : 'none',
       model: supported ? (saved.ai_model || '') : '',
@@ -917,12 +920,12 @@ async function callAI(systemPrompt, userPrompt){
     if (!r.ok) throw new Error('Anthropic ' + r.status + ' : ' + (await r.text()).slice(0, 300));
     const d = await r.json();
     return d.content.map(c => c.text || '').join('');
-  } else if (provider === 'openai' || provider === 'mistral') {
-    const endpoint = provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
-    const providerLabel = provider === 'mistral' ? 'Mistral' : 'OpenAI';
+  } else if (provider === 'openai' || provider === 'openrouter' || provider === 'mistral') {
+    const endpoint = provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+    const providerLabel = provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
     const r = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, ...(provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker Video Debrief' } : {}) },
       body: JSON.stringify({ model, response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
     });

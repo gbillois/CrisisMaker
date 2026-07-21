@@ -123,7 +123,7 @@
 
       function videoDebriefAISettings() {
         const settings = appState.scenario.settings;
-        const supported = ['anthropic', 'openai', 'mistral'].includes(settings.ai_provider);
+        const supported = ['anthropic', 'openai', 'openrouter', 'mistral'].includes(settings.ai_provider);
         return {
           provider: supported ? settings.ai_provider : 'none',
           model: supported ? settings.ai_model : '',
@@ -2138,7 +2138,7 @@
       }
 
       function normalizeProviderSettingsInPlace(settings) {
-        if (!['anthropic', 'openai', 'azure_openai', 'google_gemini', 'mistral'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
+        if (!['anthropic', 'openai', 'openrouter', 'azure_openai', 'google_gemini', 'mistral'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
         const providerModels = DEFAULT_MODELS[settings.ai_provider] || DEFAULT_MODELS.anthropic;
         if (!settings.ai_model) settings.ai_model = providerModels[0];
         settings.ai_api_key = settings.ai_api_key || '';
@@ -2155,6 +2155,9 @@
         }
         if (settings.ai_provider === 'openai') {
           return `OpenAI / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
+        }
+        if (settings.ai_provider === 'openrouter') {
+          return `OpenRouter / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
         }
         if (settings.ai_provider === 'google_gemini') {
           return `Google Gemini / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
