@@ -335,17 +335,26 @@
 
       const ExportEngine = {
         async exportStimulus(stimulus) {
-          let element = document.getElementById(`render-${stimulus.id}`) || document.getElementById('fullscreen-preview');
-          let sandbox = null;
-          if (!element) {
-            sandbox = document.createElement('div');
-            sandbox.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none;';
-            document.body.appendChild(sandbox);
-            sandbox.innerHTML = renderStimulusPreview(stimulus, `export-sandbox-${stimulus.id}`);
-            element = sandbox.firstElementChild;
-          }
           try {
-            let dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+            let dataUrl;
+            if (this.isVideoStimulus(stimulus)) {
+              dataUrl = await this.renderVideoStimulusFrame(stimulus);
+            } else {
+              let element = document.getElementById(`render-${stimulus.id}`) || document.getElementById('fullscreen-preview');
+              let sandbox = null;
+              if (!element) {
+                sandbox = document.createElement('div');
+                sandbox.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none;';
+                document.body.appendChild(sandbox);
+                sandbox.innerHTML = renderStimulusPreview(stimulus, `export-sandbox-${stimulus.id}`);
+                element = sandbox.firstElementChild;
+              }
+              try {
+                dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+              } finally {
+                if (sandbox) document.body.removeChild(sandbox);
+              }
+            }
             dataUrl = PngMetadata.injectMetadata(dataUrl);
             this.downloadDataUrl(dataUrl, this.filenameForStimulus(stimulus));
             pushToast(tt('Stimulus exported as PNG.', 'Stimulus exporté en PNG.', 'Stimulus als PNG exportiert.'), 'success');
@@ -354,8 +363,6 @@
               operation: 'Export stimulus PNG',
               detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}`
             });
-          } finally {
-            if (sandbox) document.body.removeChild(sandbox);
           }
         },
         async exportRawEmail(stimulus) {
@@ -385,10 +392,15 @@
           try {
             for (const stimulus of stimuli) {
               try {
-                sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
-                const node = sandbox.firstElementChild;
-                if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
-                let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+                let dataUrl;
+                if (this.isVideoStimulus(stimulus)) {
+                  dataUrl = await this.renderVideoStimulusFrame(stimulus);
+                } else {
+                  sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
+                  const node = sandbox.firstElementChild;
+                  if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
+                  dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+                }
                 dataUrl = PngMetadata.injectMetadata(dataUrl);
                 zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
               } catch (error) {
@@ -408,7 +420,7 @@
           } catch (error) {
             throw CrisisError.wrap(error, {
               operation: 'Export all stimuli ZIP',
-              detail: `Stimuli=${stimuli.length}, project=${appState.scenario.name || 'untitled'}`
+              detail: [`Stimuli=${stimuli.length}`, `project=${appState.scenario.name || 'untitled'}`, error?.detail].filter(Boolean).join(', ')
             });
           } finally {
             document.body.removeChild(sandbox);
@@ -424,6 +436,39 @@
         },
         isEmailStimulus(stimulus) {
           return Boolean(stimulus?.channel && String(stimulus.channel).startsWith('email_'));
+        },
+        isVideoStimulus(stimulus) {
+          return Boolean(stimulus?.channel === 'breaking_news_tv' && appState.videoFiles?.[stimulus.id]?.objectUrl);
+        },
+        // html-to-image cannot rasterize <video> elements (it serializes the DOM to an SVG
+        // data URI and decodes it as an <img>, which fails for embedded video). Grab a still
+        // frame via canvas instead, matching the approach used by exportVideo().
+        async renderVideoStimulusFrame(stimulus) {
+          const videoInfo = appState.videoFiles[stimulus.id];
+          const W = 1280, H = 720;
+          const srcVideo = document.createElement('video');
+          srcVideo.src = videoInfo.objectUrl;
+          srcVideo.muted = true;
+          srcVideo.playsInline = true;
+          srcVideo.crossOrigin = 'anonymous';
+          await new Promise((resolve, reject) => {
+            srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
+            srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
+            srcVideo.load();
+          });
+          srcVideo.currentTime = Math.min(1, (srcVideo.duration || 2) / 2);
+          await new Promise((resolve) => srcVideo.addEventListener('seeked', resolve, { once: true }));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = W;
+          canvas.height = H;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(srcVideo, 0, 0, W, H);
+          const overlayImg = await this._renderOverlayImage(stimulus, W, H);
+          if (overlayImg) ctx.drawImage(overlayImg, 0, 0, W, H);
+          const watermarkImg = await this._renderWatermarkImage(stimulus, W, H);
+          if (watermarkImg) ctx.drawImage(watermarkImg, 0, 0, W, H);
+          return canvas.toDataURL('image/png');
         },
         buildRawEmailContent(stimulus) {
           const fields = stimulus.fields || {};
