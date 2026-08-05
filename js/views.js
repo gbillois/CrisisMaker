@@ -131,6 +131,13 @@
         return appState.ui?.actionLoading?.[action] ? loadingLabel : defaultLabel;
       }
 
+      function exportAllProgressLabel(defaultLabel, loadingLabel) {
+        const progress = appState.ui?.exportAllProgress;
+        if (!progress) return actionButtonLabel('export-all', defaultLabel, loadingLabel);
+        const suffix = progress.isVideo ? tt(' (video…)', ' (vidéo…)', ' (Video…)') : '';
+        return `${tt('Exporting', 'Export', 'Export')} ${progress.current}/${progress.total}${suffix}`;
+      }
+
       function pushToast(message, type = 'success') {
         const id = uid('toast');
         appState.toasts.push({ id, message, type });
@@ -475,7 +482,7 @@
                 </article>
                 <article class="card" style="text-align:center; cursor:${appState.ui?.actionLoading?.['export-all'] ? 'wait' : 'pointer'}; padding:20px 16px; ${appState.ui?.actionLoading?.['export-all'] ? 'opacity:0.6; pointer-events:none;' : ''}" data-action="export-all">
                   <div style="font-size:1.5rem; margin-bottom:8px;">${appState.ui?.actionLoading?.['export-all'] ? '⏳' : '🗜️'}</div>
-                  <strong>${actionButtonLabel('export-all', tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</strong>
+                  <strong>${exportAllProgressLabel(tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</strong>
                   <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .zip', 'Télécharger en .zip', 'Herunterladen als .zip')}</p>
                 </article>
               </div>
@@ -530,7 +537,7 @@
               </select>
               <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('injects', 'injects', 'Injects')}</span>
               <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add inject', '+ Ajouter un inject', '+ Inject hinzufügen')}</button>
-              <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${actionButtonLabel('export-all', tt('Export ZIP', 'Exporter ZIP', 'ZIP exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
+              <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${exportAllProgressLabel(tt('Export ZIP', 'Exporter ZIP', 'ZIP exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
               <button class="btn btn-secondary" data-action="import-custom-template">${tt('Import template', 'Importer un template', 'Vorlage importieren')}</button>
             </div>
             ${(appState.scenario.custom_templates || []).length ? `

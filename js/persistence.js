@@ -390,19 +390,23 @@
           sandbox.style.top = '0';
           document.body.appendChild(sandbox);
           try {
-            for (const stimulus of stimuli) {
+            for (let i = 0; i < stimuli.length; i++) {
+              const stimulus = stimuli[i];
+              const isVideo = this.isVideoStimulus(stimulus);
+              appState.ui.exportAllProgress = { current: i + 1, total: stimuli.length, isVideo };
+              if (typeof App !== 'undefined') App.render();
               try {
-                let dataUrl;
-                if (this.isVideoStimulus(stimulus)) {
-                  dataUrl = await this.renderVideoStimulusFrame(stimulus);
+                if (isVideo) {
+                  const { blob: clipBlob } = await this.renderVideoStimulusClip(stimulus);
+                  zip.file(this.filenameForStimulus(stimulus, 'webm'), clipBlob);
                 } else {
                   sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
                   const node = sandbox.firstElementChild;
                   if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
-                  dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+                  let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+                  dataUrl = PngMetadata.injectMetadata(dataUrl);
+                  zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
                 }
-                dataUrl = PngMetadata.injectMetadata(dataUrl);
-                zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
               } catch (error) {
                 throw CrisisError.wrap(error, {
                   operation: 'Render stimulus for ZIP export',
@@ -423,12 +427,13 @@
               detail: [`Stimuli=${stimuli.length}`, `project=${appState.scenario.name || 'untitled'}`, error?.detail].filter(Boolean).join(', ')
             });
           } finally {
+            appState.ui.exportAllProgress = null;
             document.body.removeChild(sandbox);
           }
         },
-        filenameForStimulus(stimulus) {
+        filenameForStimulus(stimulus, ext = 'png') {
           const actor = getActor(stimulus.actor_id);
-          return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.png`;
+          return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.${ext}`;
         },
         filenameForRawEmail(stimulus) {
           const actor = getActor(stimulus.actor_id);
@@ -445,6 +450,7 @@
         // frame via canvas instead, matching the approach used by exportVideo().
         async renderVideoStimulusFrame(stimulus) {
           const videoInfo = appState.videoFiles[stimulus.id];
+          this.assertVideoExportable(videoInfo);
           const W = 1280, H = 720;
           const srcVideo = document.createElement('video');
           srcVideo.src = videoInfo.objectUrl;
@@ -471,17 +477,11 @@
             return canvas.toDataURL('image/png');
           } catch (error) {
             if (error?.name === 'SecurityError') {
-              throw new Error(videoInfo.isBundledDefault
-                ? tt(
-                  'This TV inject still uses the bundled default video, which cannot be exported while CrisisMaker is opened directly from a local file (file://). Open it through a local web server instead (e.g. run "python3 -m http.server" in the app folder and browse to http://localhost:8000), or upload your own video for this inject.',
-                  'Cet inject TV utilise encore la vidéo par défaut intégrée, qui ne peut pas être exportée tant que CrisisMaker est ouvert directement depuis un fichier local (file://). Ouvrez l’application via un serveur web local à la place (ex. lancez "python3 -m http.server" dans le dossier de l’app puis allez sur http://localhost:8000), ou importez votre propre vidéo pour cet inject.',
-                  'Dieser TV-Inject verwendet noch das mitgelieferte Standardvideo, das nicht exportiert werden kann, solange CrisisMaker direkt aus einer lokalen Datei (file://) geöffnet ist. Öffnen Sie die App stattdessen über einen lokalen Webserver (z. B. "python3 -m http.server" im App-Ordner ausführen und http://localhost:8000 aufrufen), oder laden Sie für diesen Inject ein eigenes Video hoch.'
-                )
-                : tt(
-                  'The video attached to this inject is treated as coming from a restricted origin, so the browser refuses to export it (this typically happens when CrisisMaker is opened directly from a local file instead of a web server). Try opening the app through a local web server, or re-upload the video for this inject.',
-                  'La vidéo attachée à cet inject est considérée comme provenant d’une origine restreinte, donc le navigateur refuse de l’exporter (cela arrive généralement quand CrisisMaker est ouvert directement depuis un fichier local plutôt que via un serveur web). Essayez d’ouvrir l’application via un serveur web local, ou réimportez la vidéo pour cet inject.',
-                  'Das an diesen Inject angehängte Video wird als aus einer eingeschränkten Quelle stammend behandelt, weshalb der Browser den Export verweigert (dies passiert typischerweise, wenn CrisisMaker direkt aus einer lokalen Datei statt über einen Webserver geöffnet wird). Öffnen Sie die App über einen lokalen Webserver, oder laden Sie das Video für diesen Inject erneut hoch.'
-                ));
+              throw new Error(tt(
+                'The video attached to this inject is treated as coming from a restricted origin, so the browser refuses to export it (this typically happens when CrisisMaker is opened directly from a local file instead of a web server). Try opening the app through a local web server, or re-upload the video for this inject.',
+                'La vidéo attachée à cet inject est considérée comme provenant d’une origine restreinte, donc le navigateur refuse de l’exporter (cela arrive généralement quand CrisisMaker est ouvert directement depuis un fichier local plutôt que via un serveur web). Essayez d’ouvrir l’application via un serveur web local, ou réimportez la vidéo pour cet inject.',
+                'Das an diesen Inject angehängte Video wird als aus einer eingeschränkten Quelle stammend behandelt, weshalb der Browser den Export verweigert (dies passiert typischerweise, wenn CrisisMaker direkt aus einer lokalen Datei statt über einen Webserver geöffnet wird). Öffnen Sie die App über einen lokalen Webserver, oder laden Sie das Video für diesen Inject erneut hoch.'
+              ));
             }
             throw error;
           }
@@ -554,84 +554,103 @@
           if (!stimulus) throw new Error(tt('No stimulus selected.', 'Aucun stimulus sélectionné.', 'Kein Stimulus ausgewählt.'));
           const videoInfo = appState.videoFiles?.[stimulus.id];
           if (!videoInfo?.objectUrl) throw new Error(tt('No video file attached to this inject.', 'Aucun fichier vidéo attaché à cet inject.', 'Keine Videodatei an diesen Inject angehängt.'));
-
-          // 1. Create an offscreen video element to read source frames
           try {
-            const srcVideo = document.createElement('video');
-            srcVideo.src = videoInfo.objectUrl;
-            srcVideo.muted = false;
-            srcVideo.playsInline = true;
-            await new Promise((resolve, reject) => {
-              srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
-              srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
-              srcVideo.load();
-            });
-
-            const W = 1280, H = 720;
-            const canvas = document.createElement('canvas');
-            canvas.width = W;
-            canvas.height = H;
-            const ctx = canvas.getContext('2d');
-
-          // 2. Render the selected TV overlay to a static PNG image
-            const overlayPng = await this._renderOverlayImage(stimulus, W, H);
-
-          // 3. Also render the watermark overlay
-            const watermarkPng = await this._renderWatermarkImage(stimulus, W, H);
-
-          // 4. Set up MediaRecorder on the canvas stream (+ audio tracks from source video)
-            const fps = 30;
-            const stream = canvas.captureStream(fps);
-            if (srcVideo.captureStream) {
-              srcVideo.captureStream().getAudioTracks().forEach(track => stream.addTrack(track));
-            }
-            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
-              : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
-              : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
-              : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
-              : 'video/webm';
-            const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
-            const chunks = [];
-            recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-
-            const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
-
-          // 5. Start recording + playing
-            recorder.start();
-            srcVideo.currentTime = 0;
-            await srcVideo.play();
-
-          // 6. Draw loop: video frame + overlay on each animation frame
-            let stopped = false;
-            const drawFrame = () => {
-              if (stopped) return;
-              ctx.drawImage(srcVideo, 0, 0, W, H);
-              if (overlayPng) ctx.drawImage(overlayPng, 0, 0, W, H);
-              if (watermarkPng) ctx.drawImage(watermarkPng, 0, 0, W, H);
-              requestAnimationFrame(drawFrame);
-            };
-            drawFrame();
-
-          // 7. Wait for video to end
-            await new Promise((resolve) => {
-              srcVideo.addEventListener('ended', resolve, { once: true });
-            });
-            stopped = true;
-            recorder.stop();
-            srcVideo.pause();
-            await recordingDone;
-
-          // 8. Download the composited video
-            const blob = new Blob(chunks, { type: mimeType });
-            const actor = getActor(stimulus.actor_id);
-            const filename = `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.webm`;
-            downloadBlob(blob, filename);
+            const { blob } = await this.renderVideoStimulusClip(stimulus);
+            downloadBlob(blob, this.filenameForStimulus(stimulus, 'webm'));
             pushToast(tt('Video exported with overlays.', 'Vidéo exportée avec les incrustations.', 'Video mit Overlay exportiert.'), 'success');
           } catch (error) {
             throw CrisisError.wrap(error, {
               operation: 'Export video with overlays',
               detail: `Stimulus id=${stimulus?.id || 'unknown'}, source=${videoInfo?.fileName || videoInfo?.objectUrl || 'attached video'}`
             });
+          }
+        },
+        // Composites the source video + TV overlay + watermark into a WebM blob by
+        // recording a canvas in real time (playback duration ≈ encoding duration).
+        // Shared by the single "Export video" button and the ZIP-all export.
+        async renderVideoStimulusClip(stimulus) {
+          const videoInfo = appState.videoFiles[stimulus.id];
+          this.assertVideoExportable(videoInfo);
+
+          // 1. Create an offscreen video element to read source frames
+          const srcVideo = document.createElement('video');
+          srcVideo.src = videoInfo.objectUrl;
+          srcVideo.muted = false;
+          srcVideo.playsInline = true;
+          await new Promise((resolve, reject) => {
+            srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
+            srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
+            srcVideo.load();
+          });
+
+          const W = 1280, H = 720;
+          const canvas = document.createElement('canvas');
+          canvas.width = W;
+          canvas.height = H;
+          const ctx = canvas.getContext('2d');
+
+          // 2. Render the selected TV overlay to a static PNG image
+          const overlayPng = await this._renderOverlayImage(stimulus, W, H);
+
+          // 3. Also render the watermark overlay
+          const watermarkPng = await this._renderWatermarkImage(stimulus, W, H);
+
+          // 4. Set up MediaRecorder on the canvas stream (+ audio tracks from source video)
+          const fps = 30;
+          const stream = canvas.captureStream(fps);
+          if (srcVideo.captureStream) {
+            srcVideo.captureStream().getAudioTracks().forEach(track => stream.addTrack(track));
+          }
+          const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
+            : 'video/webm';
+          const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+          const chunks = [];
+          recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+          const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
+
+          // 5. Start recording + playing
+          recorder.start();
+          srcVideo.currentTime = 0;
+          await srcVideo.play();
+
+          // 6. Draw loop: video frame + overlay on each animation frame
+          let stopped = false;
+          const drawFrame = () => {
+            if (stopped) return;
+            ctx.drawImage(srcVideo, 0, 0, W, H);
+            if (overlayPng) ctx.drawImage(overlayPng, 0, 0, W, H);
+            if (watermarkPng) ctx.drawImage(watermarkPng, 0, 0, W, H);
+            requestAnimationFrame(drawFrame);
+          };
+          drawFrame();
+
+          // 7. Wait for video to end
+          await new Promise((resolve) => {
+            srcVideo.addEventListener('ended', resolve, { once: true });
+          });
+          stopped = true;
+          recorder.stop();
+          srcVideo.pause();
+          await recordingDone;
+
+          return { blob: new Blob(chunks, { type: mimeType }), mimeType };
+        },
+        // The bundled default TV news video is served from a relative path, not a blob:
+        // URL. Opened via file://, the browser gives it an opaque origin distinct from the
+        // page's own, so drawing it onto an export canvas taints the canvas and any later
+        // read (toDataURL, captureStream) throws a SecurityError. Fail fast with a clear
+        // message instead of waiting through a real-time recording that would just error out.
+        assertVideoExportable(videoInfo) {
+          if (videoInfo.isBundledDefault && typeof location !== 'undefined' && location.protocol === 'file:') {
+            throw new Error(tt(
+              'This TV inject still uses the bundled default video, which cannot be exported while CrisisMaker is opened directly from a local file (file://). Open it through a local web server instead (e.g. run "python3 -m http.server" in the app folder and browse to http://localhost:8000), or upload your own video for this inject.',
+              'Cet inject TV utilise encore la vidéo par défaut intégrée, qui ne peut pas être exportée tant que CrisisMaker est ouvert directement depuis un fichier local (file://). Ouvrez l’application via un serveur web local à la place (ex. lancez "python3 -m http.server" dans le dossier de l’app puis allez sur http://localhost:8000), ou importez votre propre vidéo pour cet inject.',
+              'Dieser TV-Inject verwendet noch das mitgelieferte Standardvideo, das nicht exportiert werden kann, solange CrisisMaker direkt aus einer lokalen Datei (file://) geöffnet ist. Öffnen Sie die App stattdessen über einen lokalen Webserver (z. B. "python3 -m http.server" im App-Ordner ausführen und http://localhost:8000 aufrufen), oder laden Sie für diesen Inject ein eigenes Video hoch.'
+            ));
           }
         },
 
