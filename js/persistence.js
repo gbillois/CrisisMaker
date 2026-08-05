@@ -467,7 +467,24 @@
           if (overlayImg) ctx.drawImage(overlayImg, 0, 0, W, H);
           const watermarkImg = await this._renderWatermarkImage(stimulus, W, H);
           if (watermarkImg) ctx.drawImage(watermarkImg, 0, 0, W, H);
-          return canvas.toDataURL('image/png');
+          try {
+            return canvas.toDataURL('image/png');
+          } catch (error) {
+            if (error?.name === 'SecurityError') {
+              throw new Error(videoInfo.isBundledDefault
+                ? tt(
+                  'This TV inject still uses the bundled default video, which cannot be exported while CrisisMaker is opened directly from a local file (file://). Open it through a local web server instead (e.g. run "python3 -m http.server" in the app folder and browse to http://localhost:8000), or upload your own video for this inject.',
+                  'Cet inject TV utilise encore la vidéo par défaut intégrée, qui ne peut pas être exportée tant que CrisisMaker est ouvert directement depuis un fichier local (file://). Ouvrez l’application via un serveur web local à la place (ex. lancez "python3 -m http.server" dans le dossier de l’app puis allez sur http://localhost:8000), ou importez votre propre vidéo pour cet inject.',
+                  'Dieser TV-Inject verwendet noch das mitgelieferte Standardvideo, das nicht exportiert werden kann, solange CrisisMaker direkt aus einer lokalen Datei (file://) geöffnet ist. Öffnen Sie die App stattdessen über einen lokalen Webserver (z. B. "python3 -m http.server" im App-Ordner ausführen und http://localhost:8000 aufrufen), oder laden Sie für diesen Inject ein eigenes Video hoch.'
+                )
+                : tt(
+                  'The video attached to this inject is treated as coming from a restricted origin, so the browser refuses to export it (this typically happens when CrisisMaker is opened directly from a local file instead of a web server). Try opening the app through a local web server, or re-upload the video for this inject.',
+                  'La vidéo attachée à cet inject est considérée comme provenant d’une origine restreinte, donc le navigateur refuse de l’exporter (cela arrive généralement quand CrisisMaker est ouvert directement depuis un fichier local plutôt que via un serveur web). Essayez d’ouvrir l’application via un serveur web local, ou réimportez la vidéo pour cet inject.',
+                  'Das an diesen Inject angehängte Video wird als aus einer eingeschränkten Quelle stammend behandelt, weshalb der Browser den Export verweigert (dies passiert typischerweise, wenn CrisisMaker direkt aus einer lokalen Datei statt über einen Webserver geöffnet wird). Öffnen Sie die App über einen lokalen Webserver, oder laden Sie das Video für diesen Inject erneut hoch.'
+                ));
+            }
+            throw error;
+          }
         },
         buildRawEmailContent(stimulus) {
           const fields = stimulus.fields || {};
