@@ -473,9 +473,9 @@
                   <strong>${tt('Export text content', 'Exporter le contenu texte', 'Textinhalt exportieren')}</strong>
                   <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .json', 'Télécharger en .json', 'Herunterladen als .json')}</p>
                 </article>
-                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="export-all">
-                  <div style="font-size:1.5rem; margin-bottom:8px;">🗜️</div>
-                  <strong>${tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren')}</strong>
+                <article class="card" style="text-align:center; cursor:${appState.ui?.actionLoading?.['export-all'] ? 'wait' : 'pointer'}; padding:20px 16px; ${appState.ui?.actionLoading?.['export-all'] ? 'opacity:0.6; pointer-events:none;' : ''}" data-action="export-all">
+                  <div style="font-size:1.5rem; margin-bottom:8px;">${appState.ui?.actionLoading?.['export-all'] ? '⏳' : '🗜️'}</div>
+                  <strong>${actionButtonLabel('export-all', tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</strong>
                   <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .zip', 'Télécharger en .zip', 'Herunterladen als .zip')}</p>
                 </article>
               </div>
@@ -530,7 +530,7 @@
               </select>
               <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('injects', 'injects', 'Injects')}</span>
               <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add inject', '+ Ajouter un inject', '+ Inject hinzufügen')}</button>
-              <button class="btn btn-secondary" data-action="export-all">${tt('Export ZIP', 'Exporter ZIP', 'ZIP exportieren')}</button>
+              <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${actionButtonLabel('export-all', tt('Export ZIP', 'Exporter ZIP', 'ZIP exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
               <button class="btn btn-secondary" data-action="import-custom-template">${tt('Import template', 'Importer un template', 'Vorlage importieren')}</button>
             </div>
             ${(appState.scenario.custom_templates || []).length ? `
