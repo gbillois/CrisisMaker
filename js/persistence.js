@@ -450,7 +450,6 @@
           srcVideo.src = videoInfo.objectUrl;
           srcVideo.muted = true;
           srcVideo.playsInline = true;
-          srcVideo.crossOrigin = 'anonymous';
           await new Promise((resolve, reject) => {
             srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
             srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
@@ -545,7 +544,6 @@
             srcVideo.src = videoInfo.objectUrl;
             srcVideo.muted = false;
             srcVideo.playsInline = true;
-            srcVideo.crossOrigin = 'anonymous';
             await new Promise((resolve, reject) => {
               srcVideo.addEventListener('loadedmetadata', resolve, { once: true });
               srcVideo.addEventListener('error', () => reject(new Error(tt('Failed to load video file.', 'Impossible de charger le fichier vidéo.', 'Videodatei konnte nicht geladen werden.'))), { once: true });
