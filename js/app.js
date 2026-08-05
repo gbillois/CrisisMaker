@@ -19,7 +19,8 @@
           stimuliEditorWidth: 42,
           stimulusModalEditorWidth: 50,
           timelineZoom: 1.0,
-          actionLoading: {}
+          actionLoading: {},
+          exportAllProgress: null
         },
         connectionTest: { status: 'idle', message: '', checkedAt: null, provider: '' },
         aiModelCatalog: makeDefaultAIModelCatalog(),

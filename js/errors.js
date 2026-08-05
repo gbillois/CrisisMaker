@@ -10,6 +10,14 @@
         function errorText(error) {
           if (!error) return '';
           if (typeof error === 'string') return error;
+          if (typeof Event !== 'undefined' && error instanceof Event) {
+            const target = error.target;
+            const tag = target?.tagName ? target.tagName.toLowerCase() : '';
+            let src = target?.currentSrc || target?.src || target?.href || '';
+            if (src.length > 100) src = `${src.slice(0, 100)}...`;
+            const resource = tag ? `<${tag}>${src ? ` (${src})` : ''}` : (error.type || 'resource');
+            return tt(`Failed to load ${resource}.`, `Échec du chargement de ${resource}.`, `Fehler beim Laden von ${resource}.`);
+          }
           return error.message || error.name || String(error);
         }
 
