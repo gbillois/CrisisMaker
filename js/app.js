@@ -124,11 +124,13 @@
 
       function videoDebriefAISettings() {
         const settings = appState.scenario.settings;
-        const supported = ['anthropic', 'openai', 'openrouter', 'mistral'].includes(settings.ai_provider);
+        const supported = ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama'].includes(settings.ai_provider);
         return {
           provider: supported ? settings.ai_provider : 'none',
           model: supported ? settings.ai_model : '',
-          apiKey: supported ? settings.ai_api_key : '',
+          apiKey: supported && (settings.ai_provider !== 'ollama' || settings.ollama_mode === 'cloud') ? settings.ai_api_key : '',
+          baseUrl: settings.ai_provider === 'ollama' ? (settings.ollama_mode === 'cloud' ? 'https://ollama.com' : settings.ollama_endpoint) : '',
+          proxyUrl: settings.ai_provider === 'ollama' && settings.ollama_mode === 'cloud' ? 'https://deckseeder.pages.dev/api/llm' : '',
           sourceProvider: settings.ai_provider,
           supported,
           uiLanguage: currentLanguage()
@@ -262,6 +264,9 @@
               const models = DEFAULT_MODELS[input.value];
               if (models?.length) appState.scenario.settings.ai_model = models[0];
             }
+            if (input.dataset.bind === 'settings.ollama_mode') {
+              appState.scenario.settings.ai_model = input.value === 'cloud' ? 'gpt-oss:120b' : 'llama3.2';
+            }
             if (input.dataset.bind === 'settings.template_quality' && input.value === 'hd') {
               ensureHDFonts();
             }
@@ -269,7 +274,7 @@
               appState.connectionTest = { status: 'idle', message: '', checkedAt: null, provider: '' };
             }
             persistProviderSettings(appState.scenario.settings);
-            const refreshModels = ['settings.ai_provider', 'settings.ai_api_key'].includes(input.dataset.bind);
+            const refreshModels = ['settings.ai_provider', 'settings.ai_api_key', 'settings.ollama_mode', 'settings.ollama_endpoint'].includes(input.dataset.bind);
             if (refreshModels) resetAIModelCatalog();
             App.render();
             if (refreshModels) refreshAIModelCatalog();
@@ -2139,10 +2144,12 @@
       }
 
       function normalizeProviderSettingsInPlace(settings) {
-        if (!['anthropic', 'openai', 'openrouter', 'azure_openai', 'google_gemini', 'mistral'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
+        if (!['anthropic', 'openai', 'openrouter', 'azure_openai', 'google_gemini', 'mistral', 'ollama'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
+        settings.ollama_mode = ['local', 'cloud'].includes(settings.ollama_mode) ? settings.ollama_mode : 'local';
         const providerModels = DEFAULT_MODELS[settings.ai_provider] || DEFAULT_MODELS.anthropic;
-        if (!settings.ai_model) settings.ai_model = providerModels[0];
+        if (!settings.ai_model) settings.ai_model = settings.ai_provider === 'ollama' && settings.ollama_mode === 'cloud' ? 'gpt-oss:120b' : providerModels[0];
         settings.ai_api_key = settings.ai_api_key || '';
+        settings.ollama_endpoint = settings.ollama_endpoint || 'http://localhost:11434';
         settings.azure_endpoint = settings.azure_endpoint || '';
         settings.azure_api_key = settings.azure_api_key || '';
         settings.azure_deployment = settings.azure_deployment || '';
@@ -2165,6 +2172,9 @@
         }
         if (settings.ai_provider === 'mistral') {
           return `Mistral / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
+        }
+        if (settings.ai_provider === 'ollama') {
+          return `Ollama${settings.ollama_mode === 'cloud' ? ' Cloud' : ''} / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
         }
         return `Anthropic / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
       }

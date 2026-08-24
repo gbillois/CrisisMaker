@@ -2,6 +2,21 @@
 
 CrisisMaker by Wavestone is a static browser application for designing and exporting cyber crisis exercise stimuli.
 
+## Ollama
+
+The AI connection settings support both Ollama modes:
+
+- **Local models:** start Ollama on the default `http://localhost:11434` endpoint, pull a model with `ollama pull <model>`, then refresh the model list in CrisisMaker. No API key is required.
+- **Ollama Cloud:** select Ollama Cloud, create a key at [ollama.com/settings/keys](https://ollama.com/settings/keys), enter it in CrisisMaker, then refresh the model list.
+
+Ollama Cloud requests use the existing DeckSeeder Cloudflare relay because Ollama's direct API does not accept browser CORS preflight requests from a static GitHub Pages application. The relay only accepts HTTPS requests to `ollama.com`, filters forwarded headers, and streams the response back without storing the credential. The same restricted relay implementation is included in [`functions/api/llm.js`](functions/api/llm.js) for a future standalone Cloudflare Pages deployment.
+
+For the deployed site, allow its origin in the Ollama service environment and restart Ollama:
+
+```sh
+OLLAMA_ORIGINS=https://gbillois.github.io ollama serve
+```
+
 ## Video Debrief
 
 The **Video Debrief** tab embeds the complete documentary video studio from

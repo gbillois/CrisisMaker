@@ -607,7 +607,9 @@
         const isAzure = settings.ai_provider === 'azure_openai';
         const isGemini = settings.ai_provider === 'google_gemini';
         const isMistral = settings.ai_provider === 'mistral';
-        const providerLabel = isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isMistral ? 'Mistral' : isOpenRouter ? 'OpenRouter' : isOpenAI ? 'OpenAI' : 'Anthropic';
+        const isOllama = settings.ai_provider === 'ollama';
+        const isOllamaCloud = isOllama && settings.ollama_mode === 'cloud';
+        const providerLabel = isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isMistral ? 'Mistral' : isOllama ? 'Ollama' : isOpenRouter ? 'OpenRouter' : isOpenAI ? 'OpenAI' : 'Anthropic';
         const modelCatalog = appState.aiModelCatalog || makeDefaultAIModelCatalog();
         const modelCatalogApplies = modelCatalog.provider === settings.ai_provider;
         const modelCatalogStatus = modelCatalogApplies ? modelCatalog.status : 'idle';
@@ -637,7 +639,7 @@
           <section class="grid cols-2">
             <article class="card">
               <div class="section-header"><h3>${tt('AI connection', 'Connexion IA', 'KI-Verbindung')}</h3></div>
-              ${!isLLMAvailable() ? `<div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#78350F;">${tt('No API key configured. AI generation features are disabled.', 'Aucune clé API configurée. Les fonctionnalités de génération par IA sont désactivées.', 'Kein API-Schlüssel konfiguriert. KI-Generierungsfunktionen sind deaktiviert.')}</div>` : ''}
+              ${!isLLMAvailable() ? `<div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#78350F;">${tt('AI provider configuration is incomplete. AI generation features are disabled.', 'La configuration du fournisseur IA est incomplète. Les fonctionnalités de génération par IA sont désactivées.', 'Die Konfiguration des KI-Anbieters ist unvollständig. KI-Generierungsfunktionen sind deaktiviert.')}</div>` : ''}
               <div style="background:#FEF2F2;border:2px solid #DC2626;border-radius:8px;padding:14px 16px;margin-bottom:16px;color:#991B1B;">
                 <div style="font-weight:700;font-size:14px;margin-bottom:8px;">⚠️ ${tt('Confidentiality warning', 'Avertissement de confidentialité des données', 'Vertraulichkeitswarnung')}</div>
                 <div style="font-size:13px;line-height:1.5;margin-bottom:10px;">
@@ -661,9 +663,10 @@
                     <option value="azure_openai" ${settings.ai_provider === 'azure_openai' ? 'selected' : ''}>Azure OpenAI</option>
                     <option value="google_gemini" ${settings.ai_provider === 'google_gemini' ? 'selected' : ''}>Google Gemini</option>
                     <option value="mistral" ${settings.ai_provider === 'mistral' ? 'selected' : ''}>Mistral</option>
+                    <option value="ollama" ${settings.ai_provider === 'ollama' ? 'selected' : ''}>Ollama</option>
                   </select>
                 </label>
-                ${(isAnthropic || isOpenAI || isOpenRouter || isGemini || isMistral) ? `
+                ${(isAnthropic || isOpenAI || isOpenRouter || isGemini || isMistral || isOllama) ? `
                   <label class="field">${tt('Model', 'Modèle', 'Modell')}
                     <div style="display:flex;gap:8px;">
                       <select data-bind="settings.ai_model" style="min-width:0;">
@@ -673,13 +676,24 @@
                     </div>
                     <p class="helper">${escapeHtml(modelCatalogMessage)}</p>
                   </label>
-                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
-                  <label class="field" style="grid-column: 1 / -1;">${isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
+                  ${!isOllama ? `<div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>` : ''}
+                  ${isOllama ? `
+                    <label class="field" style="grid-column: 1 / -1;">${tt('Ollama service', 'Service Ollama', 'Ollama-Dienst')}
+                      <select data-bind="settings.ollama_mode">
+                        <option value="local" ${!isOllamaCloud ? 'selected' : ''}>${tt('Local models', 'Modèles locaux', 'Lokale Modelle')}</option>
+                        <option value="cloud" ${isOllamaCloud ? 'selected' : ''}>Ollama Cloud</option>
+                      </select>
+                    </label>
+                    ${!isOllamaCloud ? `<label class="field" style="grid-column: 1 / -1;">${tt('Local Ollama server URL', 'URL du serveur Ollama local', 'Lokale Ollama-Server-URL')}
+                      <input type="url" data-bind="settings.ollama_endpoint" value="${escapeAttribute(settings.ollama_endpoint || 'http://localhost:11434')}" placeholder="http://localhost:11434">
+                    </label>` : ''}
+                  ` : ''}
+                  ${(!isOllama || isOllamaCloud) ? `<label class="field" style="grid-column: 1 / -1;">${isOllamaCloud ? tt('Ollama Cloud API key', 'Clé API Ollama Cloud', 'Ollama-Cloud-API-Schlüssel') : isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
-                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
+                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
                       <button class="btn btn-secondary" data-action="toggle-api-key">👁️</button>
                     </div>
-                  </label>
+                  </label>` : ''}
                 ` : ''}
                 ${isAzure ? `
                   <label class="field">${tt('Azure endpoint', 'Endpoint Azure', 'Azure-Endpunkt')}
@@ -730,6 +744,9 @@
               ${isAzure ? `<p class="helper">${tt('Azure OpenAI uses your deployment name; availability depends on your Azure resource and region.', 'Azure OpenAI utilise le nom de votre déploiement ; la disponibilité dépend de votre ressource Azure et de votre région.', 'Azure OpenAI verwendet Ihren Bereitstellungsnamen; die Verfügbarkeit hängt von Ihrer Azure-Ressource und Region ab.')}</p>` : ''}
               ${isGemini ? `<p class="helper">${tt('Get your Gemini API key from Google AI Studio (aistudio.google.com).', 'Obtenez votre clé API Gemini depuis Google AI Studio (aistudio.google.com).', 'Holen Sie sich Ihren Gemini-API-Schlüssel von Google AI Studio (aistudio.google.com).')}</p>` : ''}
               ${isMistral ? `<p class="helper">${tt('Get your Mistral API key from La Plateforme / Mistral AI Console.', 'Obtenez votre clé API Mistral depuis La Plateforme / la console Mistral AI.', 'Holen Sie sich Ihren Mistral-API-Schlüssel über La Plateforme / die Mistral AI Console.')}</p>` : ''}
+              ${isOllama ? `<p class="helper">${isOllamaCloud
+                ? tt('Create an API key at ollama.com/settings/keys. Cloud requests use the same Cloudflare relay as DeckSeeder.', 'Créez une clé API sur ollama.com/settings/keys. Les requêtes Cloud utilisent le même relais Cloudflare que DeckSeeder.', 'Erstellen Sie einen API-Schlüssel unter ollama.com/settings/keys. Cloud-Anfragen verwenden denselben Cloudflare-Relay wie DeckSeeder.')
+                : `${tt('Local Ollama does not require an API key. Start Ollama, pull a model, then refresh the model list.', 'Ollama local ne nécessite pas de clé API. Démarrez Ollama, téléchargez un modèle, puis actualisez la liste.', 'Lokales Ollama benötigt keinen API-Schlüssel. Starten Sie Ollama, laden Sie ein Modell herunter und aktualisieren Sie dann die Modellliste.')} ${tt('For GitHub Pages, allow OLLAMA_ORIGINS=https://gbillois.github.io in Ollama.', 'Pour GitHub Pages, autorisez OLLAMA_ORIGINS=https://gbillois.github.io dans Ollama.', 'Für GitHub Pages muss OLLAMA_ORIGINS=https://gbillois.github.io in Ollama erlaubt sein.')}`}</p>` : ''}
             </article>
             <article class="card">
               <div class="section-header"><h3>${tt('Export watermark', 'Filigrane d\'export', 'Export-Wasserzeichen')}</h3></div>

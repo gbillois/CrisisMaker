@@ -313,9 +313,12 @@
           <option value="openai">OpenAI</option>
           <option value="openrouter">OpenRouter</option>
           <option value="mistral">Mistral</option>
+          <option value="ollama">Ollama</option>
         </select>
         <select id="ai-model" hidden></select>
         <input type="password" id="ai-key" hidden>
+        <input type="url" id="ai-base-url" hidden>
+        <input type="url" id="ai-proxy-url" hidden>
         <div class="row2">
           <button class="btn btn-primary" id="btn-generate">✦ Générer le scénario (IA)</button>
           <button class="btn" id="btn-skeleton">Gabarit sans IA</button>
@@ -655,7 +658,17 @@ const FALLBACK_MODELS = {
   openai: ['gpt-4o', 'gpt-4o-mini'],
   openrouter: ['openrouter/auto', '~openai/gpt-latest', 'anthropic/claude-sonnet-4.6'],
   mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
+  ollama: ['llama3.2', 'gpt-oss:120b', 'gpt-oss:20b'],
 };
+async function fetchOllamaApi(url, init){
+  const proxy = $('ai-proxy-url').value;
+  if (!proxy) return fetch(url, init);
+  return fetch(proxy, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider: 'ollama', url, method: init.method || 'POST', headers: init.headers || {}, body: init.body || '' })
+  });
+}
 function fillModels(list, keep){
   const sel = $('ai-model');
   const want = keep || sel.value || localStorage.getItem('vd-ai-model') || '';
@@ -672,9 +685,10 @@ function fillModels(list, keep){
 }
 async function fetchModels(){
   const provider = $('ai-provider').value, key = $('ai-key').value.trim();
+  const baseUrl = ($('ai-base-url').value || 'http://localhost:11434').replace(/\/+$/, '');
   const status = $('models-status');
   if (provider === 'none'){ fillModels([]); status.textContent = ''; return; }
-  if (!key){
+  if (!key && (provider !== 'ollama' || baseUrl === 'https://ollama.com')){
     fillModels(FALLBACK_MODELS[provider] || []);
     status.textContent = 'Liste par défaut — entrez votre clé puis ⟳ pour la liste complète.';
     return;
@@ -702,6 +716,13 @@ async function fetchModels(){
           : provider === 'openrouter' ? Boolean(id) : /^(gpt-|o\d|chatgpt)/.test(id)
             && !/(audio|realtime|search|transcribe|tts|embed|image|moderation|instruct)/i.test(id))
         .sort().reverse();
+    } else if (provider === 'ollama') {
+      const r = await fetchOllamaApi(baseUrl + '/api/tags', {
+        method: 'GET',
+        headers: key ? { 'Authorization': 'Bearer ' + key } : {}
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      ids = (await r.json()).models.map(m => m.name || m.model).filter(Boolean).sort();
     }
     if (!ids.length) throw new Error('liste vide');
     fillModels(ids);
@@ -723,7 +744,7 @@ fetchModels();
 function applyCrisisMakerAISettings(settings){
   if (settings?.uiLanguage) applyInterfaceLanguage(settings.uiLanguage);
   const provider = settings && settings.provider;
-  const supported = settings && settings.supported && ['anthropic', 'openai', 'openrouter', 'mistral'].includes(provider);
+  const supported = settings && settings.supported && ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama'].includes(provider);
   if (!supported){
     $('ai-provider').value = 'none';
     $('ai-key').value = '';
@@ -744,14 +765,16 @@ function applyCrisisMakerAISettings(settings){
 
   $('ai-provider').value = provider;
   $('ai-key').value = settings.apiKey || '';
+  $('ai-base-url').value = settings.baseUrl || 'http://localhost:11434';
+  $('ai-proxy-url').value = settings.proxyUrl || '';
   fillModels(FALLBACK_MODELS[provider] || [], settings.model || '');
-  const providerLabel = provider === 'anthropic' ? 'Anthropic' : provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
+  const providerLabel = provider === 'anthropic' ? 'Anthropic' : provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : provider === 'ollama' ? 'Ollama' : 'OpenAI';
   const modelLabel = settings.model ? ` · ${settings.model}` : '';
-  $('models-status').textContent = settings.apiKey
+  $('models-status').textContent = settings.apiKey || (provider === 'ollama' && settings.baseUrl !== 'https://ollama.com')
     ? uiText(
-        `${providerLabel}${modelLabel} · clé API reprise des réglages CrisisMaker.`,
-        `${providerLabel}${modelLabel} · API key inherited from CrisisMaker settings.`,
-        `${providerLabel}${modelLabel} · API-Schlüssel aus den CrisisMaker-Einstellungen übernommen.`
+        `${providerLabel}${modelLabel} · réglages repris depuis CrisisMaker.`,
+        `${providerLabel}${modelLabel} · settings inherited from CrisisMaker.`,
+        `${providerLabel}${modelLabel} · Einstellungen aus CrisisMaker übernommen.`
       )
     : uiText(
         `${providerLabel}${modelLabel} · aucune clé API configurée dans CrisisMaker.`,
@@ -763,11 +786,14 @@ function storedCrisisMakerAISettings(){
   try {
     const saved = JSON.parse(localStorage.getItem('crisismaker_settings_v1') || '{}');
     const sourceProvider = localStorage.getItem('aiProvider') || saved.ai_provider || 'anthropic';
-    const supported = ['anthropic', 'openai', 'openrouter', 'mistral'].includes(sourceProvider);
+    const supported = ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama'].includes(sourceProvider);
+    const ollamaCloud = sourceProvider === 'ollama' && (localStorage.getItem('crisismaker_ollama_mode') || saved.ollama_mode) === 'cloud';
     return {
       provider: supported ? sourceProvider : 'none',
       model: supported ? (saved.ai_model || '') : '',
-      apiKey: supported ? ((typeof sessionStorage !== 'undefined' ? sessionStorage : localStorage).getItem('crisismaker_api_key') || '') : '',
+      apiKey: supported && (sourceProvider !== 'ollama' || ollamaCloud) ? ((typeof sessionStorage !== 'undefined' ? sessionStorage : localStorage).getItem('crisismaker_api_key') || '') : '',
+      baseUrl: sourceProvider === 'ollama' ? (ollamaCloud ? 'https://ollama.com' : (localStorage.getItem('crisismaker_ollama_endpoint') || saved.ollama_endpoint || 'http://localhost:11434')) : '',
+      proxyUrl: ollamaCloud ? 'https://deckseeder.pages.dev/api/llm' : '',
       sourceProvider,
       supported
     };
@@ -907,7 +933,8 @@ coords = [longitude, latitude]. Dramaturgie : accroche → montée → bascule �
 
 async function callAI(systemPrompt, userPrompt){
   const provider = $('ai-provider').value, key = $('ai-key').value.trim(), model = $('ai-model').value.trim();
-  if (!key) throw new Error('Configurez une clé API compatible dans les réglages CrisisMaker (ou utilisez le gabarit sans IA).');
+  const baseUrl = ($('ai-base-url').value || 'http://localhost:11434').replace(/\/+$/, '');
+  if (!key && (provider !== 'ollama' || baseUrl === 'https://ollama.com')) throw new Error('Configurez une clé API compatible dans les réglages CrisisMaker (ou utilisez le gabarit sans IA).');
   if (provider === 'anthropic'){
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -932,6 +959,16 @@ async function callAI(systemPrompt, userPrompt){
     if (!r.ok) throw new Error(providerLabel + ' ' + r.status + ' : ' + (await r.text()).slice(0, 300));
     const d = await r.json();
     return d.choices[0].message.content;
+  } else if (provider === 'ollama') {
+    const r = await fetchOllamaApi(baseUrl + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(key ? { 'Authorization': 'Bearer ' + key } : {}) },
+      body: JSON.stringify({ model, format: 'json', stream: false, options: { num_predict: 8000 },
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
+    });
+    if (!r.ok) throw new Error('Ollama ' + r.status + ' : ' + (await r.text()).slice(0, 300));
+    const d = await r.json();
+    return d.message.content;
   }
 }
 

@@ -152,6 +152,8 @@ const secretStorageResult = vm.runInContext(`(() => {
   persistProviderSettings({
     ai_provider: 'openai',
     ai_api_key: 'session-ai-key',
+    ollama_mode: 'cloud',
+    ollama_endpoint: 'http://localhost:11434',
     azure_api_key: 'session-azure-key',
     azure_speech_key: 'session-speech-key',
     azure_speech_region: 'westeurope'
@@ -165,6 +167,8 @@ const secretStorageResult = vm.runInContext(`(() => {
 assert.equal(secretStorageResult.localApiKey, null);
 assert.equal(secretStorageResult.sessionApiKey, 'session-ai-key');
 assert.equal(secretStorageResult.loaded.ai_api_key, 'session-ai-key');
+assert.equal(secretStorageResult.loaded.ollama_mode, 'cloud');
+assert.equal(secretStorageResult.loaded.ollama_endpoint, 'http://localhost:11434');
 
 const editorFrame = { srcdoc: '' };
 context.document.getElementById = (id) => id === 'debrief-editor-frame' ? editorFrame : null;

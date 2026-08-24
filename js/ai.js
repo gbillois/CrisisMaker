@@ -2,6 +2,50 @@
         return { provider: '', status: 'idle', models: [], error: '', loadedAt: null, requestId: 0 };
       }
 
+      function normalizeOllamaEndpoint(settings = appState.scenario.settings) {
+        const raw = String(settings.ollama_endpoint || 'http://localhost:11434').trim().replace(/\/+$/, '');
+        try {
+          const url = new URL(raw);
+          if (!['http:', 'https:'].includes(url.protocol)) throw new Error('protocol');
+          return url.toString().replace(/\/+$/, '');
+        } catch (_) {
+          throw new Error(tt('Invalid Ollama server URL.', 'URL du serveur Ollama invalide.', 'Ungültige Ollama-Server-URL.'));
+        }
+      }
+
+      const OLLAMA_CLOUD_BASE = 'https://ollama.com';
+      const OLLAMA_CLOUD_PROXY = 'https://deckseeder.pages.dev/api/llm';
+
+      function isOllamaCloud(settings = appState.scenario.settings) {
+        return settings.ollama_mode === 'cloud';
+      }
+
+      function ollamaEndpoint(settings = appState.scenario.settings) {
+        return isOllamaCloud(settings) ? OLLAMA_CLOUD_BASE : normalizeOllamaEndpoint(settings);
+      }
+
+      function ollamaHeaders(settings, withJson = false) {
+        return {
+          ...(withJson ? { 'Content-Type': 'application/json' } : {}),
+          ...(isOllamaCloud(settings) && settings.ai_api_key?.trim() ? { 'Authorization': `Bearer ${settings.ai_api_key.trim()}` } : {})
+        };
+      }
+
+      function ollamaProxyOptions(url, init) {
+        return {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'ollama',
+            url,
+            method: init.method || 'POST',
+            headers: init.headers || {},
+            body: init.body || ''
+          }),
+          signal: init.signal
+        };
+      }
+
       function resetAIModelCatalog() {
         appState.aiModelCatalog = makeDefaultAIModelCatalog();
       }
@@ -29,7 +73,8 @@
 
       async function fetchAIModels(settings = appState.scenario.settings) {
         const { ai_provider: provider, ai_api_key: apiKey } = settings;
-        if (!apiKey?.trim()) {
+        const ollamaBase = provider === 'ollama' ? ollamaEndpoint(settings) : '';
+        if (!apiKey?.trim() && (provider !== 'ollama' || isOllamaCloud(settings))) {
           throw new Error(tt(
             'Enter the provider API key to load its models.',
             'Saisissez la clé API du fournisseur pour charger ses modèles.',
@@ -68,6 +113,11 @@
           response = await requestModels('https://api.mistral.ai/v1/models', {
             headers: { 'Authorization': `Bearer ${apiKey}` }
           });
+        } else if (provider === 'ollama') {
+          const url = `${ollamaBase}/api/tags`;
+          const init = { method: 'GET', headers: ollamaHeaders(settings) };
+          response = await requestModels(isOllamaCloud(settings) ? OLLAMA_CLOUD_PROXY : url,
+            isOllamaCloud(settings) ? ollamaProxyOptions(url, init) : init);
         } else {
           return [];
         }
@@ -90,6 +140,8 @@
             .map((model) => String(model.name || '').replace(/^models\//, ''));
         } else if (provider === 'mistral') {
           models = filterMistralChatModels(data.data || []);
+        } else if (provider === 'ollama') {
+          models = (data.models || []).map((model) => model.name || model.model);
         } else {
           models = (data.data || []).map((model) => model.id);
         }
@@ -118,7 +170,8 @@
           catalog.loadedAt = new Date().toISOString();
         } catch (error) {
           if (appState.aiModelCatalog !== catalog || appState.scenario.settings.ai_provider !== provider) return;
-          catalog.status = settings.ai_api_key?.trim() ? 'error' : 'missing-key';
+          const ollamaLocal = provider === 'ollama' && !isOllamaCloud(settings);
+          catalog.status = settings.ai_api_key?.trim() || ollamaLocal ? 'error' : 'missing-key';
           catalog.error = error.message || String(error);
         }
         App.render();
@@ -141,6 +194,9 @@
           }
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Please provide the Azure endpoint, API key, and deployment name before testing the connection.', 'Veuillez renseigner l\'endpoint, la clé API et le déploiement Azure avant de tester la connexion.', 'Bitte geben Sie den Azure-Endpunkt, den API-Schlüssel und den Bereitstellungsnamen an, bevor Sie die Verbindung testen.'));
+          }
+          if (ai_provider === 'ollama' && isOllamaCloud() && !ai_api_key) {
+            throw new Error(tt('Please enter an Ollama Cloud API key before testing the connection.', 'Veuillez saisir une clé API Ollama Cloud avant de tester la connexion.', 'Bitte geben Sie vor dem Verbindungstest einen Ollama-Cloud-API-Schlüssel ein.'));
           }
           const prompt = 'Reply only with a JSON object {"ok": true, "message": "valid connection"}';
           return this.generate('settings_test', prompt, null, true);
@@ -204,6 +260,42 @@
                 }
               }
             }
+            this.lastRawResponse = fullText;
+            return fullText;
+          };
+
+          const readNDJSON = async (response, extractDelta) => {
+            if (!response.ok) {
+              throw await CrisisError.fromHttpResponse(response, {
+                operation: 'Stream LLM response',
+                provider: ai_provider,
+                model: ai_model
+              });
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullText = '';
+            const processLine = (line) => {
+              if (!line.trim()) return;
+              const event = JSON.parse(line);
+              if (event.error) throw new Error(event.error);
+              const delta = extractDelta(event);
+              if (delta) {
+                fullText += delta;
+                if (onChunk) onChunk(delta);
+              }
+            };
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop();
+              lines.forEach(processLine);
+            }
+            buffer += decoder.decode();
+            if (buffer.trim()) processLine(buffer);
             this.lastRawResponse = fullText;
             return fullText;
           };
@@ -288,6 +380,28 @@
             return parseLLMJson(fullText);
           }
 
+          if (ai_provider === 'ollama') {
+            if (isOllamaCloud() && !ai_api_key) throw new Error(tt('Missing Ollama Cloud API key.', 'Clé API Ollama Cloud manquante.', 'Fehlender Ollama-Cloud-API-Schlüssel.'));
+            const endpoint = ollamaEndpoint();
+            const url = `${endpoint}/api/chat`;
+            const init = {
+              method: 'POST',
+              headers: ollamaHeaders(appState.scenario.settings, true),
+              body: JSON.stringify({
+                model: ai_model,
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
+                format: 'json',
+                options: { num_predict: maxTokens },
+                stream: true
+              })
+            };
+            const response = await requestStream(isOllamaCloud() ? OLLAMA_CLOUD_PROXY : url,
+              isOllamaCloud() ? ollamaProxyOptions(url, init) : init,
+              { operation: 'Stream Ollama response', provider: 'ollama', model: ai_model });
+            const fullText = await readNDJSON(response, (event) => event.message?.content || null);
+            return parseLLMJson(fullText);
+          }
+
           throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));
         },
 
@@ -298,6 +412,7 @@
           if (ai_provider === 'openrouter' && !ai_api_key) throw new Error(tt('Missing OpenRouter API key.', 'Clé API OpenRouter manquante.', 'Fehlender OpenRouter-API-Schlüssel.'));
           if (ai_provider === 'google_gemini' && !ai_api_key) throw new Error(tt('Missing Google Gemini API key.', 'Clé API Google Gemini manquante.', 'Fehlender Google Gemini-API-Schlüssel.'));
           if (ai_provider === 'mistral' && !ai_api_key) throw new Error(tt('Missing Mistral API key.', 'Clé API Mistral manquante.', 'Fehlender Mistral-API-Schlüssel.'));
+          if (ai_provider === 'ollama' && isOllamaCloud() && !ai_api_key) throw new Error(tt('Missing Ollama Cloud API key.', 'Clé API Ollama Cloud manquante.', 'Fehlender Ollama-Cloud-API-Schlüssel.'));
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
@@ -414,6 +529,36 @@
             this.lastRawResponse = content;
             const parsed = parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Google Gemini.', 'Contenu généré avec Google Gemini.', 'Inhalt mit Google Gemini generiert.'), 'success');
+            return parsed;
+          }
+          if (ai_provider === 'ollama') {
+            const endpoint = ollamaEndpoint();
+            const url = `${endpoint}/api/chat`;
+            const init = {
+              method: 'POST',
+              headers: ollamaHeaders(appState.scenario.settings, true),
+              body: JSON.stringify({
+                model: ai_model,
+                messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
+                format: 'json',
+                options: { num_predict: maxTokens },
+                stream: false
+              })
+            };
+            let response;
+            try {
+              response = await fetch(isOllamaCloud() ? OLLAMA_CLOUD_PROXY : url,
+                isOllamaCloud() ? ollamaProxyOptions(url, init) : init);
+            } catch (networkError) {
+              throw CrisisError.wrap(networkError, { operation: 'Call Ollama', provider: 'ollama', model: ai_model, message: `Ollama network error: ${networkError.message}` });
+            }
+            const data = await CrisisError.responseJson(response, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
+            this.lastRawResponse = JSON.stringify(data, null, 2);
+            const content = data.message?.content;
+            if (!content) throw new Error(tt('Empty Ollama response.', 'Réponse Ollama vide.', 'Leere Ollama-Antwort.'));
+            this.lastRawResponse = content;
+            const parsed = parseLLMJson(content);
+            if (!quiet) pushToast(tt('Content generated with Ollama.', 'Contenu généré avec Ollama.', 'Inhalt mit Ollama generiert.'), 'success');
             return parsed;
           }
           throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));

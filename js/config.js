@@ -9,10 +9,13 @@
         openrouter: ['openrouter/auto', '~openai/gpt-latest', 'anthropic/claude-sonnet-4.6', 'google/gemini-2.5-pro'],
         azure_openai: ['gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3', 'o4-mini', 'o3-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
         google_gemini: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
-        mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest']
+        mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
+        ollama: ['llama3.2', 'gpt-oss:120b', 'gpt-oss:20b']
       };
       const PROVIDER_STORAGE_KEYS = {
         aiProvider: 'aiProvider',
+        ollamaMode: 'crisismaker_ollama_mode',
+        ollamaEndpoint: 'crisismaker_ollama_endpoint',
         azureEndpoint: 'azureEndpoint',
         azureApiKey: 'azureApiKey',       // legacy key - cleaned up on load
         azureDeployment: 'azureDeployment',
