@@ -963,7 +963,7 @@ async function callAI(systemPrompt, userPrompt){
     const r = await fetchOllamaApi(baseUrl + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(key ? { 'Authorization': 'Bearer ' + key } : {}) },
-      body: JSON.stringify({ model, format: 'json', stream: false, options: { num_predict: 8000 },
+      body: JSON.stringify({ model, ...(baseUrl !== 'https://ollama.com' ? { format: 'json' } : {}), stream: false, options: { num_predict: 8000 },
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
     });
     if (!r.ok) throw new Error('Ollama ' + r.status + ' : ' + (await r.text()).slice(0, 300));

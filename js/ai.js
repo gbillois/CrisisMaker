@@ -2,6 +2,17 @@
         return { provider: '', status: 'idle', models: [], error: '', loadedAt: null, requestId: 0 };
       }
 
+      function requestedStimulusCount(userInput) {
+        const match = String(userInput || '').match(/\b(\d{1,3})\s+(?:injects?|stimuli|stimulus)\b/i);
+        return match ? Math.max(1, Number(match[1])) : null;
+      }
+
+      function stimulusConfigsFromResult(result) {
+        if (Array.isArray(result)) return result;
+        if (Array.isArray(result?.stimuli)) return result.stimuli;
+        return result && typeof result === 'object' ? [result] : [];
+      }
+
       function normalizeOllamaEndpoint(settings = appState.scenario.settings) {
         const raw = String(settings.ollama_endpoint || 'http://localhost:11434').trim().replace(/\/+$/, '');
         try {
@@ -213,9 +224,24 @@
           const { systemPrompt, userPrompt } = LLMConfigPrompts.debrief(userInput, scenario);
           return this.generate('llm_config_debrief', systemPrompt, userPrompt, false, 5000);
         },
-        async generateStimulusConfig(userInput, scenario, actors, maxTokens = 3000) {
-          const { systemPrompt, userPrompt } = LLMConfigPrompts.stimulus(userInput, scenario, actors);
-          return this.generate('llm_config_stimulus', systemPrompt, userPrompt, false, maxTokens);
+        async generateStimulusConfig(userInput, scenario, actors, maxTokens = 3000, currentStimulus = null) {
+          const { systemPrompt, userPrompt } = LLMConfigPrompts.stimulus(userInput, scenario, actors, currentStimulus);
+          let result = await this.generate('llm_config_stimulus', systemPrompt, userPrompt, false, maxTokens);
+          const requestedCount = currentStimulus ? null : requestedStimulusCount(userInput);
+          if (requestedCount && stimulusConfigsFromResult(result).length !== requestedCount) {
+            const actualCount = stimulusConfigsFromResult(result).length;
+            const correctionPrompt = `${userPrompt}\n\nCORRECTION REQUIRED: the previous response contained ${actualCount} inject object(s), but the request requires exactly ${requestedCount}. Regenerate the complete response as one JSON object with a stimuli array containing exactly ${requestedCount} complete, distinct inject objects.`;
+            result = await this.generate('llm_config_stimulus', systemPrompt, correctionPrompt, false, maxTokens);
+            const correctedCount = stimulusConfigsFromResult(result).length;
+            if (correctedCount !== requestedCount) {
+              throw new Error(tt(
+                `The AI returned ${correctedCount} injects instead of the requested ${requestedCount}. Please retry.`,
+                `L’IA a renvoyé ${correctedCount} injects au lieu des ${requestedCount} demandés. Veuillez réessayer.`,
+                `Die KI hat ${correctedCount} statt der angeforderten ${requestedCount} Injects zurückgegeben. Bitte erneut versuchen.`
+              ));
+            }
+          }
+          return result;
         },
         async generateForStimulus(stimulus, fieldName = null, guidedPrompt = null) {
           const actor = getActor(stimulus.actor_id);
@@ -390,7 +416,7 @@
               body: JSON.stringify({
                 model: ai_model,
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
-                format: 'json',
+                ...(!isOllamaCloud() ? { format: 'json' } : {}),
                 options: { num_predict: maxTokens },
                 stream: true
               })
@@ -540,7 +566,7 @@
               body: JSON.stringify({
                 model: ai_model,
                 messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
-                format: 'json',
+                ...(!isOllamaCloud() ? { format: 'json' } : {}),
                 options: { num_predict: maxTokens },
                 stream: false
               })
@@ -632,13 +658,22 @@ Reply ONLY with a JSON array:
             userPrompt: `ACTOR DESCRIPTION:\n${userInput}`
           };
         },
-        stimulus(userInput, scenario, actors) {
+        stimulus(userInput, scenario, actors, currentStimulus = null) {
           const actorsList = actors.map((a) => ({ name: a.name, role: a.role, organization: a.organization, language: a.language }));
           const injectLang = scenario.settings?.inject_language || scenario.settings?.language || 'en';
           const injectLangName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[injectLang] || 'English';
+          const requestedCount = requestedStimulusCount(userInput);
+          const currentContext = currentStimulus ? {
+            channel: currentStimulus.channel,
+            template_id: currentStimulus.template_id,
+            actor_id: actors.find((actor) => actor.id === currentStimulus.actor_id)?.name || null,
+            source_label: currentStimulus.source_label || '',
+            timestamp_offset_minutes: currentStimulus.timestamp_offset_minutes,
+            fields: currentStimulus.fields || {}
+          } : null;
           return {
             systemPrompt: `You are an assistant specialized in preparing cybersecurity crisis exercises.
-The user describes one or more stimuli (crisis messages). Extract the configuration AND generate the content.
+The user ${currentStimulus ? 'is editing one existing inject (crisis message)' : 'describes one or more new injects (crisis messages)'}. Extract the configuration AND generate the content.
 
 SCENARIO CONTEXT:
 - Client: ${scenario.client.name} (${scenario.client.sector}), language: ${scenario.client.language}
@@ -647,7 +682,7 @@ SCENARIO CONTEXT:
 - Available actors: ${JSON.stringify(actorsList)}
 
 AVAILABLE TEMPLATES:
-- article_press: lemonde, nyt, faz, ft
+- article_press: lemonde, nyt, faz, ft, nikkei
 - email_internal: outlook
 - email_external: generic
 - email_authority: anssi
@@ -656,21 +691,30 @@ AVAILABLE TEMPLATES:
 - post_reddit: reddit
 - dark_web_forum: breach_forum
 - breaking_news_tv: bfm, cnn, bloomberg, cna
-- press_release: generic_pr
+- press_release: press_release
 - sms_notification: sms
 - internal_memo: memo
 
 INSTRUCTIONS:
-- Determine the most suitable channel and template for the description
+${currentStimulus ? `- EDIT MODE: channel and template_id are immutable. Return channel exactly "${currentStimulus.channel}" and template_id exactly "${currentStimulus.template_id}".
+- Never infer, substitute, or recommend another inject type or layout while editing, even if another channel could also fit the requested wording.
+- Update the requested content within the current fields schema. Preserve current field values that the user did not ask to change.
+- Return one updated stimulus object, never a batch.
+
+CURRENT INJECT TO UPDATE:
+${JSON.stringify(currentContext)}` : `- CREATION MODE: determine the most suitable channel and template for each requested inject.
+- "Inject" and "stimulus" mean the same thing.
+- Return a JSON object with a top-level "stimuli" array, including when only one inject is requested.
+- The "stimuli" array must contain exactly the number of injects requested by the operator.${requestedCount ? ` The explicit requested count is ${requestedCount}, so the array must contain exactly ${requestedCount} objects.` : ''}`}
 - If an actor is mentioned or matches the description, put their name in actor_id (the code will resolve it)
 - For timeline position, interpret "H+2" as 120 minutes, "H+30" as 30, etc. If not mentioned, use 0
-- If the user requests a batch ("create 30 stimuli…" with categories), return EXACTLY the requested number and distribute timestamps credibly if no precise schedule is given
+- If the user requests a batch ("create 30 injects…" with categories), return EXACTLY the requested number and distribute timestamps credibly if no precise schedule is given
 - For external stimuli ("client", "regulator", "press", etc.), alternate actors/sources to reflect the requested distribution
 - Generate field content in ${injectLangName} by default, EXCEPT press articles which must use their publication's native language
 - Strict press media rule: template_id = "lemonde" → all text content in French; "nyt" → English; "faz" → German; "ft" → British English; "nikkei" → Japanese
 - For information NOT mentioned, INVENT realistic coherent details
 - The generation_mode field must be "ai_guided"
-- If the user describes MULTIPLE stimuli, return a JSON ARRAY of objects. If ONE stimulus, return a single object.
+${currentStimulus ? '- Reply with the single updated stimulus object.' : '- Reply with one JSON object shaped as {"stimuli":[...]}; never use a top-level JSON array.'}
 
 AUTHOR/SENDER CONSISTENCY by channel:
 - article_press / breaking_news_tv: author/journalist must have a realistic journalist name (e.g. "By John Smith" for NYT)
@@ -709,7 +753,7 @@ Stimulus format:
   "generation_prompt": "original user description",
   "fields": { /* all channel fields filled with realistic content */ }
 }`,
-            userPrompt: `STIMULUS DESCRIPTION:\n${userInput}`
+            userPrompt: `${currentStimulus ? 'UPDATE REQUEST' : 'NEW INJECT REQUEST'}:\n${userInput}${!currentStimulus && requestedCount ? `\n\nREQUIRED OUTPUT COUNT: exactly ${requestedCount} inject objects in the stimuli array.` : ''}`
           };
         },
         debrief(userInput, scenario) {

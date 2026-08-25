@@ -165,18 +165,50 @@ async function run() {
   responses.push(response({
     content: [{
       text: JSON.stringify({
-        channel: 'email_internal',
-        template_id: 'outlook',
-        timestamp_offset_minutes: 60,
-        generation_mode: 'ai_guided',
-        fields: { subject: 'Status update', body: '<p>Production is degraded.</p>' }
+        stimuli: [1, 2, 3].map((index) => ({
+          channel: 'email_internal',
+          template_id: 'outlook',
+          timestamp_offset_minutes: index * 60,
+          generation_mode: 'ai_guided',
+          fields: { subject: `Status update ${index}`, body: '<p>Production is degraded.</p>' }
+        }))
       })
     }]
   }));
   await vm.runInContext(`AITextGenerator.generateStimulusConfig('create 3 injects', appState.scenario, [], 8000)`, context);
   const [, anthropicOptions] = requests[requests.length - 1];
-  assert.equal(JSON.parse(anthropicOptions.body).max_tokens, 8000);
+  const anthropicBody = JSON.parse(anthropicOptions.body);
+  assert.equal(anthropicBody.max_tokens, 8000);
+  assert.match(anthropicBody.system, /top-level "stimuli" array/);
+  assert.match(anthropicBody.system, /exactly 3 objects/);
+  assert.match(anthropicBody.messages[0].content, /REQUIRED OUTPUT COUNT: exactly 3/);
   assert.match(vm.runInContext('AITextGenerator.lastRawResponse', context), /Status update/);
+
+  responses.push(response({ content: [{ text: JSON.stringify({ stimuli: [{ channel: 'email_internal', fields: {} }] }) }] }));
+  responses.push(response({ content: [{ text: JSON.stringify({ stimuli: [
+    { channel: 'email_internal', fields: { subject: 'First' } },
+    { channel: 'email_external', fields: { subject: 'Second' } }
+  ] }) }] }));
+  const correctedBatch = await vm.runInContext(`AITextGenerator.generateStimulusConfig('create 2 injects', appState.scenario, [], 8000)`, context);
+  assert.equal(correctedBatch.stimuli.length, 2);
+  const retryBody = JSON.parse(requests[requests.length - 1][1].body);
+  assert.match(retryBody.messages[0].content, /CORRECTION REQUIRED/);
+  assert.match(retryBody.messages[0].content, /exactly 2/);
+
+  const editPrompts = vm.runInContext(`LLMConfigPrompts.stimulus(
+    'Update the body with the latest status',
+    appState.scenario,
+    [{ id: 'journalist-1', name: 'Alex Smith', role: 'journalist', organization: 'Daily News', language: 'en' }],
+    {
+      channel: 'article_press', template_id: 'nyt', actor_id: 'journalist-1',
+      timestamp_offset_minutes: 60, fields: { headline: 'Existing headline', body: '<p>Existing body</p>' }
+    }
+  )`, context);
+  assert.match(editPrompts.systemPrompt, /channel and template_id are immutable/);
+  assert.match(editPrompts.systemPrompt, /channel exactly "article_press"/);
+  assert.match(editPrompts.systemPrompt, /template_id exactly "nyt"/);
+  assert.match(editPrompts.systemPrompt, /Existing headline/);
+  assert.match(editPrompts.userPrompt, /^UPDATE REQUEST:/);
 
   context.appState.scenario.settings = {
     ...context.appState.scenario.settings,
@@ -211,7 +243,7 @@ async function run() {
   assert.equal(ollamaProxyBody.url, 'https://ollama.com/api/chat');
   assert.equal(ollamaProxyBody.headers.Authorization, 'Bearer ollama-cloud-key');
   assert.equal(ollamaBody.model, 'gpt-oss:120b');
-  assert.equal(ollamaBody.format, 'json');
+  assert.equal(ollamaBody.format, undefined);
   assert.equal(ollamaBody.options.num_predict, 1234);
   assert.equal(ollamaBody.stream, false);
 
@@ -227,7 +259,23 @@ async function run() {
   assert.equal(ollamaStreamUrl, 'https://deckseeder.pages.dev/api/llm');
   assert.equal(ollamaStreamProxyBody.url, 'https://ollama.com/api/chat');
   assert.equal(ollamaStreamBody.options.num_predict, 512);
+  assert.equal(ollamaStreamBody.format, undefined);
   assert.equal(ollamaStreamBody.stream, true);
+
+  context.appState.scenario.settings = {
+    ...context.appState.scenario.settings,
+    ai_model: 'llama3.2',
+    ai_api_key: '',
+    ollama_mode: 'local',
+    ollama_endpoint: 'http://localhost:11434/'
+  };
+  responses.push(response({ message: { content: '{"ok":true}' }, done: true }));
+  await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 256)`, context);
+  const [ollamaLocalUrl, ollamaLocalOptions] = requests[requests.length - 1];
+  const ollamaLocalBody = JSON.parse(ollamaLocalOptions.body);
+  assert.equal(ollamaLocalUrl, 'http://localhost:11434/api/chat');
+  assert.equal(ollamaLocalBody.format, 'json');
+  assert.equal(ollamaLocalBody.options.num_predict, 256);
 
   console.log('Dynamic AI model catalog tests passed.');
 }

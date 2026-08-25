@@ -14,5 +14,6 @@ assert.match(source, /ui: \{ active_step: activeStep \}/);
 assert.match(source, /setStep\(Number\(state\.ui\.active_step\)\)/);
 assert.match(source, /<option value="openrouter">OpenRouter<\/option>/);
 assert.match(source, /https:\/\/openrouter\.ai\/api\/v1\/chat\/completions/);
+assert.match(source, /baseUrl !== 'https:\/\/ollama\.com' \? \{ format: 'json' \} : \{\}/);
 
 console.log('Video Debrief project bridge coverage passed.');

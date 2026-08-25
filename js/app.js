@@ -599,7 +599,8 @@
             case 'nav-library': appState.route = 'library'; App.render(); break;
             case 'nav-debrief': appState.route = 'debrief'; App.render(); break;
             case 'new-scenario': {
-              appState.scenario = emptyScenario();
+              const preservedSettings = { ...appState.scenario.settings };
+              appState.scenario = emptyScenario(preservedSettings);
               restoreApiKeysFromStorage(appState.scenario.settings);
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
@@ -612,7 +613,9 @@
               break;
             }
             case 'load-example': {
+              const preservedSettings = { ...appState.scenario.settings };
               appState.scenario = defaultScenario();
+              appState.scenario.settings = { ...appState.scenario.settings, ...preservedSettings };
               restoreApiKeysFromStorage(appState.scenario.settings);
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
@@ -1022,17 +1025,12 @@
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
               state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
               try {
-                const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors);
+                const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors, 3000, selected);
                 captureLLMRawResponse(state);
-                const multiple = Array.isArray(result) ? result : (Array.isArray(result?.stimuli) ? result.stimuli : null);
-                if (multiple) {
-                  await handleMultiStimulusResult(multiple, state.text);
-                  state.lastFilledCount = multiple.length;
-                } else {
-                  await applyStimulusConfig(selected, result);
-                  const filled = Object.keys(result.fields || {}).length + 3;
-                  state.lastFilledCount = filled;
-                }
+                const config = Array.isArray(result) ? result[0] : (Array.isArray(result?.stimuli) ? result.stimuli[0] : result);
+                if (!config || typeof config !== 'object') throw new Error(tt('The AI did not return a valid inject update.', 'L’IA n’a pas renvoyé de mise à jour d’inject valide.', 'Die KI hat keine gültige Inject-Aktualisierung zurückgegeben.'));
+                await applyStimulusConfig(selected, config, { preserveType: true });
+                state.lastFilledCount = Object.keys(config.fields || {}).length + 3;
                 state.loading = false;
                 App.render();
               } catch (err) {
@@ -2115,11 +2113,9 @@
       function replaceArticleVariant(stimulus, templateId) {
         const template = ARTICLE_TEMPLATE_LIBRARY[templateId] || ARTICLE_TEMPLATE_LIBRARY.nyt;
         stimulus.template_id = template.template_id;
-        const prevPhotoData = stimulus.fields?.photo_data;
-        const prevHasPhoto = stimulus.fields?.has_photo;
-        stimulus.fields = deepClone(template.defaults);
-        if (prevPhotoData) stimulus.fields.photo_data = prevPhotoData;
-        if (prevHasPhoto !== undefined) stimulus.fields.has_photo = prevHasPhoto;
+        // A newspaper variant is a layout choice. Keep the authored article and
+        // only supply defaults for fields that do not exist in the old layout.
+        stimulus.fields = { ...deepClone(template.defaults), ...deepClone(stimulus.fields || {}) };
       }
 
       function replaceTVVariant(stimulus, templateId) {
@@ -2428,14 +2424,14 @@
         return appState.scenario.actors.find((a) => a.name.toLowerCase().trim() === lower) || null;
       }
 
-      async function applyStimulusConfig(stimulus, config) {
-        if (config.channel && config.channel !== stimulus.channel) {
+      async function applyStimulusConfig(stimulus, config, { preserveType = false } = {}) {
+        if (!preserveType && config.channel && config.channel !== stimulus.channel) {
           replaceStimulusTemplate(stimulus, config.channel);
         }
-        if (config.template_id && config.channel === 'article_press') {
+        if (!preserveType && config.template_id && config.channel === 'article_press') {
           replaceArticleVariant(stimulus, config.template_id);
         }
-        if (config.template_id && config.channel === 'breaking_news_tv') {
+        if (!preserveType && config.template_id && config.channel === 'breaking_news_tv') {
           replaceTVVariant(stimulus, config.template_id);
         }
         const resolvedActor = resolveActorFromName(config.actor_id);
