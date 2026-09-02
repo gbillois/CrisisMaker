@@ -702,6 +702,10 @@
                   <label class="field">${tt('Deployment name', 'Nom du déploiement', 'Bereitstellungsname')}
                     <input type="text" data-bind="settings.azure_deployment" value="${escapeAttribute(settings.azure_deployment || '')}" placeholder="gpt-4o">
                   </label>
+                  <label class="field">${tt('API version', 'Version de l\'API', 'API-Version')}
+                    <input type="text" data-bind="settings.azure_api_version" value="${escapeAttribute(settings.azure_api_version || DEFAULT_AZURE_API_VERSION)}" placeholder="${DEFAULT_AZURE_API_VERSION}">
+                    <p class="helper">${tt('Recent models (reasoning models, GPT-5 family…) may require a newer API version than your deployment default. Check your Azure OpenAI resource documentation if generation silently fails.', 'Les modèles récents (modèles de raisonnement, famille GPT-5…) peuvent nécessiter une version d\'API plus récente que celle par défaut. Consultez la documentation de votre ressource Azure OpenAI si la génération échoue silencieusement.', 'Neuere Modelle (Reasoning-Modelle, GPT-5-Familie…) benötigen möglicherweise eine neuere API-Version als die Standardversion Ihrer Bereitstellung. Prüfen Sie die Dokumentation Ihrer Azure-OpenAI-Ressource, falls die Generierung stillschweigend fehlschlägt.')}</p>
+                  </label>
                   <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
                   <label class="field" style="grid-column: 1 / -1;">${tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">

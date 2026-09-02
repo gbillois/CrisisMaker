@@ -2149,6 +2149,7 @@
         settings.azure_endpoint = settings.azure_endpoint || '';
         settings.azure_api_key = settings.azure_api_key || '';
         settings.azure_deployment = settings.azure_deployment || '';
+        settings.azure_api_version = settings.azure_api_version || DEFAULT_AZURE_API_VERSION;
         settings.azure_speech_key = settings.azure_speech_key || '';
         settings.azure_speech_region = settings.azure_speech_region || 'westeurope';
       }
