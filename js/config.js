@@ -4,7 +4,7 @@
       const SETTINGS_KEY = 'crisismaker_settings_v1';
       const VIDEO_DEBRIEF_STORAGE_KEY = 'crisismaker_video_debrief_draft_v1';
       const DEFAULT_MODELS = {
-        anthropic: ['claude-sonnet-4-20250514'],
+        anthropic: ['claude-sonnet-5', 'claude-opus-5', 'claude-haiku-4-5', 'claude-opus-4-6', 'claude-sonnet-4-6'],
         openai: ['gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3', 'o4-mini', 'o3-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
         openrouter: ['openrouter/auto', '~openai/gpt-latest', 'anthropic/claude-sonnet-4.6', 'google/gemini-2.5-pro'],
         azure_openai: ['gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3', 'o4-mini', 'o3-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
@@ -12,6 +12,7 @@
         mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
         ollama: ['llama3.2', 'gpt-oss:120b', 'gpt-oss:20b']
       };
+      const DEFAULT_AZURE_API_VERSION = '2024-10-21';
       const PROVIDER_STORAGE_KEYS = {
         aiProvider: 'aiProvider',
         ollamaMode: 'crisismaker_ollama_mode',

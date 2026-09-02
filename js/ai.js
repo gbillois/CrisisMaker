@@ -188,6 +188,12 @@
         App.render();
       }
 
+      function extractAnthropicResponseText(data) {
+        const blocks = Array.isArray(data?.content) ? data.content : [];
+        const textBlock = blocks.find((block) => block?.type === 'text' && typeof block.text === 'string' && block.text.trim());
+        return textBlock ? textBlock.text : '';
+      }
+
       const AITextGenerator = {
         lastRawResponse: '',
         async testConnection() {
@@ -249,7 +255,7 @@
           return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt);
         },
         async generateStreaming(channel, systemPrompt, userPrompt = null, onChunk = null, maxTokens = 2000) {
-          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
+          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment, azure_api_version } = appState.scenario.settings;
 
           const readSSE = async (response, extractDelta) => {
             if (!response.ok) {
@@ -383,7 +389,7 @@
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
-            const response = await requestStream(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
+            const response = await requestStream(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=${encodeURIComponent(azure_api_version || DEFAULT_AZURE_API_VERSION)}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
               body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
@@ -432,7 +438,7 @@
         },
 
         async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000) {
-          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
+          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment, azure_api_version } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
           if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
           if (ai_provider === 'openrouter' && !ai_api_key) throw new Error(tt('Missing OpenRouter API key.', 'Clé API OpenRouter manquante.', 'Fehlender OpenRouter-API-Schlüssel.'));
@@ -451,7 +457,7 @@
             }
             let response;
             try {
-              response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=2024-02-01`, {
+              response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=${encodeURIComponent(azure_api_version || DEFAULT_AZURE_API_VERSION)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
                 body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
@@ -481,7 +487,21 @@
             }
             const data = await CrisisError.responseJson(response, { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model });
             this.lastRawResponse = JSON.stringify(data, null, 2);
-            const text = data.content?.[0]?.text || '{}';
+            const text = extractAnthropicResponseText(data);
+            if (!text) {
+              if (data.stop_reason === 'refusal') {
+                throw CrisisError.create(tt(
+                  'Anthropic declined to answer this request (safety refusal).',
+                  'Anthropic a refusé de répondre à cette requête (refus de sécurité).',
+                  'Anthropic hat die Beantwortung dieser Anfrage abgelehnt (Sicherheitsablehnung).'
+                ), { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model, code: data.stop_details?.category || 'refusal', detail: data.stop_details?.explanation || '' });
+              }
+              throw CrisisError.create(tt(
+                'Anthropic returned no readable text for this model (it may have used up the token limit on internal reasoning, or only returned non-text content). Try raising the token limit or choosing a different model.',
+                'Anthropic n\'a renvoyé aucun texte exploitable pour ce modèle (le raisonnement interne a peut-être consommé toute la limite de tokens, ou seul du contenu non textuel a été renvoyé). Essayez d\'augmenter la limite de tokens ou de choisir un autre modèle.',
+                'Anthropic hat für dieses Modell keinen lesbaren Text zurückgegeben (das interne Reasoning hat möglicherweise das gesamte Token-Limit verbraucht, oder es wurde nur nicht-textueller Inhalt zurückgegeben). Erhöhen Sie das Token-Limit oder wählen Sie ein anderes Modell.'
+              ), { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model, code: data.stop_reason || '', detail: JSON.stringify(data.content || []) });
+            }
             this.lastRawResponse = text;
             const parsed = parseLLMJson(text);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');

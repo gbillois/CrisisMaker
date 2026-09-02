@@ -31,7 +31,8 @@ vm.runInContext(`const DEFAULT_MODELS = {
   google_gemini: ['gemini-fallback'],
   mistral: ['mistral-fallback'],
   ollama: ['llama3.2']
-};`, context);
+};
+const DEFAULT_AZURE_API_VERSION = '2024-10-21';`, context);
 vm.runInContext(fs.readFileSync('js/errors.js', 'utf8'), context, { filename: 'js/errors.js' });
 vm.runInContext(fs.readFileSync('js/ai.js', 'utf8'), context, { filename: 'js/ai.js' });
 
@@ -164,6 +165,7 @@ async function run() {
   };
   responses.push(response({
     content: [{
+      type: 'text',
       text: JSON.stringify({
         stimuli: [1, 2, 3].map((index) => ({
           channel: 'email_internal',
@@ -184,8 +186,8 @@ async function run() {
   assert.match(anthropicBody.messages[0].content, /REQUIRED OUTPUT COUNT: exactly 3/);
   assert.match(vm.runInContext('AITextGenerator.lastRawResponse', context), /Status update/);
 
-  responses.push(response({ content: [{ text: JSON.stringify({ stimuli: [{ channel: 'email_internal', fields: {} }] }) }] }));
-  responses.push(response({ content: [{ text: JSON.stringify({ stimuli: [
+  responses.push(response({ content: [{ type: 'text', text: JSON.stringify({ stimuli: [{ channel: 'email_internal', fields: {} }] }) }] }));
+  responses.push(response({ content: [{ type: 'text', text: JSON.stringify({ stimuli: [
     { channel: 'email_internal', fields: { subject: 'First' } },
     { channel: 'email_external', fields: { subject: 'Second' } }
   ] }) }] }));
@@ -194,6 +196,34 @@ async function run() {
   const retryBody = JSON.parse(requests[requests.length - 1][1].body);
   assert.match(retryBody.messages[0].content, /CORRECTION REQUIRED/);
   assert.match(retryBody.messages[0].content, /exactly 2/);
+
+  // Models with thinking enabled by default (e.g. Claude Sonnet 5) return a leading
+  // thinking block with empty text before the actual text block. Regression test for
+  // the silent-failure bug where content[0].text (the thinking block) was used directly.
+  responses.push(response({
+    content: [
+      { type: 'thinking', text: '' },
+      { type: 'text', text: JSON.stringify({ ok: true, via: 'thinking-model' }) }
+    ]
+  }));
+  const thinkingModelResult = await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 2000)`, context);
+  assert.equal(thinkingModelResult.ok, true);
+  assert.equal(thinkingModelResult.via, 'thinking-model');
+
+  // When no text block is present at all (e.g. the thinking budget consumed the whole
+  // response), Anthropic must now raise an explicit error instead of silently parsing '{}'.
+  responses.push(response({ content: [{ type: 'thinking', text: '' }], stop_reason: 'max_tokens' }));
+  await assert.rejects(
+    vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 2000)`, context),
+    /no readable text/
+  );
+
+  // A safety refusal (stop_reason "refusal") must also surface as an explicit error.
+  responses.push(response({ content: [], stop_reason: 'refusal', stop_details: { type: 'refusal', category: 'cyber' } }));
+  await assert.rejects(
+    vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 2000)`, context),
+    /declined to answer/
+  );
 
   const editPrompts = vm.runInContext(`LLMConfigPrompts.stimulus(
     'Update the body with the latest status',
@@ -225,6 +255,28 @@ async function run() {
   assert.equal(openRouterOptions.headers['HTTP-Referer'], 'https://crisismaker.example');
   assert.equal(openRouterOptions.headers['X-OpenRouter-Title'], 'CrisisMaker');
   assert.deepEqual(openRouterBody.response_format, { type: 'json_object' });
+
+  // Azure OpenAI: the API version used to be hardcoded to an outdated value that silently
+  // blocked recent deployments (reasoning models, GPT-5 family). It must now default to
+  // DEFAULT_AZURE_API_VERSION and honor a user-provided azure_api_version override.
+  context.appState.scenario.settings = {
+    ...context.appState.scenario.settings,
+    ai_provider: 'azure_openai',
+    azure_endpoint: 'https://example.openai.azure.com',
+    azure_api_key: 'azure-key',
+    azure_deployment: 'gpt-5-deployment',
+    azure_api_version: ''
+  };
+  responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
+  await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1000)`, context);
+  const [azureDefaultUrl] = requests[requests.length - 1];
+  assert.match(azureDefaultUrl, /api-version=2024-10-21/);
+
+  context.appState.scenario.settings.azure_api_version = '2025-01-01-preview';
+  responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
+  await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1000)`, context);
+  const [azureCustomUrl] = requests[requests.length - 1];
+  assert.match(azureCustomUrl, /api-version=2025-01-01-preview/);
 
   context.appState.scenario.settings = {
     ...context.appState.scenario.settings,
