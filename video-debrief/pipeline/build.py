@@ -15,7 +15,6 @@ import argparse, asyncio, json, os, re, shutil, subprocess, sys, unicodedata
 HERE = os.path.dirname(os.path.abspath(__file__))
 ENGINE = os.path.join(HERE, "..", "engine")
 OUT = os.path.join(HERE, "..", "out")
-sys.path.insert(0, os.path.expanduser("~/Library/Python/3.9/lib/python/site-packages"))
 
 VOICES = {
     "fr": "fr-FR-HenriNeural", "fr-f": "fr-FR-DeniseNeural",
@@ -25,9 +24,9 @@ VOICES = {
 }
 
 def which(name):
-    p = shutil.which(name) or ("/opt/homebrew/bin/" + name if os.path.exists("/opt/homebrew/bin/" + name) else None)
+    p = shutil.which(name)
     if not p:
-        sys.exit(f"ERROR: {name} introuvable. Installez-le (brew install ffmpeg).")
+        sys.exit(f"ERROR: {name} introuvable. Installez-le (https://ffmpeg.org/download.html).")
     return p
 
 FFMPEG = which("ffmpeg"); FFPROBE = which("ffprobe")
@@ -82,10 +81,12 @@ def compute_timing(project, durs):
 # ── 3. frames ────────────────────────────────────────────────────────
 def ensure_playwright():
     if not os.path.isdir(os.path.join(HERE, "node_modules", "playwright")):
+        npm = shutil.which("npm") or "npm"
+        npx = shutil.which("npx") or "npx"
         log("setup", "npm install playwright…")
-        subprocess.run(["npm", "init", "-y"], cwd=HERE, capture_output=True)
-        subprocess.run(["npm", "install", "playwright", "--no-audit", "--no-fund"], cwd=HERE, check=True)
-        install = ["npx", "playwright", "install", "chromium-headless-shell"]
+        subprocess.run([npm, "init", "-y"], cwd=HERE, capture_output=True)
+        subprocess.run([npm, "install", "playwright", "--no-audit", "--no-fund"], cwd=HERE, check=True)
+        install = [npx, "playwright", "install", "chromium-headless-shell"]
         if os.environ.get("CI"):  # runner Linux : dependances systeme incluses
             install.insert(3, "--with-deps")
         subprocess.run(install, cwd=HERE, check=True)
