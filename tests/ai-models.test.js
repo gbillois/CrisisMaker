@@ -32,7 +32,7 @@ vm.runInContext(`const DEFAULT_MODELS = {
   mistral: ['mistral-fallback'],
   ollama: ['llama3.2']
 };
-const DEFAULT_AZURE_API_VERSION = '2024-10-21';`, context);
+const DEFAULT_AZURE_API_VERSION = 'preview';`, context);
 vm.runInContext(fs.readFileSync('js/errors.js', 'utf8'), context, { filename: 'js/errors.js' });
 vm.runInContext(fs.readFileSync('js/ai.js', 'utf8'), context, { filename: 'js/ai.js' });
 
@@ -256,9 +256,10 @@ async function run() {
   assert.equal(openRouterOptions.headers['X-OpenRouter-Title'], 'CrisisMaker');
   assert.deepEqual(openRouterBody.response_format, { type: 'json_object' });
 
-  // Azure OpenAI: the API version used to be hardcoded to an outdated value that silently
-  // blocked recent deployments (reasoning models, GPT-5 family). It must now default to
-  // DEFAULT_AZURE_API_VERSION and honor a user-provided azure_api_version override.
+  // Azure OpenAI: Azure retired the dated api-version that used to be hardcoded here in favor
+  // of a unified "v1" API. By default the client must now call the v1 endpoint (deployment
+  // name passed as "model" in the body) — but a user who explicitly sets a dated version
+  // (for a resource still on the legacy API) must still get the classic per-deployment route.
   context.appState.scenario.settings = {
     ...context.appState.scenario.settings,
     ai_provider: 'azure_openai',
@@ -269,14 +270,16 @@ async function run() {
   };
   responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
   await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1000)`, context);
-  const [azureDefaultUrl] = requests[requests.length - 1];
-  assert.match(azureDefaultUrl, /api-version=2024-10-21/);
+  const [azureDefaultUrl, azureDefaultOptions] = requests[requests.length - 1];
+  assert.equal(azureDefaultUrl, 'https://example.openai.azure.com/openai/v1/chat/completions?api-version=preview');
+  assert.equal(JSON.parse(azureDefaultOptions.body).model, 'gpt-5-deployment');
 
   context.appState.scenario.settings.azure_api_version = '2025-01-01-preview';
   responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
   await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1000)`, context);
-  const [azureCustomUrl] = requests[requests.length - 1];
-  assert.match(azureCustomUrl, /api-version=2025-01-01-preview/);
+  const [azureCustomUrl, azureCustomOptions] = requests[requests.length - 1];
+  assert.equal(azureCustomUrl, 'https://example.openai.azure.com/openai/deployments/gpt-5-deployment/chat/completions?api-version=2025-01-01-preview');
+  assert.equal(JSON.parse(azureCustomOptions.body).model, undefined);
 
   context.appState.scenario.settings = {
     ...context.appState.scenario.settings,

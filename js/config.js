@@ -12,7 +12,7 @@
         mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
         ollama: ['llama3.2', 'gpt-oss:120b', 'gpt-oss:20b']
       };
-      const DEFAULT_AZURE_API_VERSION = '2024-10-21';
+      const DEFAULT_AZURE_API_VERSION = 'preview';
       const PROVIDER_STORAGE_KEYS = {
         aiProvider: 'aiProvider',
         ollamaMode: 'crisismaker_ollama_mode',

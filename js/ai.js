@@ -27,6 +27,26 @@
       const OLLAMA_CLOUD_BASE = 'https://ollama.com';
       const OLLAMA_CLOUD_PROXY = 'https://deckseeder.pages.dev/api/llm';
 
+      // Azure rolled out a unified "v1" API (openai/v1/...) that no longer pins a dated
+      // api-version and takes the deployment name as "model" in the body instead of in the
+      // URL path. Dated versions (e.g. "2024-10-21", "2025-01-01-preview") still route to the
+      // legacy per-deployment endpoint, so existing configurations keep working unchanged.
+      function isAzureV1ApiVersion(version) {
+        return /^(preview|latest)$/i.test(String(version || '').trim());
+      }
+
+      function azureChatCompletionsUrl(normalizedEndpoint, deployment, apiVersion) {
+        const version = String(apiVersion || DEFAULT_AZURE_API_VERSION).trim();
+        return isAzureV1ApiVersion(version)
+          ? `${normalizedEndpoint}/openai/v1/chat/completions?api-version=${encodeURIComponent(version)}`
+          : `${normalizedEndpoint}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${encodeURIComponent(version)}`;
+      }
+
+      function azureChatCompletionsBody(deployment, apiVersion, payload) {
+        const version = String(apiVersion || DEFAULT_AZURE_API_VERSION).trim();
+        return { ...(isAzureV1ApiVersion(version) ? { model: deployment } : {}), ...payload };
+      }
+
       function isOllamaCloud(settings = appState.scenario.settings) {
         return settings.ollama_mode === 'cloud';
       }
@@ -389,10 +409,10 @@
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
-            const response = await requestStream(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=${encodeURIComponent(azure_api_version || DEFAULT_AZURE_API_VERSION)}`, {
+            const response = await requestStream(azureChatCompletionsUrl(normalizedEndpoint, azure_deployment, azure_api_version), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
-              body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
+              body: JSON.stringify(azureChatCompletionsBody(azure_deployment, azure_api_version, { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true }))
             }, { operation: 'Stream Azure OpenAI response', provider: 'azure_openai', model: azure_deployment });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return parseLLMJson(fullText);
@@ -457,10 +477,10 @@
             }
             let response;
             try {
-              response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=${encodeURIComponent(azure_api_version || DEFAULT_AZURE_API_VERSION)}`, {
+              response = await fetch(azureChatCompletionsUrl(normalizedEndpoint, azure_deployment, azure_api_version), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
-                body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
+                body: JSON.stringify(azureChatCompletionsBody(azure_deployment, azure_api_version, { messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] }))
               });
             } catch (networkError) {
               throw CrisisError.wrap(networkError, { operation: 'Call Azure OpenAI', provider: 'azure_openai', model: azure_deployment, message: `Azure OpenAI network error: ${networkError.message}` });
