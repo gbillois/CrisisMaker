@@ -32,7 +32,7 @@ vm.runInContext(`const DEFAULT_MODELS = {
   mistral: ['mistral-fallback'],
   ollama: ['llama3.2']
 };
-const DEFAULT_AZURE_API_VERSION = 'preview';`, context);
+const DEFAULT_AZURE_API_VERSION = '2024-10-21';`, context);
 vm.runInContext(fs.readFileSync('js/errors.js', 'utf8'), context, { filename: 'js/errors.js' });
 vm.runInContext(fs.readFileSync('js/ai.js', 'utf8'), context, { filename: 'js/ai.js' });
 
@@ -256,10 +256,12 @@ async function run() {
   assert.equal(openRouterOptions.headers['X-OpenRouter-Title'], 'CrisisMaker');
   assert.deepEqual(openRouterBody.response_format, { type: 'json_object' });
 
-  // Azure OpenAI: Azure retired the dated api-version that used to be hardcoded here in favor
-  // of a unified "v1" API. By default the client must now call the v1 endpoint (deployment
-  // name passed as "model" in the body) — but a user who explicitly sets a dated version
-  // (for a resource still on the legacy API) must still get the classic per-deployment route.
+  // Azure OpenAI: by default the client must call the classic per-deployment endpoint with a
+  // dated api-version, because that endpoint accepts direct browser requests (CORS) while
+  // Azure's newer unified "v1" API does not. A user who explicitly opts into "preview" or
+  // "latest" (e.g. because their resource requires the v1 API, behind their own proxy) must
+  // get the v1 endpoint instead, with the deployment name passed as "model" in the body. A
+  // user-provided dated version must still route to the classic per-deployment endpoint.
   context.appState.scenario.settings = {
     ...context.appState.scenario.settings,
     ai_provider: 'azure_openai',
@@ -271,8 +273,8 @@ async function run() {
   responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
   await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1000)`, context);
   const [azureDefaultUrl, azureDefaultOptions] = requests[requests.length - 1];
-  assert.equal(azureDefaultUrl, 'https://example.openai.azure.com/openai/v1/chat/completions?api-version=preview');
-  assert.equal(JSON.parse(azureDefaultOptions.body).model, 'gpt-5-deployment');
+  assert.equal(azureDefaultUrl, 'https://example.openai.azure.com/openai/deployments/gpt-5-deployment/chat/completions?api-version=2024-10-21');
+  assert.equal(JSON.parse(azureDefaultOptions.body).model, undefined);
 
   context.appState.scenario.settings.azure_api_version = '2025-01-01-preview';
   responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
@@ -280,6 +282,13 @@ async function run() {
   const [azureCustomUrl, azureCustomOptions] = requests[requests.length - 1];
   assert.equal(azureCustomUrl, 'https://example.openai.azure.com/openai/deployments/gpt-5-deployment/chat/completions?api-version=2025-01-01-preview');
   assert.equal(JSON.parse(azureCustomOptions.body).model, undefined);
+
+  context.appState.scenario.settings.azure_api_version = 'preview';
+  responses.push(response({ choices: [{ message: { content: '{"ok":true}' } }] }));
+  await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1000)`, context);
+  const [azureV1Url, azureV1Options] = requests[requests.length - 1];
+  assert.equal(azureV1Url, 'https://example.openai.azure.com/openai/v1/chat/completions?api-version=preview');
+  assert.equal(JSON.parse(azureV1Options.body).model, 'gpt-5-deployment');
 
   context.appState.scenario.settings = {
     ...context.appState.scenario.settings,
