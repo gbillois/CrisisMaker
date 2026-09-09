@@ -56,3 +56,58 @@ iframe sub-app) and shows a placeholder instead; use the full app for it.
 
 - [MITRE ATT&CK / D3Fend threat and mitigation document](docs/mitre-attack-d3fend-threat-mitigation.md)
 - [Debrief generation and automation](docs/debrief-automation.md)
+
+## Agent mode
+
+The **Agent** tab provides **Build my exercise** and **Challenge my exercise**.
+Enter a brief or review objective, choose an autonomy mode, and select **Start**.
+The agent works on the currently open exercise and uses the existing AI connection
+settings, including local/cloud Ollama and all other supported providers. A model
+must be able to return structured JSON reliably; no additional backend, framework,
+or runtime dependency is required.
+
+- **Assist:** each modification waits for approval, with its exact arguments and
+  current context available for inspection.
+- **Agent** (default): normal edits are automatic; scenario/phase replacement and
+  batch rescheduling require approval.
+- **Auto-build:** broad edits are automatic. Deletion always requires approval.
+
+**Stop** aborts the current request and prevents late results from changing the
+exercise. Runs stop after 40 steps, repeated tool loops, three consecutive invalid
+responses/calls, or an unrecoverable failure. Requests have a 90-second timeout.
+The activity stream shows actions, results and remaining issues, without exposing
+reasoning transcripts. Other exercise editing pauses while a run is active.
+
+**Undo agent changes** restores the entire exercise to immediately before the
+latest run, including edits made subsequently. AI settings are preserved. A single
+checkpoint is saved in browser storage (or retained in memory if storage is full).
+Uploaded audio/video references can be restored in the same tab; temporary media
+URLs do not survive a browser reload. Starting a new run replaces the checkpoint.
+Completed edits continue to use normal local saving, project files and exports.
+Exercise objectives, narrative arc and timed phases are optional fields inside
+`scenario`; they also appear in the normal Scenario view and Checker context.
+Existing project files remain compatible, including projects with no actors.
+
+Implementation is separated into `js/agent-prompts.js` (editable designer/reviewer
+instructions), `js/agent-tools.js` (21 controlled tools, validation and bounded
+context), `js/agent-runner.js` (execution, approvals, cancellation and checkpoint),
+and `js/agent-view.js` (UI). Tools reuse existing actor/stimulus constructors,
+stimulus version history, generation prompts, provider transport and persistence.
+Structural checks flag missing data, timing gaps and duplicate content; the agent's
+critical content review evaluates decisions, pressure, realism and objectives.
+The agent scripts are automatically included by the existing standalone builder.
+
+Verification:
+
+```sh
+node --test tests/*.test.js
+node tools/build_inline_html.mjs
+# Optional browser smoke, using an existing Playwright installation and local test host:
+BROWSER_CHANNEL=chrome node tests/agent-browser-smoke.cjs http://127.0.0.1:8765/
+# Or test the generated standalone document directly:
+BROWSER_CHANNEL=chrome node tests/agent-browser-smoke.cjs file:///absolute/path/to/crisismaker.html
+```
+
+Set `PLAYWRIGHT_MODULE` to the absolute Playwright module path if it is not on the
+normal Node search path. Browser/provider tests use mocked AI responses and never
+require a real API key or spend provider credits.

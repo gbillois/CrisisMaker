@@ -3198,3 +3198,20 @@
       .debrief-preview { position: static; max-height: none; }
       .debrief-toolbar { align-items: flex-start; flex-direction: column; }
     }
+
+/* Agent workspace uses the same cards, fields and actions as the main studio. */
+.agent-workspace { max-width: 1180px; margin: 0 auto; }
+.agent-workspace h2 { margin: 0; }
+.agent-status { padding: 8px 12px; border-radius: 20px; background: #e7f5f1; color: #155b4b; white-space: nowrap; font-size: 13px; }
+.agent-warning { padding: 12px; background: #fff5da; color: #78520a; border-radius: 8px; }
+.agent-approval { border: 2px solid #c28a19; }
+.agent-workspace pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 340px; overflow: auto; padding: 12px; background: #f3f7f8; border-radius: 8px; font-size: 12px; }
+.agent-log { list-style: none; padding: 0; margin: 0; max-height: 540px; overflow: auto; }
+.agent-log li { padding: 12px 0; border-bottom: 1px solid #dfebec; overflow-wrap: anywhere; }
+.agent-log-success > span { color: #16684c; }
+.agent-log-warning > span, .agent-log-error > span { color: #8b530c; }
+.agent-log details { margin: 8px 0 0 22px; font-size: 12px; }
+.agent-phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
+.agent-phases > div { padding: 14px; background: #f0f7f6; border-radius: 8px; }
+.agent-phases p { margin-bottom: 0; }
+.agent-workspace button:disabled { opacity: .5; cursor: not-allowed; }

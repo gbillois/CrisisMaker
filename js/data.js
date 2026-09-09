@@ -237,7 +237,7 @@
           client: { ...base.client, ...(input.client || {}) },
           scenario: { ...base.scenario, ...(input.scenario || {}) },
           settings: { ...base.settings, ...(input.settings || {}) },
-          actors: Array.isArray(input.actors) && input.actors.length ? input.actors : base.actors,
+          actors: Array.isArray(input.actors) ? input.actors : base.actors,
           stimuli: Array.isArray(input.stimuli) ? input.stimuli.map(normalizeStimulus) : base.stimuli,
           debrief: normalizeDebrief(input.debrief, { ...base, ...input }),
           video_debrief: normalizeVideoDebrief(

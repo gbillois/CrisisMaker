@@ -249,10 +249,10 @@
           }
           return result;
         },
-        async generateForStimulus(stimulus, fieldName = null, guidedPrompt = null) {
+        async generateForStimulus(stimulus, fieldName = null, guidedPrompt = null, options = {}) {
           const actor = getActor(stimulus.actor_id);
           const promptInfo = PromptBuilder.forStimulus(stimulus, actor, appState.scenario, fieldName, guidedPrompt);
-          return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt);
+          return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 2000, options);
         },
         async generateStreaming(channel, systemPrompt, userPrompt = null, onChunk = null, maxTokens = 2000) {
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment, azure_api_version } = appState.scenario.settings;
@@ -437,7 +437,8 @@
           throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));
         },
 
-        async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000) {
+        async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000, options = {}) {
+          if (options.promptFilter) { systemPrompt = options.promptFilter(systemPrompt); if (userPrompt) userPrompt = options.promptFilter(userPrompt); }
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment, azure_api_version } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
           if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
@@ -458,7 +459,7 @@
             let response;
             try {
               response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=${encodeURIComponent(azure_api_version || DEFAULT_AZURE_API_VERSION)}`, {
-                method: 'POST',
+                method: 'POST', signal: options.signal,
                 headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
                 body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
               });
@@ -470,7 +471,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.', 'Leere Azure-OpenAI-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = parseLLMJson(content);
+            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Azure OpenAI.', 'Contenu généré avec Azure OpenAI.', 'Inhalt mit Azure OpenAI generiert.'), 'success');
             return parsed;
           }
@@ -478,7 +479,7 @@
             let response;
             try {
               response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
+                method: 'POST', signal: options.signal,
                 headers: { 'Content-Type': 'application/json', 'x-api-key': ai_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
                 body: JSON.stringify({ model: ai_model, max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt || 'Reply in strict JSON.' }] })
               });
@@ -503,7 +504,7 @@
               ), { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model, code: data.stop_reason || '', detail: JSON.stringify(data.content || []) });
             }
             this.lastRawResponse = text;
-            const parsed = parseLLMJson(text);
+            const parsed = options.strictJSON ? JSON.parse(text) : parseLLMJson(text);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');
             return parsed;
           }
@@ -512,7 +513,7 @@
             let response;
             try {
               response = await fetch(ai_provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
+                method: 'POST', signal: options.signal,
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}`, ...(ai_provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker' } : {}) },
                 body: JSON.stringify({
                   model: ai_model,
@@ -528,7 +529,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt(`Empty ${label} response.`, `Réponse ${label} vide.`, `Leere ${label}-Antwort.`));
             this.lastRawResponse = content;
-            const parsed = parseLLMJson(content);
+            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt(`Content generated with ${label}.`, `Contenu généré avec ${label}.`, `Inhalt mit ${label} generiert.`), 'success');
             return parsed;
           }
@@ -536,7 +537,7 @@
             let response;
             try {
               response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-                method: 'POST',
+                method: 'POST', signal: options.signal,
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}` },
                 body: JSON.stringify({
                   model: ai_model,
@@ -553,7 +554,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Mistral response.', 'Réponse Mistral vide.', 'Leere Mistral-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = parseLLMJson(content);
+            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Mistral.', 'Contenu généré avec Mistral.', 'Inhalt mit Mistral generiert.'), 'success');
             return parsed;
           }
@@ -561,7 +562,7 @@
             let response;
             try {
               response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai_model)}:generateContent?key=${encodeURIComponent(ai_api_key)}`, {
-                method: 'POST',
+                method: 'POST', signal: options.signal,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + (userPrompt || 'Reply in strict JSON.') }] }], generationConfig: { maxOutputTokens: maxTokens } })
               });
@@ -573,7 +574,7 @@
             const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!content) throw new Error(tt('Empty Google Gemini response.', 'Réponse Google Gemini vide.', 'Leere Google Gemini-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = parseLLMJson(content);
+            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Google Gemini.', 'Contenu généré avec Google Gemini.', 'Inhalt mit Google Gemini generiert.'), 'success');
             return parsed;
           }
@@ -581,7 +582,7 @@
             const endpoint = ollamaEndpoint();
             const url = `${endpoint}/api/chat`;
             const init = {
-              method: 'POST',
+              method: 'POST', signal: options.signal,
               headers: ollamaHeaders(appState.scenario.settings, true),
               body: JSON.stringify({
                 model: ai_model,
@@ -603,7 +604,7 @@
             const content = data.message?.content;
             if (!content) throw new Error(tt('Empty Ollama response.', 'Réponse Ollama vide.', 'Leere Ollama-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = parseLLMJson(content);
+            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Ollama.', 'Contenu généré avec Ollama.', 'Inhalt mit Ollama generiert.'), 'success');
             return parsed;
           }

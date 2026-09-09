@@ -170,6 +170,7 @@
                 ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
                 ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                 ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
+                ${renderNavIconButton('agent', svgTarget(), 'Agent')}
                 ${renderNavIconButton('checker', svgShieldCheck(), tt('Checker', 'Checker', 'Prüfer'))}
               </div>
               <div class="nav-topbar-center">
@@ -365,6 +366,10 @@
             title: tt('Injects', 'Injects', 'Injects'),
             subtitle: tt('Browse, filter, and manage all injects in your project.', 'Parcourez, filtrez et gérez tous les injects de votre projet.', 'Durchsuchen, filtern und verwalten Sie alle Injects in Ihrem Projekt.')
           },
+          agent: {
+            title: 'Agent',
+            subtitle: tt('Build and challenge your exercise with controlled AI tools.', 'Construisez et challengez votre exercice avec des outils IA contrôlés.', 'Ihre Übung mit kontrollierten KI-Werkzeugen erstellen und hinterfragen.')
+          },
           checker: {
             title: tt('Crisis Checker', 'Crisis Checker', 'Krisen-Prüfer'),
             subtitle: tt('Import a crisis exercise chronogram and analyze it automatically.', 'Importez un chronogramme d\'exercice de crise et analysez-le automatiquement.', 'Importieren Sie ein Krisenübungs-Chronogramm und analysieren Sie es automatisch.')
@@ -388,6 +393,7 @@
         if (appState.route === 'library') return renderLibraryView();
         if (appState.route === 'debrief') return renderDebriefView();
         if (appState.route === 'video-debrief') return renderVideoDebriefView();
+        if (appState.route === 'agent') return renderAgentView();
         if (appState.route === 'checker') return renderCheckerView();
         return renderProjectView();
       }
@@ -853,6 +859,7 @@
         return `
           <section class="grid">
             ${renderLLMConfigBlock('scenario', scenarioPlaceholder)}
+            ${renderExercisePlan()}
             <article class="card">
               <div class="section-header"><h3>${tt('Client', 'Client', 'Auftraggeber')}</h3></div>
               <div class="field-grid cols-2">

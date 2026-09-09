@@ -752,6 +752,8 @@ Response format (strict JSON):
         const phaseSize = maxOffset > 0 ? maxOffset / phaseCount : 60;
 
         const getPhase = (mins) => {
+          const planned = (sc.scenario?.phases || []).find(p => mins >= p.start_minutes && mins < p.end_minutes);
+          if (planned) return planned.name;
           if (maxOffset === 0) return 'Phase 1';
           return `Phase ${Math.min(phaseCount, Math.floor(mins / phaseSize) + 1)}`;
         };
@@ -787,6 +789,8 @@ Response format (strict JSON):
 TYPE: ${sc.scenario?.type || '—'}
 CLIENT: ${sc.client?.name || '—'} (${sc.client?.sector || '—'})
 CONTEXT: ${sc.scenario?.summary || '—'}
+OBJECTIVES: ${sc.scenario?.objectives || '—'}
+NARRATIVE ARC: ${sc.scenario?.narrative_arc || '—'}
 DURATION: H+0 to H+${Math.round(maxOffset / 60)}h (${stimuli.length} stimuli)
 
 ACTORS (${actors.length}):

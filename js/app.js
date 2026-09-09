@@ -114,6 +114,7 @@
           root.innerHTML = renderAppShell();
           bindGlobalEvents();
           bindCheckerEvents();
+          bindAgentEvents();
           bindStimuliSplitters();
           bindStimulusModalSplitter();
           mountDebriefEditor();
@@ -1366,9 +1367,12 @@
         }
       }
 
-      function addActor() {
-        appState.scenario.actors.push({ id: uid('actor'), name: tt('New actor', 'Nouvel acteur', 'Neuer Akteur'), role: 'internal', organization: appState.scenario.client.name, title: tt('Title / role', 'Titre / fonction', 'Titel / Funktion'), language: appState.scenario.client.language || 'en', avatar_initials: 'NA', avatar_url: '' });
-        App.render();
+      function addActor(values = {}, render = true) {
+        const actor = { id: uid('actor'), name: tt('New actor', 'Nouvel acteur', 'Neuer Akteur'), role: 'internal', organization: appState.scenario.client.name, title: tt('Title / role', 'Titre / fonction', 'Titel / Funktion'), language: appState.scenario.client.language || 'en', avatar_initials: 'NA', avatar_url: '', ...values };
+        actor.avatar_initials = initialsFromName(actor.name);
+        appState.scenario.actors.push(actor);
+        if (render) App.render();
+        return actor;
       }
 
       function duplicateActor(actorId) {
