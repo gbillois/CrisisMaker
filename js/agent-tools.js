@@ -129,6 +129,26 @@ function agentCleanFields(stimulus, fields) {
   return clean;
 }
 
+function agentResolveStimulusTemplate(channel, templateId, fields = {}) {
+  let resolved = templateId;
+  let contentFields = fields;
+  const legacyPublication = fields.publication;
+  if (legacyPublication !== undefined) {
+    if (channel !== 'article_press' || typeof legacyPublication !== 'string') throw new AgentValidationError('publication is a press template selector; use top-level template_id.');
+    const wanted = legacyPublication.trim().toLowerCase();
+    const match = Object.entries(ARTICLE_TEMPLATE_LIBRARY).find(([id, template]) => id.toLowerCase() === wanted || template.label?.toLowerCase() === wanted);
+    if (!match) throw new AgentValidationError(`Unknown press publication. Use template_id: ${Object.keys(ARTICLE_TEMPLATE_LIBRARY).join(', ')}.`);
+    if (resolved && resolved !== match[0]) throw new AgentValidationError('Conflicting template_id and fields.publication.');
+    resolved = match[0];
+    contentFields = Object.fromEntries(Object.entries(fields).filter(([key]) => key !== 'publication'));
+  }
+  if (resolved) {
+    const library = channel === 'article_press' ? ARTICLE_TEMPLATE_LIBRARY : channel === 'breaking_news_tv' ? TV_TEMPLATE_LIBRARY : null;
+    if (!library?.[resolved]) throw new AgentValidationError(`template_id is not valid for channel ${channel}.`);
+  }
+  return { templateId: resolved, fields: contentFields };
+}
+
 function createAgentToolRegistry() {
   const S = AgentSchema, registry = new Map();
   const add = (name, description, properties, required, execute, risk = 'read') => registry.set(name, { name, description, inputSchema: S.object(properties, required), execute, risk });
@@ -156,10 +176,12 @@ function createAgentToolRegistry() {
   add('listStimuli', 'Read paginated content excerpts; getStimulus returns complete editable content.', page, [], args => paginate(getSortedStimuli(), args, s => agentStimulus(s)));
   add('getStimulus', 'Read complete content plus editable template fields and types.', id, ['id'], args => agentStimulus(requireItem(getStimulus, args.id), true));
   const stimulusProps = { name: S.text(500), actor_id: S.id, timestamp_offset_minutes: S.minutes, generation_prompt: text, status: { ...S.text(), enum: ['draft', 'ready'] }, fields };
-  add('createStimulus', 'Create a scheduled inject. Supply complete fields or generate content afterwards. Read getStimulus for template field definitions.', { ...stimulusProps, channel: { ...S.text(), enum: Object.keys(TEMPLATE_LIBRARY) } }, ['name', 'actor_id', 'timestamp_offset_minutes', 'channel'], args => {
+  const specializedTemplateIds = [...new Set([...Object.keys(ARTICLE_TEMPLATE_LIBRARY), ...Object.keys(TV_TEMPLATE_LIBRARY)])];
+  add('createStimulus', 'Create a scheduled inject. For article_press or breaking_news_tv, select the publication/station with top-level template_id. fields accepts only actual fields of that template; publication is not a content field. Omit fields and generate content afterwards when field names are unknown.', { ...stimulusProps, channel: { ...S.text(), enum: Object.keys(TEMPLATE_LIBRARY) }, template_id: { ...S.text(), enum: specializedTemplateIds } }, ['name', 'actor_id', 'timestamp_offset_minutes', 'channel'], args => {
     requireItem(getActor, args.actor_id);
-    const stimulus = makeStimulus(args.channel, args.actor_id, args.timestamp_offset_minutes);
-    const clean = agentCleanFields(stimulus, args.fields || {});
+    const selection = agentResolveStimulusTemplate(args.channel, args.template_id, args.fields || {});
+    const stimulus = makeStimulus(args.channel, args.actor_id, args.timestamp_offset_minutes, selection.templateId);
+    const clean = agentCleanFields(stimulus, selection.fields);
     Object.assign(stimulus, agentPick(args, ['name', 'generation_prompt', 'status']));
     saveStimulus(stimulus, { ...stimulus.fields, ...clean }, 'Agent: created content');
     appState.scenario.stimuli.push(stimulus); setDefaultVideoForStimulus(stimulus); sortStimuli();

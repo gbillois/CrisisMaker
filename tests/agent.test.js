@@ -94,6 +94,18 @@ test('validation rejects missing actors, invalid content fields, overlapping pha
   assert.deepEqual(h.json('agentSnapshot()'), before);
 });
 
+test('press creation selects publications with template_id and accepts the legacy publication argument safely', async () => {
+  const h = harness();
+  const journalist = await execute(h, 'createActor', { name: 'Reporter', role: 'journalist' });
+  const article = await execute(h, 'createStimulus', { name: 'Public scrutiny', actor_id: journalist.id, channel: 'article_press', template_id: 'lemonde', timestamp_offset_minutes: 60, fields: { headline: 'Une crise sous surveillance' } });
+  assert.equal(article.template_id, 'lemonde');
+  assert.equal(article.fields.headline, 'Une crise sous surveillance');
+  const legacy = await execute(h, 'createStimulus', { name: 'Market reaction', actor_id: journalist.id, channel: 'article_press', timestamp_offset_minutes: 90, fields: { publication: 'Financial Times', headline: 'Board faces public pressure' } });
+  assert.equal(legacy.template_id, 'ft');
+  assert.equal(Object.hasOwn(legacy.fields, 'publication'), false);
+  await assert.rejects(execute(h, 'createStimulus', { name: 'Bad outlet', actor_id: journalist.id, channel: 'article_press', timestamp_offset_minutes: 120, fields: { publication: 'Unknown Daily' } }), /Unknown press publication/);
+});
+
 test('Assist approval/rejection and Agent broad-change approval show concrete proposed arguments', async () => {
   for (const mode of ['assist', 'agent']) {
     const h = harness(), r = runner(h, [call('updateScenario', { name: 'Approved name' }), final]);
