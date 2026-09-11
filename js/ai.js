@@ -25,7 +25,71 @@
       }
 
       const OLLAMA_CLOUD_BASE = 'https://ollama.com';
-      const OLLAMA_CLOUD_PROXY = 'https://deckseeder.pages.dev/api/llm';
+      const AI_PROVIDER_PROXY = 'https://deckseeder.pages.dev/api/llm';
+
+      function azureChatUrl(settings = appState.scenario.settings) {
+        let endpoint;
+        try {
+          endpoint = new URL(String(settings.azure_endpoint || '').trim());
+        } catch (_) {
+          throw new Error(tt('Invalid Azure endpoint URL.', 'URL d’endpoint Azure invalide.', 'Ungültige Azure-Endpunkt-URL.'));
+        }
+        if (endpoint.protocol !== 'https:') throw new Error('Azure endpoint must use HTTPS.');
+        if (endpoint.username || endpoint.password || endpoint.port || !/\.(openai\.azure\.com|cognitiveservices\.azure\.com|services\.ai\.azure\.com)$/i.test(endpoint.hostname)) {
+          throw new Error('Use an Azure resource endpoint ending in .openai.azure.com, .cognitiveservices.azure.com, or .services.ai.azure.com.');
+        }
+        const path = endpoint.pathname.replace(/\/+$/, '');
+        if (/\/api\/projects(?:\/|$)/i.test(path)) {
+          throw new Error('Use the Azure resource endpoint, not the Foundry project URL (/api/projects/…).');
+        }
+        // Foundry and pasted SDK v1 URLs use implicit versioning, as in DeckSeeder.
+        // Keep resource-root URLs on the dated API for existing Azure configurations.
+        if (/^(?:\/openai\/v1)+(?:\/chat\/completions)?$/i.test(path)
+          || (!path && /\.services\.ai\.azure\.com$/i.test(endpoint.hostname))) {
+          return `${endpoint.origin}/openai/v1/chat/completions`;
+        }
+        if (path && !/^\/openai\/deployments\/[^/]+\/chat\/completions$/i.test(path)) {
+          throw new Error('Use the Azure resource root or an endpoint ending in /openai/v1.');
+        }
+        const version = String(settings.azure_api_version || DEFAULT_AZURE_API_VERSION).trim();
+        return `${endpoint.origin}/openai/deployments/${encodeURIComponent(settings.azure_deployment.trim())}/chat/completions?api-version=${encodeURIComponent(version)}`;
+      }
+
+      async function fetchAzureChat(settings, messages, { stream = false, signal } = {}) {
+        const url = azureChatUrl(settings);
+        const init = {
+          method: 'POST', signal,
+          headers: { 'Content-Type': 'application/json', 'api-key': settings.azure_api_key.trim() },
+          body: JSON.stringify({ model: settings.azure_deployment.trim(), messages, ...(stream ? { stream: true } : {}) })
+        };
+        try {
+          return await fetch(url, init);
+        } catch (error) {
+          if (error?.name === 'AbortError' || signal?.aborted) throw error;
+        }
+        // A browser CORS/network failure has no HTTP response. Reuse the relay
+        // already used by Ollama Cloud, including in the standalone HTML build.
+        try {
+          const response = await fetch(AI_PROVIDER_PROXY, {
+            method: 'POST', signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: 'azure', url, method: init.method, headers: init.headers, body: init.body })
+          });
+          // The relay's custom marker is not exposed by CORS across origins;
+          // Content-Type is readable and also rejects an HTML hosting error page.
+          if (!/^(application\/json|text\/event-stream)\b/i.test(response.headers?.get('content-type') || '')) {
+            throw new Error('Unexpected relay response');
+          }
+          return response;
+        } catch (error) {
+          if (error?.name === 'AbortError' || signal?.aborted) throw error;
+          throw CrisisError.wrap(error, {
+            operation: stream ? 'Stream Azure OpenAI response' : 'Call Azure OpenAI',
+            provider: 'azure_openai', model: settings.azure_deployment,
+            message: `Azure OpenAI could not be reached at ${new URL(url).hostname}; the DeckSeeder relay also failed. Check the resource endpoint, browser CORS restrictions, VPN/firewall, and access to deckseeder.pages.dev. No separate region setting is required.`
+          });
+        }
+      }
 
       function isOllamaCloud(settings = appState.scenario.settings) {
         return settings.ollama_mode === 'cloud';
@@ -127,7 +191,7 @@
         } else if (provider === 'ollama') {
           const url = `${ollamaBase}/api/tags`;
           const init = { method: 'GET', headers: ollamaHeaders(settings) };
-          response = await requestModels(isOllamaCloud(settings) ? OLLAMA_CLOUD_PROXY : url,
+          response = await requestModels(isOllamaCloud(settings) ? AI_PROVIDER_PROXY : url,
             isOllamaCloud(settings) ? ollamaProxyOptions(url, init) : init);
         } else {
           return [];
@@ -255,7 +319,7 @@
           return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 2000, options);
         },
         async generateStreaming(channel, systemPrompt, userPrompt = null, onChunk = null, maxTokens = 2000) {
-          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment, azure_api_version } = appState.scenario.settings;
+          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
 
           const readSSE = async (response, extractDelta) => {
             if (!response.ok) {
@@ -388,12 +452,9 @@
 
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
-            const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
-            const response = await requestStream(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=${encodeURIComponent(azure_api_version || DEFAULT_AZURE_API_VERSION)}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
-              body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], stream: true })
-            }, { operation: 'Stream Azure OpenAI response', provider: 'azure_openai', model: azure_deployment });
+            const response = await fetchAzureChat(appState.scenario.settings,
+              [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
+              { stream: true });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return parseLLMJson(fullText);
           }
@@ -427,7 +488,7 @@
                 stream: true
               })
             };
-            const response = await requestStream(isOllamaCloud() ? OLLAMA_CLOUD_PROXY : url,
+            const response = await requestStream(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
               isOllamaCloud() ? ollamaProxyOptions(url, init) : init,
               { operation: 'Stream Ollama response', provider: 'ollama', model: ai_model });
             const fullText = await readNDJSON(response, (event) => event.message?.content || null);
@@ -439,7 +500,7 @@
 
         async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000, options = {}) {
           if (options.promptFilter) { systemPrompt = options.promptFilter(systemPrompt); if (userPrompt) userPrompt = options.promptFilter(userPrompt); }
-          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment, azure_api_version } = appState.scenario.settings;
+          const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
           if (ai_provider === 'openai' && !ai_api_key) throw new Error(tt('Missing OpenAI API key.', 'Clé API OpenAI manquante.', 'Fehlender OpenAI-API-Schlüssel.'));
           if (ai_provider === 'openrouter' && !ai_api_key) throw new Error(tt('Missing OpenRouter API key.', 'Clé API OpenRouter manquante.', 'Fehlender OpenRouter-API-Schlüssel.'));
@@ -448,24 +509,9 @@
           if (ai_provider === 'ollama' && isOllamaCloud() && !ai_api_key) throw new Error(tt('Missing Ollama Cloud API key.', 'Clé API Ollama Cloud manquante.', 'Fehlender Ollama-Cloud-API-Schlüssel.'));
           if (ai_provider === 'azure_openai') {
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
-            const normalizedEndpoint = azure_endpoint.replace(/\/+$/, '');
-            try {
-              const endpointUrl = new URL(normalizedEndpoint);
-              if (endpointUrl.protocol !== 'https:') throw new Error(tt('Azure endpoint must use HTTPS.', 'L\'endpoint Azure doit utiliser HTTPS.', 'Der Azure-Endpunkt muss HTTPS verwenden.'));
-            } catch (urlErr) {
-              if (urlErr.message.includes('HTTPS') || urlErr.message.includes('HTTPS')) throw urlErr;
-              throw new Error(tt('Invalid Azure endpoint URL.', 'URL d\'endpoint Azure invalide.', 'Ungültige Azure-Endpunkt-URL.'));
-            }
-            let response;
-            try {
-              response = await fetch(`${normalizedEndpoint}/openai/deployments/${encodeURIComponent(azure_deployment)}/chat/completions?api-version=${encodeURIComponent(azure_api_version || DEFAULT_AZURE_API_VERSION)}`, {
-                method: 'POST', signal: options.signal,
-                headers: { 'Content-Type': 'application/json', 'api-key': azure_api_key },
-                body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])] })
-              });
-            } catch (networkError) {
-              throw CrisisError.wrap(networkError, { operation: 'Call Azure OpenAI', provider: 'azure_openai', model: azure_deployment, message: `Azure OpenAI network error: ${networkError.message}` });
-            }
+            const response = await fetchAzureChat(appState.scenario.settings,
+              [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
+              { signal: options.signal });
             const data = await CrisisError.responseJson(response, { operation: 'Call Azure OpenAI', provider: 'azure_openai', model: azure_deployment });
             this.lastRawResponse = JSON.stringify(data, null, 2);
             const content = data.choices?.[0]?.message?.content;
@@ -594,7 +640,7 @@
             };
             let response;
             try {
-              response = await fetch(isOllamaCloud() ? OLLAMA_CLOUD_PROXY : url,
+              response = await fetch(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
                 isOllamaCloud() ? ollamaProxyOptions(url, init) : init);
             } catch (networkError) {
               throw CrisisError.wrap(networkError, { operation: 'Call Ollama', provider: 'ollama', model: ai_model, message: `Ollama network error: ${networkError.message}` });

@@ -1,5 +1,5 @@
 const ALLOWED_HOSTS = new Set(['ollama.com']);
-const ALLOWED_HEADER_NAMES = new Set(['authorization', 'content-type']);
+const ALLOWED_HEADER_NAMES = new Set(['authorization', 'content-type', 'api-key']);
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +11,8 @@ const CORS = {
 function isAllowedUrl(url) {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'https:' && ALLOWED_HOSTS.has(parsed.hostname);
+    return parsed.protocol === 'https:' && !parsed.username && !parsed.password && !parsed.port
+      && (ALLOWED_HOSTS.has(parsed.hostname) || /\.(openai\.azure\.com|cognitiveservices\.azure\.com|services\.ai\.azure\.com)$/i.test(parsed.hostname));
   } catch (_) {
     return false;
   }
@@ -53,11 +54,12 @@ export async function onRequestPost(context) {
   try {
     providerResponse = await fetch(payload.url, {
       method,
+      redirect: 'error',
       headers: filteredHeaders(payload.headers),
       body: method === 'GET' ? undefined : (payload.body || '')
     });
   } catch (error) {
-    return jsonError(`Ollama fetch failed from Cloudflare: ${error?.message || 'network error'}`, 502);
+    return jsonError(`Provider fetch failed from Cloudflare: ${error?.message || 'network error'}`, 502);
   }
 
   const headers = new Headers(providerResponse.headers);

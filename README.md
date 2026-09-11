@@ -2,6 +2,33 @@
 
 CrisisMaker by Wavestone is a static browser application for designing and exporting cyber crisis exercise stimuli.
 
+## Azure OpenAI
+
+Use the endpoint, API key, and deployment name from the same Azure resource.
+No separate region parameter is needed. The deployment name may differ from the
+model name.
+
+- URLs ending in `/openai/v1` and Foundry resource roots
+  (`https://<resource>.services.ai.azure.com`) use the v1 Chat Completions API,
+  with the deployment in `model` and no dated `api-version` query parameter.
+- Classic Azure resource roots (`*.openai.azure.com` and
+  `*.cognitiveservices.azure.com`) retain the dated API version in Settings.
+  Append `/openai/v1` to use the same v1 URL convention as DeckSeeder.
+- Use the resource endpoint, not a Foundry project URL (`/api/projects/...`).
+
+If a direct request fails at the browser network/CORS layer, CrisisMaker retries
+through the existing DeckSeeder Cloudflare relay. This forwards the API key and
+prompt through that relay, as Ollama Cloud already does. It applies to connection
+tests, generation, and streaming, including the standalone HTML. HTTP errors
+(such as invalid keys, missing deployments, and rate limits) are shown without a
+relay retry. A corporate firewall or private Azure resource may still prevent
+connectivity; both the resource endpoint and `deckseeder.pages.dev` must be reachable
+from the networks used for those requests.
+
+The bundled `functions/api/llm.js` also permits these Azure host suffixes and the
+`api-key` header for a future Cloudflare deployment. GitHub Pages uses the existing
+DeckSeeder relay; it does not execute the bundled function.
+
 ## Ollama
 
 The AI connection settings support both Ollama modes:
@@ -9,7 +36,7 @@ The AI connection settings support both Ollama modes:
 - **Local models:** start Ollama on the default `http://localhost:11434` endpoint, pull a model with `ollama pull <model>`, then refresh the model list in CrisisMaker. No API key is required.
 - **Ollama Cloud:** select Ollama Cloud, create a key at [ollama.com/settings/keys](https://ollama.com/settings/keys), enter it in CrisisMaker, then refresh the model list.
 
-Ollama Cloud requests use the existing DeckSeeder Cloudflare relay because Ollama's direct API does not accept browser CORS preflight requests from a static GitHub Pages application. The relay only accepts HTTPS requests to `ollama.com`, filters forwarded headers, and streams the response back without storing the credential. The same restricted relay implementation is included in [`functions/api/llm.js`](functions/api/llm.js) for a future standalone Cloudflare Pages deployment.
+Ollama Cloud requests use the existing DeckSeeder Cloudflare relay because Ollama's direct API does not accept browser CORS preflight requests from a static GitHub Pages application. Ollama requests target `https://ollama.com`; the relay filters forwarded headers and streams the response back without application-level credential storage. The same restricted relay implementation is included in [`functions/api/llm.js`](functions/api/llm.js) for a future standalone Cloudflare Pages deployment.
 
 For the deployed site, allow its origin in the Ollama service environment and restart Ollama:
 
