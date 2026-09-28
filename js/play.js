@@ -29,7 +29,7 @@ function playLogCsv(project = appState.scenario) {
   const play = playState(project);
   const quote = csvCell;
   const rows = play.log.map((entry) => [sbFormatOffset(Math.floor(entry.t)), entry.at ? new Date(entry.at).toLocaleString() : '', project.scenario.start_date ? sbClockTime(entry.t, project.scenario.start_date) : '', playLogTypeLabel(entry.type), entry.text]);
-  return '\ufeff' + [['Exercise time', 'Wall clock', 'Simulated time', 'Type', 'Event'], ...rows].map((row) => row.map(quote).join(';')).join('\r\n');
+  return '\ufeff' + [[tt('Exercise time', 'Temps d’exercice', 'Übungszeit'), tt('Wall clock', 'Heure réelle', 'Echtzeit'), tt('Simulated time', 'Heure simulée', 'Simulierte Zeit'), tt('Type', 'Type', 'Typ'), tt('Event', 'Événement', 'Ereignis')], ...rows].map((row) => row.map(quote).join(';')).join('\r\n');
 }
 
 function playSaveLog() {

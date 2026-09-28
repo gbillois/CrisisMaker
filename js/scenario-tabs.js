@@ -117,9 +117,9 @@ function renderStorylineView() {
     const block = sbSelectedBlock();
     const ai = isLLMAvailable();
     const stages = slPhaseTypes();
-    return `<section class="sb-workspace sl-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="Main storyline">
+    return `<section class="sb-workspace sl-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="${escapeAttribute(workflowTabLabel('storyline'))}">
       <header class="sb-toolbar">
-        <div class="sb-tb-title"><span class="sb-eyebrow">Main storyline</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong><span class="sb-chip sb-chip-rev">rev ${storyboard.rev}</span></div></div>
+        <div class="sb-tb-title"><span class="sb-eyebrow">${escapeHtml(workflowTabLabel('storyline'))}</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong><span class="sb-chip sb-chip-rev">rev ${storyboard.rev}</span></div></div>
         <div class="sb-tb-group">
           <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="Undo (Ctrl+Z)">${sbUiIcon('undo')}</button>
           <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="Redo (Ctrl+Shift+Z)">${sbUiIcon('redo')}</button>
@@ -416,9 +416,9 @@ function renderDetailedView() {
     });
     const cellScope = state.cell !== 'all' && state.cell !== 'none' ? sbCell(project, state.cell) : null;
     const missing = items.filter((item) => item.kind === 'beat' && !item.stimulus && (!cellScope || sbReaches(item.cell_id, cellScope.id))).length;
-    return `<section class="sb-workspace ds-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="Detailed storyline">
+    return `<section class="sb-workspace ds-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="${escapeAttribute(workflowTabLabel('detailed'))}">
       <header class="sb-toolbar ds-toolbar">
-        <div class="sb-tb-title"><span class="sb-eyebrow">Detailed storyline</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong></div></div>
+        <div class="sb-tb-title"><span class="sb-eyebrow">${escapeHtml(workflowTabLabel('detailed'))}</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong></div></div>
         <div class="ds-cells" role="tablist" aria-label="Cells">
           <button class="ds-cell-chip ${state.cell === 'all' ? 'active' : ''}" data-tab-action="ds-cell" data-tab-value="all">All cells <b>${items.length}</b></button>
           ${project.cells.map((cell) => `<button class="ds-cell-chip ${state.cell === cell.id ? 'active' : ''}" style="--cell-color:${cell.color}" data-tab-action="ds-cell" data-tab-value="${cell.id}"><i></i>${escapeHtml(cell.name)} <b>${counts.get(cell.id) || 0}</b></button>`).join('')}

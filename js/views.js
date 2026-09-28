@@ -201,9 +201,9 @@
                 <div class="nav-topbar-left">
                   ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
                   ${renderNavIconButton('scenario', svgTarget(), tt('Context', 'Contexte', 'Kontext'))}
-                  ${renderNavIconButton('storyline', svgStoryboard(), 'Main storyline')}
-                  ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
-                  ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
+                  ${renderNavIconButton('storyline', svgStoryboard(), escapeHtml(workflowTabLabel('storyline')))}
+                  ${renderNavIconButton('cells', svgUsers(), escapeHtml(workflowTabLabel('cells')))}
+                  ${renderNavIconButton('detailed', svgPen(), escapeHtml(workflowTabLabel('detailed')))}
                   ${renderNavIconButton('library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'))}
                   ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
                   ${renderNavIconButton('play', svgBroadcast(), 'Play')}
@@ -270,6 +270,14 @@
           </div>`;
       }
 
+      /* The names of the three storyline tabs, shared by the nav, the welcome cards and the tabs. */
+      function workflowTabLabel(route) {
+        if (route === 'storyline') return tt('Main storyline', 'Storyline principale', 'Haupt-Storyline');
+        if (route === 'cells') return tt('Cells & actors', 'Cellules et acteurs', 'Zellen und Akteure');
+        if (route === 'detailed') return tt('Detailed storyline', 'Storyline détaillée', 'Detaillierte Storyline');
+        return route;
+      }
+
       function renderNavIconButton(route, iconSvg, label) {
         const isActive = appState.route === route;
         return `<button class="nav-icon-btn ${isActive ? 'active' : ''}" data-route="${route}" title="${label}">
@@ -305,9 +313,9 @@
         const cards = [
           ['project', svgFolder(), tt('Project', 'Projet', 'Projekt'), tt('The exercise at a glance, projects to open, save and export, and a library of ready-made scenarios to start from.', 'L’exercice en un coup d’œil, les projets à ouvrir, sauvegarder et exporter, et une bibliothèque de scénarios prêts à l’emploi pour démarrer.', 'Die Übung auf einen Blick, Projekte zum Öffnen, Speichern und Exportieren sowie eine Bibliothek fertiger Szenarien als Ausgangspunkt.')],
           ['scenario', svgTarget(), tt('Context', 'Contexte', 'Kontext'), tt('Set the client, duration, simulated dates, cells, players and languages, describe your objectives and ideas, and let the AI agent build the exercise with you.', 'Renseignez le client, la durée, les dates simulées, les cellules, les joueurs et les langues, décrivez vos objectifs et vos idées, et laissez l’agent IA construire l’exercice avec vous.', 'Auftraggeber, Dauer, simulierte Daten, Zellen, Spieler und Sprachen festlegen, Ziele und Ideen beschreiben und die Übung gemeinsam mit dem KI-Agenten aufbauen.')],
-          ['storyline', svgStoryboard(), 'Main storyline', tt('Lay out the phases of the crisis on a single timeline and write what happens in each one, by hand or with AI.', 'Disposez les phases de la crise sur une timeline unique et décrivez ce qui se passe dans chacune, à la main ou avec l’IA.', 'Die Phasen der Krise auf einer einzigen Zeitachse anordnen und beschreiben, was in jeder passiert, von Hand oder mit KI.')],
-          ['cells', svgUsers(), 'Cells & actors', tt('Create the player cells and their participants, and the simulated actors who send injects: attackers, press, authorities.', 'Créez les cellules de joueurs et leurs participants, et les acteurs simulés qui envoient les injects : attaquants, presse, autorités.', 'Spielerzellen und ihre Teilnehmer anlegen sowie die simulierten Akteure, die Injects senden: Angreifer, Presse, Behörden.')],
-          ['detailed', svgPen(), 'Detailed storyline', tt('Pick a cell and plan its injects under the main storyline, then write them with AI and keep them in sync.', 'Choisissez une cellule et planifiez ses injects sous la storyline principale, puis rédigez-les avec l’IA et gardez-les synchronisés.', 'Eine Zelle wählen und ihre Injects unter der Haupt-Storyline planen, dann mit KI schreiben und synchron halten.')],
+          ['storyline', svgStoryboard(), workflowTabLabel('storyline'), tt('Lay out the phases of the crisis on a single timeline and write what happens in each one, by hand or with AI.', 'Disposez les phases de la crise sur une timeline unique et décrivez ce qui se passe dans chacune, à la main ou avec l’IA.', 'Die Phasen der Krise auf einer einzigen Zeitachse anordnen und beschreiben, was in jeder passiert, von Hand oder mit KI.')],
+          ['cells', svgUsers(), workflowTabLabel('cells'), tt('Create the player cells and their participants, and the simulated actors who send injects: attackers, press, authorities.', 'Créez les cellules de joueurs et leurs participants, et les acteurs simulés qui envoient les injects : attaquants, presse, autorités.', 'Spielerzellen und ihre Teilnehmer anlegen sowie die simulierten Akteure, die Injects senden: Angreifer, Presse, Behörden.')],
+          ['detailed', svgPen(), workflowTabLabel('detailed'), tt('Pick a cell and plan its injects under the main storyline, then write them with AI and keep them in sync.', 'Choisissez une cellule et planifiez ses injects sous la storyline principale, puis rédigez-les avec l’IA et gardez-les synchronisés.', 'Eine Zelle wählen und ihre Injects unter der Haupt-Storyline planen, dann mit KI schreiben und synchron halten.')],
           ['library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'), tt('Every inject of the scenario, gathered by phase and filterable by cell: preview them for facilitation and export them as styled images or a ZIP.', 'Tous les injects du scénario, regroupés par phase et filtrables par cellule : prévisualisez-les pour l’animation et exportez-les en images stylées ou en ZIP.', 'Alle Injects des Szenarios, nach Phase gruppiert und nach Zelle filterbar: für die Moderation ansehen und als gestaltete Bilder oder ZIP exportieren.')],
           ['summary', svgShieldCheck(), 'Check & Challenge', tt('Know whether the exercise is ready to play: live consistency checks, the load of each cell by phase, one AI challenge on coverage, pacing and realism, and a ready-to-play checklist.', 'Sachez si l’exercice est prêt à être joué : contrôles de cohérence en continu, charge de chaque cellule par phase, un challenge IA sur la couverture, le rythme et le réalisme, et une checklist « Prêt à jouer ».', 'Wissen, ob die Übung spielbereit ist: laufende Konsistenzprüfungen, Last jeder Zelle pro Phase, eine KI-Challenge zu Abdeckung, Tempo und Realismus und eine Spielbereit-Checkliste.')],
           ['play', svgBroadcast(), 'Play', tt('Run the exercise live: a permanent control bar with the clock, current phase and next inject, a vertical chronogram to send each inject on time, and an exercise log.', 'Animez l’exercice en direct : un bandeau de pilotage avec l’horloge, la phase en cours et le prochain inject, un chronogramme vertical pour envoyer chaque inject à temps, et un journal de l’exercice.', 'Übung live durchführen: Steuerleiste mit Uhr, aktueller Phase und nächstem Inject, vertikales Chronogramm zum pünktlichen Senden und ein Übungsprotokoll.')],
@@ -365,15 +373,15 @@
                   <div class="launch-tips">
                     <div class="launch-tip">
                       <div class="launch-tip-num">1</div>
-                      <span><strong>Frame the exercise</strong>: pick a scenario in the Project library if you like, then fill in the Context tab and generate the exercise with AI.</span>
+                      <span>${tt('<strong>Frame the exercise</strong>: pick a scenario in the Project library if you like, then fill in the Context tab and generate the exercise with AI.', '<strong>Cadrez l’exercice</strong> : choisissez si vous le souhaitez un scénario dans la bibliothèque du Projet, puis remplissez l’onglet Contexte et générez l’exercice avec l’IA.', '<strong>Übung einordnen</strong>: Bei Bedarf ein Szenario aus der Projekt-Bibliothek wählen, dann den Tab Kontext ausfüllen und die Übung mit KI erstellen.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">2</div>
-                      <span><strong>Shape the main storyline</strong>: adjust the phases on the timeline and describe what happens in each, then set up the cells and actors.</span>
+                      <span>${tt('<strong>Shape the main storyline</strong>: adjust the phases on the timeline and describe what happens in each, then set up the cells and actors.', '<strong>Façonnez la storyline principale</strong> : ajustez les phases sur la timeline et décrivez ce qui se passe dans chacune, puis mettez en place les cellules et les acteurs.', '<strong>Haupt-Storyline gestalten</strong>: Die Phasen auf der Zeitachse anpassen und beschreiben, was in jeder passiert, dann Zellen und Akteure einrichten.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">3</div>
-                      <span><strong>Detail each cell</strong>: in Detailed storyline, plan and write the injects of every cell, then challenge the whole exercise in Check &amp; Challenge.</span>
+                      <span>${tt('<strong>Detail each cell</strong>: in Detailed storyline, plan and write the injects of every cell, then challenge the whole exercise in Check &amp; Challenge.', '<strong>Détaillez chaque cellule</strong> : dans Storyline détaillée, planifiez et rédigez les injects de chaque cellule, puis challengez l’ensemble de l’exercice dans Check &amp; Challenge.', '<strong>Jede Zelle ausarbeiten</strong>: In Detaillierte Storyline die Injects jeder Zelle planen und schreiben, dann die gesamte Übung in Check &amp; Challenge hinterfragen.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
@@ -417,7 +425,7 @@
             subtitle: tt('Frame the exercise, then build it with the AI agent.', 'Cadrez l\'exercice, puis construisez-le avec l\'agent IA.', 'Übung einordnen und mit dem KI-Agenten erstellen.')
           },
           cells: {
-            title: 'Cells & actors',
+            title: escapeHtml(workflowTabLabel('cells')),
             subtitle: tt('Player cells and the simulated actors who send injects.', 'Cellules de joueurs et acteurs simulés qui envoient les injects.', 'Spielerzellen und simulierte Akteure, die Injects senden.')
           },
           play: {
@@ -429,7 +437,7 @@
             subtitle: tt('Is the exercise ready to play? Live checks, an AI challenge and the readiness checklist.', 'L\'exercice est-il prêt à jouer ? Contrôles en continu, challenge IA et checklist de préparation.', 'Ist die Übung spielbereit? Laufende Prüfungen, KI-Challenge und Bereitschafts-Checkliste.')
           },
           stimuli: {
-            title: 'Detailed storyline',
+            title: escapeHtml(workflowTabLabel('detailed')),
             subtitle: tt('Write the injects and generate their content.', 'Rédigez les injects et générez leur contenu.', 'Injects schreiben und Inhalte generieren.')
           },
           evaluation: {
@@ -450,7 +458,7 @@
               ? tt('Turn the crisis story into a documentary video, produced right in your browser.', 'Transformez le récit de crise en vidéo documentaire, produite directement dans votre navigateur.', 'Krisengeschichte als Dokumentarvideo, direkt im Browser produziert.') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">' + tt('See an example', 'Voir un exemple', 'Beispiel ansehen') + '</a>'
               : debriefPart() === 'story'
                 ? tt('Build an interactive timeline that reveals what really happened.', 'Construisez une timeline interactive qui révèle ce qui s\'est vraiment passé.', 'Interaktive Zeitleiste erstellen, die zeigt, was wirklich geschah.')
-                : 'Three ways to debrief the exercise: a slide deck, an interactive story page, a documentary video.'
+                : tt('Three ways to debrief the exercise: a slide deck, an interactive story page, a documentary video.', 'Trois façons de débriefer l’exercice : un deck de slides, une page interactive qui raconte l’histoire, une vidéo documentaire.', 'Drei Arten, die Übung nachzubesprechen: ein Foliensatz, eine interaktive Story-Seite, ein Dokumentarvideo.')
           }
         };
         return map[appState.route] || null;
@@ -602,8 +610,8 @@
         const allStimuli = getSortedStimuli();
         if (!allStimuli.length) {
           return `<section class="grid" style="max-width:600px; margin: 60px auto; text-align:center;">
-            <p class="subtle">No injects yet. Build the scenario and its phases, then plan and write the injects of each phase in the Detailed storyline.</p>
-            <button class="btn btn-primary" data-action="nav-stimuli">Go to Detailed storyline</button>
+            <p class="subtle">${tt('No injects yet. Build the scenario and its phases, then plan and write the injects of each phase in the Detailed storyline.', 'Aucun inject pour l’instant. Construisez le scénario et ses phases, puis planifiez et rédigez les injects de chaque phase dans la Storyline détaillée.', 'Noch keine Injects. Szenario und Phasen aufbauen, dann die Injects jeder Phase in der Detaillierten Storyline planen und schreiben.')}</p>
+            <button class="btn btn-primary" data-action="nav-stimuli">${tt('Go to Detailed storyline', 'Aller à la Storyline détaillée', 'Zur Detaillierten Storyline')}</button>
           </section>`;
         }
         const f = appState.libraryFilter;
@@ -635,7 +643,7 @@
             <header class="library-phase-head">
               <span class="library-phase-time">${phase ? `${escapeHtml(sbFormatOffset(phase.start_minutes))} – ${escapeHtml(sbFormatOffset(sbBlockEnd(phase)))}` : ''}</span>
               <strong>${phase ? escapeHtml(phase.title) : tt('Outside the storyline', 'Hors storyline', 'Außerhalb der Storyline')}</strong>
-              <span class="library-phase-count">${group.items.length}${phase && planned ? ` / ${planned} ${tt('planned', 'prévus', 'geplant')}` : ''} ${tt('injects', 'injects', 'Injects')}</span>
+              <span class="library-phase-count">${phase && planned ? `${group.items.length} / ${planned} ${tt('planned injects', 'injects prévus', 'geplante Injects')}` : `${group.items.length} ${tt('injects', 'injects', 'Injects')}`}</span>
               ${phase?.brief ? `<p>${escapeHtml(phase.brief)}</p>` : ''}
             </header>
             <div class="library-card-grid">${group.items.map((s) => renderLibraryCard(s)).join('')}</div>
@@ -662,9 +670,9 @@
               </select>
               <select data-library-filter="status">
                 <option value="">${tt('All statuses', 'Tous les statuts', 'Alle Status')}</option>
-                <option value="draft" ${f.status === 'draft' ? 'selected' : ''}>${tt('Draft', 'Brouillon', 'Entwurf')}</option>
-                <option value="ready" ${f.status === 'ready' ? 'selected' : ''}>${tt('Ready', 'Prêt', 'Bereit')}</option>
-                <option value="sent" ${f.status === 'sent' ? 'selected' : ''}>${tt('Sent', 'Envoyé', 'Gesendet')}</option>
+                <option value="draft" ${f.status === 'draft' ? 'selected' : ''}>${playStatusLabel('draft')}</option>
+                <option value="ready" ${f.status === 'ready' ? 'selected' : ''}>${playStatusLabel('ready')}</option>
+                <option value="sent" ${f.status === 'sent' ? 'selected' : ''}>${playStatusLabel('sent')}</option>
               </select>
               <select data-library-filter="actorId">
                 <option value="">${tt('All actors', 'Tous les acteurs', 'Alle Akteure')}</option>
@@ -731,7 +739,7 @@
               <div class="library-card-preview-inner">${renderStimulusPreview(stimulus, `lib-preview-${stimulus.id}`)}</div>
             </div>` : ''}
             <div class="library-card-footer">
-              <button class="pill pill-status" style="background:${statusColors[stimulus.status] || '#888'}; color:#fff; border:none; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${stimulus.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut', 'Klicken zum Status ändern')}">${escapeHtml(stimulus.status)}${versionCount > 0 ? ` · v${versionCount + 1}` : ''}</button>
+              <button class="pill pill-status" style="background:${statusColors[stimulus.status] || '#888'}; color:#fff; border:none; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${stimulus.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut', 'Klicken zum Status ändern')}">${escapeHtml(playStatusLabel(stimulus.status))}${versionCount > 0 ? ` · v${versionCount + 1}` : ''}</button>
               <div class="library-card-actions">
                 <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">${sbUiIcon('edit', 14)}</button>
                 <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">${sbUiIcon('copy', 14)}</button>

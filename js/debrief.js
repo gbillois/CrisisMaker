@@ -205,12 +205,120 @@
         scenario.debrief = refreshDebriefPositions(current); return scenario.debrief;
       }
 
+      /* The editor's own interface is written in French: each entry is an exact piece of its
+         source and its English and German versions (a fourth value replaces the French too).
+         Only the interface is translated, never the timeline content. Replacements inside the
+         editor's script stay free of single quotes. */
+      const DEBRIEF_EDITOR_UI = [
+        ['<span class="nav-project-name">Crisis Debriefer · Timeline editor</span>', '<span class="nav-project-name">Crisis Debriefer · Timeline editor</span>', '<span class="nav-project-name">Crisis Debriefer · Zeitleisten-Editor</span>', '<span class="nav-project-name">Crisis Debriefer · Éditeur de timeline</span>'],
+        ['<div class="sub">Configurez, prévisualisez et exportez une timeline de crise interactive.</div>', '<div class="sub">Configure, preview and export an interactive crisis timeline.</div>', '<div class="sub">Interaktive Krisen-Zeitleiste konfigurieren, ansehen und exportieren.</div>'],
+        ['<span class="dot"></span>Source</div>', '<span class="dot"></span>Source</div>', '<span class="dot"></span>Quelle</div>'],
+        ['Charger un fichier de config<span', 'Load a config file<span', 'Konfigurationsdatei laden<span'],
+        ['Exemple StonaWave<span', 'Load the example<span', 'Beispiel laden<span', 'Charger l’exemple<span'],
+        ['Télécharger la timeline', 'Download the timeline', 'Zeitleiste herunterladen'],
+        ['Télécharger la config<span', 'Download the config<span', 'Konfiguration herunterladen<span'],
+        ['>100% hors-ligne<', '>100% offline<', '>100 % offline<'],
+        ['>Inclure les polices<', '>Include the fonts<', '>Schriften einbetten<'],
+        ['>Inclure les données cartographiques<', '>Include the map data<', '>Kartendaten einbetten<'],
+        ['Génération <code>10–30 s</code> selon la connexion.', 'Generation takes <code>10–30 s</code> depending on the connection.', 'Erstellung in <code>10–30 s</code> je nach Verbindung.'],
+        ['Polices incluses →', 'Fonts included →', 'Mit Schriften →'],
+        ['Carte incluse →', 'Map included →', 'Mit Karte →'],
+        ['<span class="dot"></span>Blocs affichés</div>', '<span class="dot"></span>Displayed blocks</div>', '<span class="dot"></span>Angezeigte Blöcke</div>'],
+        ['>Carte / globe<', '>Map / globe<', '>Karte / Globus<'],
+        ['>Liste chronologique<', '>Chronological list<', '>Chronologische Liste<'],
+        ['<label for="t-sev">Sévérité<', '<label for="t-sev">Severity<', '<label for="t-sev">Schweregrad<'],
+        ['<label for="t-art">Artefacts<', '<label for="t-art">Artifacts<', '<label for="t-art">Artefakte<'],
+        ['>Lecture automatique<', '>Autoplay<', '>Automatische Wiedergabe<'],
+        ['<span class="dot"></span>Style visuel</div>', '<span class="dot"></span>Visual style</div>', '<span class="dot"></span>Visueller Stil</div>'],
+        ['>Style du générateur<', '>Generator style<', '>Generator-Stil<'],
+        ['<label for="m-title">Titre</label>', '<label for="m-title">Title</label>', '<label for="m-title">Titel</label>'],
+        ['<label for="m-sub">Sous-titre</label>', '<label for="m-sub">Subtitle</label>', '<label for="m-sub">Untertitel</label>'],
+        ['<span class="swatch-label">Fond</span>', '<span class="swatch-label">Base</span>', '<span class="swatch-label">Grund</span>'],
+        ['<label>Arrière-plan</label>', '<label>Background</label>', '<label>Hintergrund</label>'],
+        ['<span class="swatch-label">Texte</span>', '<span class="swatch-label">Text</span>', '<span class="swatch-label">Text</span>'],
+        ['<label>Corps de texte</label>', '<label>Body text</label>', '<label>Fließtext</label>'],
+        ['<span class="swatch-label">Titres</span>', '<span class="swatch-label">Titles</span>', '<span class="swatch-label">Titel</span>'],
+        ['<label>Encre (titres)</label>', '<label>Ink (titles)</label>', '<label>Titelfarbe</label>'],
+        ['<span class="swatch-label">Accent</span><input type="color" id="c-accent"><label>Accent</label>', '<span class="swatch-label">Accent</span><input type="color" id="c-accent"><label>Accent</label>', '<span class="swatch-label">Akzent</span><input type="color" id="c-accent"><label>Akzent</label>'],
+        ['<span class="swatch-label">Panneaux</span>', '<span class="swatch-label">Panels</span>', '<span class="swatch-label">Flächen</span>'],
+        ['<label>Bandeaux</label>', '<label>Banners</label>', '<label>Leisten</label>'],
+        ['<span class="swatch-label">Bordures</span>', '<span class="swatch-label">Borders</span>', '<span class="swatch-label">Rahmen</span>'],
+        ['<label>Lignes de séparation</label>', '<label>Divider lines</label>', '<label>Trennlinien</label>'],
+        ['<span class="dot"></span>Typographie</div>', '<span class="dot"></span>Typography</div>', '<span class="dot"></span>Typografie</div>'],
+        ['>Police des titres<', '>Title font<', '>Titelschrift<'],
+        ['>Police du corps<', '>Body font<', '>Fließtextschrift<'],
+        ['>Police mono<', '>Mono font<', '>Monospace-Schrift<'],
+        ['<span class="swatch-label">Échelle</span>', '<span class="swatch-label">Scale</span>', '<span class="swatch-label">Größe</span>'],
+        ['<span class="dot"></span>Disposition</div>', '<span class="dot"></span>Layout</div>', '<span class="dot"></span>Layout</div>'],
+        ['>Type de carte<', '>Map type<', '>Kartentyp<'],
+        ['>Globe (monde)<', '>Globe (world)<', '>Globus (Welt)<'],
+        ['>Région / pays (villes clés)<', '>Region / country (key cities)<', '>Region / Land (wichtige Städte)<'],
+        ['>Aucune carte<', '>No map<', '>Keine Karte<'],
+        ['>Cadrage région — O, S, E, N (vide = auto)<', '>Region bounds: W, S, E, N (empty = auto)<', '>Regionsausschnitt: W, S, O, N (leer = automatisch)<'],
+        ['placeholder="ex : 22, 44, 41, 53"', 'placeholder="e.g. 22, 44, 41, 53"', 'placeholder="z. B. 22, 44, 41, 53"'],
+        ['>Pays en surbrillance (code ISO numérique, ex : 804)<', '>Highlighted country (numeric ISO code, e.g. 804)<', '>Hervorgehobenes Land (numerischer ISO-Code, z. B. 804)<'],
+        ['placeholder="laisser vide = aucun"', 'placeholder="leave empty for none"', 'placeholder="leer lassen für keines"'],
+        ['>Position de la carte<', '>Map position<', '>Kartenposition<'],
+        ['>À droite<', '>Right<', '>Rechts<'],
+        ['>À gauche<', '>Left<', '>Links<'],
+        ['<span class="dot"></span>Contenu</div>', '<span class="dot"></span>Content</div>', '<span class="dot"></span>Inhalt</div>'],
+        ['<div class="ce-sub">Phases</div>', '<div class="ce-sub">Phases</div>', '<div class="ce-sub">Phasen</div>'],
+        ['<div class="ce-sub">Événements</div>', '<div class="ce-sub">Events</div>', '<div class="ce-sub">Ereignisse</div>'],
+        ['Ajouter une phase<', 'Add a phase<', 'Phase hinzufügen<'],
+        ['Ajouter un événement<', 'Add an event<', 'Ereignis hinzufügen<'],
+        ['Appliquer le JSON<', 'Apply the JSON<', 'JSON anwenden<'],
+        ['Le fichier d\'entrée décrit <code>meta</code>, <code>phases</code> et <code>events</code>.', 'The input file describes <code>meta</code>, <code>phases</code> and <code>events</code>.', 'Die Eingabedatei beschreibt <code>meta</code>, <code>phases</code> und <code>events</code>.'],
+        ['Les sections <code>theme</code> et <code>layout</code> pilotent le style (couleurs, blocs).', 'The <code>theme</code> and <code>layout</code> sections drive the style (colours, blocks).', 'Die Abschnitte <code>theme</code> und <code>layout</code> steuern den Stil (Farben, Blöcke).'],
+        ['La position de chaque étape est déduite de <code>t</code> (0→1) ou d\'un champ <code>date</code>.', 'The position of each step comes from <code>t</code> (0→1) or from a <code>date</code> field.', 'Die Position jedes Schritts ergibt sich aus <code>t</code> (0→1) oder einem Feld <code>date</code>.'],
+        ['L\'aperçu est <em>exactement</em> le fichier téléchargé.', 'The preview is <em>exactly</em> the downloaded file.', 'Die Vorschau ist <em>genau</em> die heruntergeladene Datei.'],
+        ['Aperçu de la timeline', 'Timeline preview', 'Vorschau der Zeitleiste'],
+        ['>Mise à jour en direct<', '>Live update<', '>Live-Aktualisierung<'],
+        ["'Supprimer la phase'", "'Delete the phase'", "'Phase löschen'"],
+        ["'Monter'", "'Move up'", "'Nach oben'"],
+        ["'Descendre'", "'Move down'", "'Nach unten'"],
+        ["'Dupliquer'", "'Duplicate'", "'Duplizieren'"],
+        ["'Supprimer'", "'Delete'", "'Löschen'"],
+        ["'Identifiant (id)'", "'Identifier (id)'", "'Kennung (id)'"],
+        ["'Libellé'", "'Label'", "'Bezeichnung'"],
+        ["'Période (texte affiché)'", "'Period (displayed text)'", "'Zeitraum (angezeigter Text)'"],
+        ["'Début (0 → 1)'", "'Start (0 → 1)'", "'Beginn (0 → 1)'"],
+        ["'Fin (0 → 1)'", "'End (0 → 1)'", "'Ende (0 → 1)'"],
+        ["'Couleur'", "'Colour'", "'Farbe'"],
+        ["ceField('Titre',", "ceField('Title',", "ceField('Titel',"],
+        ["'(sans titre)'", "'(untitled)'", "'(ohne Titel)'"],
+        ["'Date (texte)'", "'Date (text)'", "'Datum (Text)'"],
+        ["'Lieu'", "'Location'", "'Ort'"],
+        ["'Sévérité (1 → 5)'", "'Severity (1 → 5)'", "'Schweregrad (1 → 5)'"],
+        ["'Type (kind)'", "'Type (kind)'", "'Typ (kind)'"],
+        ["'Accroche (headline)'", "'Headline'", "'Schlagzeile (headline)'"],
+        ["'Description (body)'", "'Description (body)'", "'Beschreibung (body)'"],
+        ["'Artefacts (un par ligne)'", "'Artifacts (one per line)'", "'Artefakte (einer pro Zeile)'"],
+        ["'Pertes (casualties)'", "'Casualties'", "'Verluste (casualties)'"],
+        ["'Coût (damageUSD)'", "'Cost (damageUSD)'", "'Kosten (damageUSD)'"],
+        ["' (copie)'", "' (copy)'", "' (Kopie)'"],
+        ["'Nouvel événement'", "'New event'", "'Neues Ereignis'"],
+        ["'Nouvelle phase'", "'New phase'", "'Neue Phase'"],
+        ["'Fichier invalide : '", "'Invalid file: '", "'Ungültige Datei: '"],
+        ["'JSON invalide : '", "'Invalid JSON: '", "'Ungültiges JSON: '"],
+        ["'Génération…'", "'Generating…'", "'Wird erstellt…'"],
+        ["'Export hors-ligne : '", "'Offline export: '", "'Offline-Export: '"],
+        ["'Chargement échoué : '", "'Loading failed: '", "'Laden fehlgeschlagen: '"]
+      ];
+
+      function localizeDebriefEditorSource(source, language) {
+        const column = language === 'de' ? 2 : 1;
+        return DEBRIEF_EDITOR_UI.reduce((html, entry) => {
+          const replacement = language === 'fr' ? entry[3] : entry[column];
+          return replacement === undefined ? html : html.split(entry[0]).join(replacement);
+        }, source);
+      }
+
       function buildDebriefEditorHTML(debrief) {
         const configJson = JSON.stringify(debriefToTimelineConfig(debrief)).replace(/</g, '\\u003c').replace(/-->/g, '--\\u003e');
         const language = currentLanguage();
         const integratedLabel = tt('Integrated project workspace', 'Espace intégré au projet', 'Integrierter Projektbereich');
         const integratedStyles = '<style>.group:has(#btn-load){display:none}</style>';
-        return CRISIS_DEBRIEF_EDITOR_SOURCE
+        return localizeDebriefEditorSource(CRISIS_DEBRIEF_EDITOR_SOURCE, language)
           .replace('<html lang="fr">', `<html lang="${language}">`)
           .replace('Standalone workspace', integratedLabel)
           .replace('</head>', `${integratedStyles}<script>window.CRISISMAKER_INITIAL_CONFIG = ${configJson};<\/script></head>`);
