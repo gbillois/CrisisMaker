@@ -142,14 +142,14 @@
         return `${tt('Exporting', 'Export', 'Export')} ${progress.current}/${progress.total}${suffix}`;
       }
 
-      function pushToast(message, type = 'success') {
+      function pushToast(message, type = 'success', duration = 4200) {
         const id = uid('toast');
         appState.toasts.push({ id, message, type });
         renderToasts();
         setTimeout(() => {
           appState.toasts = appState.toasts.filter((toast) => toast.id !== id);
           renderToasts();
-        }, 4200);
+        }, duration);
       }
 
       function renderToasts() {

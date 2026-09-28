@@ -1019,7 +1019,7 @@ test('debrief: one tab with three parts; the slide deck shows the timeline, the 
   assert.equal(kinds[0], 'title');
   assert.equal(kinds[kinds.length - 1], 'end');
   assert.ok(kinds.includes('overview') && kinds.includes('timeline') && kinds.includes('evaluation'));
-  assert.equal(kinds.filter((kind) => kind === 'phase').length, phases, 'one slide per phase');
+  assert.equal(h.json('sdSlides(appState.scenario).filter((slide) => slide.kind === "phase" && !slide.continued).length'), phases, 'one slide per phase, plus continuation slides');
   const timeline = h.json(`sdSlides(appState.scenario).find((slide) => slide.kind === 'timeline')`);
   assert.equal(timeline.phases.length, phases);
   assert.ok(timeline.events.length > 0, 'main events on the timeline');
@@ -1213,4 +1213,69 @@ test('library: the search query survives a category change and says when nothing
   html = h.run('renderSbLibrary()');
   assert.ok(html.includes('value="ransomware"') && /data-sb-library-empty hidden/.test(html));
   assert.ok(/<article class="sb-template-card[^"]*" data-sb-search="[^"]*ransomware[^"]*" >/.test(html), 'a matching card is shown');
+});
+
+test('slide debrief: long lists continue on extra slides; nothing is dropped and texts are clipped at a word', () => {
+  const h = harness();
+  assert.deepEqual(h.json('sdPages([1, 2, 3, 4, 5], 4)'), [[1, 2, 3, 4], [5]]);
+  assert.deepEqual(h.json('sdPages([], 4)'), [[]]);
+  assert.deepEqual(h.json('sdPages([1, 2], 0)'), [[1], [2]]);
+  assert.equal(h.run('sdClip("Coordinated encryption begins on a Sunday", 20)'), 'Coordinated…');
+  assert.equal(h.run('sdClip("Short", 20)'), 'Short');
+  // The first label of the timeline stays inside the slide, its tick on the exact time.
+  assert.deepEqual(h.json('sdTimelineTick(0, 180)'), { left: 9, tick: 0 });
+  assert.deepEqual(h.json('sdTimelineTick(180, 180)'), { left: 91, tick: 100 });
+  assert.deepEqual(h.json('sdTimelineTick(90, 180)'), { left: 50, tick: 50 });
+
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const blockId = h.run('sbMainBlocks(sbStoryboard())[0].id');
+  const phaseInjects = h.run(`ExerciseModel.of(appState.scenario).injects.filter((inject) => inject.phase_id === '${blockId}').length`);
+  // Nine main events in phase 1: 4 + 4 + 1 over three slides.
+  h.run(`sbMainBlocks(sbStoryboard())[0].events = Array.from({ length: 9 }, (_, i) => ({ offset_minutes: i, text: 'Event ' + i + ' ' + 'with a long description '.repeat(8) }));`);
+  const phase1 = h.json(`sdSlides(appState.scenario).filter((slide) => slide.kind === 'phase' && slide.title.startsWith('Phase 1:'))`);
+  const pages = Math.max(3, Math.ceil(phaseInjects / 4));
+  assert.equal(phase1.length, pages);
+  assert.equal(phase1[1].title, `${phase1[0].title} (continued)`);
+  assert.equal(phase1[1].what, '', 'the phase summary is on its first slide only');
+  assert.deepEqual(phase1.flatMap((slide) => slide.events.map((event) => event.text.split(' ')[1])), ['0', '1', '2', '3', '4', '5', '6', '7', '8']);
+  assert.equal(phase1.reduce((sum, slide) => sum + slide.injects.length, 0), phaseInjects);
+  assert.ok(phase1.every((slide) => slide.events.length <= 4 && slide.injects.length <= 4));
+  assert.ok(phase1.every((slide) => slide.events.every((event) => event.text.length <= 64 && (event.text.length < 64 || event.text.endsWith('…')))));
+  // Every debrief event is shown, four per slide.
+  const story = h.run('(appState.scenario.debrief?.events || []).length');
+  const storySlides = h.json(`sdSlides(appState.scenario).filter((slide) => slide.kind === 'story')`);
+  assert.equal(storySlides.length, Math.ceil(story / 4));
+  assert.equal(storySlides.reduce((sum, slide) => sum + slide.items.length, 0), story);
+  // Seven strengths and two improvements: two slides, the second one with the three last strengths.
+  h.run(`Object.assign(sdState(appState.scenario), { went_well: 'a\\nb\\nc\\nd\\ne\\nf\\ng', to_improve: 'x\\ny' })`);
+  const columns = h.json(`sdSlides(appState.scenario).filter((slide) => slide.kind === 'columns')`);
+  assert.equal(columns.length, 2);
+  assert.deepEqual(columns[1].left.items, ['e', 'f', 'g']);
+  assert.deepEqual(columns[1].right.items, []);
+  assert.ok(h.run('sdSlideHtml(sdSlides(appState.scenario).find((slide) => slide.kind === "timeline"))').includes('--tick:'));
+});
+
+test('press templates: the byline and reading-time prefixes are never doubled', () => {
+  const h = harness();
+  const text = (html) => html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  for (const [author, readTime] of [['Par Florian Music', '4 min de lecture'], ['Florian Music', '4 min'], ['By Florian Music', 'Lecture 4 min'], ['par  Florian Music', 'Temps de lecture : 4 min']]) {
+    h.context.fields = { author, read_time: readTime, date: '15 mars 2026', headline: 'H', body: '<p>B</p>' };
+    for (const html of [h.run('TemplateEngine.articleLeMondeHD(fields)'), h.run('TemplateEngine.articleLeMonde(fields)')]) {
+      const shown = text(html);
+      assert.match(shown, /Par Florian Music/, author);
+      assert.doesNotMatch(shown, /Par (Par|By|par)/i, author);
+      assert.match(shown, /Lecture 4 min(?! de lecture)/, readTime);
+      assert.doesNotMatch(shown, /Lecture Lecture|de lecture/, readTime);
+    }
+  }
+  h.context.fields = { author: 'By Nicole Perlroth', read_time: '6 min read', date: 'March 15, 2026', headline: 'H', body: '<p>B</p>' };
+  for (const html of [h.run('TemplateEngine.articleNyt(fields)'), h.run('TemplateEngine.articleNytHD(fields)')]) {
+    assert.match(text(html), /By Nicole Perlroth/);
+    assert.doesNotMatch(text(html), /By By/);
+  }
+  h.context.fields = { author: '', read_time: '', date: '15 mars 2026', headline: 'H', body: '' };
+  assert.doesNotMatch(text(h.run('TemplateEngine.articleLeMondeHD(fields)')), /Par|Lecture/, 'no prefix without a value');
+  // The defaults no longer carry the prefixes themselves.
+  assert.equal(h.run('ARTICLE_TEMPLATE_LIBRARY.lemonde.defaults.author.startsWith("Par ")'), false);
+  assert.equal(h.run('ARTICLE_TEMPLATE_LIBRARY.lemonde.defaults.read_time'), '4 min');
 });

@@ -149,12 +149,12 @@
           defaults: {
             headline: 'Une cyberattaque massive paralyse le groupe pharmaceutique StonaWave',
             subheadline: 'Un rançongiciel a chiffré les systèmes de production et les données cliniques du laboratoire, présent sur trois continents. Le groupe criminel PharmLeaks revendique l\'opération.',
-            author: 'Par Florian Music et Martin Untersinger',
+            author: 'Florian Music et Martin Untersinger',
             date: '15 mars 2026 à 10h10',
             category: 'Pixels',
             body: '<p>C\'est une attaque d\'une ampleur rare qui frappe le secteur pharmaceutique. Depuis les premières heures de dimanche 15 mars, les systèmes informatiques de StonaWave, géant mondial du médicament dont le siège se trouve en région parisienne, sont largement paralysés par un rançongiciel. Les sites de production de New Jersey, Francfort et Hyderabad fonctionnent en mode dégradé, et les chaînes de fabrication de traitements oncologiques ont été mises à l\'arrêt.</p><p>Selon plusieurs sources proches du dossier, le groupe cybercriminel PharmLeaks, affilié à un réseau d\'opérateurs de rançongiciel bien connu des services de renseignement, a revendiqué l\'attaque en début d\'après-midi, affirmant avoir exfiltré 2,4 téraoctets de données, dont des résultats d\'essais cliniques et des dossiers de patients. Une rançon de 25 millions de dollars en bitcoins est exigée sous 72 heures.</p><p>« La cellule de crise a été activée dès 8 heures du matin. La priorité absolue est la continuité de l\'approvisionnement en médicaments critiques et la protection des données patients », a déclaré un porte-parole de StonaWave, sans préciser de calendrier de rétablissement.</p><p>L\'Agence nationale de la sécurité des systèmes d\'information (ANSSI) a été saisie et le CERT-FR a émis un bulletin d\'alerte liant l\'intrusion à l\'exploitation d\'une vulnérabilité critique sur des concentrateurs VPN. L\'Agence européenne des médicaments (EMA) suit la situation de près, tandis que la FDA américaine a demandé des précisions sur l\'impact potentiel sur la chaîne d\'approvisionnement en médicaments.</p>',
             image_caption: 'Le siège européen de StonaWave, en région parisienne.',
-            read_time: '4 min de lecture',
+            read_time: '4 min',
             is_premium: false,
             has_photo: false,
             photo_data: ''
@@ -167,7 +167,7 @@
           defaults: {
             headline: 'Ransomware Attack on StonaWave Disrupts Drug Manufacturing Across Three Continents',
             subheadline: 'The criminal group PharmLeaks claims to have stolen 2.4 terabytes of patient and clinical trial data, demanding $25 million. The F.D.A. and European regulators are seeking urgent answers on drug supply continuity.',
-            author: 'By Nicole Perlroth and David E. Sanger',
+            author: 'Nicole Perlroth and David E. Sanger',
             date: 'March 15, 2026',
             update_time: 'Updated 11:15 a.m. ET',
             category: 'Technology',

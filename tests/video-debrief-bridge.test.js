@@ -19,4 +19,22 @@ assert.match(source, /<option value="openrouter">OpenRouter<\/option>/);
 assert.match(source, /https:\/\/openrouter\.ai\/api\/v1\/chat\/completions/);
 assert.match(source, /baseUrl !== 'https:\/\/ollama\.com' \? \{ format: 'json' \} : \{\}/);
 
+// Manual skeleton: titles cut at a word, real scene headings, the exercise name, a file name in the interface language.
+const helpers = source.match(/function clipWords\(value, max\)\{[\s\S]*?\n\}\n\/\*[\s\S]*?function videoSlug\(name\)\{[\s\S]*?\n\}/)?.[0];
+assert.ok(helpers, 'clipWords and videoSlug');
+const vm = require('node:vm');
+const context = { interfaceLanguage: 'en' };
+vm.runInNewContext(`${helpers}; this.clipWords = clipWords; this.videoSlug = videoSlug;`, context);
+assert.equal(context.clipWords('COORDINATED ENCRYPTION BEGINS', 18), 'COORDINATED…');
+assert.equal(context.clipWords('Short title', 18), 'Short title');
+assert.equal(context.videoSlug('Opération Bitter Pill'), 'operation-bitter-pill-debrief-video');
+context.interfaceLanguage = 'fr';
+assert.equal(context.videoSlug('Opération Bitter Pill'), 'operation-bitter-pill-video-debrief');
+assert.equal(context.videoSlug(''), 'video-debrief');
+const skeleton = source.match(/function buildSkeleton\(\)\{([\s\S]*?)\n\}/)?.[1] || '';
+assert.match(skeleton, /const title = material\.name \|\|/);
+assert.doesNotMatch(skeleton, /ma-video|''\)\.slice\(0,|toUpperCase\(\)\.slice|heading:''/);
+assert.match(source, /title\.textContent = s\.heading \|\| s\.title \|\| s\.eyebrow/);
+assert.doesNotMatch(source, /s\.title \|\| s\.id/);
+
 console.log('Video Debrief project bridge coverage passed.');

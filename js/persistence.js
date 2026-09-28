@@ -385,6 +385,79 @@
         return { injectMetadata };
       })();
 
+      /* Webfonts for the exported images. Left to itself, html-to-image resolves the url()s of
+         fonts/fonts.css with a <base> element, which the page's CSP (base-uri 'none') refuses:
+         every font is then requested at the site root (404) and the PNG falls back to system
+         fonts. Here the @font-face rules are read once from the page's style sheets, the fonts
+         a node really uses are inlined as data: URLs (fetched once, then cached) and handed to
+         html-to-image as fontEmbedCSS. The single-file build already carries data: URLs. */
+      const ExportFonts = {
+        faces: null,
+        inlined: new Map(),
+        failed: new Set(),
+        family(value) {
+          return String(value || '').trim().replace(/^['"]|['"]$/g, '').trim().toLowerCase();
+        },
+        /* Every @font-face rule of the page, with the address its relative url()s resolve against. */
+        list() {
+          if (this.faces) return this.faces;
+          const faces = [];
+          Array.from(document.styleSheets || []).forEach((sheet) => {
+            let rules = [];
+            try { rules = Array.from(sheet.cssRules || []); } catch (_) { return; }
+            rules.filter((rule) => rule.type === CSSRule.FONT_FACE_RULE).forEach((rule) => {
+              faces.push({ family: this.family(rule.style.getPropertyValue('font-family')), cssText: rule.cssText, base: sheet.href || document.baseURI });
+            });
+          });
+          if (faces.length) this.faces = faces;
+          return faces;
+        },
+        dataUrl(url) {
+          if (!this.inlined.has(url)) {
+            this.inlined.set(url, fetch(url).then((response) => {
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              return response.blob();
+            }).then((blob) => new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(reader.error);
+              reader.readAsDataURL(blob);
+            })));
+          }
+          return this.inlined.get(url);
+        },
+        async inline(face) {
+          let css = face.cssText;
+          for (const match of face.cssText.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)) {
+            if (/^data:/i.test(match[2])) continue;
+            css = css.replace(match[0], `url("${await this.dataUrl(new URL(match[2], face.base).href)}")`);
+          }
+          return css;
+        },
+        /* The fontEmbedCSS for one node: only the families it uses. A font that cannot be read
+           is left out (the image then uses a system font), never requested at a wrong address. */
+        async cssFor(node) {
+          const faces = this.list();
+          if (!faces.length || !node) return '';
+          const used = new Set();
+          [node, ...node.querySelectorAll('*')].forEach((element) => {
+            String(getComputedStyle(element).fontFamily || '').split(',').forEach((name) => used.add(this.family(name)));
+          });
+          const parts = await Promise.all(faces.filter((face) => used.has(face.family)).map((face) => this.inline(face).catch((error) => {
+            if (!this.failed.has(face.cssText) && typeof CrisisError !== 'undefined') CrisisError.log(error, { operation: 'Embed a webfont in an exported image', detail: face.family });
+            this.failed.add(face.cssText);
+            return '';
+          })));
+          return parts.filter(Boolean).join('\n');
+        }
+      };
+
+      /* All the PNG exports go through here, so every image carries the bundled webfonts. */
+      async function renderNodeToPng(node, options) {
+        const fontEmbedCSS = await ExportFonts.cssFor(node);
+        return htmlToImage.toPng(node, { ...options, fontEmbedCSS });
+      }
+
       const ExportEngine = {
         async exportStimulus(stimulus) {
           try {
@@ -402,7 +475,7 @@
                 element = sandbox.firstElementChild;
               }
               try {
-                dataUrl = await htmlToImage.toPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+                dataUrl = await renderNodeToPng(element, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
               } finally {
                 if (sandbox) document.body.removeChild(sandbox);
               }
@@ -442,6 +515,7 @@
           sandbox.style.top = '0';
           document.body.appendChild(sandbox);
           const failures = [];
+          const skipped = [];
           try {
             for (let i = 0; i < stimuli.length; i++) {
               const stimulus = stimuli[i];
@@ -456,7 +530,7 @@
                   sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
                   const node = sandbox.firstElementChild;
                   if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
-                  let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+                  let dataUrl = await renderNodeToPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
                   dataUrl = PngMetadata.injectMetadata(dataUrl);
                   zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
                 }
@@ -465,6 +539,7 @@
                 // listed in export_errors.txt; the others are still exported.
                 CrisisError.log(error, { operation: 'Render stimulus for ZIP export', detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}` });
                 failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${error?.message || error}`);
+                skipped.push(this.skippedLabel(stimulus));
               }
             }
             if (failures.length === stimuli.length) throw new Error(tt('No inject could be rendered.', 'Aucun inject n\'a pu être rendu.', 'Kein Inject konnte gerendert werden.') + ` ${failures[0] || ''}`);
@@ -476,7 +551,7 @@
             if (failures.length) zip.file('export_errors.txt', failures.join('\r\n'));
             const blob = await zip.generateAsync({ type: 'blob' });
             downloadBlob(blob, `${crisisSlug}.zip`);
-            if (failures.length) pushToast(tt(`ZIP generated, but ${failures.length} inject(s) could not be rendered: see export_errors.txt in the archive.`, `ZIP généré, mais ${failures.length} inject(s) n'ont pas pu être rendus : voir export_errors.txt dans l'archive.`, `ZIP erstellt, aber ${failures.length} Inject(s) konnten nicht gerendert werden: siehe export_errors.txt im Archiv.`), 'warning');
+            if (skipped.length) pushToast(this.skippedMessage(skipped), 'warning', 15000);
             else pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
           } catch (error) {
             throw CrisisError.wrap(error, {
@@ -487,6 +562,23 @@
             appState.ui.exportAllProgress = null;
             document.body.removeChild(sandbox);
           }
+        },
+        /* "#07 STONAWAVE: ONGOING CYBERATTACK": how a skipped inject is named in the warning. */
+        skippedLabel(stimulus) {
+          const number = ExerciseModel.numbers(appState.scenario).get(stimulus.id);
+          const title = String(sbStimulusLabel(stimulus) || channelLabel(stimulus.channel) || '').replace(/\s+/g, ' ').trim();
+          return `${number ? `#${String(number).padStart(2, '0')} ` : ''}${title.length > 60 ? `${title.slice(0, 59).trimEnd()}…` : title}`;
+        },
+        /* The warning shown after the download when some injects are not in the ZIP. */
+        skippedMessage(skipped) {
+          const shown = skipped.slice(0, 5).join('; ');
+          const more = skipped.length - 5;
+          const n = skipped.length;
+          return tt(
+            `ZIP downloaded without ${n} inject${n > 1 ? 's' : ''} that could not be rendered: ${shown}${more > 0 ? ` and ${more} more` : ''}. Details in export_errors.txt in the archive.`,
+            `ZIP téléchargé sans ${n} inject${n > 1 ? 's' : ''} qui n'${n > 1 ? 'ont' : 'a'} pas pu être rendu${n > 1 ? 's' : ''} : ${shown}${more > 0 ? ` et ${more} autre${more > 1 ? 's' : ''}` : ''}. Détails dans export_errors.txt dans l'archive.`,
+            `ZIP ohne ${n} Inject${n > 1 ? 's' : ''} heruntergeladen, die nicht gerendert werden konnten: ${shown}${more > 0 ? ` und ${more} weitere` : ''}. Details in export_errors.txt im Archiv.`
+          );
         },
         /* Play order number and time, so the files sort in the order the pilot sends them. */
         playPrefix(stimulus) {
@@ -743,7 +835,7 @@
           document.body.appendChild(sandbox);
           const node = sandbox.firstElementChild;
           try {
-            const dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 1, backgroundColor: null, width: w, height: h });
+            const dataUrl = await renderNodeToPng(node, { quality: 1.0, pixelRatio: 1, backgroundColor: null, width: w, height: h });
             const img = new Image();
             await new Promise((resolve, reject) => {
               img.onload = resolve;
@@ -765,7 +857,7 @@
           document.body.appendChild(sandbox);
           const node = sandbox.firstElementChild;
           try {
-            const dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 1, backgroundColor: null, width: w, height: h });
+            const dataUrl = await renderNodeToPng(node, { quality: 1.0, pixelRatio: 1, backgroundColor: null, width: w, height: h });
             const img = new Image();
             await new Promise((resolve, reject) => {
               img.onload = resolve;

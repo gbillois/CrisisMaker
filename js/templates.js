@@ -168,7 +168,7 @@
                 <div class="press-category">${escapeHtml(f.category || '')}</div>
                 <h1 class="press-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="press-subheadline">${escapeHtml(f.subheadline || '')}</div>
-                <div class="press-byline"><span>${escapeHtml(f.author || '')}</span><span>${escapeHtml(f.date || '')} · ${escapeHtml(f.read_time || '')}</span></div>
+                <div class="press-byline"><span>${pressByline('Par', f.author)}</span><span>${escapeHtml(f.date || '')}${pressReadTime(f.read_time) ? ` · Lecture ${escapeHtml(pressReadTime(f.read_time))}` : ''}</span></div>
                 ${f.has_photo ? `<div class="press-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo ? `<div class="press-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="press-content">${sanitizeBody(f.body)}</div>
@@ -194,7 +194,7 @@
                 ${f.has_photo ? `<div class="press-photo nyt-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo ? `<div class="nyt-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="nyt-byline">
-                  <div class="nyt-author"><span>By </span>${escapeHtml(String(f.author || '').replace(/^By\s+/i, ''))}</div>
+                  <div class="nyt-author">${pressAuthorName(f.author) ? `<span>By </span>${escapeHtml(pressAuthorName(f.author))}` : ''}</div>
                   <div class="nyt-date-line">${escapeHtml(f.date || '')}${f.update_time ? ` · ${escapeHtml(f.update_time)}` : ''}${f.read_time ? ` · ${escapeHtml(f.read_time)}` : ''}</div>
                 </div>
                 <div class="nyt-actions">${iconGift()} ${iconBookmark()} ${iconComment()} ${iconShare()}</div>
@@ -739,7 +739,7 @@
                 ${f.has_photo ? `<div class="press-photo nyt-photo"${f.photo_data ? ` style="background-image:url(${f.photo_data});background-size:cover;background-position:center;"` : ''}></div>` : ''}
                 ${f.has_photo ? `<div class="nyt-caption">${escapeHtml(f.image_caption || '')}</div>` : ''}
                 <div class="nyt-byline">
-                  <div class="nyt-author"><span>By </span>${escapeHtml(String(f.author || '').replace(/^By\s+/i, ''))}</div>
+                  <div class="nyt-author">${pressAuthorName(f.author) ? `<span>By </span>${escapeHtml(pressAuthorName(f.author))}` : ''}</div>
                   <div class="nyt-date-line">${escapeHtml(f.date || '')}${f.update_time ? ` · ${escapeHtml(f.update_time)}` : ''}${f.read_time ? ` · ${escapeHtml(f.read_time)}` : ''}</div>
                 </div>
                 <div class="nyt-hd-share">
@@ -913,7 +913,7 @@
                 <div class="press-category">${escapeHtml(f.category || '')}</div>
                 <h1 class="press-headline">${escapeHtml(f.headline || '')}</h1>
                 <div class="press-subheadline">${escapeHtml(f.subheadline || '')}</div>
-                <div class="press-byline"><span>Par ${escapeHtml(f.author || '')}</span><span>Publié le ${escapeHtml(f.date || '')}${f.read_time ? ` · <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg> Lecture ${escapeHtml(f.read_time)}` : ''}</span></div>
+                <div class="press-byline"><span>${pressByline('Par', f.author)}</span><span>${f.date ? `Publié le ${escapeHtml(String(f.date).trim().replace(/^publié\s+le\s+/i, ''))}` : ''}${pressReadTime(f.read_time) ? ` · <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg> Lecture ${escapeHtml(pressReadTime(f.read_time))}` : ''}</span></div>
                 <div class="lm-hd-actions">
                   <button class="lm-hd-btn">${iconGift()} Offrir l'article</button>
                   <button class="lm-hd-btn">${iconBookmark()} Lire plus tard</button>
@@ -1406,3 +1406,21 @@
           `;
         }
       };
+
+      /* Press bylines and reading times. The template writes its own prefix ("Par", "By",
+         "Lecture"), so a field that already carries one (the defaults of older projects, an AI
+         draft, an imported chronogram) is shown once, never as "Par Par" or "Lecture 4 min de lecture". */
+      function pressAuthorName(value) {
+        return String(value ?? '').trim().replace(/^(?:par|by)\s+/i, '').trim();
+      }
+      function pressByline(prefix, value) {
+        const name = pressAuthorName(value);
+        return name ? `${escapeHtml(prefix)} ${escapeHtml(name)}` : '';
+      }
+      /* "4 min", "4 min de lecture", "Lecture 4 min", "Temps de lecture : 4 min", "4 min read": all give "4 min". */
+      function pressReadTime(value) {
+        return String(value ?? '').trim()
+          .replace(/^(?:temps\s+de\s+)?lecture\s*:?\s*/i, '')
+          .replace(/\s*(?:de\s+lecture|read|reading)\s*\.?$/i, '')
+          .trim();
+      }

@@ -993,9 +993,33 @@ $('btn-manual').addEventListener('click', () => {
   setStep(2);
 });
 
+/* Shortens an on-screen text at a word boundary, with an ellipsis (never "COORDINATED ENCRYP"). */
+function clipWords(value, max){
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return (space > 0 ? cut.slice(0, space) : cut).replace(/[\s,;:.\-]+$/, '') + '…';
+}
+/* The file name of the video and of its project: the exercise name, then "debrief video"
+   in the interface language. A slug chosen by the AI or the author is kept. */
+function videoSlug(name){
+  let base = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (base.length > 80) base = base.slice(0, 81).replace(/-[^-]*$/, '');
+  const suffix = { fr: 'video-debrief', de: 'debriefing-video' }[interfaceLanguage] || 'debrief-video';
+  return base ? `${base}-${suffix}` : suffix;
+}
+function projectSlug(){
+  const slug = project && project.meta && project.meta.slug;
+  // "ma-video" was the fixed name of the older manual skeletons.
+  return slug && slug !== 'ma-video' ? slug : videoSlug(exerciseMaterial().name || (project && project.meta && project.meta.title));
+}
+
 /* deterministic skeleton from a CrisisDebrifier-style timeline (no AI) */
 function buildSkeleton(){
-  let events = exerciseMaterial().events || [];
+  const material = exerciseMaterial();
+  let events = material.events || [];
   if (!events.length) {
     try {
       const m = storedMaterial.match(/\[[\s\S]*\]/);
@@ -1011,8 +1035,9 @@ function buildSkeleton(){
   const last = events.filter(e => e.phase === phases[2]).sort(sevSort);
   const big = main[0] || events[0] || {};
   const todo = L ? '[À RÉDIGER] ' : '[TO WRITE] ';
+  const title = material.name || big.title || (L ? 'Crise' : 'Crisis');
   const p = {
-    meta: { title: big.title || 'Crise', slug: 'ma-video', lang },
+    meta: { title, slug: videoSlug(title), lang },
     theme: { preset: $('set-theme').value },
     audio: Object.assign({ rate: '+6%' }, $('set-voice').value ? { voice: $('set-voice').value } : {}),
     target: { duration: parseFloat($('set-duration').value) || 120 },
@@ -1020,25 +1045,25 @@ function buildSkeleton(){
     scenes: [
       { id:'s1', type:'cold-open', vo: todo + (big.headline||''),
         eyebrow:'', dateLine: big.dateLabel || '', kicker: big.headline || '',
-        title:(big.title||'CRISE').toUpperCase().slice(0,18), subtitle:'' },
+        title:clipWords((big.title||(L?'CRISE':'CRISIS')).toUpperCase(),18), subtitle:'' },
       { id:'s2', type:'chain', vo: todo + pre.map(e=>e.headline).join(' '),
-        eyebrow: L?'Acte I':'Act I', heading:'',
-        nodes: pre.map(e => ({ date: e.dateLabel||'', title:(e.title||'').slice(0,28), sub:(e.headline||'').slice(0,70) })) },
-      { id:'s3', type:'map-focus', vo: todo + (big.body||'').slice(0,180),
-        eyebrow:(L?'Acte II — ':'Act II — ')+(big.dateLabel||''), heading:(big.title||'').slice(0,30),
+        eyebrow: L?'Acte I':'Act I', heading: L?'Comment tout a commencé':'How it started',
+        nodes: pre.map(e => ({ date: e.dateLabel||'', title:clipWords(e.title,28), sub:clipWords(e.headline,70) })) },
+      { id:'s3', type:'map-focus', vo: todo + clipWords(big.body,180),
+        eyebrow:(L?'Acte II — ':'Act II — ')+(big.dateLabel||''), heading:clipWords(big.title,30),
         camera:{ center: big.coords ? [big.coords[1], big.coords[0]] : [10,47], scale:22 },
         epicenter: big.coords ? [big.coords[1], big.coords[0]] : [10,47], impactAt:1.5,
         dotAnchors: main.filter(e=>e.coords).slice(0,8).map(e=>[e.coords[1],e.coords[0]]),
-        stat:{ value:0 }, statLabel:(big.casualties||''), bullets: main.slice(1,5).map(e=>({text:(e.title||'').slice(0,40)})) },
+        stat:{ value:0 }, statLabel:(big.casualties||''), bullets: main.slice(1,5).map(e=>({text:clipWords(e.title,40)})) },
       { id:'s4', type:'map-spread', vo: todo,
-        eyebrow:L?'Acte II — propagation':'Act II — spread', heading:'',
+        eyebrow:L?'Acte II — propagation':'Act II — spread', heading: L?'La crise se propage':'The crisis spreads',
         origin: big.coords ? [big.coords[1], big.coords[0]] : [10,47],
-        stamps: main.slice(0,5).filter(e=>e.coords).map(e=>({ name:(e.title||'').toUpperCase().slice(0,16),
-          fig:(e.damageUSD||e.casualties||'').slice(0,42), coords:[e.coords[1],e.coords[0]] })),
+        stamps: main.slice(0,5).filter(e=>e.coords).map(e=>({ name:clipWords((e.title||'').toUpperCase(),16),
+          fig:clipWords(e.damageUSD||e.casualties,42), coords:[e.coords[1],e.coords[0]] })),
         bottom:{ text:'', strong:'' } },
-      { id:'s5', type:'stat-grid', vo: todo + last.map(e=>e.headline).join(' ').slice(0,200),
-        eyebrow:L?'Acte III — les suites':'Act III — fallout', heading:'',
-        facts: last.slice(0,4).map(e=>({ tag:(e.kind||''), big:(e.title||'').slice(0,26), sub:(e.headline||'').slice(0,70) })) },
+      { id:'s5', type:'stat-grid', vo: todo + clipWords(last.map(e=>e.headline).join(' '),200),
+        eyebrow:L?'Acte III — les suites':'Act III — fallout', heading: L?'Les conséquences':'The consequences',
+        facts: last.slice(0,4).map(e=>({ tag:(e.kind||''), big:clipWords(e.title,26), sub:clipWords(e.headline,70) })) },
       { id:'s6', type:'lessons', vo: todo,
         eyebrow:L?'Ce que ça signifie pour le comex':'What this means for the board',
         lessons:[{text:L?'Leçon 1 — à rédiger.':'Lesson 1 — to write.'},
@@ -1046,7 +1071,7 @@ function buildSkeleton(){
                  {text:L?'Leçon 3 — à rédiger.':'Lesson 3 — to write.'}],
         finalLine1:'', finalLine2:'' },
       { id:'s7', type:'endcard', vo:'', minDuration:4.2,
-        title:(big.title||'').toUpperCase().slice(0,18), subtitle:'', brand:'' },
+        title:clipWords(String(big.title||'').toUpperCase(),18), subtitle:'', brand:'' },
     ],
   };
   applyProject(enforceSettings(p));
@@ -1109,7 +1134,8 @@ function renderSceneCards(){
     type.textContent = s.type || '';
     const title = document.createElement('span');
     title.className = 'scene-title';
-    title.textContent = s.heading || s.title || s.id || '';
+    // A scene without a heading is named by its other on-screen texts, never by its id ("s4").
+    title.textContent = s.heading || s.title || s.eyebrow || s.kicker || s.caption || '';
     const duration = document.createElement('span');
     duration.className = 'scene-dur';
     duration.textContent = `${estDur(s).toFixed(0)}s`;
@@ -1204,7 +1230,7 @@ function download(){
   const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = ((project.meta && project.meta.slug) || 'projet-video') + '.json';
+  a.download = projectSlug() + '.json';
   a.click();
 }
 $('btn-download').addEventListener('click', download);
@@ -1323,7 +1349,7 @@ $('btn-browser-produce').addEventListener('click', async () => {
     });
     if (lastVideoUrl) URL.revokeObjectURL(lastVideoUrl);
     lastVideoUrl = URL.createObjectURL(result.blob);
-    const name = ((project.meta && project.meta.slug) || 'debrief-video') + '.' + result.extension;
+    const name = projectSlug() + '.' + result.extension;
     $('browser-link').href = lastVideoUrl;
     $('browser-link').download = name;
     $('browser-video').src = lastVideoUrl;
