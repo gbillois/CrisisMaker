@@ -3,7 +3,7 @@ function renderExercisePlan() {
   return `<article class="card"><h3>${tt('Exercise plan', 'Plan de l’exercice', 'Übungsplan')}</h3>
     <label class="field">${tt('Exercise objectives', 'Objectifs de l’exercice', 'Übungsziele')}<textarea data-bind="scenario.objectives" placeholder="${tt('Decisions and capabilities to test', 'Décisions et capacités à tester', 'Zu testende Entscheidungen und Fähigkeiten')}">${escapeHtml(s.objectives || '')}</textarea></label>
     <label class="field">${tt('Narrative arc', 'Arc narratif', 'Handlungsbogen')}<textarea data-bind="scenario.narrative_arc">${escapeHtml(s.narrative_arc || '')}</textarea></label>
-    <p class="subtle">${tt('Timed phases come from the main storyline of the Phase Builder.', 'Les phases minutées proviennent de la trame principale du Phase Builder.', 'Zeitliche Phasen stammen aus dem Hauptstrang des Phase Builders.')} <button class="btn btn-ghost btn-xs" data-route="builder">Phase Builder →</button></p>
+    <p class="subtle">${tt('Timed phases come from the Crisis steps tab.', 'Les phases minutées proviennent de l\'onglet Crisis steps.', 'Zeitliche Phasen stammen aus dem Tab Crisis steps.')} <button class="btn btn-ghost btn-xs" data-route="builder">Crisis steps →</button></p>
     ${(s.phases || []).length ? `<div class="agent-phases">${s.phases.map(p => `<div><strong>T+${escapeHtml(p.start_minutes)}–${escapeHtml(p.end_minutes)} · ${escapeHtml(p.name)}</strong><p>${escapeHtml(p.purpose)}</p></div>`).join('')}</div>` : `<p class="subtle">${tt('The agent can organize timed phases from your brief.', 'L’agent peut organiser les phases à partir de votre brief.', 'Der Agent kann zeitliche Phasen aus Ihrem Briefing erstellen.')}</p>`}
   </article>`;
 }

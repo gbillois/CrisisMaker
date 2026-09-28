@@ -67,7 +67,7 @@ test('model: example project ships a linked multi-track storyboard without pendi
   h.run('appState.scenario = defaultScenario()');
   const info = h.json(`({ blocks: appState.scenario.storyboard.blocks.length, tracks: appState.scenario.storyboard.tracks.length, linked: appState.scenario.stimuli.filter(s => s.scenario_link).length, impacts: sbComputeImpacts(appState.scenario).length, issues: sbStructuralChecks(appState.scenario.storyboard, appState.scenario).filter(i => i.severity !== 'info').map(i => i.message) })`);
   assert.equal(info.blocks, 8);
-  assert.equal(info.tracks, 3);
+  assert.equal(info.tracks, 7);
   assert.equal(info.linked, 19);
   assert.equal(info.impacts, 0);
   assert.deepEqual(info.issues, []);
@@ -92,7 +92,7 @@ test('persistence: storyboard, named versions and stimulus links survive export/
 
 test('history: undo/redo, debounced text edits, versions, restore and diff', () => {
   const h = harness();
-  h.run(`StoryboardHistory.ensure(); sbAddBlock('trigger'); sbAddBlock('investigation');`);
+  h.run(`StoryboardHistory.ensure(); sbAddBlock(); sbAddBlock();`);
   assert.equal(h.run('appState.scenario.storyboard.blocks.length'), 2);
   assert.equal(h.run('appState.scenario.scenario.phases.length'), 2);
   h.run(`appState.scenario.storyboard.blocks[0].brief = 'First signals'; StoryboardHistory.commit('Edit brief', { debounce: true });`);
@@ -289,33 +289,60 @@ test('library: user templates round-trip through save, export format and import 
   assert.ok(h.run('sbStoryboard().duration_minutes') > saved.duration_minutes);
 });
 
-test('view: builder renders every panel and modal without a DOM', () => {
+test('view: Crisis steps renders the timeline, bottom details and modals without a DOM', () => {
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
   const html = h.run('renderScenarioBuilderView()');
-  for (const marker of ['sb-toolbar', 'sb-bin', 'sb-monitor', 'sb-timeline-panel', 'sb-inspector', 'data-sb-clip', 'Generate injects']) assert.ok(html.includes(marker), marker);
-  for (const modal of ['skeleton', 'versions', 'coherence', 'generate', 'sync']) {
+  for (const marker of ['sb-toolbar', 'sb-timeline-panel', 'data-sb-clip', 'sb-details is-empty', 'Generate injects', 'data-sb-action="add-track"']) assert.ok(html.includes(marker), marker);
+  for (const gone of ['sb-bin', 'sb-monitor', 'sb-inspector', 'sb-rail', 'sb-playhead']) assert.ok(!html.includes(gone), gone);
+  for (const modal of ['versions', 'coherence', 'generate', 'sync']) {
     h.run(`sbUI().modal = '${modal}'`);
     assert.ok(h.run('renderScenarioBuilderView()').includes('sb-modal'), modal);
   }
+  h.run(`sbUI().modal = null; sbUI().selected = [sbMainBlocks(sbStoryboard())[0].id];`);
+  const details = h.run('renderScenarioBuilderView()');
+  for (const marker of ['sb-details-head', 'data-sb-field="brief"', 'data-sb-field="narrative"', 'data-sb-field="type"', 'sb-beat-line', 'data-sb-action="rewrite-block"']) assert.ok(details.includes(marker), marker);
+  h.run(`sbUI().selected = [sbStoryboard().blocks.find(b => !sbIsMainBlock(sbStoryboard(), b)).id];`);
+  assert.ok(!h.run('renderScenarioBuilderView()').includes('data-sb-field="type"'), 'crisis cell blocks have no stage type');
+  h.run(`sbUI().detailsCollapsed = true`);
+  assert.ok(h.run('renderScenarioBuilderView()').includes('sb-details is-collapsed'));
+  h.run(`sbUI().detailsCollapsed = false; sbUI().selected = sbStoryboard().blocks.slice(0, 2).map(b => b.id)`);
+  assert.ok(h.run('renderScenarioBuilderView()').includes('2 blocks selected'));
+  const scenario = h.run('renderScenarioView()');
+  for (const marker of ['Describe the crisis', 'data-sb-meta="brief"', 'data-sb-duration-hours', 'data-sb-project="scenario.objectives"', 'data-sb-cell-toggle="technical"', 'Build the detailed scenario with AI', 'Detailed scenario', 'data-sb-meta="synopsis"', 'Or start from a ready-made scenario']) assert.ok(scenario.includes(marker), marker);
+  assert.ok(!scenario.includes('data-actor-bind'), 'actors live in their own tab');
+  h.run(`sbUI().libraryOpen = true`);
+  assert.ok(h.run('renderScenarioView()').includes('sb-template-card'));
   h.run(`sbUI().modal = 'preview'; sbUI().previewId = 'ransomware-double-extortion'`);
-  assert.ok(h.run('renderScenarioBuilderView()').includes('Use this scenario'));
-  h.run(`sbUI().modal = null; sbUI().selected = [sbStoryboard().blocks[0].id];`);
-  for (const tab of ['brief', 'narrative', 'plan', 'links']) {
-    h.run(`sbUI().inspector = '${tab}'`);
-    assert.ok(h.run('renderScenarioBuilderView()').includes('sb-inspector-head'), tab);
-  }
-  for (const left of ['blocks', 'cast', null]) {
-    h.run(`sbPanels().left = ${JSON.stringify(left)}`);
-    const markup = h.run('renderScenarioBuilderView()');
-    assert.equal(markup.includes('class="sb-bin"'), left !== null, String(left));
-    assert.ok(!markup.includes('sb-template-card'), 'library lives in Scenario context');
-  }
-  h.run(`sbPanels().right = false; sbPanels().monitor = 'compact'`);
-  const collapsed = h.run('renderScenarioBuilderView()');
-  assert.ok(!collapsed.includes('sb-inspector-head') && collapsed.includes('sb-monitor-strip') && collapsed.includes('sb-rail-right'));
-  const context = h.run('renderScenarioView()');
-  for (const marker of ['Scenario library', 'Generate with AI', 'Exercise framing', 'sb-template-card', 'data-sb-meta="synopsis"', 'data-actor-bind']) assert.ok(context.includes(marker), marker);
+  assert.ok(h.run('renderScenarioView()').includes('Use this scenario'));
+  h.run(`sbUI().modal = null`);
+  const actors = h.run('renderActorsView()');
+  for (const marker of ['data-actor-bind', 'Roles in the crisis steps', 'data-sb-cast=', 'data-sb-action="create-actors"']) assert.ok(actors.includes(marker), marker);
+  h.run(`appState.route = 'scenario'`);
+  const nav = h.run('renderAppShell()');
+  const order = ['scenario', 'actors', 'builder', 'stimuli', 'library'].map(route => nav.indexOf(`data-route="${route}"`));
+  assert.deepEqual([...order].sort((a, b) => a - b), order, 'Scenario, Actors, Crisis steps come first');
   h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'`);
   assert.ok(!h.run('renderScenarioBuilderView()').includes('<img src=x'));
+});
+
+test('crisis cells: default rows, legacy names, add/remove and adding blocks per row', () => {
+  const h = harness();
+  h.run(`appState.scenario = emptyScenario({}); StoryboardHistory.ensure();`);
+  assert.deepEqual(h.json('sbStoryboard().tracks.map(t => t.name)'), ['Crisis steps', 'Executive', 'Communication', 'IT', 'Cyber', 'HR']);
+  const legacy = h.json(`normalizeStoryboard({ blocks: [], tracks: [{ id: 'm', key: 'main', kind: 'main', name: 'Main storyline' }, { id: 'g', key: 'governance', name: 'Crisis cell & decisions' }, { id: 'p', key: 'people', name: 'My own name' }] }).tracks.map(t => t.name)`);
+  assert.deepEqual(legacy, ['Crisis steps', 'Executive', 'My own name']);
+  h.run(`sbAddBlock(); sbAddBlock(); sbAddBlock(sbTrackByKey(sbStoryboard(), 'cyber').id);`);
+  const blocks = h.json(`sbSortedBlocks(sbStoryboard()).map(b => ({ type: b.type, start: b.start_minutes, row: sbTrack(sbStoryboard(), b.track_id).name }))`);
+  assert.deepEqual(blocks.filter(b => b.row === 'Crisis steps').map(b => [b.type, b.start]), [['trigger', 0], ['investigation', 45]]);
+  assert.deepEqual(blocks.find(b => b.row === 'Cyber'), { type: 'cyber_response', start: 0, row: 'Cyber' });
+  // A step added inside another one is inserted after it and later blocks shift.
+  h.run(`sbAddBlock(sbMainTrack(sbStoryboard()).id, 10)`);
+  assert.deepEqual(h.json(`sbMainBlocks(sbStoryboard()).map(b => [b.type, b.start_minutes])`), [['trigger', 0], ['containment', 45], ['investigation', 90]]);
+  h.run(`window.confirm = () => true; sbRemoveCell(sbStoryboard(), sbTrackByKey(sbStoryboard(), 'cyber')); sbAddCell(sbStoryboard(), 'legal');`);
+  assert.deepEqual(h.json('sbCells(sbStoryboard()).map(t => t.key)'), ['governance', 'communication', 'technical', 'people', 'legal']);
+  assert.ok(!h.run(`sbStoryboard().blocks.some(b => b.type === 'cyber_response')`), 'blocks of a removed cell go with it');
+  h.run(`{ const block = sbMainBlocks(sbStoryboard())[0]; sbMoveToRow(sbStoryboard(), block, sbTrackByKey(sbStoryboard(), 'communication')); }`);
+  assert.equal(h.run(`sbSortedBlocks(sbStoryboard(), sbTrackByKey(sbStoryboard(), 'communication').id)[0].type`), 'communication');
+  assert.equal(h.run(`sbBlockColor(sbSortedBlocks(sbStoryboard(), sbTrackByKey(sbStoryboard(), 'communication').id)[0], sbStoryboard())`), h.run(`sbTrackByKey(sbStoryboard(), 'communication').color`));
 });

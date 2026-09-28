@@ -86,7 +86,7 @@ function agentStoryboardSummary() {
   return {
     duration_minutes: storyboard.duration_minutes,
     blocks: sbSortedBlocks(storyboard).slice(0, 24).map(block => ({ id: block.id, title: agentExcerpt(block.title, 120), track: sbTrack(storyboard, block.track_id)?.name || '', start: block.start_minutes, end: sbBlockEnd(block), injects: block.stimuli_target, planned: block.beats.length })),
-    note: 'Main storyline and workstream blocks from the Scenario Builder. Use getStoryboard for briefs and planned injects.'
+    note: 'Crisis steps (main track) and crisis cell blocks from the storyboard. Use getStoryboard for briefs and planned injects.'
   };
 }
 function agentConsistencyCheck() {
@@ -186,7 +186,7 @@ function createAgentToolRegistry() {
     appState.scenario.scenario.phases = sbDerivePhases(appState.scenario.storyboard);
     return args;
   }, 'broad');
-  add('getStoryboard', 'Read the Scenario Builder storyboard: blocks (main storyline and workstreams) with briefs, narratives and planned injects.', {}, [], () => {
+  add('getStoryboard', 'Read the Scenario Builder storyboard: blocks (crisis steps and crisis cells) with briefs, narratives and planned injects.', {}, [], () => {
     const storyboard = appState.scenario.storyboard;
     return {
       duration_minutes: storyboard.duration_minutes,

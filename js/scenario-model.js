@@ -6,15 +6,29 @@ const SB_MAX_DURATION = 10080;
 const SB_MAX_BLOCKS = 80;
 const SB_MAX_BEATS = 24;
 
+/* Rows of the Crisis steps timeline: the main row holds the crisis steps, the
+   other rows are crisis cells. Keys stay stable for saved projects and templates. */
 const SB_TRACK_PRESETS = [
-  { key: 'main', name: 'Main storyline', kind: 'main', color: '#0f6d8f' },
-  { key: 'technical', name: 'Technical response', kind: 'workstream', color: '#2563eb' },
-  { key: 'governance', name: 'Crisis cell & decisions', kind: 'workstream', color: '#0b2f4a' },
+  { key: 'main', name: 'Crisis steps', kind: 'main', color: '#0f6d8f' },
+  { key: 'governance', name: 'Executive', kind: 'workstream', color: '#0b2f4a' },
   { key: 'communication', name: 'Communication', kind: 'workstream', color: '#7c3aed' },
-  { key: 'legal', name: 'Legal & regulatory', kind: 'workstream', color: '#0f766e' },
-  { key: 'business', name: 'Business & continuity', kind: 'workstream', color: '#d48c00' },
-  { key: 'people', name: 'People & logistics', kind: 'workstream', color: '#e11d48' }
+  { key: 'technical', name: 'IT', kind: 'workstream', color: '#2563eb' },
+  { key: 'cyber', name: 'Cyber', kind: 'workstream', color: '#c2410c' },
+  { key: 'people', name: 'HR', kind: 'workstream', color: '#e11d48' },
+  { key: 'legal', name: 'Legal', kind: 'workstream', color: '#0f766e' },
+  { key: 'business', name: 'Business', kind: 'workstream', color: '#d48c00' }
 ];
+const SB_DEFAULT_CELLS = ['governance', 'communication', 'technical', 'cyber', 'people'];
+/* Names given to the rows before they became crisis cells: renamed on load. */
+const SB_LEGACY_TRACK_NAMES = {
+  main: 'Main storyline',
+  technical: 'Technical response',
+  governance: 'Crisis cell & decisions',
+  communication: 'Communication',
+  legal: 'Legal & regulatory',
+  business: 'Business & continuity',
+  people: 'People & logistics'
+};
 
 const SB_BLOCK_TYPES = {
   trigger: { label: 'Trigger & detection', group: 'stage', color: '#dc2626', track: 'main', duration: 45, stimuli: 3, icon: 'bolt', hint: 'Weak signals, first alerts and the event that starts the crisis.' },
@@ -25,14 +39,19 @@ const SB_BLOCK_TYPES = {
   recovery: { label: 'Recovery & rebuild', group: 'stage', color: '#1aa574', track: 'main', duration: 45, stimuli: 3, icon: 'refresh', hint: 'Restore, rebuild and restart services in a trusted way.' },
   exit: { label: 'Crisis exit & lessons learned', group: 'stage', color: '#30c38f', track: 'main', duration: 30, stimuli: 2, icon: 'flag', hint: 'Close the crisis, communicate, capture lessons learned.' },
   twist: { label: 'Twist / escalation', group: 'stage', color: '#f43f5e', track: 'main', duration: 30, stimuli: 2, icon: 'spark', hint: 'An aggravating event that raises the pressure or changes the situation.' },
-  crisis_cell: { label: 'Crisis cell & governance', group: 'workstream', color: '#0b2f4a', track: 'governance', duration: 60, stimuli: 2, icon: 'users', hint: 'Activation, roles, decision cadence, executive arbitration.' },
+  crisis_cell: { label: 'Executive decisions', group: 'workstream', color: '#0b2f4a', track: 'governance', duration: 60, stimuli: 2, icon: 'users', hint: 'Activation, roles, decision cadence, executive arbitration.' },
   communication: { label: 'Communication', group: 'workstream', color: '#7c3aed', track: 'communication', duration: 90, stimuli: 4, icon: 'megaphone', hint: 'Internal messages, media, social networks, public statements.' },
+  it_ops: { label: 'IT operations', group: 'workstream', color: '#2563eb', track: 'technical', duration: 60, stimuli: 2, icon: 'database', hint: 'Service status, isolation, backups, restoration and IT suppliers.' },
+  cyber_response: { label: 'Cyber response', group: 'workstream', color: '#c2410c', track: 'cyber', duration: 60, stimuli: 2, icon: 'shield', hint: 'SOC and CERT findings, forensics, indicators, attacker behaviour.' },
   legal: { label: 'Legal & regulatory', group: 'workstream', color: '#0f766e', track: 'legal', duration: 60, stimuli: 2, icon: 'scale', hint: 'Notifications (GDPR, NIS2, sector), complaint, insurers, contracts.' },
   hr: { label: 'HR & people', group: 'workstream', color: '#e11d48', track: 'people', duration: 60, stimuli: 2, icon: 'heart', hint: 'Staff information, workload, unions, wellbeing, insider aspects.' },
   logistics: { label: 'Logistics', group: 'workstream', color: '#b45309', track: 'people', duration: 60, stimuli: 2, icon: 'box', hint: 'Premises, equipment, crisis room, suppliers, physical operations.' },
   customers: { label: 'Customers & partners', group: 'workstream', color: '#0a66c2', track: 'business', duration: 60, stimuli: 3, icon: 'handshake', hint: 'Clients, partners and suppliers asking questions or applying pressure.' },
   custom: { label: 'Custom block', group: 'custom', color: '#5d7384', track: 'main', duration: 30, stimuli: 2, icon: 'square', hint: 'Anything specific to your exercise.' }
 };
+/* Order in which new crisis steps are suggested, and the default activity of each cell. */
+const SB_STEP_SEQUENCE = ['trigger', 'investigation', 'containment', 'eradication', 'continuity', 'recovery', 'exit'];
+const SB_CELL_BLOCK_TYPES = { governance: 'crisis_cell', communication: 'communication', technical: 'it_ops', cyber: 'cyber_response', people: 'hr', legal: 'legal', business: 'customers' };
 
 const SB_ICON_PATHS = {
   bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
@@ -149,7 +168,7 @@ function sbEmptyStoryboard(duration = SB_DEFAULT_DURATION) {
     schema: STORYBOARD_SCHEMA,
     rev: 0,
     duration_minutes: sbInt(duration, SB_DEFAULT_DURATION, 30, SB_MAX_DURATION),
-    tracks: sbDefaultTracks(['main', 'technical', 'governance', 'communication', 'legal', 'business']),
+    tracks: sbDefaultTracks(['main', ...SB_DEFAULT_CELLS]),
     blocks: [],
     cast: [],
     meta: { synopsis: '', threat: '', brief: '', template_id: '', validated_rev: null, coherence: null }
@@ -252,11 +271,12 @@ function normalizeStoryboard(input, legacyPhases = []) {
   };
   const seenTracks = new Set();
   storyboard.tracks = (Array.isArray(input.tracks) ? input.tracks : []).slice(0, 16).map((track) => {
-    const preset = SB_TRACK_PRESETS.find((item) => item.key === track?.key);
+    const preset = SB_TRACK_PRESETS.find((item) => item.key === (track?.kind === 'main' ? 'main' : track?.key));
+    const name = sbText(track?.name, 120);
     return {
       id: sbSafeId(track?.id, 'track'),
       key: sbSafeId(track?.key) || 'custom',
-      name: sbText(track?.name, 120) || preset?.name || 'Track',
+      name: (preset && name === SB_LEGACY_TRACK_NAMES[preset.key] ? preset.name : name) || preset?.name || 'Crisis cell',
       kind: track?.kind === 'main' ? 'main' : 'workstream',
       color: /^#[0-9a-f]{6}$/i.test(track?.color || '') ? track.color : (preset?.color || '#5d7384'),
       collapsed: track?.collapsed === true
@@ -356,10 +376,20 @@ function sbMainBlocks(storyboard) {
 function sbBlocksAt(storyboard, minute) {
   return storyboard.blocks.filter((block) => minute >= block.start_minutes && minute < sbBlockEnd(block));
 }
+/* Crisis steps keep their stage colour; activities of a crisis cell take the cell colour. */
 function sbBlockColor(block, storyboard = null) {
   if (block.color) return block.color;
-  if (block.type === 'custom' && storyboard) return sbTrack(storyboard, block.track_id)?.color || SB_BLOCK_TYPES.custom.color;
+  const track = storyboard ? sbTrack(storyboard, block.track_id) : null;
+  if (track && (track.kind !== 'main' || block.type === 'custom')) return track.color;
   return (SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).color;
+}
+/* Type of the next crisis step: the first stage of the usual sequence not used yet. */
+function sbNextStepType(storyboard) {
+  const used = new Set(sbMainBlocks(storyboard).map((block) => block.type));
+  return SB_STEP_SEQUENCE.find((type) => !used.has(type)) || 'twist';
+}
+function sbCellBlockType(track) {
+  return (track && SB_CELL_BLOCK_TYPES[track.key]) || 'custom';
 }
 function sbDetailLevel(block) {
   if (block.beats.length) return 3;
@@ -422,6 +452,8 @@ function sbGuessType(text = '') {
     ['exit', /exit|closure|close|lesson|retex|sortie|wrap|debrief/],
     ['twist', /twist|escalat|aggrav|rebond/],
     ['communication', /comm|media|press|social/],
+    ['cyber_response', /\bsoc\b|cert|csirt|cyber|threat intel/],
+    ['it_ops', /\bit (?:ops|operations)|infrastructure|backup|helpdesk/],
     ['legal', /legal|regulat|notif|cnil|gdpr|rgpd|nis2|dora|juridi/],
     ['crisis_cell', /crisis cell|cellule|governance|gouvernance|decision|board|comex|executive/],
     ['hr', /\bhr\b|people|staff|rh\b|employee|salari/],
@@ -537,7 +569,7 @@ function sbTemplateToStoryboard(template, options = {}) {
     }, storyboard);
   });
   storyboard.duration_minutes = Math.max(storyboard.duration_minutes, sbStoryboardEnd(storyboard));
-  storyboard.meta.synopsis = sbText(template.summary || template.synopsis, 8000);
+  storyboard.meta.synopsis = sbText(template.synopsis || template.summary, 8000);
   storyboard.meta.threat = sbText(template.threat, 2000);
   storyboard.meta.template_id = sbText(options.templateId || template.id, 120);
   return { storyboard, objectives, title: sbText(template.name || template.title, 300) };
@@ -712,7 +744,7 @@ function sbBuildExampleStoryboard(project) {
     { type: 'communication', title: 'Media and social pressure', track: 'communication', start: 105, duration: 225, channels: media, brief: 'The story leaks online, reaches the international press and TV, and forces a public stance.', narrative: 'Analysts spot the attack on Reddit and X, Le Monde and the NYT publish, TV runs breaking news and StonaWave issues its first press release while the German press amplifies the story.' },
     { type: 'legal', title: 'Authority alert and notifications', track: 'legal', start: 150, duration: 60, channels: ['email_authority'], brief: 'CERT-FR issues an alert: regulatory notifications and cooperation with authorities start.', narrative: 'The national agency asks for indicators and a status. Players must organise notifications (GDPR, health authorities) without slowing the technical response.' }
   ];
-  storyboard.tracks = sbDefaultTracks(['main', 'communication', 'legal']);
+  storyboard.tracks = sbDefaultTracks(['main', ...SB_DEFAULT_CELLS, 'legal']);
   storyboard.blocks = specs.map((spec) => sbMakeBlock(spec.type, { title: spec.title, track_id: track(spec.track), start_minutes: spec.start, duration_minutes: spec.duration, brief: spec.brief, narrative: spec.narrative, status: 'refined' }, storyboard));
   const blocksByTime = sbMainBlocks(storyboard);
   for (const stimulus of project.stimuli) {

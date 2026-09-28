@@ -243,7 +243,7 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
     clean[key] = scrub(value);
   }
   if (!Object.keys(clean).length) throw new AgentValidationError('The AI returned no field of this template.');
-  saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Phase Builder: adapted to scenario change' : 'Phase Builder: AI generation');
+  saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Crisis steps: adapted to scenario change' : 'Crisis steps: AI generation');
   Object.assign(stimulus.generated_text, clean);
   stimulus.status = 'ready';
   stimulus.updated_at = new Date().toISOString();
@@ -323,7 +323,7 @@ const SbPipeline = {
 
   /* scope: array of block ids, or null for the whole storyboard. */
   async run({ blockIds = null, beatIds = null, plan = true, cast = true, write = true, keepCheckpoint = false } = {}) {
-    if (this.active || SbAI.busy) throw new AgentValidationError('Another Phase Builder operation is running.');
+    if (this.active || SbAI.busy) throw new AgentValidationError('Another Crisis steps operation is running.');
     if (getCrisisAgent().active || getCrisisAgent().busy) throw new AgentValidationError('Wait for the agent run to finish.');
     const project = appState.scenario;
     StoryboardHistory.ensure(project);
@@ -453,7 +453,7 @@ const SbPipeline = {
 
   /* Applies the selected sync actions (impact.action) with one checkpoint. */
   async applyImpacts(impacts) {
-    if (this.active || SbAI.busy) throw new AgentValidationError('Another Phase Builder operation is running.');
+    if (this.active || SbAI.busy) throw new AgentValidationError('Another Crisis steps operation is running.');
     const project = appState.scenario;
     const storyboard = project.storyboard;
     const selected = impacts.filter((impact) => impact.action && impact.action !== 'skip');
@@ -542,7 +542,7 @@ function sbAgentBrief(project, block) {
   const storyboard = project.storyboard;
   const beats = block.beats.map((beat) => `- ${sbFormatOffset(sbBeatAbsolute(block, beat))} · ${channelLabel(beat.channel)} · from ${sbCastLabel(storyboard, beat.cast_id) || 'any relevant actor'}: ${beat.title}${beat.intent ? ` (${beat.intent})` : ''}`).join('\n');
   return sbText([
-    `Phase Builder block: "${block.title}" (${SB_BLOCK_TYPES[block.type]?.label || 'Custom'}), from ${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))} (minutes ${block.start_minutes}–${sbBlockEnd(block)}).`,
+    `Crisis steps block: "${block.title}" (${SB_BLOCK_TYPES[block.type]?.label || 'Custom'}), from ${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))} (minutes ${block.start_minutes}–${sbBlockEnd(block)}).`,
     block.brief ? `Brief: ${block.brief}` : '',
     block.narrative ? `Narrative: ${block.narrative}` : '',
     block.objectives.length ? `Objectives to test: ${block.objectives.join('; ')}` : '',
@@ -562,5 +562,5 @@ function sbSendToAgent(block) {
 }
 
 function sbNotify() {
-  if (typeof App !== 'undefined' && appState.route === 'builder') App.render();
+  if (typeof App !== 'undefined' && ['builder', 'scenario', 'actors'].includes(appState.route)) App.render();
 }

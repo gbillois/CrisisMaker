@@ -164,15 +164,16 @@
                   ${svgHome()}
                   <span>${tt('Home', 'Accueil', 'Startseite')}</span>
                 </button>
-                ${renderNavIconButton('scenario', svgTarget(), 'Scenario context')}
-                ${renderNavIconButton('builder', svgStoryboard(), 'Phase Builder')}
-                ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
+                ${renderNavIconButton('scenario', svgBook(), tt('Scenario', 'Scénario', 'Szenario'))}
+                ${renderNavIconButton('actors', svgUsers(), tt('Actors', 'Acteurs', 'Akteure'))}
+                ${renderNavIconButton('builder', svgStoryboard(), 'Crisis steps')}
                 ${renderNavIconButton('stimuli', svgPen(), tt('Timeline', 'Timeline', 'Zeitplan'))}
                 ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
-                ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
-                ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
                 ${renderNavIconButton('agent', svgTarget(), 'Agent')}
                 ${renderNavIconButton('checker', svgShieldCheck(), tt('Checker', 'Checker', 'Prüfer'))}
+                ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
+                ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
+                ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
               </div>
               <div class="nav-topbar-center">
                 <div class="nav-brand-block"><span class="nav-brand-eyebrow">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span><span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker', 'CrisisMaker-Projekt'))}</span></div>
@@ -229,6 +230,8 @@
       }
 
       function svgStoryboard() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path><path d="M6 13h5"></path><path d="M9 16h8"></path><path d="M14 13h4"></path><path d="M7 4v5"></path><path d="M12 4v5"></path><path d="M17 4v5"></path></svg>'; }
+      function svgBook() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><path d="M9 7h7"></path><path d="M9 11h5"></path></svg>'; }
+      function svgUsers() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21a7 7 0 0 1 14 0"></path><path d="M16 4a4 4 0 0 1 0 8"></path><path d="M22 21a7 7 0 0 0-5-6.7"></path></svg>'; }
       function svgFolder() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'; }
       function svgTarget() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'; }
       function svgPen() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'; }
@@ -272,19 +275,19 @@
                   <div class="welcome-block-title" style="margin-bottom:14px;">${tt('What you can do', 'Ce que vous pouvez faire', 'Was Sie tun können')}</div>
                   <div class="launch-features">
                     <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgBook()}</div>
+                      <strong>${tt('Scenario', 'Scénario', 'Szenario')}</strong>
+                      <p>Describe the crisis in a few lines with its duration and objectives, and let the AI write the detailed scenario, or start from a ready-made one.</p>
+                    </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgUsers()}</div>
+                      <strong>${tt('Actors', 'Acteurs', 'Akteure')}</strong>
+                      <p>Manage the simulated actors who send injects (journalists, authorities, attackers, staff) and the roles they play in the crisis steps.</p>
+                    </div>
+                    <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgStoryboard()}</div>
-                      <strong>Phase Builder</strong>
-                      <p>Storyboard the crisis phases on a multi-track timeline, refine them layer by layer with AI, then generate and keep actors and injects in sync.</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgFolder()}</div>
-                      <strong>${tt('Project', 'Projet', 'Projekt')}</strong>
-                      <p>${tt('Create, open, save and export your crisis exercise projects. Import existing Excel timelines with AI assistance.', 'Créez, ouvrez, sauvegardez et exportez vos projets. Importez des chronologies Excel existantes avec l\'aide de l\'IA.', 'Erstellen, öffnen, speichern und exportieren Sie Ihre Krisenübungsprojekte. Importieren Sie vorhandene Excel-Zeitpläne mit KI-Unterstützung.')}</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgTarget()}</div>
-                      <strong>Scenario context</strong>
-                      <p>${tt('Define the client organisation, crisis type, timeline and actors who will receive injects during the exercise.', 'Définissez l\'organisation cliente, le type de crise, la chronologie et les acteurs qui recevront les injects.', 'Definieren Sie die Kundenorganisation, den Krisentyp, den Zeitplan und die Akteure, die während der Übung Injects erhalten.')}</p>
+                      <strong>Crisis steps</strong>
+                      <p>Lay out the crisis steps and what each crisis cell (executive, communication, IT, cyber, HR) has to handle on one timeline, then generate the injects.</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgPen()}</div>
@@ -311,6 +314,11 @@
                       <strong>${tt('Crisis Checker', 'Crisis Checker', 'Krisen-Prüfer')}</strong>
                       <p>${tt('Audit any crisis exercise chronogram — import an .xlsx, .xls or .pptx file (or use your current scenario) and let the AI analyze coverage, pacing, actor balance and realism, then export a quality report.', 'Auditez n\'importe quel chronogramme — importez un fichier .xlsx, .xls ou .pptx (ou utilisez votre scénario actuel) et laissez l\'IA analyser la couverture, le rythme, l\'équilibre des acteurs et le réalisme, puis exportez un rapport qualité.', 'Prüfen Sie beliebige Krisenübungs-Chronogramme — importieren Sie eine .xlsx-, .xls- oder .pptx-Datei (oder verwenden Sie Ihr aktuelles Szenario) und lassen Sie die KI Abdeckung, Tempo, Akteur-Balance und Realismus analysieren, dann exportieren Sie einen Qualitätsbericht.')}</p>
                     </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgFolder()}</div>
+                      <strong>${tt('Project', 'Projet', 'Projekt')}</strong>
+                      <p>${tt('Create, open, save and export your crisis exercise projects. Import existing Excel timelines with AI assistance.', 'Créez, ouvrez, sauvegardez et exportez vos projets. Importez des chronologies Excel existantes avec l\'aide de l\'IA.', 'Erstellen, öffnen, speichern und exportieren Sie Ihre Krisenübungsprojekte. Importieren Sie vorhandene Excel-Zeitpläne mit KI-Unterstützung.')}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -319,11 +327,11 @@
                   <div class="launch-tips">
                     <div class="launch-tip">
                       <div class="launch-tip-num">1</div>
-                      <span><strong>Frame and build the scenario</strong>: in Scenario context, start from the library or an AI skeleton; then refine each phase in the Phase Builder and generate actors and injects.</span>
+                      <span><strong>Describe the crisis</strong>: in the Scenario tab, write the macro scenario with its duration and objectives and let the AI build the detailed scenario, or start from the library.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">2</div>
-                      <span>${tt('<strong>Set up your scenario</strong> — define the client, crisis type and actors in the Scenario tab.', '<strong>Configurez votre scénario</strong> — définissez le client, le type de crise et les acteurs dans l\'onglet Scénario.', '<strong>Richten Sie Ihr Szenario ein</strong> — definieren Sie den Auftraggeber, den Krisentyp und die Akteure im Szenario-Tab.')}</span>
+                      <span><strong>Check the actors and the crisis steps</strong>: review who sends injects in Actors, then adjust the crisis steps and the work of each crisis cell, and generate the injects.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">3</div>
@@ -366,8 +374,12 @@
             subtitle: tt('Create, open, save and export your crisis exercise project.', 'Créez, ouvrez, sauvegardez et exportez votre projet d\'exercice de crise.', 'Erstellen, öffnen, speichern und exportieren Sie Ihr Krisenübungsprojekt.')
           },
           scenario: {
-            title: 'Scenario context',
-            subtitle: 'Frame the exercise: start from the library or AI, then set client, threat, objectives and actors.'
+            title: tt('Scenario', 'Scénario', 'Szenario'),
+            subtitle: 'Describe the crisis, its duration and objectives, and let the AI build the detailed scenario.'
+          },
+          actors: {
+            title: tt('Actors', 'Acteurs', 'Akteure'),
+            subtitle: 'The simulated actors who send injects, and the roles they play in the crisis steps.'
           },
           stimuli: {
             title: tt('Timeline', 'Timeline', 'Zeitplan'),
@@ -401,6 +413,7 @@
         if (appState.route === 'builder') return renderScenarioBuilderView();
         if (appState.route === 'project') return renderProjectView();
         if (appState.route === 'scenario') return renderScenarioView();
+        if (appState.route === 'actors') return renderActorsView();
         if (appState.route === 'stimuli') return renderStimuliView();
         if (appState.route === 'library') return renderLibraryView();
         if (appState.route === 'debrief') return renderDebriefView();
@@ -584,7 +597,7 @@
         const status = sbStimulusStatus(appState.scenario, stimulus);
         if (!status) return '';
         const block = status.block ? ` · ${status.block.title}` : '';
-        return ` <span class="sb-status is-${status.key}" title="${escapeAttribute(`Phase Builder${block}`)}">${escapeHtml(status.label)}</span>`;
+        return ` <span class="sb-status is-${status.key}" title="${escapeAttribute(`Crisis steps${block}`)}">${escapeHtml(status.label)}</span>`;
       }
 
       function renderLibraryCard(stimulus) {
@@ -860,18 +873,11 @@
       }
 
       function renderScenarioView() {
+        return `<section class="grid">${renderScenarioTab()}</section>`;
+      }
+
+      function renderActorsView() {
         const scenario = appState.scenario;
-        const sectors = [
-          ['Banking', 'Banque'], ['Energy', 'Énergie'], ['Healthcare', 'Santé'], ['Transport', 'Transport'],
-          ['Industry', 'Industrie'], ['Telecom', 'Telecom'], ['Retail', 'Retail'], ['Public sector', 'Public'], ['Other', 'Autre']
-        ];
-        const types = [['Ransomware', 'Ransomware'], ['Data Breach', 'Data Breach'], ['Supply Chain', 'Supply Chain'], ['DDoS', 'DDoS'], ['Insider Threat', 'Insider Threat'], ['Other', 'Autre']];
-        const langOptions = LANGUAGES.map((l) => `<option value="${l.value}" ${(scenario.client.language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('');
-        const scenarioPlaceholder = tt(
-          'Ex: "A French bank hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."',
-          'Ex: "Exercice de crise pour un hôpital français (CHU de Lyon). Scénario : fuite de données patients via un prestataire compromis. Début le 15 mars 2026 à 8h."',
-          'Bsp.: „Eine deutsche Bank wurde von einem Ransomware-Angriff getroffen. Die Angreifer verschlüsselten alle Handelssysteme. Der Angriff begann am Montagmorgen um 8 Uhr MEZ."'
-        );
         const actorsPlaceholder = tt(
           'Ex: "I need journalists from Le Monde and the Financial Times, an ANSSI authority, 2 internal actors (the CISO and the CEO), and an angry B2C customer on Twitter."',
           'Ex: "Génère des acteurs réalistes pour ce scénario. Je veux un mix de journalistes FR et internationaux, les autorités pertinentes, et des acteurs internes."',
@@ -879,49 +885,6 @@
         );
         return `
           <section class="grid">
-            ${renderScenarioContextStart()}
-            ${renderLLMConfigBlock('scenario', scenarioPlaceholder)}
-            <article class="card">
-              <div class="section-header"><h3>${tt('Client', 'Client', 'Auftraggeber')}</h3></div>
-              <div class="field-grid cols-2">
-                <label class="field">${tt('Client name', 'Nom du client', 'Name des Auftraggebers')}<input type="text" data-bind="client.name" value="${escapeAttribute(scenario.client.name)}"></label>
-                <label class="field">${tt('Sector', 'Secteur', 'Sektor')}
-                  <select data-bind="client.sector">${sectors.map(([en, fr]) => `<option value="${en}" ${scenario.client.sector === en || scenario.client.sector === fr ? 'selected' : ''}>${tt(en, fr)}</option>`).join('')}</select>
-                </label>
-                <label class="field">${tt('Primary language', 'Langue principale', 'Primärsprache')}
-                  <select data-bind="client.language">${langOptions}</select>
-                </label>
-                <label class="field">${tt('Inject language', 'Langue des injects', 'Sprache der Injects')}
-                  <select data-bind="settings.inject_language">
-                    ${LANGUAGES.map((l) => `<option value="${l.value}" ${(scenario.settings.inject_language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('')}
-                  </select>
-                </label>
-                <p class="helper" style="grid-column:1/-1">${tt('Default language for AI-generated inject content (emails, social posts, memos). Press articles keep their publication\'s native language.', 'Langue par défaut pour le contenu des injects générés par IA (emails, posts, mémos). Les articles de presse conservent la langue de leur publication.', 'Standardsprache für KI-generierte Inject-Inhalte (E-Mails, Social-Media-Beiträge, Memos). Presseartikel behalten die Sprache ihrer Publikation.')}</p>
-                <label class="field">${tt('Logo (URL or data URI)', 'Logo (URL ou data URI)', 'Logo (URL oder Data-URI)')}<input type="url" data-bind="client.logo_url" value="${escapeAttribute(scenario.client.logo_url || '')}" placeholder="https://..."></label>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="section-header"><h3>${tt('Scenario / Threat', 'Scénario / Menace', 'Szenario / Bedrohung')}</h3></div>
-              <div class="field-grid cols-2">
-                <label class="field">${tt('Scenario name', 'Nom du scénario', 'Szenarioname')}<input type="text" data-bind="name" value="${escapeAttribute(scenario.name)}"></label>
-                <label class="field">${tt('Type', 'Type', 'Typ')}
-                  <select data-bind="scenario.type">${types.map(([en, fr]) => `<option value="${en}" ${scenario.scenario.type === en || scenario.scenario.type === fr ? 'selected' : ''}>${tt(en, fr)}</option>`).join('')}</select>
-                </label>
-                <label class="field">${tt('Start date', 'Date de début', 'Startdatum')}<input type="datetime-local" data-bind="scenario.start_date" value="${escapeAttribute(scenario.scenario.start_date)}"></label>
-                <label class="field">${tt('Timezone', 'Fuseau horaire', 'Zeitzone')}
-                  <select data-bind="scenario.timezone">${TIMEZONES.map((item) => `<option value="${item}" ${scenario.scenario.timezone === item ? 'selected' : ''}>${item}</option>`).join('')}</select>
-                </label>
-                <label class="field" style="grid-column: 1 / -1;">${tt('Scenario summary', 'Résumé du scénario', 'Szenariozusammenfassung')}
-                  <textarea data-bind="scenario.summary">${escapeHtml(scenario.scenario.summary)}</textarea>
-                  <span class="helper">${tt('Injected into all AI prompts for content generation.', 'Injecté dans tous les prompts IA pour la génération de contenu.', 'In alle KI-Prompts zur Inhaltsgenerierung eingefügt.')}</span>
-                </label>
-                <label class="field" style="grid-column: 1 / -1;">${tt('Detailed context (optional)', 'Contexte détaillé (optionnel)', 'Detaillierter Kontext (optional)')}
-                  <textarea data-bind="scenario.detailed_context" rows="5" placeholder="${tt('Timeline, affected systems, attack vector, compromised data...', 'Chronologie, systèmes affectés, vecteur d\'attaque, données compromises...', 'Zeitplan, betroffene Systeme, Angriffsvektor, kompromittierte Daten...')}">${escapeHtml(scenario.scenario.detailed_context || '')}</textarea>
-                </label>
-              </div>
-            </article>
-
             <article class="card">
               <div class="section-header">
                 <div>
@@ -959,11 +922,12 @@
                           </div>
                         </td>
                       </tr>`;
-                    }).join('')}
+                    }).join('') || `<tr><td colspan="6" class="subtle">${tt('No actor yet: add one, generate them with AI, or create them from the roles below.', 'Aucun acteur : ajoutez-en un, générez-les avec l\'IA ou créez-les depuis les rôles ci-dessous.', 'Noch kein Akteur: fügen Sie einen hinzu, generieren Sie sie mit KI oder erstellen Sie sie aus den Rollen unten.')}</td></tr>`}
                   </tbody>
                 </table>
               </div>
             </article>
+            ${renderStoryboardRoles()}
           </section>
         `;
       }

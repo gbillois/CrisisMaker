@@ -1,5 +1,5 @@
-/* Scenario Builder interactions: actions, inputs, pointer editing of clips,
-   drag and drop from the bin, playhead scrubbing and keyboard shortcuts. */
+/* Crisis steps, Scenario and Actors interactions: actions, inputs, pointer
+   editing of clips on the timeline and keyboard shortcuts. */
 const SB_TEXT_FIELDS = new Set(['title', 'brief', 'narrative', 'notes']);
 const SB_NUMBER_FIELDS = new Set(['start_minutes', 'duration_minutes', 'stimuli_target']);
 
@@ -9,14 +9,13 @@ function sbCommitRender(label) {
 }
 
 function sbSnap(minutes) {
-  const step = Number(sbUI().snap) || 1;
-  return Math.round(minutes / step) * step;
+  return Math.round(minutes / SB_SNAP) * SB_SNAP;
 }
 
 function sbSetZoom(value) {
   const ui = sbUI();
   const scroller = document.getElementById('sb-timeline-scroll');
-  const centerMinute = scroller ? (scroller.scrollLeft + Math.max(0, scroller.clientWidth - sbHeaderWidth()) / 2) / ui.zoom : ui.playhead;
+  const centerMinute = scroller ? (scroller.scrollLeft + Math.max(0, scroller.clientWidth - sbHeaderWidth()) / 2) / ui.zoom : 0;
   ui.zoom = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, Math.round(value * 100) / 100));
   if (scroller) ui.scrollLeft = Math.max(0, centerMinute * ui.zoom - Math.max(0, scroller.clientWidth - sbHeaderWidth()) / 2);
 }
@@ -34,50 +33,78 @@ function sbFitZoom() {
   return changed;
 }
 
-/* Selecting a block brings the inspector back if it was hidden. */
-function sbRevealInspector() {
-  sbPanels().right = true;
+/* Selecting a block brings its details back if they were folded. */
+function sbShowDetails() {
+  sbUI().detailsCollapsed = false;
 }
 
-function sbTogglePanel(side, value = null) {
-  const panels = sbPanels();
-  if (side === 'left') panels.left = panels.left === (value || 'blocks') ? null : (value || 'blocks');
-  else if (side === 'right') panels.right = !panels.right;
-  else panels.monitor = panels.monitor === 'full' ? 'compact' : 'full';
-  sbSavePanels();
-  App.render();
-}
-
-function sbEnsureTrackFor(storyboard, type) {
-  const preset = SB_BLOCK_TYPES[type] || SB_BLOCK_TYPES.custom;
-  let track = sbTrackByKey(storyboard, preset.track);
-  if (!track && preset.track === 'main') track = sbMainTrack(storyboard);
-  if (!track) {
-    const trackPreset = SB_TRACK_PRESETS.find((item) => item.key === preset.track);
-    track = { id: uid('track'), key: trackPreset.key, name: trackPreset.name, kind: 'workstream', color: trackPreset.color, collapsed: false };
-    storyboard.tracks.push(track);
-  }
-  return track;
-}
-
-function sbAddBlock(type, trackId = null, start = null) {
+/* Adds a crisis step (main row) or a block to a crisis cell. Without a time, a
+   step goes after the last step and a cell block after the last block of its
+   row. A step dropped inside another one is inserted after it and the rest of
+   the exercise shifts to make room. */
+function sbAddBlock(trackId = null, start = null) {
   const ui = sbUI();
   const storyboard = sbStoryboard();
-  const track = trackId ? sbTrack(storyboard, trackId) : sbEnsureTrackFor(storyboard, type);
+  const track = sbTrack(storyboard, trackId) || sbMainTrack(storyboard);
+  const main = track.kind === 'main';
+  const type = main ? sbNextStepType(storyboard) : sbCellBlockType(track);
+  const preset = SB_BLOCK_TYPES[type] || SB_BLOCK_TYPES.custom;
   let at = start;
-  if (at === null) at = track.kind === 'main' ? sbNextMainStart(storyboard) : sbSnap(ui.playhead);
-  const block = sbMakeBlock(type, { track_id: track.id, start_minutes: Math.max(0, at) }, storyboard);
-  if (ui.ripple && track.kind === 'main' && start !== null) {
+  let insert = false;
+  if (at === null) {
+    if (main) at = sbNextMainStart(storyboard);
+    else {
+      const last = sbSortedBlocks(storyboard, track.id).reduce((max, block) => Math.max(max, sbBlockEnd(block)), 0);
+      at = Math.min(last, Math.max(0, storyboard.duration_minutes - preset.duration));
+    }
+  } else if (main) {
+    const covering = sbMainBlocks(storyboard).find((block) => at >= block.start_minutes && at < sbBlockEnd(block));
+    if (covering) { at = sbBlockEnd(covering); insert = at < sbNextMainStart(storyboard); }
+  }
+  const block = sbMakeBlock(type, { track_id: track.id, start_minutes: Math.max(0, at), ...(type === 'custom' && !main ? { title: track.name } : {}) }, storyboard);
+  if (insert) {
     for (const other of storyboard.blocks) if (!other.locked && other.start_minutes >= block.start_minutes) other.start_minutes += block.duration_minutes;
   }
   storyboard.blocks.push(block);
   storyboard.duration_minutes = Math.max(storyboard.duration_minutes, sbStoryboardEnd(storyboard));
   ui.selected = [block.id];
-  ui.inspector = 'brief';
   ui.scrollTo = block.id;
-  sbRevealInspector();
-  sbCommitRender(`Add ${SB_BLOCK_TYPES[type]?.label || 'block'}`);
+  sbShowDetails();
+  sbCommitRender(main ? 'Add crisis step' : `Add block to ${track.name}`);
   return block;
+}
+
+/* Moves a block to another row: a crisis step keeps its stage, a block moved
+   to a crisis cell takes the activity type of that cell. */
+function sbMoveToRow(storyboard, block, track) {
+  const previous = SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom;
+  const type = track.kind === 'main' ? (previous.group === 'workstream' ? sbNextStepType(storyboard) : block.type) : sbCellBlockType(track);
+  if (block.title === previous.label) block.title = SB_BLOCK_TYPES[type]?.label || block.title;
+  block.type = type;
+  block.track_id = track.id;
+}
+
+/* Adds a crisis cell row from the presets not used yet, or a custom one. */
+function sbAddCell(storyboard, key = null) {
+  const used = new Set(sbCells(storyboard).map((track) => track.key));
+  const preset = SB_TRACK_PRESETS.find((item) => item.kind !== 'main' && (key ? item.key === key : !used.has(item.key)));
+  const track = { id: uid('track'), key: preset?.key || 'custom', name: preset?.name || 'New crisis cell', kind: 'workstream', color: preset?.color || '#5d7384', collapsed: false };
+  const order = SB_TRACK_PRESETS.map((item) => item.key);
+  const index = preset ? storyboard.tracks.findIndex((item, position) => position > 0 && order.indexOf(item.key) > order.indexOf(preset.key)) : -1;
+  if (index > 0) storyboard.tracks.splice(index, 0, track);
+  else storyboard.tracks.push(track);
+  return track;
+}
+
+/* Removes a crisis cell row and its blocks, after confirmation when it has some. */
+function sbRemoveCell(storyboard, track) {
+  if (!track || track.kind === 'main') return false;
+  const blocks = storyboard.blocks.filter((item) => item.track_id === track.id);
+  if (blocks.length && !window.confirm(`Remove the crisis cell "${track.name}" and its ${blocks.length} block(s)?`)) return false;
+  storyboard.blocks = storyboard.blocks.filter((item) => item.track_id !== track.id);
+  storyboard.tracks = storyboard.tracks.filter((item) => item.id !== track.id);
+  sbUI().selected = sbUI().selected.filter((id) => sbBlock(storyboard, id));
+  return true;
 }
 
 function sbDeleteSelected() {
@@ -89,10 +116,6 @@ function sbDeleteSelected() {
   const message = `Delete ${blocks.length === 1 ? `"${blocks[0].title}"` : `${blocks.length} blocks`}?${linked ? `\n${linked} linked inject(s) are kept and will be listed as orphans in Sync.` : ''}`;
   if (!window.confirm(message)) return;
   const ids = new Set(blocks.map((block) => block.id));
-  if (ui.ripple && blocks.length === 1 && sbTrack(storyboard, blocks[0].track_id)?.kind === 'main') {
-    const removed = blocks[0];
-    for (const other of storyboard.blocks) if (!ids.has(other.id) && !other.locked && other.start_minutes >= sbBlockEnd(removed)) other.start_minutes -= removed.duration_minutes;
-  }
   storyboard.blocks = storyboard.blocks.filter((block) => !ids.has(block.id));
   ui.selected = [];
   sbCommitRender(blocks.length === 1 ? 'Delete block' : 'Delete blocks');
@@ -154,7 +177,7 @@ async function sbHandleAction(event) {
   const project = appState.scenario;
   const storyboard = sbStoryboard();
   const block = sbSelectedBlock();
-  const allowedWhileBusy = ['toggle-left', 'toggle-right', 'toggle-monitor', 'stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template'];
+  const allowedWhileBusy = ['toggle-details', 'toggle-library', 'stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'export-template'];
   if (sbReadOnly() && !allowedWhileBusy.includes(action)) return;
   try {
     switch (action) {
@@ -191,39 +214,25 @@ async function sbHandleAction(event) {
         SbAI.lastError = '';
         App.render();
         break;
-      case 'set-bin':
-        ui.bin = element.dataset.sbValue;
+      case 'toggle-details':
+        ui.detailsCollapsed = !ui.detailsCollapsed;
         App.render();
         break;
-      case 'open-library':
-        ui.modal = null;
-        appState.route = 'scenario';
-        App.render();
-        break;
-      case 'toggle-left':
-        sbTogglePanel('left', element.dataset.sbValue);
-        break;
-      case 'toggle-right':
-        sbTogglePanel('right');
-        break;
-      case 'toggle-monitor':
-        sbTogglePanel('monitor');
-        break;
-      case 'set-inspector':
-        ui.inspector = element.dataset.sbValue;
+      case 'toggle-library':
+        ui.libraryOpen = !(ui.libraryOpen === null ? !storyboard.blocks.length : ui.libraryOpen);
         App.render();
         break;
       case 'select-block':
         ui.selected = [element.dataset.sbBlock];
         ui.scrollTo = element.dataset.sbBlock;
-        sbRevealInspector();
+        sbShowDetails();
         App.render();
         break;
       case 'select-blocks':
         ui.selected = element.dataset.sbBlocks.split(',').filter((id) => sbBlock(storyboard, id));
         ui.scrollTo = ui.selected[0];
         ui.modal = null;
-        sbRevealInspector();
+        sbShowDetails();
         App.render();
         break;
       case 'deselect':
@@ -231,7 +240,7 @@ async function sbHandleAction(event) {
         App.render();
         break;
       case 'add-block':
-        sbAddBlock(element.dataset.sbType);
+        sbAddBlock(element.dataset.sbTrack || null);
         break;
       case 'duplicate-block':
         sbDuplicateSelected();
@@ -285,7 +294,6 @@ async function sbHandleAction(event) {
         const offset = Math.min(Math.max(0, block.duration_minutes - 1), last ? last.offset_minutes + Math.max(5, Math.round(block.duration_minutes / Math.max(2, block.stimuli_target + 1))) : 0);
         block.beats.push(sbMakeBeat({ offset_minutes: offset, channel: last?.channel || 'email_internal', cast_id: last?.cast_id || '' }));
         block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
-        ui.inspector = 'plan';
         sbCommitRender('Add planned inject');
         break;
       }
@@ -304,30 +312,10 @@ async function sbHandleAction(event) {
           appState.stimulusModalId = element.dataset.sbStimulus;
         } else if (element.dataset.sbBlock) {
           ui.selected = [element.dataset.sbBlock];
-          ui.inspector = 'plan';
+          sbShowDetails();
         }
         App.render();
         break;
-      case 'lock-stimulus': {
-        const stimulus = getStimulus(element.dataset.sbStimulus);
-        if (stimulus?.scenario_link) { sbLockStimulus(stimulus, !stimulus.scenario_link.locked); saveLocal(false); App.render(); }
-        break;
-      }
-      case 'unlink-stimulus': {
-        const stimulus = getStimulus(element.dataset.sbStimulus);
-        if (stimulus && window.confirm('Unlink this inject from the storyboard? It will no longer follow scenario changes.')) { delete stimulus.scenario_link; saveLocal(false); App.render(); }
-        break;
-      }
-      case 'link-stimulus': {
-        const select = document.querySelector('[data-sb-link-select]');
-        const stimulus = select && getStimulus(select.value);
-        if (!block || !stimulus) break;
-        sbStampStimulus(stimulus, block, null, storyboard);
-        saveLocal(false);
-        pushToast('Inject linked to this block.', 'success');
-        App.render();
-        break;
-      }
       case 'auto-link': {
         const count = sbAutoLinkByTime(project);
         saveLocal(false);
@@ -338,31 +326,23 @@ async function sbHandleAction(event) {
       case 'zoom-in': sbSetZoom(ui.zoom * 1.25); App.render(); break;
       case 'zoom-out': sbSetZoom(ui.zoom / 1.25); App.render(); break;
       case 'zoom-fit': sbFitZoom(); App.render(); break;
-      case 'toggle-ripple': ui.ripple = !ui.ripple; App.render(); break;
       case 'add-track': {
-        const used = new Set(storyboard.tracks.map((track) => track.key));
-        const preset = SB_TRACK_PRESETS.find((item) => item.kind !== 'main' && !used.has(item.key));
-        storyboard.tracks.push({ id: uid('track'), key: preset?.key || 'custom', name: preset?.name || 'New workstream', kind: 'workstream', color: preset?.color || '#5d7384', collapsed: false });
-        sbCommitRender('Add track');
+        const track = sbAddCell(storyboard);
+        ui.focus = { key: 'sbTrackName', value: track.id, start: 0, end: track.name.length };
+        sbCommitRender('Add crisis cell');
+        sbRestoreFocus();
         break;
       }
-      case 'delete-track': {
-        const track = sbTrack(storyboard, element.dataset.sbTrack);
-        if (!track || track.kind === 'main') break;
-        const blocks = storyboard.blocks.filter((item) => item.track_id === track.id);
-        if (blocks.length && !window.confirm(`Delete the track "${track.name}" and its ${blocks.length} block(s)?`)) break;
-        storyboard.blocks = storyboard.blocks.filter((item) => item.track_id !== track.id);
-        storyboard.tracks = storyboard.tracks.filter((item) => item.id !== track.id);
-        sbCommitRender('Delete track');
+      case 'delete-track':
+        if (sbRemoveCell(storyboard, sbTrack(storyboard, element.dataset.sbTrack))) sbCommitRender('Remove crisis cell');
         break;
-      }
       case 'move-track': {
         const index = storyboard.tracks.findIndex((track) => track.id === element.dataset.sbTrack);
         const target = index + Number(element.dataset.sbValue);
         if (index < 1 || target < 1 || target >= storyboard.tracks.length) break;
         const [track] = storyboard.tracks.splice(index, 1);
         storyboard.tracks.splice(target, 0, track);
-        sbCommitRender('Reorder tracks');
+        sbCommitRender('Reorder crisis cells');
         break;
       }
       case 'library-category':
@@ -388,10 +368,9 @@ async function sbHandleAction(event) {
         ui.modal = null;
         ui.previewId = null;
         ui.selected = [];
-        ui.playhead = 0;
+        ui.libraryOpen = false;
         if (mode === 'replace') ui.zoom = null;
-        appState.route = 'builder';
-        pushToast(`"${template.name}" ${mode === 'insert' ? 'inserted' : 'loaded'}. Refine blocks, then generate injects.`, 'success');
+        pushToast(`"${template.name}" ${mode === 'insert' ? 'inserted' : 'loaded'}. Review the detailed scenario, then the Actors and Crisis steps tabs.`, 'success');
         App.render();
         break;
       }
@@ -409,8 +388,8 @@ async function sbHandleAction(event) {
           ui.modal = null;
           ui.selected = [];
           ui.zoom = null;
-          appState.route = 'builder';
-          pushToast(`"${template.name}" adapted to your organisation.`, 'success');
+          ui.libraryOpen = false;
+          pushToast(`"${template.name}" adapted to your organisation. Review the detailed scenario below.`, 'success');
         } catch (error) {
           pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
         }
@@ -438,7 +417,7 @@ async function sbHandleAction(event) {
       }
       case 'import-template': {
         const template = await sbImportTemplateFile();
-        if (template) { pushToast(`Template "${template.name}" imported.`, 'success'); ui.bin = 'library'; App.render(); }
+        if (template) { pushToast(`Template "${template.name}" imported.`, 'success'); ui.libraryOpen = true; App.render(); }
         break;
       }
       case 'add-cast':
@@ -507,25 +486,37 @@ async function sbHandleAction(event) {
         App.render();
         break;
       case 'generate-skeleton': {
-        const brief = (ui.skeleton.brief || storyboard.meta.brief || project.scenario.summary || '').trim();
-        if (!brief) { pushToast('Describe the exercise you want in the brief.', 'info'); break; }
+        const brief = (storyboard.meta.brief || '').trim();
+        if (!brief) { pushToast('Describe the crisis in the macro scenario first.', 'info'); break; }
+        if (storyboard.blocks.length && !window.confirm('Build a new detailed scenario and replace the current crisis steps? A version is saved first and Undo is available.')) break;
         const duration = sbInt(ui.skeleton.duration || storyboard.duration_minutes, SB_DEFAULT_DURATION, 30, SB_MAX_DURATION);
+        const cells = sbCells(storyboard).map((track) => track.key).filter((key) => SB_TRACK_PRESETS.some((preset) => preset.key === key));
         StoryboardHistory.flush();
-        StoryboardHistory.snapshot('Before AI skeleton', 'ai');
+        StoryboardHistory.snapshot('Before AI scenario', 'ai');
         try {
-          const result = await SbAI.skeleton({ brief, duration, tracks: ui.skeleton.tracks, injects: Number(ui.skeleton.injects) || 0 });
-          result.storyboard.meta.brief = brief;
-          for (const cast of result.storyboard.cast) { const actor = sbFindActorForCast(project, cast); if (actor) cast.actor_id = actor.id; }
-          sbReplaceStoryboard(result.storyboard, 'AI skeleton');
+          const result = await SbAI.skeleton({ brief, duration, tracks: cells, injects: Number(ui.skeleton.injects) || 0 });
+          const built = result.storyboard;
+          built.meta.brief = brief;
+          // Keep every crisis cell the designer selected, even those the AI left empty.
+          for (const key of cells) if (!sbTrackByKey(built, key)) sbAddCell(built, key);
+          for (const cast of built.cast) { const actor = sbFindActorForCast(project, cast); if (actor) cast.actor_id = actor.id; }
+          sbReplaceStoryboard(built, 'AI scenario');
+          const details = result.details || {};
           if (!sbObjectivesList(project).length && result.objectives.length) project.scenario.objectives = result.objectives.join('\n');
-          if (!project.scenario.summary?.trim() && result.storyboard.meta.synopsis) project.scenario.summary = result.storyboard.meta.synopsis;
+          if (details.summary) project.scenario.summary = details.summary;
+          else if (!project.scenario.summary?.trim() && built.meta.synopsis) project.scenario.summary = built.meta.synopsis;
+          if (details.technical_context) project.scenario.detailed_context = details.technical_context;
+          if (details.narrative_arc) project.scenario.narrative_arc = details.narrative_arc;
+          if (details.crisis_type) project.scenario.type = details.crisis_type;
+          if (!project.client.name?.trim() && details.organisation?.name) project.client.name = details.organisation.name;
           if (!project.name?.trim() && result.title) project.name = result.title;
           saveLocal(false);
+          ui.skeleton.duration = null;
           ui.modal = null;
           ui.selected = [];
           ui.zoom = null;
-          appState.route = 'builder';
-          pushToast('Skeleton generated. Deepen blocks layer by layer, then generate injects.', 'success');
+          ui.libraryOpen = false;
+          pushToast(`Detailed scenario ready: ${sbMainBlocks(built).length} crisis steps, ${built.blocks.length - sbMainBlocks(built).length} crisis cell blocks, ${built.cast.length} roles. Review it, then continue with Actors and Crisis steps.`, 'success');
         } catch (error) {
           pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
         }
@@ -631,13 +622,16 @@ function sbBindInputs(root) {
         const value = sbInt(input.value, block[field], field === 'duration_minutes' ? 5 : 0, field === 'stimuli_target' ? SB_MAX_BEATS : SB_MAX_DURATION);
         block[field] = value;
         if (field === 'duration_minutes') block.beats.forEach((beat) => { beat.offset_minutes = Math.min(beat.offset_minutes, Math.max(0, value - 1)); });
-        if (ui.ripple && field !== 'stimuli_target' && sbTrack(storyboard, block.track_id)?.kind === 'main') sbRipple(storyboard, block, previousEnd);
+        // Crisis steps follow each other: a longer or shorter step shifts what comes after it.
+        if (field === 'duration_minutes' && sbIsMainBlock(storyboard, block)) sbRipple(storyboard, block, previousEnd);
+        storyboard.duration_minutes = Math.max(storyboard.duration_minutes, sbStoryboardEnd(storyboard));
       } else if (field === 'type') {
         const previous = SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom;
         if (block.title === previous.label) block.title = SB_BLOCK_TYPES[input.value]?.label || block.title;
         block.type = SB_BLOCK_TYPES[input.value] ? input.value : 'custom';
       } else if (field === 'track_id') {
-        if (sbTrack(storyboard, input.value)) block.track_id = input.value;
+        const track = sbTrack(storyboard, input.value);
+        if (track) sbMoveToRow(storyboard, block, track);
       } else if (field === 'status') {
         block.status = ['draft', 'refined', 'validated'].includes(input.value) ? input.value : 'draft';
       }
@@ -742,17 +736,31 @@ function sbBindInputs(root) {
     });
   });
 
-  root.querySelectorAll('[data-sb-ui-select]').forEach((select) => {
-    select.addEventListener('change', () => {
-      ui[select.dataset.sbUiSelect] = Number(select.value) || select.value;
-      App.render();
+  root.querySelectorAll('[data-sb-cell-toggle]').forEach((input) => {
+    input.addEventListener('change', () => {
+      const value = input.dataset.sbCellToggle;
+      const track = value.startsWith('id:') ? sbTrack(storyboard, value.slice(3)) : sbTrackByKey(storyboard, value);
+      if (input.checked && !track) {
+        sbAddCell(storyboard, value);
+        sbCommitRender('Add crisis cell');
+      } else if (!input.checked && track) {
+        if (sbRemoveCell(storyboard, track)) sbCommitRender('Remove crisis cell');
+        else App.render();
+      }
     });
   });
 
-  root.querySelectorAll('[data-sb-skeleton-track]').forEach((input) => {
+  root.querySelectorAll('[data-sb-duration-hours]').forEach((input) => {
     input.addEventListener('change', () => {
-      const key = input.dataset.sbSkeletonTrack;
-      ui.skeleton.tracks = input.checked ? [...new Set([...ui.skeleton.tracks, key])] : ui.skeleton.tracks.filter((item) => item !== key);
+      const minutes = sbInt(Number(input.value) * 60, storyboard.duration_minutes, 30, SB_MAX_DURATION);
+      const end = sbStoryboardEnd(storyboard);
+      ui.skeleton.duration = minutes;
+      if (minutes !== storyboard.duration_minutes) {
+        storyboard.duration_minutes = Math.max(end, minutes);
+        StoryboardHistory.commit('Change duration');
+      }
+      if (minutes < end) pushToast(`The crisis steps end at ${sbFormatOffset(end)}: shorten them in the Crisis steps tab, or build the scenario again with AI.`, 'info');
+      App.render();
     });
   });
 
@@ -771,29 +779,6 @@ function sbBindInputs(root) {
     });
   });
 
-  root.querySelectorAll('[data-sb-duration]').forEach((input) => {
-    input.addEventListener('change', () => {
-      storyboard.duration_minutes = Math.max(sbStoryboardEnd(storyboard), sbInt(input.value, storyboard.duration_minutes, 30, SB_MAX_DURATION));
-      sbCommitRender('Change duration');
-    });
-  });
-
-  root.querySelectorAll('[data-sb-zoom]').forEach((input) => {
-    input.addEventListener('input', () => {
-      const canvas = document.querySelector('.sb-canvas');
-      if (!canvas) return;
-      const value = Number(input.value);
-      canvas.style.setProperty('--ppm', value);
-      canvas.querySelectorAll('[data-sb-clip]').forEach((clip) => {
-        const target = sbBlock(storyboard, clip.dataset.sbClip);
-        if (!target) return;
-        clip.style.left = `${target.start_minutes * value}px`;
-        clip.style.width = `${Math.max(6, target.duration_minutes * value)}px`;
-      });
-    });
-    input.addEventListener('change', () => { sbSetZoom(Number(input.value)); App.render(); });
-  });
-
   root.querySelectorAll('[data-sb-filter="library"]').forEach((input) => {
     input.addEventListener('input', () => {
       const query = input.value.trim().toLowerCase();
@@ -810,7 +795,7 @@ function sbBindInputs(root) {
 
 // ── Pointer editing on the timeline ──────────────────────────────────────────
 function sbEdgeCandidates(storyboard, excluded) {
-  const edges = [0, storyboard.duration_minutes, sbUI().playhead];
+  const edges = [0, storyboard.duration_minutes];
   for (const block of storyboard.blocks) {
     if (excluded.has(block.id)) continue;
     edges.push(block.start_minutes, sbBlockEnd(block));
@@ -845,7 +830,7 @@ function sbStartClipPointer(event, clip) {
   const handle = event.target.closest('[data-sb-resize]');
   const additive = event.shiftKey || event.metaKey || event.ctrlKey;
   if (additive) ui.selected = ui.selected.includes(id) ? ui.selected.filter((item) => item !== id) : [...ui.selected, id];
-  else if (!ui.selected.includes(id)) { ui.selected = [id]; sbRevealInspector(); }
+  else if (!ui.selected.includes(id)) { ui.selected = [id]; sbShowDetails(); }
   if (sbReadOnly() || additive) { App.render(); return; }
   event.preventDefault();
   const ppm = ui.zoom;
@@ -911,16 +896,18 @@ function sbStartClipPointer(event, clip) {
     if (mode === 'move') {
       const previousEnd = sbBlockEnd(block);
       ids.forEach((item) => { sbBlock(storyboard, item).start_minutes = originals.get(item).start + delta; });
-      if (targetLane && sbTrack(storyboard, targetLane)) block.track_id = targetLane;
-      if (ui.ripple && ids.length === 1 && block.track_id === main.id && !targetLane) sbRipple(storyboard, block, previousEnd);
-      sbCommitRender(ids.length > 1 ? 'Move blocks' : targetLane ? 'Move block to track' : 'Move block');
+      if (targetLane && sbTrack(storyboard, targetLane)) sbMoveToRow(storyboard, block, sbTrack(storyboard, targetLane));
+      storyboard.duration_minutes = Math.max(storyboard.duration_minutes, sbStoryboardEnd(storyboard));
+      sbCommitRender(ids.length > 1 ? 'Move blocks' : targetLane ? 'Move block to another row' : 'Move block');
     } else {
       const previousEnd = sbBlockEnd(block);
       const original = originals.get(id);
       if (mode === 'resize-right') block.duration_minutes = original.duration + delta;
       else { block.start_minutes = original.start + delta; block.duration_minutes = original.duration - delta; }
       block.beats.forEach((beat) => { beat.offset_minutes = Math.min(beat.offset_minutes, Math.max(0, block.duration_minutes - 1)); });
-      if (ui.ripple && mode === 'resize-right' && block.track_id === main.id) sbRipple(storyboard, block, previousEnd);
+      // Crisis steps follow each other: stretching one shifts what comes after it.
+      if (mode === 'resize-right' && block.track_id === main.id) sbRipple(storyboard, block, previousEnd);
+      storyboard.duration_minutes = Math.max(storyboard.duration_minutes, sbStoryboardEnd(storyboard));
       sbCommitRender('Resize block');
     }
   };
@@ -929,34 +916,7 @@ function sbStartClipPointer(event, clip) {
   window.addEventListener('pointercancel', onUp);
 }
 
-function sbStartScrub(event) {
-  if (event.button !== 0) return;
-  const ui = sbUI();
-  const storyboard = sbStoryboard();
-  const ruler = document.querySelector('[data-sb-ruler]');
-  const playhead = document.getElementById('sb-playhead');
-  if (!ruler || !playhead) return;
-  event.preventDefault();
-  const label = playhead.querySelector('[data-sb-playhead]');
-  const update = (clientX) => {
-    const rect = ruler.getBoundingClientRect();
-    const minute = Math.max(0, Math.min(storyboard.duration_minutes, Math.round((clientX - rect.left) / ui.zoom)));
-    ui.playhead = minute;
-    playhead.style.left = `${sbHeaderWidth() + minute * ui.zoom}px`;
-    if (label) label.textContent = sbFormatOffset(minute);
-  };
-  update(event.clientX);
-  document.body.classList.add('sb-dragging');
-  const onMove = (moveEvent) => update(moveEvent.clientX);
-  const onUp = () => {
-    window.removeEventListener('pointermove', onMove);
-    window.removeEventListener('pointerup', onUp);
-    document.body.classList.remove('sb-dragging');
-    App.render();
-  };
-  window.addEventListener('pointermove', onMove);
-  window.addEventListener('pointerup', onUp);
-}
+let sbLastLaneDown = null;
 
 function sbBindTimeline(root) {
   const ui = sbUI();
@@ -977,8 +937,7 @@ function sbBindTimeline(root) {
     clip.addEventListener('pointerdown', (event) => sbStartClipPointer(event, clip));
     clip.addEventListener('dblclick', () => {
       ui.selected = [clip.dataset.sbClip];
-      sbRevealInspector();
-      ui.inspector = 'brief';
+      sbShowDetails();
       ui.focus = { key: 'sbField', value: 'title', start: null, end: null };
       App.render();
       sbRestoreFocus();
@@ -990,35 +949,20 @@ function sbBindTimeline(root) {
   root.querySelectorAll('[data-sb-lane]').forEach((lane) => {
     lane.addEventListener('pointerdown', (event) => {
       if (event.target !== lane || event.button !== 0) return;
+      // The first click re-renders the lane (deselection), so double-clicks are detected here.
+      const last = sbLastLaneDown;
+      const now = Date.now();
+      sbLastLaneDown = { lane: lane.dataset.sbLane, x: event.clientX, y: event.clientY, at: now };
+      if (last && last.lane === lane.dataset.sbLane && now - last.at < 450 && Math.abs(last.x - event.clientX) < 8 && Math.abs(last.y - event.clientY) < 8) {
+        sbLastLaneDown = null;
+        if (sbReadOnly()) return;
+        const rect = lane.getBoundingClientRect();
+        sbAddBlock(lane.dataset.sbLane, Math.max(0, sbSnap((event.clientX - rect.left) / ui.zoom)));
+        return;
+      }
       if (ui.selected.length) { ui.selected = []; App.render(); }
     });
-    lane.addEventListener('dragover', (event) => {
-      if (!event.dataTransfer?.types?.includes('text/plain') || sbReadOnly()) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'copy';
-      lane.classList.add('is-drop-target');
-    });
-    lane.addEventListener('dragleave', () => lane.classList.remove('is-drop-target'));
-    lane.addEventListener('drop', (event) => {
-      lane.classList.remove('is-drop-target');
-      const data = event.dataTransfer?.getData('text/plain') || '';
-      if (!data.startsWith('sb-block:') || sbReadOnly()) return;
-      event.preventDefault();
-      const type = data.slice('sb-block:'.length);
-      if (!SB_BLOCK_TYPES[type]) return;
-      const rect = lane.getBoundingClientRect();
-      const minute = Math.max(0, sbSnap((event.clientX - rect.left) / ui.zoom));
-      sbAddBlock(type, lane.dataset.sbLane, minute);
-    });
   });
-  root.querySelectorAll('[data-sb-palette]').forEach((item) => {
-    item.addEventListener('dragstart', (event) => {
-      event.dataTransfer.setData('text/plain', `sb-block:${item.dataset.sbPalette}`);
-      event.dataTransfer.effectAllowed = 'copy';
-    });
-  });
-  root.querySelector('[data-sb-ruler]')?.addEventListener('pointerdown', sbStartScrub);
-  root.querySelector('[data-sb-playhead]')?.addEventListener('pointerdown', sbStartScrub);
   if (ui.scrollTo && scroller) {
     const block = sbBlock(storyboard, ui.scrollTo);
     if (block) {
@@ -1033,7 +977,7 @@ function sbBindTimeline(root) {
 
 // ── Keyboard ─────────────────────────────────────────────────────────────────
 function sbOnKeyDown(event) {
-  if (appState.route !== 'builder' || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen) return;
+  if (!['builder', 'scenario'].includes(appState.route) || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen) return;
   const ui = sbUI();
   const target = event.target;
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName || '') || target?.isContentEditable;
@@ -1045,11 +989,6 @@ function sbOnKeyDown(event) {
     return;
   }
   if (typing || ui.modal) return;
-  if (!mod && !event.altKey) {
-    if (event.key === '[') { event.preventDefault(); sbTogglePanel('left', sbPanels().left || 'blocks'); return; }
-    if (event.key === ']') { event.preventDefault(); sbTogglePanel('right'); return; }
-    if (key === 'm') { event.preventDefault(); sbTogglePanel('monitor'); return; }
-  }
   if (mod && (key === 'z' || key === 'y')) {
     event.preventDefault();
     if (sbReadOnly()) return;
@@ -1058,6 +997,8 @@ function sbOnKeyDown(event) {
     App.render();
     return;
   }
+  // Undo and redo also work in the Scenario tab; the other shortcuts belong to the timeline.
+  if (appState.route !== 'builder') return;
   if (event.key === '+' || event.key === '=') { sbSetZoom(ui.zoom * 1.25); App.render(); return; }
   if (event.key === '-' || event.key === '_') { sbSetZoom(ui.zoom / 1.25); App.render(); return; }
   if (sbReadOnly() || !ui.selected.length) return;
@@ -1065,7 +1006,7 @@ function sbOnKeyDown(event) {
   if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); sbDeleteSelected(); return; }
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
-    const step = event.shiftKey ? 1 : (Number(ui.snap) || 5);
+    const step = event.shiftKey ? 1 : SB_SNAP;
     sbNudgeSelected(event.key === 'ArrowLeft' ? -step : step);
   }
 }
@@ -1083,7 +1024,7 @@ function bindScenarioBuilderEvents() {
       }, 200);
     });
   }
-  if (!['builder', 'scenario'].includes(appState.route)) return;
+  if (!['builder', 'scenario', 'actors'].includes(appState.route)) return;
   const roots = [...document.querySelectorAll('[data-sb-scope]')];
   if (!roots.length) return;
   const ui = sbUI();
@@ -1092,7 +1033,7 @@ function bindScenarioBuilderEvents() {
     sbBindInputs(root);
     if (root.classList.contains('sb-workspace')) sbBindTimeline(root);
     if (sbReadOnly()) {
-      root.querySelectorAll('.sb-inspector input, .sb-inspector textarea, .sb-inspector select, .sb-bin input, .sb-bin select, .sb-bin textarea, [data-sb-duration], .sb-track-name, .sb-framing input, .sb-framing textarea').forEach((element) => { element.disabled = true; });
+      root.querySelectorAll('.sb-details input, .sb-details textarea, .sb-details select, .sb-roles input, .sb-roles select, .sb-track-name, .sb-describe textarea, .sb-describe [data-sb-cell-toggle], .sb-framing input, .sb-framing textarea').forEach((element) => { element.disabled = true; });
     }
   }
   if (appState.route === 'builder' && ui.needsFit) {

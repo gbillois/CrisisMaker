@@ -969,38 +969,6 @@
               App.render();
               break;
             }
-            case 'llm-generate-scenario': {
-              const state = appState.llmState.scenario;
-              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
-              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
-              try {
-                const result = await AITextGenerator.generateScenario(state.text);
-                captureLLMRawResponse(state);
-                let filled = 0;
-                if (result.client) {
-                  if (result.client.name) { appState.scenario.client.name = result.client.name; filled++; }
-                  if (result.client.sector) { appState.scenario.client.sector = result.client.sector; filled++; }
-                  if (result.client.language) { appState.scenario.client.language = result.client.language; filled++; }
-                }
-                if (result.scenario) {
-                  if (result.scenario.type) { appState.scenario.scenario.type = result.scenario.type; filled++; }
-                  if (result.scenario.summary) { appState.scenario.scenario.summary = result.scenario.summary; filled++; }
-                  if (result.scenario.detailed_context) { appState.scenario.scenario.detailed_context = result.scenario.detailed_context; filled++; }
-                  if (result.scenario.start_date) { appState.scenario.scenario.start_date = result.scenario.start_date.slice(0, 16); filled++; }
-                  if (result.scenario.timezone) { appState.scenario.scenario.timezone = result.scenario.timezone; filled++; }
-                }
-                state.loading = false;
-                state.lastFilledCount = filled;
-                App.render();
-                highlightLLMFields(['client.name', 'client.sector', 'client.language', 'scenario.type', 'scenario.summary', 'scenario.detailed_context', 'scenario.start_date', 'scenario.timezone']);
-              } catch (err) {
-                captureLLMRawResponse(state);
-                state.loading = false;
-                state.error = classifyLLMError(err);
-                App.render();
-              }
-              break;
-            }
             case 'llm-generate-actors': {
               const state = appState.llmState.actors;
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
@@ -2394,21 +2362,6 @@
       function verifiedBadge(type) {
         const fill = type === 'gold' ? '#f2b10c' : type === 'grey' ? '#8392a5' : '#1d9bf0';
         return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="${fill}"></circle><path d="M17.2 8.8l-6.1 6.4-3-2.9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
-      }
-
-      function highlightLLMFields(bindPaths) {
-        setTimeout(() => {
-          bindPaths.forEach((path) => {
-            document.querySelectorAll(`[data-bind="${path}"]`).forEach((el) => {
-              el.classList.add('llm-field-highlight');
-            });
-          });
-          setTimeout(() => {
-            document.querySelectorAll('.llm-field-highlight').forEach((el) => {
-              el.classList.remove('llm-field-highlight');
-            });
-          }, 5000);
-        }, 50);
       }
 
       function addActorFromLLM(actorData) {

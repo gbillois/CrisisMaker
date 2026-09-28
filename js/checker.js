@@ -789,7 +789,7 @@ Response format (strict JSON):
           const storyboard = project.storyboard;
           if (!storyboard?.blocks?.length || typeof sbSortedBlocks !== 'function') return '';
           const rows = sbSortedBlocks(storyboard).map((block) => `- [${sbTrack(storyboard, block.track_id)?.name || 'Track'}] H+${Math.floor(block.start_minutes / 60)}:${String(block.start_minutes % 60).padStart(2, '0')} → H+${Math.floor(sbBlockEnd(block) / 60)}:${String(sbBlockEnd(block) % 60).padStart(2, '0')} ${block.title} (${block.stimuli_target} planned injects): ${String(block.brief || block.narrative || '').slice(0, 240)}`);
-          return `\nSCENARIO BUILDER STORYBOARD (${storyboard.blocks.length} blocks, main storyline + parallel workstreams):\n${rows.join('\n')}\n`;
+          return `\nSCENARIO BUILDER STORYBOARD (${storyboard.blocks.length} blocks, crisis steps + parallel crisis cells):\n${rows.join('\n')}\n`;
         }
 
         const serialized = `SCENARIO: ${sc.name || 'Untitled'}
