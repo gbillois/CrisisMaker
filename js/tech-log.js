@@ -61,7 +61,14 @@ const CrisisTechLog = {
     });
   },
 
+  /* One entry per error: the same error object logged, then shown as a toast, is recorded once. */
+  logged: typeof WeakSet !== 'undefined' ? new WeakSet() : null,
+
   error(error, details = {}) {
+    if (error && typeof error === 'object' && this.logged) {
+      if (this.logged.has(error)) return null;
+      this.logged.add(error);
+    }
     return this.add({
       kind: 'error', op: details.operation || error?.operation || '', provider: error?.provider || details.provider || '', model: error?.model || details.model || '',
       status: error?.status || null, code: error?.code || '', message: error?.message || String(error), detail: error?.detail || '', stack: error?.stack || ''

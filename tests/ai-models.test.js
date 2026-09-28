@@ -299,7 +299,17 @@ async function run() {
   assert.equal(ollamaBody.model, 'gpt-oss:120b');
   assert.equal(ollamaBody.format, undefined);
   assert.equal(ollamaBody.options.num_predict, 1234);
-  assert.equal(ollamaBody.stream, false);
+  // Streamed then assembled, so a long answer keeps bytes flowing through relays and proxies.
+  assert.equal(ollamaBody.stream, true);
+
+  responses.push(streamResponse([
+    JSON.stringify({ message: { content: 'Reasoning first.</think>{"ok":' } }) + '\n',
+    JSON.stringify({ message: { content: 'true,"n":2}' } }) + '\n',
+    JSON.stringify({ message: { content: '' }, done: true, done_reason: 'stop' })
+  ]));
+  const ollamaAssembled = await vm.runInContext(`AITextGenerator.generate('test', 'system', 'user', true, 1234)`, context);
+  assert.equal(ollamaAssembled.ok, true);
+  assert.equal(ollamaAssembled.n, 2);
 
   responses.push(streamResponse([
     JSON.stringify({ message: { content: '{"ok":' } }) + '\n',

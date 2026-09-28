@@ -342,9 +342,9 @@ test('failures say why: the provider reason (secrets and links removed), timeout
   assert.deepEqual(asked, [8000, 4096]);
 });
 
-test('Ollama: reasoning models (GLM, qwen3…) are asked to answer directly, in both call paths', async () => {
+test('Ollama: reasoning models (qwen3, deepseek…) are asked to answer directly, GLM and gpt-oss to reason briefly, in both call paths', async () => {
   const h = harness();
-  h.run(`appState.scenario.settings.ai_provider = 'ollama'; appState.scenario.settings.ai_model = 'glm-4.6'; appState.scenario.settings.ollama_endpoint = 'http://localhost:11434';`);
+  h.run(`appState.scenario.settings.ai_provider = 'ollama'; appState.scenario.settings.ai_model = 'qwen3:8b'; appState.scenario.settings.ollama_endpoint = 'http://localhost:11434';`);
   const bodies = [];
   const reply = (data, status = 200) => ({ ok: status < 400, status, statusText: status < 400 ? 'OK' : 'Bad Request', headers: { get: () => 'application/json' }, clone() { return this; }, text: async () => JSON.stringify(data), json: async () => data });
   const final = '{"type":"final","summary":"ok","issues":[],"changes":[]}';
@@ -353,6 +353,21 @@ test('Ollama: reasoning models (GLM, qwen3…) are asked to answer directly, in 
   assert.equal((await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`)).summary, 'ok');
   assert.equal(bodies.length, 1);
   assert.equal(bodies[0].think, false);
+  // Reasoning written in the answer text until the length limit: once more with a short reasoning kept apart.
+  bodies.length = 0;
+  h.context.fetch = async (url, init) => {
+    const body = JSON.parse(init.body); bodies.push(body);
+    return body.think === 'low' ? reply({ message: { content: final, thinking: 'short' }, done_reason: 'stop' }) : reply({ message: { content: 'Let me think about the phases first…' }, done_reason: 'length' });
+  };
+  assert.equal((await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`)).summary, 'ok');
+  assert.deepEqual(bodies.map((body) => body.think), [false, 'low']);
+  // GLM and gpt-oss: a short reasoning apart from the answer, from the first call.
+  bodies.length = 0;
+  h.run(`appState.scenario.settings.ai_model = 'glm-5.3';`);
+  h.context.fetch = async (url, init) => { const body = JSON.parse(init.body); bodies.push(body); return reply({ message: { content: final }, done_reason: 'stop' }); };
+  assert.equal((await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`)).summary, 'ok');
+  assert.deepEqual(bodies.map((body) => body.think), ['low']);
+  h.run(`appState.scenario.settings.ai_model = 'qwen3:8b';`);
   // A model without the switch: called again without it.
   bodies.length = 0;
   h.context.fetch = async (url, init) => {

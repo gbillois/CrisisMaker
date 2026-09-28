@@ -785,7 +785,7 @@ function renderContextGlance(project) {
     <div class="cx-row cx-row-client">
       <label class="field">Exercise name<input type="text" data-bind="name" value="${escapeAttribute(project.name || '')}" placeholder="e.g. Operation Bitter Pill"></label>
       <label class="field">Client name<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="Organisation name"></label>
-      <label class="field">Sector<span class="cx-sector ${otherSector ? 'is-other' : ''}"><select data-cx-sector aria-label="Sector">${sectors.map((sector) => sbOption(sector, sector, otherSector ? 'Other' : project.client.sector)).join('')}</select>${otherSector ? `<input type="text" data-cx-sector-other value="${escapeAttribute(project.client.sector === 'Other' ? '' : project.client.sector)}" placeholder="Type the sector" aria-label="Other sector">` : ''}</span></label>
+      <label class="field">Sector<span class="cx-sector ${otherSector ? 'is-other' : ''}"><select data-cx-sector aria-label="Sector">${project.client.sector ? '' : '<option value="" selected disabled>Choose a sector</option>'}${sectors.map((sector) => sbOption(sector, sector, otherSector ? 'Other' : project.client.sector)).join('')}</select>${otherSector ? `<input type="text" data-cx-sector-other value="${escapeAttribute(project.client.sector === 'Other' ? '' : project.client.sector)}" placeholder="Type the sector" aria-label="Other sector">` : ''}</span></label>
       <div class="field cx-logo">
         <span>Logo</span>
         <div class="cx-logo-row">

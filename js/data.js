@@ -203,6 +203,14 @@
         return typeof normalizeStoryboard === 'function' && typeof sbSealLinks === 'function';
       }
 
+      function browserTimezone(fallback) {
+        try {
+          const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (typeof TIMEZONES !== 'undefined' && TIMEZONES.includes(zone)) return zone;
+        } catch (_) { /* no Intl: keep the fallback */ }
+        return fallback;
+      }
+
       function emptyScenario(settingsOverrides = {}) {
         const base = defaultScenario();
         const { objectives: _objectives, narrative_arc: _arc, ...baseScenario } = base.scenario;
@@ -210,8 +218,9 @@
           ...base,
           id: uid('scenario'),
           name: '',
-          client: { name: '', sector: base.client.sector, language: settingsOverrides.language || 'en', logo_url: '' },
-          scenario: { ...baseScenario, type: base.scenario.type, summary: '', detailed_context: '', learning_objectives: '', attack_path: '', start_date: '', end_date: '', timezone: base.scenario.timezone, phases: [] },
+          // A blank project keeps nothing of the demo: no sector or crisis type, the browser's timezone when listed.
+          client: { name: '', sector: '', language: settingsOverrides.language || 'en', logo_url: '' },
+          scenario: { ...baseScenario, type: '', summary: '', detailed_context: '', learning_objectives: '', attack_path: '', start_date: '', end_date: '', timezone: browserTimezone(base.scenario.timezone), phases: [] },
           actors: [],
           stimuli: [],
           storyboard: storyboardModelLoaded() ? sbEmptyStoryboard() : undefined,

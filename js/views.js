@@ -176,7 +176,16 @@
                 </div>
                 <div class="brand-actions">
                   <span id="save-indicator" class="save-indicator"></span>
-                  <button class="ai-status ${isLLMAvailable() ? 'is-live' : 'is-off'}" data-action="toggle-settings-drawer" title="${tt('AI connection settings', 'Paramètres de connexion IA', 'KI-Verbindungseinstellungen')}">${isLLMAvailable() ? tt('AI connected', 'IA connectée', 'KI verbunden') : tt('AI disconnected', 'IA déconnectée', 'KI getrennt')}</button>
+                  ${(() => {
+                    /* Configured is not reachable: a failed connection test, or a model list that could not be
+                       fetched from the configured server, says so instead of "AI connected". */
+                    const provider = appState.scenario.settings.ai_provider;
+                    const unreachable = isLLMAvailable() && ((appState.connectionTest?.status === 'error' && appState.connectionTest.provider === provider)
+                      || (appState.aiModelCatalog?.provider === provider && appState.aiModelCatalog.status === 'error'));
+                    const tone = !isLLMAvailable() ? 'is-off' : unreachable ? 'is-error' : 'is-live';
+                    const label = !isLLMAvailable() ? tt('AI disconnected', 'IA déconnectée', 'KI getrennt') : unreachable ? tt('AI unreachable', 'IA injoignable', 'KI nicht erreichbar') : tt('AI connected', 'IA connectée', 'KI verbunden');
+                    return `<button class="ai-status ${tone}" data-action="toggle-settings-drawer" title="${tt('AI connection settings', 'Paramètres de connexion IA', 'KI-Verbindungseinstellungen')}">${label}</button>`;
+                  })()}
                   <button class="nav-gear-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil', 'Startseite')}">
                     ${svgHome()}
                   </button>
@@ -857,6 +866,7 @@
                       <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
                       <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="Show or hide the key">${sbUiIcon('eye', 16)}</button>
                     </div>
+                    <p class="helper">${tt('Kept for this browser session only and never saved in project files: enter it again after closing the browser.', 'Conservée pour cette session du navigateur uniquement, jamais enregistrée dans les fichiers projet : saisissez-la de nouveau après avoir fermé le navigateur.', 'Nur für diese Browsersitzung gespeichert, nie in Projektdateien: nach dem Schließen des Browsers erneut eingeben.')}</p>
                   </label>` : ''}
                 ` : ''}
                 ${isAzure ? `

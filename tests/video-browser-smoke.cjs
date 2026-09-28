@@ -1,7 +1,7 @@
 // Video Debrief produced in the browser, offline: no voice (music + subtitles),
 // frames from the scene engine, WebCodecs encoding, MP4 muxing.
 //   node tests/video-browser-smoke.cjs [http://127.0.0.1:8765/]
-const { chromium } = require('playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('assert');
 
 (async () => {

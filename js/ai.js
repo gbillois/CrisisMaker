@@ -111,6 +111,21 @@
         return /think/i.test(String(error?.message || '')) && (!error?.status || error.status === 400);
       }
 
+      /* How much a model should reason before a JSON answer. Asked not to reason at all, GLM keeps
+         reasoning in the answer text itself and runs out of room before the JSON; gpt-oss ignores
+         the switch. Both answer quickly and cleanly with a short reasoning kept apart ("low").
+         Other models (deepseek, kimi, qwen, mistral, llama…) answer directly. */
+      function ollamaThinkLevel(model) {
+        return /^(glm|gpt-oss)/i.test(String(model || '').trim()) ? 'low' : false;
+      }
+
+      /* A reply cut at its length limit that is prose rather than JSON: the model reasoned in the
+         answer text instead of answering. */
+      function ollamaReasonedInAnswer(data) {
+        const text = String(data?.message?.content || '').trim();
+        return data?.done_reason === 'length' && !!text && !/^(```|\{|\[)/.test(text);
+      }
+
       function ollamaProxyOptions(url, init) {
         return {
           method: 'POST',
@@ -124,6 +139,44 @@
           }),
           signal: init.signal
         };
+      }
+
+      /* An Ollama /api/chat NDJSON stream, assembled as the non-streamed reply:
+         { message: { content, thinking }, done_reason, error }. */
+      async function readOllamaChatStream(response, details = {}) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const data = { message: { role: 'assistant', content: '', thinking: '' }, done_reason: '' };
+        let buffer = '';
+        const processLine = (line) => {
+          if (!line.trim()) return;
+          let event;
+          try { event = JSON.parse(line); }
+          catch (_) {
+            // An HTML error page from a gateway (e.g. a relay timeout) instead of NDJSON.
+            throw CrisisError.create('The AI server sent an unexpected reply (not JSON). It may have timed out on the way.', { ...details, detail: line.slice(0, 600) });
+          }
+          if (event.error) { data.error = typeof event.error === 'string' ? event.error : event.error.message || JSON.stringify(event.error); return; }
+          if (event.message?.content) data.message.content += event.message.content;
+          if (event.message?.thinking) data.message.thinking += event.message.thinking;
+          if (event.done) { data.done = true; data.done_reason = event.done_reason || ''; }
+        };
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            lines.forEach(processLine);
+          }
+          buffer += decoder.decode();
+          processLine(buffer);
+        } finally {
+          try { reader.cancel(); } catch (_) { /* already closed */ }
+        }
+        if (!data.message.thinking) delete data.message.thinking;
+        return data;
       }
 
       function resetAIModelCatalog() {
@@ -567,7 +620,7 @@
                 ...(!isOllamaCloud() ? { format: 'json' } : {}),
                 options: { num_predict: maxTokens, num_ctx: ollamaContextSize(systemPrompt, userPrompt, maxTokens) },
                 stream: true,
-                think: false
+                think: ollamaThinkLevel(ai_model)
               })
             };
             const send = (requestInit) => requestStream(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
@@ -781,7 +834,9 @@
                   messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
                   ...(!isOllamaCloud() ? { format: 'json' } : {}),
                   options: { num_predict: predict, num_ctx: ollamaContextSize(systemPrompt, userPrompt, predict) },
-                  stream: false,
+                  // Streamed, then assembled: a long answer (a minute or more for the agent) keeps
+                  // bytes flowing, where a silent request is cut by relays and corporate proxies.
+                  stream: true,
                   ...extra
                 })
               };
@@ -790,23 +845,31 @@
                 response = await fetch(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
                   isOllamaCloud() ? ollamaProxyOptions(url, init) : init);
               } catch (networkError) {
+                if (options.signal?.aborted) throw networkError;
                 throw CrisisError.wrap(networkError, { operation: 'Call Ollama', provider: 'ollama', model: ai_model, message: `Ollama network error: ${networkError.message}` });
               }
-              return CrisisError.responseJson(response, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
+              if (!response.ok || !response.body) return CrisisError.responseJson(response, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
+              return readOllamaChatStream(response, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
             };
             // Reasoning models (GLM, qwen3, deepseek-r1…) think first by default: on a JSON task
             // that can use the whole budget and the time limit, and leave the answer empty.
             // Asked to answer directly; a model that has no such switch is called without it.
             let data;
-            try { data = await call({ think: false }); }
+            const think = ollamaThinkLevel(ai_model);
+            try { data = await call({ think }); }
             catch (error) {
               if (options.signal?.aborted || !ollamaRejectsThink(error)) throw error;
               data = await call();
             }
             if (data?.error) throw CrisisError.create(`Ollama: ${data.error}`, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
+            // Reasoned in the answer text until the limit: once more with a short reasoning kept apart.
+            if (think === false && ollamaReasonedInAnswer(data)) {
+              try { data = await call({ think: 'low' }); }
+              catch (error) { if (options.signal?.aborted) throw error; }
+            }
             // Still nothing (the model reasoned anyway, or ran out of room): once more with more room.
             if (!data.message?.content && (data.message?.thinking || data.done_reason === 'length')) {
-              try { data = await call({ think: false }, Math.min(32768, maxTokens * 2)); }
+              try { data = await call({ think }, Math.min(32768, maxTokens * 2)); }
               catch (error) { if (options.signal?.aborted) throw error; }
             }
             this.lastRawResponse = JSON.stringify(data, null, 2);

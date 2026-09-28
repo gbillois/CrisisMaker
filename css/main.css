@@ -277,6 +277,8 @@
     .ai-status::before { content: ""; width: 7px; height: 7px; background: #b8b3c7; }
     .ai-status.is-live { background: #e1fded; border-color: #b9f5d2; color: var(--green-ink); }
     .ai-status.is-live::before { background: var(--green); }
+    .ai-status.is-error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .ai-status.is-error::before { background: #dc2626; }
     .ai-status:hover { border-color: var(--indigo); color: var(--indigo); }
 
     .grid { display: grid; gap: 20px; }
@@ -323,6 +325,7 @@
 
     label.field {
       display: grid;
+      align-content: start;
       gap: 7px;
       font-size: 0.875rem;
       color: var(--text);
