@@ -105,6 +105,21 @@ function sbFormatOffset(minutes) {
   const mins = String(value % 60).padStart(2, '0');
   return `H+${hours}:${mins}`;
 }
+/* An exercise duration typed as h:min ("0:45", "1:30", "1h30", "3h"), minutes ("45 min")
+   or plain hours ("3", "2.5"). Returns whole minutes, or null when it cannot be read. */
+function sbParseDuration(text) {
+  const value = String(text ?? '').trim().toLowerCase();
+  let match = value.match(/^(\d+)\s*(?::|h)\s*(\d{1,2})?\s*(?:min|mn|m)?$/);
+  if (match) return Number(match[2] || 0) < 60 ? Number(match[1]) * 60 + Number(match[2] || 0) : null;
+  match = value.match(/^(\d+)\s*(?:min|mn|m)$/);
+  if (match) return Number(match[1]);
+  match = value.match(/^(\d+(?:[.,]\d+)?)$/);
+  return match ? Math.round(Number(match[1].replace(',', '.')) * 60) : null;
+}
+function sbFormatHoursMinutes(minutes) {
+  const value = Math.max(0, Math.round(Number(minutes) || 0));
+  return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
+}
 function sbFormatDuration(minutes) {
   const value = Math.max(0, Math.round(Number(minutes) || 0));
   const hours = Math.floor(value / 60);

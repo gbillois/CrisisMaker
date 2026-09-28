@@ -37,8 +37,8 @@ function tabEmptyNote(text, route, label) {
 
 /* The Update button of the Main storyline, Cells & actors and Detailed storyline tabs:
    one dialog that reflects every change in cascade (phases → plans → actors → injects). */
-function renderUpdateButton(project, pending = sbPendingSyncCount(project)) {
-  return `<button class="sb-tool sb-tool-label sb-update ${pending ? 'has-changes' : ''}" data-sb-action="open-modal" data-sb-modal="sync" title="${escapeAttribute(pending ? `${pending} change(s) to reflect in cascade: phases → inject plans → actors → injects` : 'Everything is up to date. Open to check.')}">${sbUiIcon('sync')}<span>Update</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>`;
+function renderUpdateButton(project, pending = sbPendingSyncCount(project), label = 'Update') {
+  return `<button class="sb-tool sb-tool-label sb-update ${pending ? 'has-changes' : ''}" data-sb-action="open-modal" data-sb-modal="sync" title="${escapeAttribute(pending ? `${pending} change(s) to reflect in cascade: phases → inject plans → actors → injects` : 'Everything is up to date. Open to check.')}">${sbUiIcon('sync')}<span>${escapeHtml(label)}</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>`;
 }
 
 /* The bar between the timeline and the bottom editor of the Main and Detailed storyline:
@@ -128,20 +128,22 @@ function renderStorylineView() {
         </div>
         <div class="sb-tb-group">
           <label class="sl-add">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="Add a phase"><option value="">Add phase…</option>${stages.map(([key, type]) => `<option value="${key}">${escapeHtml(type.label)}</option>`).join('')}</select></label>
-          <button class="sb-tool sb-tool-label" data-sb-action="deepen-all" ${ai && storyboard.blocks.length && !readOnly ? '' : 'disabled'} title="Write the details of every phase with AI">${sbUiIcon('layers')}<span>Detail with AI</span></button>
-          <button class="sb-tool sb-tool-label" data-route="scenario" title="Start again: generate with AI in Context, or pick a scenario in the Project library.">${sbUiIcon('wand')}<span>Start from…</span></button>
         </div>
-        <div class="sb-tb-group sb-tb-output">${renderUpdateButton(project)}</div>
+        <div class="sb-tb-group sb-tb-output">${renderUpdateButton(project, undefined, 'Update next tabs')}</div>
       </header>
       ${renderSbStatusBar()}
       <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'scenario', 'Context')}</div>
       ${renderEditorSplitter('storyline')}
       <section class="bottom-editor sl-editor" aria-label="Phase editor" ${editorHeightStyle('storyline')}>
-        ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>Select a phase on the timeline to edit what happens. Drag its edges to change its duration; the following phases follow (ripple).</span></div>`}
+        ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>Select a phase on the timeline to edit what happens. Drag its edges to change its duration; the following phases follow (ripple).</span>${storyboard.blocks.length ? renderDetailAllButton(storyboard, ai, readOnly) : ''}</div>`}
       </section>
       ${renderSbModal(storyboard)}
     </section>`;
   });
+}
+
+function renderDetailAllButton(storyboard, ai, readOnly) {
+  return `<button class="btn btn-ghost btn-sm" data-sb-action="deepen-all" ${ai && storyboard.blocks.length && !readOnly ? '' : 'disabled'} title="Write the details of every phase with AI">${sbUiIcon('layers', 13)} Detail all phases with AI</button>`;
 }
 
 function renderPhaseEditor(storyboard, block) {
@@ -178,7 +180,8 @@ function renderPhaseEditor(storyboard, block) {
         <div class="sl-ai">
           <input type="text" data-sb-ui="rewrite" value="${escapeAttribute(ui.rewrite)}" placeholder="Ask the AI: e.g. make it more ambiguous, add a regulator deadline…" ${readOnly}>
           <button class="btn btn-secondary btn-sm" data-sb-action="rewrite-block" ${ai && !readOnly ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Rewrite</button>
-          <button class="btn btn-secondary btn-sm" data-sb-action="deepen-block" data-sb-level="2" ${ai && !readOnly ? '' : 'disabled'}>Detail</button>
+          <button class="btn btn-secondary btn-sm" data-sb-action="deepen-block" data-sb-level="2" ${ai && !readOnly ? '' : 'disabled'} title="Write the details of this phase with AI">${sbUiIcon('layers', 13)} Detail with AI</button>
+          ${renderDetailAllButton(storyboard, ai, sbReadOnly())}
         </div>
       </div>
     </div>`;
@@ -730,14 +733,16 @@ function suRefreshPlayback(project, items = sbExerciseItems(project)) {
 // ═══ Context tab helpers ══════════════════════════════════════════════
 function renderContextGlance(project) {
   const sectors = ['Banking', 'Insurance', 'Energy', 'Healthcare', 'Transport', 'Industry', 'Telecom', 'Retail', 'Public sector', 'Pharmaceutical', 'Technology', 'Other'];
-  const hours = Math.round((project.storyboard?.duration_minutes || SB_DEFAULT_DURATION) / 30) / 2;
+  const duration = project.storyboard?.duration_minutes || SB_DEFAULT_DURATION;
+  // "Other" or a sector typed by hand: the select shows Other, a field next to it holds the text.
+  const otherSector = Boolean(project.client.sector) && !sectors.slice(0, -1).includes(project.client.sector);
   const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
   const logo = project.client.logo_url || '';
   return `<article class="card cx-frame" data-sb-scope>
     <div class="section-header"><div><h3>Context</h3><p class="subtle">Who the exercise is for, how long it plays, the simulated clock and the audience.</p></div></div>
     <div class="cx-row cx-row-client">
       <label class="field">Client name<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="Organisation name"></label>
-      <label class="field">Sector<select data-bind="client.sector">${[...new Set([project.client.sector, ...sectors].filter(Boolean))].map((sector) => sbOption(sector, sector, project.client.sector)).join('')}</select></label>
+      <label class="field">Sector<span class="cx-sector ${otherSector ? 'is-other' : ''}"><select data-cx-sector aria-label="Sector">${sectors.map((sector) => sbOption(sector, sector, otherSector ? 'Other' : project.client.sector)).join('')}</select>${otherSector ? `<input type="text" data-cx-sector-other value="${escapeAttribute(project.client.sector === 'Other' ? '' : project.client.sector)}" placeholder="Type the sector" aria-label="Other sector">` : ''}</span></label>
       <div class="field cx-logo">
         <span>Logo</span>
         <div class="cx-logo-row">
@@ -748,7 +753,7 @@ function renderContextGlance(project) {
       </div>
     </div>
     <div class="cx-row cx-row-frame">
-      <label class="field">Exercise duration (hours)<input type="number" min="0.5" max="168" step="0.5" data-sc-duration value="${hours}"></label>
+      <label class="field">Exercise duration (h:min)<input type="text" inputmode="numeric" data-sc-duration value="${sbFormatHoursMinutes(duration)}" placeholder="e.g. 0:45 or 3:00" title="Hours and minutes, e.g. 0:45, 1:30 or 3:00"><span class="helper">${sbFormatDuration(duration)}</span></label>
       <label class="field">Simulated start date<input type="datetime-local" data-bind="scenario.start_date" value="${escapeAttribute(project.scenario.start_date || '')}"></label>
       <label class="field">Simulated end date<input type="datetime-local" data-bind="scenario.end_date" value="${escapeAttribute(project.scenario.end_date || '')}" min="${escapeAttribute(project.scenario.start_date || '')}"></label>
       <label class="field">Timezone<select data-bind="scenario.timezone">${TIMEZONES.map((item) => sbOption(item, item, project.scenario.timezone)).join('')}</select></label>
@@ -1107,15 +1112,33 @@ function tabBindInputs(root) {
   }));
 
   root.querySelectorAll('[data-sc-duration]').forEach((input) => input.addEventListener('change', () => {
-    const minutes = Math.round(Math.max(0.5, Number(input.value) || 0) * 60);
-    storyboard.duration_minutes = Math.max(30, minutes, sbStoryboardEnd(storyboard));
-    StoryboardHistory.commit('Change duration');
+    const minutes = sbParseDuration(input.value);
+    if (minutes === null || minutes > SB_MAX_DURATION) {
+      pushToast('Type the duration as hours:minutes, e.g. 0:45, 1:30 or 3:00.', 'warning');
+    } else {
+      const end = sbStoryboardEnd(storyboard);
+      storyboard.duration_minutes = Math.max(30, minutes, end);
+      if (minutes < 30) pushToast('An exercise lasts at least 30 minutes.', 'info');
+      else if (minutes < end) pushToast(`The phases end at ${sbFormatDuration(end)}: shorten them in the Main storyline first.`, 'info');
+      StoryboardHistory.commit('Change duration');
+    }
     App.render();
   }));
   root.querySelectorAll('[data-sc-cells]').forEach((input) => input.addEventListener('change', () => {
     const count = sbInt(input.value, 0, 0, 20);
     project.exercise.cells_count = count;
     sbSetCellsCount(project, count);
+    saveLocal(false);
+    App.render();
+  }));
+  root.querySelectorAll('[data-cx-sector]').forEach((select) => select.addEventListener('change', () => {
+    project.client.sector = select.value;
+    saveLocal(false);
+    App.render();
+    if (select.value === 'Other') document.querySelector('[data-cx-sector-other]')?.focus();
+  }));
+  root.querySelectorAll('[data-cx-sector-other]').forEach((input) => input.addEventListener('change', () => {
+    project.client.sector = input.value.trim() || 'Other';
     saveLocal(false);
     App.render();
   }));

@@ -409,7 +409,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
   const context = h.run('renderScenarioView()');
-  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-bind="client.sector"', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-cx-generate', 'Generate with AI', 'data-sb-meta="synopsis"']) assert.ok(context.includes(marker), marker);
+  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-cx-sector', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-cx-generate', 'Generate with AI', 'data-sb-meta="synopsis"']) assert.ok(context.includes(marker), marker);
   assert.ok(context.indexOf('data-sc-players') < context.indexOf('data-sb-meta="brief"') && context.indexOf('data-cx-generate') < context.indexOf('data-sb-meta="synopsis"'), 'context, then objectives and AI, then details');
   assert.ok(!context.includes('skeleton.brief') && !context.includes('llm-block-scenario'), 'the old AI blocks are gone');
   assert.ok(!context.includes('sb-template-card'), 'the library moved to the Project tab');
@@ -800,4 +800,20 @@ test('audit regressions: the cascade never deletes a locked inject and keeps ski
   await h.run(`(async () => { const list = sbComputeImpacts(appState.scenario).filter(i => i.kind === 'missing'); list.find(i => i.beat_id === 'k9').action = 'skip'; await SbPipeline.applyImpacts(list); })()`);
   const created = h.json(`['k8', 'k9'].map(id => !!sbStimulusForBeat(appState.scenario, id))`);
   assert.deepEqual(created, [true, false]);
+});
+
+test('Context duration reads h:min, minutes or hours', () => {
+  const h = harness();
+  const read = text => h.run(`sbParseDuration(${JSON.stringify(text)})`);
+  assert.equal(read('0:45'), 45);
+  assert.equal(read('1:30'), 90);
+  assert.equal(read('1h30'), 90);
+  assert.equal(read('3h'), 180);
+  assert.equal(read('45 min'), 45);
+  assert.equal(read('3'), 180);
+  assert.equal(read('2,5'), 150);
+  assert.equal(read('1:75'), null);
+  assert.equal(read('soon'), null);
+  assert.equal(h.run('sbFormatHoursMinutes(45)'), '0:45');
+  assert.equal(h.run('sbFormatHoursMinutes(180)'), '3:00');
 });
