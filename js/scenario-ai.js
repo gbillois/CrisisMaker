@@ -82,8 +82,9 @@ function sbAIContext(project, options = {}) {
           stress: sbStressLevel(sbBlockStress(block)).label,
           locked: block.locked || undefined,
           beats: detailed
-            ? block.beats.map((beat) => ({ id: beat.id, at: beat.offset_minutes, channel: beat.channel, cast: beat.cast_id, cell: beat.cell_id, title: beat.title, intent: excerpt(beat.intent, 400) }))
-            : block.beats.map((beat) => `${beat.offset_minutes}m ${beat.channel} → ${sbRecipientName(project, beat.cell_id) || 'cell'}: ${excerpt(beat.title, 80)}`),
+            ? block.beats.map((beat) => ({ id: beat.id, at: beat.offset_minutes, exercise_time: sbFormatOffset(sbBeatAbsolute(block, beat)), channel: beat.channel, cast: beat.cast_id, cell: beat.cell_id, title: beat.title, intent: excerpt(beat.intent, 400) }))
+            // Exercise time first (as for the written injects), the minute in the phase after it.
+            : block.beats.map((beat) => `${sbFormatOffset(sbBeatAbsolute(block, beat))} (+${beat.offset_minutes} min in the phase) ${beat.channel} → ${sbRecipientName(project, beat.cell_id) || 'cell'}: ${excerpt(beat.title, 80)}`),
           ...((block.events || []).length ? { key_events: block.events.map((event) => (detailed ? { at: event.offset_minutes, text: excerpt(event.text, 400) } : `${event.offset_minutes}m ${excerpt(event.text, 90)}`)) } : {})
         };
       })
@@ -358,7 +359,7 @@ const SbAI = {
       context: sbAIContext(project, { focus: [] }),
       injects: timeline,
       response_format: { score: '0-100', summary: '2-3 sentences', issues: [{ severity: 'error|warning|info', at: 'minutes from start (optional)', cell: 'cell name (optional)', message: 'specific finding citing times and injects', suggestion: 'concrete fix' }] },
-      rules: ['Do not repeat the deterministic findings.', 'At most 12 issues, most important first.']
+      rules: ['Do not repeat the deterministic findings.', 'At most 12 issues, most important first.', 'Cite phases by title and times as H+h:mm; never cite internal ids (block_…, beat_…, stimulus_…).']
     };
     const result = await this.request('Reviewing the exercise', payload, 6000);
     const issues = (Array.isArray(result.issues) ? result.issues : []).slice(0, 20).map((issue) => {

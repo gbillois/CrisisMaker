@@ -649,7 +649,11 @@ Response format (strict JSON):
         if (typeof sbRecipientName === 'function') stimuli.forEach(s => { if (s.cell_id && !cellMap[s.cell_id]) cellMap[s.cell_id] = sbRecipientName(sc, s.cell_id); });
         const hasRecipients = stimuli.some(s => cellMap[s.cell_id]);
         const colKeys = hasRecipients ? ['timestamp', 'phase', 'sender', 'recipient', 'channel', 'content', 'type'] : ['timestamp', 'phase', 'sender', 'channel', 'content', 'type'];
-        const header = 'LINE | ' + colKeys.map(k => CHECKER_COLUMN_LABELS[k]().toUpperCase()).join(' | ');
+        // Injects are cited by the number they have in Play and the Injects library (#09), not by a line.
+        const numbers = typeof ExerciseModel !== 'undefined' ? ExerciseModel.numbers(sc) : new Map();
+        const top = numbers.size ? ExerciseModel.numberTop(numbers) : stimuli.length;
+        const label = (s, i) => typeof ExerciseModel !== 'undefined' ? ExerciseModel.numberLabel(numbers.get(s.id) || i + 1, top) : `#${i + 1}`;
+        const header = 'INJECT | ' + colKeys.map(k => CHECKER_COLUMN_LABELS[k]().toUpperCase()).join(' | ');
         const lines = [header];
 
         stimuli.forEach((s, i) => {
@@ -669,7 +673,7 @@ Response format (strict JSON):
             || s.fields?.post_text || s.fields?.content_text || '—';
           const type = s.channel || '—';
           const row = hasRecipients ? [timestamp, phase, sender, cellMap[s.cell_id] || '—', channel, String(content).substring(0, 300), type] : [timestamp, phase, sender, channel, String(content).substring(0, 300), type];
-          lines.push(`${i + 1} | ${row.join(' | ')}`);
+          lines.push(`${label(s, i)} | ${row.join(' | ')}`);
         });
 
         const actorList = actors.map(a =>
