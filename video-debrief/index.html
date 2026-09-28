@@ -1328,7 +1328,7 @@ async function refreshLocalVoice(){
   $('btn-local-voice').disabled = voiceBusy || ready || producing;
   $('btn-local-voice').textContent = ready ? uiText('✓ Voix chargée', '✓ Voice loaded', '✓ Stimme geladen')
     : stored ? uiText('▶ Activer la voix', '▶ Activate the voice', '▶ Stimme aktivieren')
-      : uiText(`⬇ Charger la voix (≈ ${(info ? info.mb : 60) + 28} Mo)`, `⬇ Load the voice (≈ ${(info ? info.mb : 60) + 28} MB)`, `⬇ Stimme laden (≈ ${(info ? info.mb : 60) + 28} MB)`);
+      : uiText(`⬇ Charger la voix (≈ ${(info ? info.mb : 60) + 28} Mo avec le moteur vocal)`, `⬇ Load the voice (≈ ${(info ? info.mb : 60) + 28} MB with the speech engine)`, `⬇ Stimme laden (≈ ${(info ? info.mb : 60) + 28} MB mit Sprach-Engine)`);
   $('btn-local-voice-test').disabled = !ready || voiceBusy || producing;
   if (!subtitlesTouched) $('browser-subtitles').checked = !ready && !stored;
   $('btn-browser-produce').textContent = ready || stored
