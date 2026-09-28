@@ -38,8 +38,5 @@ jobs:
           fi
           echo "All JavaScript files passed syntax check."
 
-      - name: Check Video Debrief Python syntax
-        run: python3 -m py_compile video-debrief/pipeline/*.py
-
       - name: Run tests
         run: node --test tests/*.test.js

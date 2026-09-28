@@ -1,5 +1,5 @@
 // Parametric underscore for the Video Debrief, synthesized in the browser.
-// Port of pipeline/make_music.py: each scene carries a `mood` (or one is
+// Each scene carries a `mood` (or one is
 // derived from its type) and the score is assembled from mood recipes in
 // D minor. Pure synthesis, no samples, deterministic.
 (function () {

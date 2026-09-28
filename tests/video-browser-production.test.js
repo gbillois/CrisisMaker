@@ -12,13 +12,13 @@ function load() {
 }
 const project = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'video-debrief', 'examples', 'stonawave.json'), 'utf8'));
 
-test('browser video: timing follows the Python pipeline (lead, gaps, min duration, tail)', () => {
+test('browser video: timing: lead, gaps, min duration, tail', () => {
   const VDB = load();
   const p = { pacing: { lead: 0.8, gap: 0.5, tail: 2 }, scenes: [{ id: 'a' }, { id: 'b', minDuration: 4 }, { id: 'c' }] };
   const timing = VDB.computeTiming(p, { a: 5, b: 1, c: 0 });
   assert.deepEqual(timing.scenes.map(s => [s.voStart, s.voEnd]), [[0.8, 5.8], [6.3, 10.3], [10.8, 13.8]]);
   assert.equal(timing.total, 15.8);
-  assert.equal(VDB.computeTiming({ scenes: [{ id: 'a' }] }, { a: 3 }).total, 0.8 + 3 + 4.8, 'default tail as build.py');
+  assert.equal(VDB.computeTiming({ scenes: [{ id: 'a' }] }, { a: 3 }).total, 0.8 + 3 + 4.8, 'default lead, voice-over and tail');
 });
 
 test('browser video: the synthesized score is deterministic, bounded and follows the moods', () => {

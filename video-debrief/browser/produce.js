@@ -1,6 +1,6 @@
 // Video Debrief production in the browser: voice (local Piper model, or none
 // with subtitles), timing, music, mix, 1080p frames from the scene engine,
-// WebCodecs encoding and MP4 muxing. Same steps as pipeline/build.py, no server.
+// WebCodecs encoding and MP4 muxing, all in the page.
 (function () {
   'use strict';
   const VDB = (window.VDB = window.VDB || {});
@@ -25,7 +25,7 @@
     return Number.isFinite(n) ? n : 6;
   }
 
-  /** Same pacing as pipeline/build.py: lead, scene voice-overs separated by gaps, tail. */
+  /** Pacing: lead, scene voice-overs separated by gaps, tail. */
   VDB.computeTiming = function (project, durations) {
     const pacing = project.pacing || {};
     const lead = pacing.lead ?? 0.8, gap = pacing.gap ?? 0.55, tail = pacing.tail ?? 4.8;
@@ -150,7 +150,7 @@
     if (voiced) {
       let voice = await recordVoice(project, opts.voiceId, 0, (r, label) => progress(W.voice * r * 0.85, label), isCancelled);
       timing = VDB.computeTiming(project, voice.durations);
-      // Too long: speak slightly faster once (at most +4%), as the Python pipeline does.
+      // Too long: speak slightly faster once (at most +4%).
       const overshoot = timing.total - target;
       if (overshoot > 1.5) {
         const bump = Math.min(4, Math.floor(overshoot / timing.total * 100) + 1);
