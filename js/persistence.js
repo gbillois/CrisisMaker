@@ -422,6 +422,7 @@
             const json = JSON.stringify(exportData, null, 2);
             const crisisSlug = slugify(appState.scenario.name);
             zip.file(`${crisisSlug}.json`, json);
+            zip.file(`${crisisSlug}_chronogram.csv`, this.chronogramCsv(stimuli));
             const blob = await zip.generateAsync({ type: 'blob' });
             downloadBlob(blob, `${crisisSlug}.zip`);
             pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
@@ -435,13 +436,35 @@
             document.body.removeChild(sandbox);
           }
         },
+        /* Play order number and time, so the files sort in the order the pilot sends them. */
+        playPrefix(stimulus) {
+          const stimuli = getSortedStimuli();
+          const width = Math.max(2, String(stimuli.length).length);
+          const number = String(stimuli.findIndex((item) => item.id === stimulus.id) + 1).padStart(width, '0');
+          const minutes = stimulus.timestamp_offset_minutes;
+          return `${number}_H+${String(Math.floor(minutes / 60)).padStart(2, '0')}-${String(minutes % 60).padStart(2, '0')}`;
+        },
         filenameForStimulus(stimulus, ext = 'png') {
           const actor = getActor(stimulus.actor_id);
-          return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.${ext}`;
+          return `${this.playPrefix(stimulus)}_${stimulus.channel}_${slugify(actor?.name || 'acteur')}.${ext}`;
+        },
+        /* The chronogram for the pilot: one line per stimulus, in play order (Excel-friendly). */
+        chronogramCsv(stimuli) {
+          const project = appState.scenario;
+          const quote = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+          const header = ['#', 'Time', 'Simulated time', 'Phase', 'Recipient cell', 'Channel', 'Sender', 'Title', 'Status', 'File'];
+          const rows = stimuli.map((stimulus, index) => {
+            const phase = project.storyboard ? sbMainBlockAt(project.storyboard, stimulus.timestamp_offset_minutes) : null;
+            const cell = sbCell(project, stimulus.cell_id);
+            return [index + 1, sbFormatOffset(stimulus.timestamp_offset_minutes), project.scenario.start_date ? sbClockTime(stimulus.timestamp_offset_minutes, project.scenario.start_date) : '',
+              phase?.title || '', cell?.name || '', channelLabel(stimulus.channel), getActor(stimulus.actor_id)?.name || '', sbStimulusLabel(stimulus),
+              typeof playStatusLabel === 'function' ? playStatusLabel(stimulus.status) : stimulus.status, this.filenameForStimulus(stimulus, this.isVideoStimulus(stimulus) ? 'webm' : 'png')];
+          });
+          return '\ufeff' + [header, ...rows].map((row) => row.map(quote).join(';')).join('\r\n');
         },
         filenameForRawEmail(stimulus) {
           const actor = getActor(stimulus.actor_id);
-          return `${slugify(appState.scenario.name)}_H+${String(Math.floor(stimulus.timestamp_offset_minutes / 60)).padStart(2, '0')}_${slugify(stimulus.fields.subject || stimulus.channel)}_${slugify(actor?.name || 'actor')}.eml`;
+          return `${this.playPrefix(stimulus)}_${slugify(stimulus.fields.subject || stimulus.channel)}_${slugify(actor?.name || 'actor')}.eml`;
         },
         isEmailStimulus(stimulus) {
           return Boolean(stimulus?.channel && String(stimulus.channel).startsWith('email_'));

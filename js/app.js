@@ -120,6 +120,7 @@
           bindAssistantEvents();
           bindScenarioBuilderEvents();
           bindScenarioTabsEvents();
+          bindPlayEvents();
           bindStimuliSplitters();
           bindStimulusModalSplitter();
           mountDebriefEditor();

@@ -381,7 +381,12 @@
           watermark: stimulus.watermark || null,
           history: stimulus.history || [],
           ...(stimulus.scenario_link && typeof sbNormalizeLink === 'function' ? { scenario_link: sbNormalizeLink(stimulus.scenario_link) } : {}),
-          ...(typeof stimulus.cell_id === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(stimulus.cell_id) ? { cell_id: stimulus.cell_id } : {})
+          ...(typeof stimulus.cell_id === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(stimulus.cell_id) ? { cell_id: stimulus.cell_id } : {}),
+          // When the pilot marked it sent during Play: wall clock and exercise minute.
+          ...(typeof stimulus.sent_at === 'string' ? { sent_at: stimulus.sent_at } : {}),
+          ...(Number.isFinite(stimulus.sent_at_min) ? { sent_at_min: stimulus.sent_at_min } : {}),
+          ...(stimulus.added_in_play === true ? { added_in_play: true } : {}),
+          ...(Number.isInteger(stimulus.sent_count) && stimulus.sent_count > 0 ? { sent_count: stimulus.sent_count } : {})
         };
       }
 

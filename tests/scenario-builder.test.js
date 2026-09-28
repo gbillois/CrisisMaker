@@ -515,3 +515,53 @@ test('scenario first: injects grouped by phase, phase and cell filters, scenario
   assert.ok(check.note.includes('scenario first'));
   assert.ok(h.run('AgentPrompts.protocol').includes('The scenario is the core'));
 });
+
+test('play: clock, numbering, timing, statuses both ways with the log, on-the-fly injects, full reset', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'play';`);
+  // Numbered in play order, shared with the ZIP files and the chronogram CSV.
+  const first = h.run(`getSortedStimuli()[0].id`);
+  assert.equal(h.run(`playNumbers().get('${first}')`), 1);
+  assert.ok(h.run(`ExportEngine.filenameForStimulus(getSortedStimuli()[0])`).startsWith('01_H+00-00_'));
+  const csv = h.run(`ExportEngine.chronogramCsv(getSortedStimuli())`);
+  assert.ok(csv.includes('"#";"Time";"Simulated time";"Phase"') && csv.includes('"Encryption hits on Sunday morning"'));
+  // Clock: paused at H+1:06, the right items are due, late and soon.
+  h.run(`Object.assign(playState(), { offset_min: 66, running: false })`);
+  assert.equal(Math.round(h.run('playNow()')), 66);
+  const items = h.json(`playItems().map((item) => ({ key: item.key, time: item.time, timing: playTiming(item, 66) }))`);
+  assert.ok(items.some((item) => item.timing === 'is-late') && items.some((item) => item.timing === 'is-due'));
+  // View: generate block, permanent bar with reset, chronogram by phase with the NOW line, log panel.
+  const view = h.run('renderPlayView()');
+  for (const marker of ['Generate all stimuli', 'data-play-bar', 'data-play="toggle"', 'data-play="reset-all"', 'data-play="add"', 'data-play-quick="now"', 'data-play-filter="cell"', 'data-play-now', 'play-phase-group', 'data-play-set="sent"', 'data-action="open-stimulus-modal"', 'Exercise log', 'data-play="save-log"', 'data-play-note']) assert.ok(view.includes(marker), marker);
+  // Statuses go both ways, each change is logged, a re-send is counted.
+  const id = h.run(`getSortedStimuli()[3].id`);
+  h.run(`playSetStatus(getStimulus('${id}'), 'sent')`);
+  assert.equal(h.run(`getStimulus('${id}').status`), 'sent');
+  assert.ok(h.run(`getStimulus('${id}').sent_at_min`) > 60);
+  h.run(`playSetStatus(getStimulus('${id}'), 'draft')`);
+  assert.equal(h.run(`getStimulus('${id}').sent_at_min`), undefined, 'going back clears the send time');
+  h.run(`playSetStatus(getStimulus('${id}'), 'sent')`);
+  const log = h.json('playState().log');
+  assert.equal(log.length, 3);
+  assert.ok(log[0].text.includes('late') && log[1].text.includes('Sent → Draft') && log[2].text.includes('re-sent (2×)'));
+  // Inject added on the fly, at the current time, saved with the project.
+  h.run(`playAddInject()`);
+  const added = h.json(`appState.scenario.stimuli.find((item) => item.added_in_play)`);
+  assert.equal(added.timestamp_offset_minutes, 66);
+  assert.equal(h.run(`appState.stimulusModalId`), added.id, 'the editor opens on it');
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario)))`);
+  assert.ok(reloaded.stimuli.some((item) => item.added_in_play && item.id === added.id));
+  assert.equal(reloaded.stimuli.find((item) => item.id === id).sent_count, 2);
+  assert.equal(reloaded.play.log.length, 4);
+  // Log export and the full reset after two confirmations.
+  assert.ok(h.run('playLogCsv()').includes('"Exercise time";"Wall clock";"Simulated time";"Type";"Event"'));
+  h.run(`window.confirm = () => true; playResetAll()`);
+  assert.equal(h.run('playState().log.length'), 0);
+  assert.equal(h.run('playState().offset_min'), 0);
+  assert.equal(h.run(`getStimulus('${id}').status`), 'ready');
+  let asked = 0;
+  h.run(`playSetStatus(getStimulus('${id}'), 'sent'); window.confirm = () => { globalThis.asked = (globalThis.asked || 0) + 1; return globalThis.asked < 2; }; playResetAll()`);
+  asked = h.run('globalThis.asked');
+  assert.equal(asked, 2, 'two confirmations');
+  assert.equal(h.run(`getStimulus('${id}').status`), 'sent', 'declining the second confirmation keeps everything');
+});

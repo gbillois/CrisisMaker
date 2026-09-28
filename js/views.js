@@ -192,6 +192,7 @@
                   ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
                   ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
                   ${renderNavIconButton('summary', svgPlayCircle(), 'Summary')}
+                  ${renderNavIconButton('play', svgBroadcast(), 'Play')}
                   ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
                   ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                   ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
@@ -246,6 +247,7 @@
         return `<svg class="${className}" viewBox="0 0 290 38" role="img" aria-label="Wavestone" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="${WAVESTONE_LOGO_PATH}"/></svg>`;
       }
 
+      function svgBroadcast() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8a6 6 0 0 1 0 8.4"></path><path d="M7.8 16.2a6 6 0 0 1 0-8.4"></path><path d="M19.1 4.9a10 10 0 0 1 0 14.2"></path><path d="M4.9 19.1a10 10 0 0 1 0-14.2"></path></svg>'; }
       function svgUsers() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21a7 7 0 0 1 14 0"></path><path d="M16 4a4 4 0 0 1 0 8"></path><path d="M22 21a7 7 0 0 0-5-6.7"></path></svg>'; }
       function svgPlayCircle() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m10 8 6 4-6 4z"></path></svg>'; }
       function svgStoryboard() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path><path d="M6 13h5"></path><path d="M9 16h8"></path><path d="M14 13h4"></path><path d="M7 4v5"></path><path d="M12 4v5"></path><path d="M17 4v5"></path></svg>'; }
@@ -326,6 +328,11 @@
                       <p>See the whole exercise, play it in accelerated time and let the AI check rhythm and consistency.</p>
                     </div>
                     <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgBroadcast()}</div>
+                      <strong>Play</strong>
+                      <p>${tt('Run the exercise live: a permanent control bar with the clock, current phase and next inject, a vertical chronogram to send each inject on time, and an exercise log.', 'Animez l’exercice en direct : un bandeau de pilotage avec l’horloge, la phase en cours et le prochain inject, un chronogramme vertical pour envoyer chaque inject à temps, et un journal de l’exercice.', 'Übung live durchführen: Steuerleiste mit Uhr, aktueller Phase und nächstem Inject, vertikales Chronogramm zum pünktlichen Senden und ein Übungsprotokoll.')}</p>
+                    </div>
+                    <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgGrid()}</div>
                       <strong>${tt('Injects', 'Injects', 'Injects')}</strong>
                       <p>${tt('Every inject of the scenario, gathered by phase and filterable by cell: preview them for facilitation and export them as styled images or a ZIP.', 'Tous les injects du scénario, regroupés par phase et filtrables par cellule : prévisualisez-les pour l’animation et exportez-les en images stylées ou en ZIP.', 'Alle Injects des Szenarios, nach Phase gruppiert und nach Zelle filterbar: für die Moderation ansehen und als gestaltete Bilder oder ZIP exportieren.')}</p>
@@ -365,7 +372,7 @@
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
-                      <span>${tt('<strong>Run the exercise</strong> — in Summary, play it phase by phase and watch the injects reach each cell; the Injects view gathers them by phase for facilitation and export.', '<strong>Animez l’exercice</strong> — dans Summary, jouez-le phase par phase et voyez les injects arriver à chaque cellule ; la vue Injects les regroupe par phase pour l’animation et l’export.', '<strong>Übung durchführen</strong> — in Summary Phase für Phase abspielen und sehen, wie die Injects jede Zelle erreichen; die Injects-Ansicht gruppiert sie nach Phase für Moderation und Export.')}</span>
+                      <span>${tt('<strong>Run the exercise</strong> — in Play, generate the numbered stimuli, start the clock and send each inject on time; the exercise log records everything and can be saved.', '<strong>Animez l’exercice</strong> — dans Play, générez les stimuli numérotés, lancez l’horloge et envoyez chaque inject à temps ; le journal de l’exercice consigne tout et peut être enregistré.', '<strong>Übung durchführen</strong> — in Play die nummerierten Stimuli erzeugen, die Uhr starten und jeden Inject pünktlich senden; das Übungsprotokoll hält alles fest und kann gespeichert werden.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">5</div>
@@ -406,6 +413,10 @@
           cells: {
             title: 'Cells & actors',
             subtitle: tt('Player cells and the simulated actors who send injects.', 'Cellules de joueurs et acteurs simulés qui envoient les injects.', 'Spielerzellen und simulierte Akteure, die Injects senden.')
+          },
+          play: {
+            title: 'Play',
+            subtitle: tt('Run the exercise live: generate the stimuli, start the clock and send each inject on time.', 'Animez l\'exercice en direct : générez les stimuli, lancez l\'horloge et envoyez chaque inject à temps.', 'Übung live durchführen: Stimuli erzeugen, Uhr starten und jeden Inject pünktlich senden.')
           },
           summary: {
             title: 'Summary',
@@ -448,6 +459,7 @@
         if (appState.route === 'cells') return renderCellsView();
         if (appState.route === 'detailed') return renderDetailedView();
         if (appState.route === 'summary') return renderSummaryView();
+        if (appState.route === 'play') return renderPlayView();
         if (appState.route === 'library') return renderLibraryView();
         if (appState.route === 'debrief') return renderDebriefView();
         if (appState.route === 'video-debrief') return renderVideoDebriefView();

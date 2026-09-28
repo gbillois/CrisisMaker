@@ -88,7 +88,7 @@ iframe sub-app) and shows a placeholder instead; use the full app for it.
 - [MITRE ATT&CK / D3Fend threat and mitigation document](docs/mitre-attack-d3fend-threat-mitigation.md)
 - [Debrief generation and automation](docs/debrief-automation.md)
 
-## Designing an exercise: six tabs
+## Designing and running an exercise
 
 The menu follows the design workflow, from left to right:
 
@@ -130,6 +130,24 @@ The menu follows the design workflow, from left to right:
    and a review: deterministic checks (idle cells, dead times, overloads, empty
    phases, missing recipients or senders, orphans) plus an AI check of rhythm and
    consistency. Each finding opens the inject or cell concerned.
+
+7. **Play**: runs the exercise live, for its pilot.
+   - **Generate all stimuli**: a ZIP with every stimulus numbered in play order
+     (`01_H+00-00_…`), the chronogram as a CSV for Excel, and the project file.
+   - A **control bar** that stays visible: Start/Pause (Space), clock shifts (±1, ±5
+     min), speed (real time, or faster for rehearsals), **Add inject now**, the
+     exercise time and simulated time, the current phase and time left, the next
+     inject with its countdown, sent/to send/late counters, progress over the phases,
+     and **Reset play** (two confirmations: clock, sent statuses and log).
+   - Smart filters: to send now, late, next 15 minutes, to validate, sent; search,
+     phase, cell, channel, sender; sort; follow the clock; show planned injects.
+   - A vertical **chronogram** by phase with a moving NOW line: each inject shows its
+     time, number, channel, sender and recipient cell, and its status (Draft,
+     Validated, Sent; statuses can go back to resend), with Modify to open the editor.
+     Due and late injects stand out and trigger an alert.
+   - The **exercise log** records starts, pauses, clock and speed changes, phases,
+     status changes (with the delay and re-sends) and the pilot's notes; **Save
+     log** downloads it as a CSV. The run state is saved with the project.
 
 Every inject has a **recipient cell** (`cell_id` on planned injects and stimuli).
 Cells replace the parallel workstreams of earlier versions: when an older project or
