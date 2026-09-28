@@ -930,8 +930,10 @@ function sbRenderSoon() {
   requestAnimationFrame(() => { sbRenderQueued = false; App.render(); });
 }
 
+/* Keyboard shortcuts of the Main storyline; Cells & actors only takes undo/redo. */
 function sbOnKeyDown(event) {
-  if (appState.route !== 'storyline' || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen || appState.chronogramImport) return;
+  if (!['storyline', 'cells'].includes(appState.route) || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen || appState.chronogramImport) return;
+  const storyline = appState.route === 'storyline';
   const ui = sbUI();
   const target = event.target;
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName || '') || target?.isContentEditable;
@@ -939,7 +941,7 @@ function sbOnKeyDown(event) {
   const key = event.key.toLowerCase();
   if (event.key === 'Escape') {
     if (ui.modal && !SbPipeline.active) { ui.modal = null; App.render(); }
-    else if (!typing && ui.selected.length) { ui.selected = []; App.render(); }
+    else if (!typing && storyline && ui.selected.length) { ui.selected = []; App.render(); }
     return;
   }
   if (typing || ui.modal) return;
@@ -951,6 +953,7 @@ function sbOnKeyDown(event) {
     App.render();
     return;
   }
+  if (!storyline) return;
   if (event.key === '+' || event.key === '=') { sbSetZoom(ui.zoom * 1.25); App.render(); return; }
   if (event.key === '-' || event.key === '_') { sbSetZoom(ui.zoom / 1.25); App.render(); return; }
   if (sbReadOnly() || !ui.selected.length) return;

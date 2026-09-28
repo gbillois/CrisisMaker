@@ -321,9 +321,10 @@
           client: { ...base.client, ...(input.client || {}) },
           scenario: { ...base.scenario, ...(input.scenario || {}) },
           settings: { ...base.settings, ...(input.settings || {}) },
-          // A file without actors or injects gets empty lists, never the demo's.
+          // A file without actors or injects gets empty lists, never the demo's. An inject
+          // saved without sender (its actor was deleted) keeps none.
           actors,
-          stimuli: Array.isArray(input.stimuli) ? input.stimuli.filter((item) => item && typeof item === 'object').map((stimulus) => normalizeStimulus({ ...stimulus, actor_id: actorIds.get(stimulus.actor_id) ?? stimulus.actor_id }, actors[0]?.id || '')) : [],
+          stimuli: Array.isArray(input.stimuli) ? input.stimuli.filter((item) => item && typeof item === 'object').map((stimulus) => normalizeStimulus({ ...stimulus, actor_id: actorIds.get(stimulus.actor_id) ?? stimulus.actor_id }, stimulus.actor_id === '' ? '' : actors[0]?.id || '')) : [],
           debrief: normalizeDebrief(input.debrief, { ...base, ...input }),
           video_debrief: normalizeVideoDebrief(
             input.video_debrief,
@@ -337,7 +338,9 @@
           cells: storyboardModelLoaded() ? sbNormalizeCells(input.cells) : [],
           exercise: storyboardModelLoaded() ? sbNormalizeExercise(input.exercise) : { players_count: '', cells_count: '' }
         };
-        if (storyboardModelLoaded()) { sbFlattenWorkstreams(merged); sbFoldCellObjectives(merged); }
+        // Recipient cells are only assigned when migrating a project from before cells: in a
+        // project with cells, an inject without recipient stays so (the checks flag it).
+        if (storyboardModelLoaded()) { sbFlattenWorkstreams(merged, { assignCells: !Array.isArray(input.cells) }); sbFoldCellObjectives(merged); }
         // The storyboard owns the timed phases; keep the legacy field derived from it.
         if (storyboardModelLoaded() && (merged.storyboard.blocks.length || !Array.isArray(input.scenario?.phases))) merged.scenario.phases = sbDerivePhases(merged.storyboard);
         if (!input.scenario || !('objectives' in input.scenario)) delete merged.scenario.objectives;

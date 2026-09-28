@@ -1,5 +1,6 @@
-/* Scenario Builder history: in-memory undo/redo of the storyboard plus
-   persisted versions (automatic ones in IndexedDB, named ones in the project). */
+/* Scenario Builder history: in-memory undo/redo of the storyboard (with the cells, actors
+   and written injects an edit changes) plus persisted versions (automatic ones in
+   IndexedDB, named ones in the project). */
 const SB_UNDO_LIMIT = 100;
 const SB_AUTO_VERSION_LIMIT = 40;
 const SB_NAMED_VERSION_LIMIT = 30;
@@ -54,6 +55,55 @@ function sbSerialize(storyboard) {
   return JSON.stringify(storyboard);
 }
 
+/* Cells, actors and written injects live beside the storyboard. An edit that changes them
+   calls StoryboardHistory.track() first: its undo step then keeps only the items that
+   changed (by id, before and after) and the order of each list, not full copies. */
+const SB_SIDE_LISTS = ['cells', 'actors', 'stimuli'];
+
+function sbSideState(project) {
+  const state = {};
+  for (const name of SB_SIDE_LISTS) state[name] = new Map((project[name] || []).map((item) => [item.id, JSON.stringify(item)]));
+  return state;
+}
+
+function sbSideDiff(before, after) {
+  let diff = null;
+  for (const name of SB_SIDE_LISTS) {
+    const changed = [];
+    for (const id of new Set([...before[name].keys(), ...after[name].keys()])) {
+      const from = before[name].has(id) ? before[name].get(id) : null;
+      const to = after[name].has(id) ? after[name].get(id) : null;
+      if (from !== to) changed.push({ id, before: from, after: to });
+    }
+    const orderBefore = [...before[name].keys()];
+    const orderAfter = [...after[name].keys()];
+    if (!changed.length && orderBefore.join('\n') === orderAfter.join('\n')) continue;
+    diff = diff || {};
+    diff[name] = { changed, before: orderBefore, after: orderAfter };
+  }
+  return diff;
+}
+
+/* Puts the recorded items back as they were before (undo) or after (redo) the edit.
+   Items the edit did not touch are kept as they are now. */
+function sbApplySide(project, diff, direction) {
+  if (!diff) return;
+  for (const name of Object.keys(diff)) {
+    const byId = new Map((project[name] || []).map((item) => [item.id, item]));
+    for (const entry of diff[name].changed) {
+      if (entry[direction] === null) byId.delete(entry.id);
+      else byId.set(entry.id, JSON.parse(entry[direction]));
+    }
+    const order = diff[name][direction];
+    const rank = new Map(order.map((id, index) => [id, index]));
+    const place = (item, index) => (rank.has(item.id) ? rank.get(item.id) : order.length + index);
+    project[name] = [...byId.values()].map((item, index) => ({ item, at: place(item, index) })).sort((a, b) => a.at - b.at).map((entry) => entry.item);
+  }
+  // The cell count of the Context follows the cells, as when a cell is added or deleted.
+  if (diff.cells && project.exercise) project.exercise.cells_count = project.cells.length;
+  if (diff.stimuli && typeof sortStimuli === 'function' && project === appState.scenario) sortStimuli();
+}
+
 const StoryboardHistory = {
   projectId: null,
   bound: null,
@@ -63,6 +113,7 @@ const StoryboardHistory = {
   autoVersions: [],
   pendingLabel: '',
   pendingTimer: null,
+  side: null,
   lastAutoVersionAt: 0,
   loadedFor: null,
 
@@ -94,6 +145,7 @@ const StoryboardHistory = {
     clearTimeout(this.pendingTimer);
     this.pendingTimer = null;
     this.pendingLabel = '';
+    this.side = null;
     this.projectId = project.id;
     this.bound = project.storyboard;
     this.baseline = sbSerialize(project.storyboard);
@@ -116,13 +168,22 @@ const StoryboardHistory = {
     } catch (_) { /* Versions are a convenience; the storyboard itself is saved with the project. */ }
   },
 
-  push(snapshot, label) {
-    this.undoStack.push({ snapshot, label, at: Date.now() });
+  push(snapshot, label, side = null) {
+    this.undoStack.push({ snapshot, label, at: Date.now(), side });
     if (this.undoStack.length > SB_UNDO_LIMIT) this.undoStack.shift();
     this.redoStack = [];
   },
 
-  /* Records the current storyboard state as one undoable step. */
+  /* Call right before an edit that also changes cells, actors or written injects: the
+     next commit records them in the same undo step. */
+  track() {
+    const project = appState.scenario;
+    this.ensure(project);
+    this.flush();
+    this.side = sbSideState(project);
+  },
+
+  /* Records the current storyboard state (and what track() watches) as one undoable step. */
   commit(label = 'Edit', options = {}) {
     const project = appState.scenario;
     this.ensure(project);
@@ -136,9 +197,11 @@ const StoryboardHistory = {
     clearTimeout(this.pendingTimer);
     this.pendingTimer = null;
     this.pendingLabel = '';
+    const side = this.side ? sbSideDiff(this.side, sbSideState(project)) : null;
+    this.side = null;
     const current = sbSerialize(project.storyboard);
-    if (current === this.baseline) return false;
-    this.push(this.baseline, label);
+    if (current === this.baseline && !side) return false;
+    this.push(this.baseline, label, side);
     project.storyboard.rev += 1;
     this.baseline = sbSerialize(project.storyboard);
     sbAfterStoryboardChange(project, { save: options.save !== false });
@@ -155,8 +218,10 @@ const StoryboardHistory = {
   canUndo() { return this.undoStack.length > 0 || !!this.pendingTimer; },
   canRedo() { return this.redoStack.length > 0; },
 
-  apply(snapshot) {
+  apply(snapshot, side = null, direction = 'before') {
     const project = appState.scenario;
+    this.side = null;
+    sbApplySide(project, side, direction);
     const restored = normalizeStoryboard(JSON.parse(snapshot));
     restored.rev = (project.storyboard?.rev || 0) + 1;
     project.storyboard = restored;
@@ -169,8 +234,8 @@ const StoryboardHistory = {
     this.flush();
     const entry = this.undoStack.pop();
     if (!entry) return null;
-    this.redoStack.push({ snapshot: this.baseline, label: entry.label, at: Date.now() });
-    this.apply(entry.snapshot);
+    this.redoStack.push({ snapshot: this.baseline, label: entry.label, at: Date.now(), side: entry.side || null });
+    this.apply(entry.snapshot, entry.side, 'before');
     return entry.label;
   },
 
@@ -178,8 +243,8 @@ const StoryboardHistory = {
     this.flush();
     const entry = this.redoStack.pop();
     if (!entry) return null;
-    this.undoStack.push({ snapshot: this.baseline, label: entry.label, at: Date.now() });
-    this.apply(entry.snapshot);
+    this.undoStack.push({ snapshot: this.baseline, label: entry.label, at: Date.now(), side: entry.side || null });
+    this.apply(entry.snapshot, entry.side, 'after');
     return entry.label;
   },
 
