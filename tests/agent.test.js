@@ -36,8 +36,8 @@ async function execute(h, name, args) {
 test('registry exposes expected operations with strict schemas, no credential or code tools', () => {
   const h = harness();
   const catalog = h.json('[...createAgentToolRegistry().values()].map(({name, description, inputSchema, risk}) => ({name, description, inputSchema, risk}))');
-  assert.equal(catalog.length, 30);
-  for (const name of ['getExerciseFrame', 'setExerciseFrame', 'updateStorylineMeta', 'buildMainStoryline', 'upsertCells', 'upsertCast', 'planPhaseInjects', 'getScenario', 'createActor', 'updateStimulus', 'deleteStimulus', 'reorderStimuli', 'generateStimulusContent', 'improveStimulusContent', 'analyzeExerciseQuality']) assert.ok(catalog.some(t => t.name === name));
+  assert.equal(catalog.length, 32);
+  for (const name of ['getExerciseFrame', 'setExerciseFrame', 'updateStorylineMeta', 'buildMainStoryline', 'upsertCells', 'upsertCast', 'planPhaseInjects', 'getPhase', 'updatePlannedInject', 'getScenario', 'createActor', 'updateStimulus', 'deleteStimulus', 'reorderStimuli', 'generateStimulusContent', 'improveStimulusContent', 'analyzeExerciseQuality']) assert.ok(catalog.some(t => t.name === name));
   for (const tool of catalog) { assert.ok(tool.description); assert.equal(tool.inputSchema.additionalProperties, false); }
   assert.ok(!JSON.stringify(catalog).includes('ai_api_key'));
   assert.throws(() => h.run(`ToolValidator.validate(JSON.parse('{"__proto__":{}}'), AgentSchema.object())`), /Invalid/);
@@ -264,6 +264,19 @@ test('builder tools set the frame, build the storyline, cells, cast and a per-ce
   // Outside the phase either way: refused with the range, the plan unchanged.
   await assert.rejects(execute(h, 'planPhaseInjects', { id: main[1].id, injects: [{ at: 150, channel: 'email_internal', title: 'Too late' }] }), /outside phase .*0 to 59/);
   assert.equal(h.run(`sbBlock(appState.scenario.storyboard, '${main[1].id}').beats.length`), 2);
+  // One phase in full, then one planned inject moved and readdressed without touching the others.
+  const phase = await execute(h, 'getPhase', { id: main[1].id });
+  assert.equal(phase.planned_injects.length, 2);
+  const isolation = phase.planned_injects.find(item => item.title === 'Isolation request');
+  const moved = await execute(h, 'updatePlannedInject', { id: main[1].id, inject_id: isolation.id, patch: { at: 40, cell: 'Communication cell', title: 'Isolation request, final' } });
+  assert.equal(moved.at, 40); assert.equal(moved.exercise_minute, 100); assert.equal(moved.title, 'Isolation request, final');
+  assert.equal(moved.cell_id, h.run(`appState.scenario.cells.find(c => c.name === 'Communication cell').id`));
+  assert.equal(h.run(`sbBlock(appState.scenario.storyboard, '${main[1].id}').beats.find(b => b.title === 'Reporter calls').offset_minutes`), 10);
+  // An exercise minute in another phase moves it there.
+  const across = await execute(h, 'updatePlannedInject', { id: main[1].id, inject_id: isolation.id, patch: { exercise_minute: 5 } });
+  assert.equal(across.phase_id, main[0].id); assert.equal(across.at, 5);
+  await assert.rejects(execute(h, 'updatePlannedInject', { id: main[0].id, inject_id: isolation.id, patch: { cell: 'No such cell' } }), /Unknown cell/);
+  await execute(h, 'updatePlannedInject', { id: main[0].id, inject_id: isolation.id, patch: { exercise_minute: 70, cell: decision.id, title: 'Isolation request' } });
   await assert.rejects(execute(h, 'planPhaseInjects', { id: 'missing', injects: [] }), /Unknown item ID/);
   const context = h.json('AgentContext.build()');
   assert.equal(context.frame.play_duration_minutes, 180);

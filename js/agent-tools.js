@@ -370,6 +370,47 @@ function createAgentToolRegistry() {
     StoryboardHistory.commit('Agent: plan injects');
     return { id: block.id, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, planned: block.beats.map(beat => ({ at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(block, beat), cell_id: beat.cell_id, cast_id: beat.cast_id, channel: beat.channel, title: beat.title })) };
   }, 'write');
+  add('getPhase', 'Read one main-storyline phase in full: brief, narrative, main events and every planned inject (at = minutes from the phase start). Smaller than getStoryboard; use it before editing one phase.', id, ['id'], args => {
+    const project = appState.scenario;
+    const block = sbBlock(project.storyboard, args.id);
+    if (!block) throw new AgentValidationError('Unknown item ID.');
+    return { id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 4000), narrative: agentExcerpt(block.narrative, 8000), objectives: block.objectives,
+      key_events: (block.events || []).map(event => ({ at: event.offset_minutes, exercise_minute: block.start_minutes + event.offset_minutes, text: agentExcerpt(event.text, 1000) })),
+      planned_injects: block.beats.map(beat => ({ id: beat.id, at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: beat.title, intent: beat.intent, stimulus_id: sbStimulusForBeat(project, beat.id)?.id || null })) };
+  });
+  add('updatePlannedInject', 'Edit one planned inject of a phase: its time, recipient cell, sender (cast), channel, title or intent. at = minutes from the phase start; exercise_minute = minutes from the exercise start, and moves it to the phase covering that time. Its written inject, if any, follows the new time and cell.', {
+    ...id, inject_id: S.id, patch: S.object({ at: S.minutes, exercise_minute: S.minutes, cell: S.text(160), cast: S.text(200), channel: { ...S.text(), enum: channels }, title: S.text(300), intent: S.text(2000) })
+  }, ['id', 'inject_id', 'patch'], args => {
+    const project = appState.scenario;
+    StoryboardHistory.ensure(project); StoryboardHistory.flush();
+    const block = sbBlock(project.storyboard, args.id);
+    if (!block) throw new AgentValidationError('Unknown item ID.');
+    if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
+    const beat = block.beats.find(item => item.id === args.inject_id);
+    if (!beat) throw new AgentValidationError(`Unknown planned inject in phase "${block.title}". Read it with getPhase.`);
+    const patch = args.patch || {};
+    let cell;
+    if (patch.cell !== undefined) {
+      cell = sbCell(project, patch.cell) ? patch.cell : (project.cells || []).find(item => item.name.toLowerCase() === String(patch.cell).toLowerCase())?.id;
+      if (!cell) throw new AgentValidationError(`Unknown cell "${patch.cell}". Use a cell id or name from getStoryboard.`);
+    }
+    if (patch.exercise_minute !== undefined && patch.exercise_minute >= project.storyboard.duration_minutes) throw new AgentValidationError(`exercise_minute must be below the play duration (${project.storyboard.duration_minutes}).`);
+    const at = patch.exercise_minute !== undefined ? patch.exercise_minute
+      : patch.at !== undefined ? block.start_minutes + agentBeatsInPhase(block, [{ at: patch.at, title: beat.title }])[0].at : undefined;
+    if (patch.cast !== undefined) {
+      const cast = project.storyboard.cast.find(item => item.id === patch.cast || item.label.toLowerCase() === String(patch.cast).toLowerCase());
+      if (!cast) throw new AgentValidationError(`Unknown cast "${patch.cast}". Use a cast id or label from getStoryboard.`);
+      beat.cast_id = cast.id;
+    }
+    if (patch.channel !== undefined) { beat.channel = sbValidChannel(patch.channel); beat.template_id = ''; }
+    if (patch.title !== undefined) beat.title = sbText(patch.title, 300);
+    if (patch.intent !== undefined) beat.intent = sbText(patch.intent, 2000);
+    if (at !== undefined || cell !== undefined) dsMoveItem(project, { kind: 'beat', beat, block, stimulus: sbStimulusForBeat(project, beat.id) }, at !== undefined ? at : sbBeatAbsolute(block, beat), cell);
+    else StoryboardHistory.commit('Agent: edit planned inject');
+    const target = project.storyboard.blocks.find(item => item.beats.includes(beat)) || block;
+    target.key_cast = [...new Set(target.beats.map(item => item.cast_id).filter(Boolean))];
+    return { phase_id: target.id, phase: target.title, id: beat.id, at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(target, beat), cell_id: beat.cell_id || null, cast_id: beat.cast_id, channel: beat.channel, title: beat.title };
+  }, 'write');
   add('listActors', 'Read actors with pagination.', page, [], args => paginate(appState.scenario.actors, args, agentActor));
   add('getActor', 'Read a single actor.', id, ['id'], args => agentActor(requireItem(getActor, args.id)));
   add('createActor', 'Create an actor using the same defaults as the UI.', actorProps, ['name', 'role'], args => agentActor(addActor(args, false)), 'write');

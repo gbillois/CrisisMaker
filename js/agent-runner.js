@@ -176,8 +176,11 @@ class AgentRunner {
           const build = (recent) => agentRedact({ objective, mode, step: this.step, remainingSteps: this.maxSteps - this.step, state, userAnswers: this.answers.length ? this.answers : undefined, recentResults: recent });
           let recent = this.history, input = build(recent);
           if (input.length + system.length > 100000) {
-            recent = this.history.map(entry => entry.result === undefined ? entry : { ...entry, result: agentExcerpt(entry.result, 2500) });
+            // Older results are shortened first: the latest one, which the next step relies on, stays whole if it fits.
+            const shorten = (entry, limit) => entry.result === undefined ? entry : { ...entry, result: agentExcerpt(entry.result, limit) };
+            recent = this.history.map((entry, index) => index === this.history.length - 1 ? entry : shorten(entry, 2500));
             input = build(recent);
+            if (input.length + system.length > 100000) { recent = recent.map((entry, index) => index === recent.length - 1 ? shorten(entry, 12000) : entry); input = build(recent); }
             while (input.length + system.length > 100000 && recent.length) { recent = recent.slice(1); input = build(recent); }
             if (input.length + system.length > 100000) throw new AgentValidationError('The exercise is too large for one agent step. Narrow the objective to a phase or a cell.');
           }
