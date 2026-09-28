@@ -422,7 +422,8 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   assert.ok(!storyline.includes('sb-inspector') && !storyline.includes('sb-bin'), 'no side columns');
   h.run(`sbUI().selected = [sbStoryboard().blocks[1].id]`);
   const phase = h.run('renderStorylineView()');
-  for (const marker of ['bottom-editor-head', 'data-sb-field="brief"', 'What happens during this phase', 'data-tab-action="open-detailed"', 'rewrite-block', 'data-sb-modal="sync"']) assert.ok(phase.includes(marker), marker);
+  for (const marker of ['bottom-editor-head', 'data-sb-field="brief"', 'What happens during this phase', 'data-tab-action="open-detailed"', 'modify-block', 'Key stimuli', 'data-sb-modal="sync"']) assert.ok(phase.includes(marker), marker);
+  for (const gone of ['data-sb-field="narrative"', 'deepen-all', 'rewrite-block', 'Behind the scenes']) assert.ok(!phase.includes(gone), gone);
   assert.ok(!phase.includes('data-sb-objective'), 'objectives are not edited in the phase editor');
   for (const modal of ['versions', 'coherence', 'generate', 'sync']) {
     h.run(`sbUI().modal = '${modal}'`);
@@ -828,9 +829,12 @@ test('main stimuli: added in the phase editor, sent to all cells or one, kept by
   assert.equal(beat.cell_id, 'all');
   h.run(`(() => { const beat = slFindBeat(sbStoryboard(), '${beat.id}').beat; beat.title = 'Ransom note on every screen'; beat.intent = 'Everyone sees it.'; })()`);
   // The phase editor lists it, with "All cells" as its recipient.
-  h.run(`sbUI().selected = ['${blockId}']`);
+  h.run(`sbUI().selected = ['${blockId}']; sbUI().keyOpen = null`);
+  const closed = h.run('renderStorylineView()');
+  assert.ok(closed.includes('Key stimuli') && closed.includes('Ransom note on every screen') && !closed.includes(`data-sl-main="${beat.id}.title"`), 'listed, closed');
+  h.run(`sbUI().keyOpen = '${beat.id}'`);
   const view = h.run('renderStorylineView()');
-  assert.ok(view.includes('Main stimuli') && view.includes(`data-sl-main="${beat.id}.title"`) && view.includes('Ransom note on every screen'));
+  assert.ok(view.includes(`data-sl-main="${beat.id}.title"`), 'opened for editing');
   assert.ok(view.includes('sb-beat is-planned is-main') || view.includes('is-main'), 'marked on the timeline');
   // Every cell receives it: no "no recipient" warning, it counts in every cell row.
   const issues = h.json('sbExerciseChecks(appState.scenario)');

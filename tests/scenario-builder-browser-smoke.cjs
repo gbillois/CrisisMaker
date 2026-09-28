@@ -127,8 +127,13 @@ function answerFor(system, user) {
   await page.fill('.sl-editor [data-sb-field="brief"]', 'The CEO must choose between isolation and patient care.');
   await page.click('.sl-editor [data-sb-field="title"]');
   assert.equal(await page.evaluate(id => sbBlock(sbStoryboard(), id).brief, id), 'The CEO must choose between isolation and patient care.');
-  await page.click('[data-sb-action="deepen-all"]');
-  await page.waitForFunction(() => sbStoryboard().blocks.every(block => block.narrative));
+  // One AI button: empty prompt, it details the phase; the key stimuli are managed beside it.
+  await page.click('.sl-editor [data-sb-action="modify-block"]');
+  await page.waitForFunction(id => sbBlock(sbStoryboard(), id).narrative, id);
+  await page.click('.sl-editor [data-tab-action="sl-main-add"]');
+  await page.fill('.sl-main-item.is-open .sl-main-title', 'Ransom note on every screen');
+  await page.dispatchEvent('.sl-main-item.is-open .sl-main-title', 'input');
+  assert.ok(await page.evaluate(id => sbBlock(sbStoryboard(), id).beats.some(beat => beat.main && beat.title === 'Ransom note on every screen' && beat.cell_id === 'all'), id));
 
   // Drag the containment phase 30 minutes later.
   const clip = await page.$(`[data-sb-clip="${id}"]`);
@@ -165,7 +170,8 @@ function answerFor(system, user) {
   await page.waitForFunction(() => SbPipeline.status === 'complete', null, { timeout: 30000 });
   const stimuli = await page.evaluate(() => appState.scenario.stimuli.map(s => ({ cell: s.cell_id, linked: !!s.scenario_link })));
   assert.ok(stimuli.length >= 4);
-  assert.ok(stimuli.every(s => s.cell === firstCell && s.linked), 'only the selected cell was generated');
+  // Only the selected cell, plus the key stimulus every cell receives.
+  assert.ok(stimuli.every(s => (s.cell === firstCell || s.cell === 'all') && s.linked), 'only the selected cell was generated');
   await page.click('[data-sb-action="close-modal"]');
 
   // 5. Check & Challenge: readiness, live checks, one AI challenge, folded rehearsal.

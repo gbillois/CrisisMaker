@@ -136,7 +136,7 @@ function renderStorylineView() {
       <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'scenario', 'Context')}</div>
       ${renderEditorSplitter('storyline')}
       <section class="bottom-editor sl-editor" aria-label="Phase editor" ${editorHeightStyle('storyline')}>
-        ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>Select a phase on the timeline to edit what happens. Drag its edges to change its duration; the following phases follow (ripple).</span>${storyboard.blocks.length ? renderDetailAllButton(storyboard, ai, readOnly) : ''}</div>`}
+        ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>Select a phase on the timeline to edit what happens and its key stimuli. Drag its edges to change its duration.</span></div>`}
       </section>
       ${renderSbModal(storyboard)}
     </section>`;
@@ -149,10 +149,6 @@ function renderStorylineView() {
 const SL_WORKSTREAM_TYPES = ['crisis_cell', 'communication', 'legal', 'hr', 'logistics', 'customers'];
 function slPhaseTypes(current = null) {
   return Object.entries(SB_BLOCK_TYPES).filter(([key]) => key === current || !SL_WORKSTREAM_TYPES.includes(key));
-}
-
-function renderDetailAllButton(storyboard, ai, readOnly) {
-  return `<button class="btn btn-ghost btn-sm" data-sb-action="deepen-all" ${ai && storyboard.blocks.length && !readOnly ? '' : 'disabled'} title="Write the details of every phase with AI">${sbUiIcon('layers', 13)} Detail all phases with AI</button>`;
 }
 
 function renderPhaseEditor(storyboard, block) {
@@ -183,56 +179,63 @@ function renderPhaseEditor(storyboard, block) {
       <div class="sl-side">
         ${sbNeedsReplan(block) ? `<div class="sl-replan">${sbUiIcon('alert', 14)}<span>What happens changed: the ${block.beats.length} planned inject(s) still follow the previous version.</span>${renderUpdateButton(project)}</div>` : ''}
         <div class="sl-injects">${block.beats.length ? `<b>${block.beats.length}</b> injects planned · ${(project.cells || []).filter((cell) => counts.get(cell.id)).map((cell) => `<span class="cell-dot" style="--cell-color:${cell.color}"></span>${escapeHtml(cell.name)} ${counts.get(cell.id)}`).join(' · ')}` : 'No inject planned in this phase yet.'} <button class="btn btn-ghost btn-xs" data-tab-action="open-detailed" data-tab-value="${block.id}">Detailed storyline →</button></div>
-        <details class="sl-details"><summary>Behind the scenes: hidden story, dilemmas, facilitation notes</summary>
-          <textarea data-sb-field="narrative" rows="4" placeholder="What really happens, what players know and do not know, decisions and dilemmas" ${readOnly}>${escapeHtml(block.narrative)}</textarea>
-          <textarea data-sb-field="notes" rows="2" placeholder="Facilitation notes" ${readOnly}>${escapeHtml(block.notes)}</textarea>
-        </details>
+        ${renderKeyStimuli(project, storyboard, block, readOnly)}
         <div class="sl-ai">
-          <input type="text" data-sb-ui="rewrite" value="${escapeAttribute(ui.rewrite)}" placeholder="Ask the AI: e.g. make it more ambiguous, add a regulator deadline…" ${readOnly}>
-          <button class="btn btn-secondary btn-sm" data-sb-action="rewrite-block" ${ai && !readOnly ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Rewrite</button>
-          <button class="btn btn-secondary btn-sm" data-sb-action="deepen-block" data-sb-level="2" ${ai && !readOnly ? '' : 'disabled'} title="Write the details of this phase with AI">${sbUiIcon('layers', 13)} Detail with AI</button>
-          ${renderDetailAllButton(storyboard, ai, sbReadOnly())}
+          <label class="sl-ai-label" for="sl-ai-prompt">${sbUiIcon('wand', 14)} Modify with AI</label>
+          <textarea id="sl-ai-prompt" data-sb-ui="rewrite" rows="2" placeholder="Say what to change, e.g. make it more ambiguous, add a regulator deadline. Leave empty to let the AI detail the phase and plan its injects." ${readOnly}>${escapeHtml(ui.rewrite)}</textarea>
+          <button class="btn btn-secondary btn-sm" data-sb-action="modify-block" ${ai && !readOnly ? '' : 'disabled'} title="${ai ? 'With an instruction, the AI rewrites the phase; empty, it details it and plans its injects' : 'Configure an AI connection in Settings'}">${sbUiIcon('wand', 13)} Modify with AI</button>
         </div>
       </div>
-      ${renderMainStimuli(project, storyboard, block, readOnly)}
     </div>`;
 }
 
-/* The main stimuli of a phase: the key injects that frame the whole story (the ransom note,
-   the TV flash, the regulator's letter). Planned injects marked main, sent to every cell or
-   to one; the AI plans the other injects around them and never changes them. */
-function renderMainStimuli(project, storyboard, block, readOnly) {
-  const mains = block.beats.filter((beat) => beat.main);
+/* The key stimuli of a phase: the injects that frame the whole story (the ransom note, a TV
+   flash, the regulator's letter). Planned injects marked main, sent to every cell or to one;
+   the AI plans the other injects around them and never changes them. A compact list; the
+   one being edited opens in place. */
+function renderKeyStimuli(project, storyboard, block, readOnly) {
+  const ui = sbUI();
+  const keys = block.beats.filter((beat) => beat.main);
   const cellOptions = (beat) => `${sbOption(SB_ALL_CELLS, 'All cells', beat.cell_id)}${project.cells.map((cell) => sbOption(cell.id, cell.name, beat.cell_id)).join('')}${sbHasRecipient(project, beat.cell_id) ? '' : sbOption('', 'No cell', beat.cell_id)}`;
-  return `<section class="sl-main" aria-label="Main stimuli">
+  return `<section class="sl-main" aria-label="Key stimuli">
     <div class="sl-main-head">
-      <strong>${sbUiIcon('star', 14)} Main stimuli</strong>
-      <span class="helper">The key injects that frame the story of this phase. The AI plans the other injects of every cell around them and never changes them.</span>
-      <button class="btn btn-secondary btn-sm" data-tab-action="sl-main-add" data-tab-value="${block.id}" ${readOnly}>${sbUiIcon('plus', 13)} Main stimulus</button>
+      <strong title="The injects that frame the story of this phase. The AI plans the other injects of every cell around them and never changes them.">${sbUiIcon('star', 14)} Key stimuli</strong>
+      <button class="btn btn-ghost btn-xs" data-tab-action="sl-main-add" data-tab-value="${block.id}" ${readOnly}>${sbUiIcon('plus', 12)} Add</button>
     </div>
-    ${mains.map((beat) => {
+    ${keys.map((beat) => {
       const stimulus = sbStimulusForBeat(project, beat.id);
       const status = stimulus ? sbStimulusStatus(project, stimulus) : null;
-      const templates = beat.channel === 'article_press' ? Object.entries(ARTICLE_TEMPLATE_LIBRARY) : beat.channel === 'breaking_news_tv' ? Object.entries(TV_TEMPLATE_LIBRARY) : [];
+      const open = ui.keyOpen === beat.id;
       const key = escapeAttribute(beat.id);
-      return `<div class="sl-main-item" style="--beat-color:${sbChannelColor(beat.channel)}">
-        <div class="sl-main-row">
-          <label class="be-inline">At · ${sbFormatOffset(sbBeatAbsolute(block, beat))}<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-main="${key}.at" value="${beat.offset_minutes}" aria-label="Minutes from the phase start" ${readOnly}></label>
-          <select data-sl-main="${key}.channel" aria-label="Channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select>
-          ${templates.length ? `<select data-sl-main="${key}.template_id" aria-label="Outlet" ${readOnly}>${sbOption('', 'Default outlet', beat.template_id)}${templates.map(([id, value]) => sbOption(id, value.label || id, beat.template_id)).join('')}</select>` : ''}
-          <label class="be-inline">To<select data-sl-main="${key}.cell_id" aria-label="Recipient" ${readOnly}>${cellOptions(beat)}</select></label>
-          <label class="be-inline">From<select data-sl-main="${key}.cast_id" aria-label="Sender role" ${readOnly}>${sbOption('', '- Sender role -', beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, cast.label, beat.cast_id)).join('')}</select></label>
-          <span class="sb-status is-${stimulus ? status?.key || 'synced' : 'planned'}">${escapeHtml(status?.label || 'Planned')}</span>
+      const templates = beat.channel === 'article_press' ? Object.entries(ARTICLE_TEMPLATE_LIBRARY) : beat.channel === 'breaking_news_tv' ? Object.entries(TV_TEMPLATE_LIBRARY) : [];
+      return `<div class="sl-main-item ${open ? 'is-open' : ''}" style="--beat-color:${sbChannelColor(beat.channel)}">
+        <div class="sl-main-line">
+          <button class="sl-main-toggle" data-tab-action="sl-main-toggle" data-tab-value="${key}" aria-expanded="${open}" title="${open ? 'Close' : 'Edit'}">
+            <span class="sl-main-time">${sbFormatOffset(sbBeatAbsolute(block, beat))}</span>
+            <strong data-sl-main-label="${key}">${escapeHtml(beat.title || 'Untitled key stimulus')}</strong>
+            <span class="sl-main-meta">${escapeHtml(channelLabel(beat.channel))} · ${escapeHtml(sbRecipientName(project, beat.cell_id) || 'No cell')}${stimulus ? ` · ${escapeHtml(status?.label || 'Written')}` : ''}</span>
+          </button>
           <span class="be-actions">
-            <button class="sb-icon-btn" data-tab-action="sl-main-open" data-tab-value="${key}" title="Open in the Detailed storyline">${sbUiIcon('open', 14)}</button>
-            <button class="sb-icon-btn" data-tab-action="sl-main-unmark" data-tab-value="${key}" title="No longer a main stimulus (it stays a planned inject)" ${readOnly}>${sbUiIcon('close', 14)}</button>
-            <button class="sb-icon-btn is-danger" data-tab-action="sl-main-delete" data-tab-value="${key}" title="Delete" ${readOnly}>${sbUiIcon('trash', 14)}</button>
+            <button class="sb-icon-btn" data-tab-action="sl-main-open" data-tab-value="${key}" title="Open in the Detailed storyline">${sbUiIcon('open', 13)}</button>
+            <button class="sb-icon-btn is-danger" data-tab-action="sl-main-delete" data-tab-value="${key}" title="Delete" ${readOnly}>${sbUiIcon('trash', 13)}</button>
           </span>
         </div>
-        <input type="text" class="sl-main-title" data-sl-main="${key}.title" value="${escapeAttribute(beat.title)}" placeholder="Title, e.g. Ransom note on every screen" aria-label="Title" ${readOnly}>
-        <textarea data-sl-main="${key}.intent" rows="2" placeholder="What it says and the reaction or decision it should trigger" aria-label="What it says" ${readOnly}>${escapeHtml(beat.intent)}</textarea>
+        ${open ? `<div class="sl-main-fields">
+          <input type="text" class="sl-main-title" data-sl-main="${key}.title" value="${escapeAttribute(beat.title)}" placeholder="Title, e.g. Ransom note on every screen" aria-label="Title" ${readOnly}>
+          <div class="sl-main-row">
+            <label class="be-inline">At (min)<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-main="${key}.at" value="${beat.offset_minutes}" aria-label="Minutes from the phase start" ${readOnly}></label>
+            <label class="be-inline">To<select data-sl-main="${key}.cell_id" aria-label="Recipient" ${readOnly}>${cellOptions(beat)}</select></label>
+          </div>
+          <div class="sl-main-row">
+            <select data-sl-main="${key}.channel" aria-label="Channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select>
+            ${templates.length ? `<select data-sl-main="${key}.template_id" aria-label="Outlet" ${readOnly}>${sbOption('', 'Default outlet', beat.template_id)}${templates.map(([id, value]) => sbOption(id, value.label || id, beat.template_id)).join('')}</select>` : ''}
+            <select data-sl-main="${key}.cast_id" aria-label="Sender role" ${readOnly}>${sbOption('', 'Sender role…', beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, cast.label, beat.cast_id)).join('')}</select>
+          </div>
+          <textarea data-sl-main="${key}.intent" rows="2" placeholder="What it says and the reaction or decision it should trigger" aria-label="What it says" ${readOnly}>${escapeHtml(beat.intent)}</textarea>
+          <button class="btn btn-ghost btn-xs sl-main-unmark" data-tab-action="sl-main-unmark" data-tab-value="${key}" title="It stays a planned inject of its cell" ${readOnly}>No longer a key stimulus</button>
+        </div>` : ''}
       </div>`;
-    }).join('') || '<p class="sb-empty">No main stimulus yet. Add the key moments of this phase (the ransom note, a TV flash, the regulator\'s call): they frame the story for every cell.</p>'}
+    }).join('') || '<p class="sl-main-empty">None yet. Add the moments that frame this phase: the ransom note, a TV flash, the regulator\'s call.</p>'}
   </section>`;
 }
 
@@ -253,7 +256,7 @@ function slAddMainStimulus(project, block) {
   block.beats.sort((a, b) => a.offset_minutes - b.offset_minutes);
   if (!block.plan_hash) sbMarkPlanned(block);
   block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
-  StoryboardHistory.commit('Add main stimulus');
+  StoryboardHistory.commit('Add key stimulus');
   return beat;
 }
 
@@ -470,7 +473,7 @@ function renderInjectEditor(project, item) {
       <span class="be-phase">Phase: <b>${escapeHtml(phase?.title || '-')}</b></span>
       <label class="be-inline">To ${cellSelect}</label>
       <span class="be-actions">
-        ${item.kind === 'beat' ? `<button class="sb-icon-btn ${item.beat.main ? 'is-on' : ''}" data-tab-action="ds-main" title="${item.beat.main ? 'Main stimulus: it frames the story (click to unmark)' : 'Mark as a main stimulus that frames the story'}" ${readOnly}>${sbUiIcon('star', 15)}</button>` : ''}
+        ${item.kind === 'beat' ? `<button class="sb-icon-btn ${item.beat.main ? 'is-on' : ''}" data-tab-action="ds-main" title="${item.beat.main ? 'Key stimulus: it frames the story (click to unmark)' : 'Mark as a key stimulus that frames the story'}" ${readOnly}>${sbUiIcon('star', 15)}</button>` : ''}
         ${item.stimulus ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} Full editor</button>` : ''}
         ${item.stimulus?.scenario_link ? `<button class="sb-icon-btn ${item.stimulus.scenario_link.locked ? 'is-on' : ''}" data-sb-action="lock-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}" title="${item.stimulus.scenario_link.locked ? 'Unlock' : 'Lock: never modified by sync'}" ${readOnly}>${sbUiIcon(item.stimulus.scenario_link.locked ? 'lock' : 'unlock', 15)}</button>` : ''}
         <button class="sb-icon-btn is-danger" data-tab-action="ds-delete" title="Delete (Del)" ${readOnly}>${sbUiIcon('trash', 15)}</button>
@@ -1035,7 +1038,7 @@ async function tabHandleAction(event) {
   const storyboard = project.storyboard;
   const detailed = tabUI('detailed');
   const summary = tabUI('summary');
-  const readOnlyAllowed = ['ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
+  const readOnlyAllowed = ['sl-main-toggle', 'sl-main-open', 'ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
   if (sbReadOnly() && !readOnlyAllowed.includes(action)) return;
   try {
     switch (action) {
@@ -1100,20 +1103,24 @@ async function tabHandleAction(event) {
         const block = sbBlock(storyboard, value);
         if (!block) break;
         const beat = slAddMainStimulus(project, block);
+        sbUI().keyOpen = beat.id;
         App.render();
         document.querySelector(`[data-sl-main="${beat.id}.title"]`)?.focus();
         return;
       }
+      case 'sl-main-toggle':
+        sbUI().keyOpen = sbUI().keyOpen === value ? null : value;
+        break;
       case 'sl-main-unmark':
       case 'sl-main-delete': {
         const found = slFindBeat(storyboard, value);
         if (!found) break;
-        if (action === 'sl-main-unmark') { found.beat.main = false; StoryboardHistory.commit('Unmark main stimulus'); break; }
+        if (action === 'sl-main-unmark') { found.beat.main = false; StoryboardHistory.commit('Unmark key stimulus'); break; }
         const stimulus = sbStimulusForBeat(project, found.beat.id);
-        if (!window.confirm(`Delete the main stimulus "${found.beat.title || 'Untitled'}"?${stimulus ? ' Its written inject is deleted too.' : ''}`)) break;
+        if (!window.confirm(`Delete the key stimulus "${found.beat.title || 'Untitled'}"?${stimulus ? ' Its written inject is deleted too.' : ''}`)) break;
         found.block.beats = found.block.beats.filter((beat) => beat.id !== found.beat.id);
         if (stimulus) project.stimuli = project.stimuli.filter((item) => item.id !== stimulus.id);
-        StoryboardHistory.commit('Delete main stimulus');
+        StoryboardHistory.commit('Delete key stimulus');
         saveLocal(false);
         break;
       }
@@ -1131,7 +1138,7 @@ async function tabHandleAction(event) {
         const item = dsSelectedItem(project);
         if (item?.kind !== 'beat') break;
         item.beat.main = !item.beat.main;
-        StoryboardHistory.commit(item.beat.main ? 'Mark main stimulus' : 'Unmark main stimulus');
+        StoryboardHistory.commit(item.beat.main ? 'Mark key stimulus' : 'Unmark key stimulus');
         break;
       }
       case 'ds-delete':
@@ -1342,7 +1349,8 @@ function tabBindInputs(root) {
       const { block, beat } = found;
       if (isText) {
         beat[field] = sbText(input.value, field === 'title' ? 300 : 2000);
-        StoryboardHistory.commit('Edit main stimulus', { debounce: true });
+        if (field === 'title') { const label = document.querySelector(`[data-sl-main-label="${beatId}"]`); if (label) label.textContent = input.value || 'Untitled key stimulus'; }
+        StoryboardHistory.commit('Edit key stimulus', { debounce: true });
         return;
       }
       const item = tabItemByKey(project, `beat:${beat.id}`);
@@ -1352,7 +1360,7 @@ function tabBindInputs(root) {
         if (field === 'channel') { beat.channel = sbValidChannel(input.value); beat.template_id = ''; }
         else if (field === 'template_id') beat.template_id = sbValidTemplateId(beat.channel, input.value);
         else if (field === 'cast_id') beat.cast_id = storyboard.cast.some((cast) => cast.id === input.value) ? input.value : '';
-        StoryboardHistory.commit('Edit main stimulus');
+        StoryboardHistory.commit('Edit key stimulus');
       }
       App.render();
     });

@@ -234,6 +234,16 @@ async function sbHandleAction(event) {
         await sbRunAI(`Deepen ${targets.length} block(s)`, () => SbAI.deepen(targets.map((item) => item.id), null));
         break;
       }
+      case 'modify-block': {
+        // One AI button: with an instruction it rewrites the phase, empty it details it.
+        if (!block) break;
+        const instruction = ui.rewrite.trim();
+        if (!instruction) { await sbRunAI('Deepen block', () => SbAI.deepen([block.id], null)); break; }
+        const result = await sbRunAI('Rewrite block', () => SbAI.rewrite(block.id, instruction));
+        if (result) ui.rewrite = '';
+        App.render();
+        break;
+      }
       case 'rewrite-block': {
         const instruction = ui.rewrite.trim();
         if (!block) break;
