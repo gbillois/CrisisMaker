@@ -726,7 +726,7 @@ function sbBindInputs(root) {
       if (field === 'actor_id') {
         const actor = getActor(input.value);
         cast.actor_id = actor ? actor.id : '';
-        if (actor) actor.scenario_link = { cast_id: cast.id, source_hash: sbCastSourceHash(cast), content_hash: sbActorContentHash(actor), locked: false };
+        if (actor) actor.scenario_link = { cast_id: cast.id, source_hash: sbCastSourceHash(cast), content_hash: sbActorContentHash(actor), title: actor.title || '', locked: false };
       }
       sbCommitRender('Edit role');
     });

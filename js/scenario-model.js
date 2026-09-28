@@ -323,7 +323,7 @@ function sbNormalizeLink(link) {
     block_id: sbSafeId(link.block_id),
     beat_id: sbSafeId(link.beat_id),
     offset: sbInt(link.offset, 0, 0, SB_MAX_DURATION),
-    at: Number.isFinite(Number(link.at)) ? Number(link.at) : null,
+    at: link.at === null || link.at === undefined || link.at === '' || !Number.isFinite(Number(link.at)) ? null : Number(link.at),
     source_hash: sbText(link.source_hash, 40),
     content_hash: sbText(link.content_hash, 40),
     // Sender and recipient cell as they were when the inject was written.

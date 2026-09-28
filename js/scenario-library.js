@@ -88,6 +88,8 @@ function sbApplyTemplate(template, mode = 'replace') {
   const type = Object.entries(SB_SCENARIO_TYPES).find(([key]) => String(template.id || '').startsWith(key))?.[1];
   if (type && !project.stimuli.length) project.scenario.type = type;
   sbFlattenWorkstreams(project);
+  // The plans come with the template: later edits of a phase's text call for a re-plan.
+  for (const block of project.storyboard.blocks) if (block.beats.length && !block.plan_hash) sbMarkPlanned(block);
   project.exercise = { ...(project.exercise || {}), cells_count: project.cells.length };
   return project.storyboard;
 }

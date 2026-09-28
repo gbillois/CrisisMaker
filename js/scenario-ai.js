@@ -279,7 +279,11 @@ const SbAI = {
     Object.keys(clean).forEach((key) => { if (clean[key] === undefined || (typeof clean[key] === 'string' && !clean[key].trim())) delete clean[key]; });
     Object.assign(block, clean);
     if (Array.isArray(patch.beats)) {
+      // An id the AI repeats is only kept once: the repeat becomes a new planned inject.
+      const seen = new Set();
       block.beats = patch.beats.filter((beat) => beat && typeof beat === 'object').slice(0, SB_MAX_BEATS).map((beat) => {
+        if (beat.id && seen.has(beat.id)) beat = { ...beat, id: undefined };
+        if (beat.id) seen.add(beat.id);
         const existing = block.beats.find((item) => item.id === beat.id);
         const next = sbBeatsFromAI(storyboard, [beat], castMap)[0];
         return existing ? { ...next, id: existing.id, cast_id: next.cast_id || existing.cast_id, cell_id: sbCell(appState.scenario, beat.cell) ? next.cell_id : existing.cell_id } : next;

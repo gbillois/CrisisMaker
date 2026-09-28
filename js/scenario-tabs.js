@@ -625,6 +625,8 @@ const SuPlayer = {
     const state = tabUI('summary');
     state.playing = true;
     this.last = Date.now();
+    // The injects do not change during playback: listed once, not 4 times a second.
+    this.items = sbExerciseItems(appState.scenario);
     clearInterval(this.timer);
     this.timer = setInterval(() => this.tick(), 250);
   },
@@ -638,7 +640,7 @@ const SuPlayer = {
     if (appState.route !== 'summary') { this.stop(); return; }
     const now = Date.now();
     const project = appState.scenario;
-    const items = sbExerciseItems(project);
+    const items = this.items || sbExerciseItems(project);
     const duration = Math.max(project.storyboard.duration_minutes, ...items.map((item) => item.time));
     state.time = Math.min(duration, state.time + state.speed * (now - this.last) / 60000);
     this.last = now;

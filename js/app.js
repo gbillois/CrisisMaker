@@ -1452,6 +1452,8 @@
         const copy = deepClone(stimulus);
         copy.id = uid('stimulus');
         copy.timestamp_offset_minutes += 15;
+        // A copy is a new inject: it is not the written version of the original's planned item.
+        delete copy.scenario_link;
         appState.scenario.stimuli.push(copy);
         setDefaultVideoForStimulus(copy);
         appState.selectedStimulusId = copy.id;
