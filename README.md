@@ -84,6 +84,62 @@ iframe sub-app) and shows a placeholder instead; use the full app for it.
 - [MITRE ATT&CK / D3Fend threat and mitigation document](docs/mitre-attack-d3fend-threat-mitigation.md)
 - [Debrief generation and automation](docs/debrief-automation.md)
 
+## Scenario Builder
+
+The **Scenario Builder** tab (first tab) is where an exercise starts. It storyboards
+the crisis on a multi-track timeline, in the spirit of a video editing suite:
+
+- **Timeline:** a *main storyline* of sequential crisis stages (trigger & detection,
+  investigation, containment, eradication, business continuity, recovery, crisis
+  exit, twists) plus parallel *workstream* tracks (crisis cell & governance,
+  communication, legal & regulatory, HR, logistics, customers & partners). Blocks are
+  dragged from the **Bin**, moved and resized with the mouse (snap, ripple mode,
+  multi-selection, zoom), duplicated and locked. The **Program monitor** shows what
+  happens at the playhead and the injects around it.
+- **Blocks** carry a duration, a number of injects, a brief, objectives and notes, and
+  are refined by layers of detail: *structure* → *narrative* (hidden story, what
+  players know, dilemmas) → *inject plan* (time, channel, sender, intent) →
+  *injects* (generated stimuli linked to their block).
+- **AI** (optional, same provider settings as the rest of the app): generate a
+  complete skeleton from a brief, deepen every block or one block to the next layer,
+  rewrite a block from an instruction, suggest roles, and run a global coherence
+  review (deterministic checks plus an AI critique with one-click fixes). Every AI
+  operation saves a version first and is a single undo step.
+- **History:** undo/redo of every storyboard edit (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z),
+  automatic versions (before AI operations, generations and restores, and every five
+  minutes while editing, kept in the browser's IndexedDB), named versions and
+  "validated" milestones saved with the project, and a diff against the current
+  storyboard before restoring.
+- **Generate injects** (whole storyboard or selected blocks): plans missing injects,
+  creates actors for the cast roles, creates one stimulus per planned inject through
+  the Agent's `createActor`/`createStimulus` tools, then writes each one with the
+  storyboard as context, in the inject language. A checkpoint allows undoing the whole
+  generation. **Send to Agent** prepares a brief scoped to one block for the Agent tab.
+- **Sync** keeps injects and actors coherent when the scenario evolves: moved blocks
+  reschedule their injects, changed briefs/narratives/plans flag injects as outdated
+  (regenerated if untouched, *adapted* with minimal changes if edited by hand), removed
+  blocks leave orphans to unlink or delete, and new planned injects are created.
+  Locked injects are never modified. Injects moved by hand in the Timeline keep their
+  time unless you choose otherwise. Link status also appears in the Injects tab.
+- **Library:** eight ready-made storyboards (ransomware with double extortion,
+  personal data breach, software supply chain, DDoS & hacktivism, CEO fraud with
+  deepfake, destructive wiper, insider threat, OT/industrial incident), each with
+  objectives, cast, tracks and a complete inject plan. They can be previewed, used,
+  inserted after the current storyline, or adapted to the organisation with AI. Your
+  own storyboards can be saved as templates in the browser and exchanged as
+  `.crisisscenario.json` files.
+
+The storyboard is saved with the project (`storyboard`, `storyboard_versions`);
+`scenario.phases` is derived from the main storyline so the Agent and the Checker keep
+working, and older projects with phases are converted automatically. Stimuli and
+actors keep a `scenario_link` (block, planned inject, content hashes, lock).
+
+Implementation: `js/scenario-model.js` (schema, presets, checks, diff),
+`js/scenario-library-data.js` and `js/scenario-library.js` (library),
+`js/scenario-history.js` (undo/redo and versions), `js/scenario-ai.js` (AI
+operations), `js/scenario-sync.js` (links, generation pipeline, sync),
+`js/scenario-builder-view.js` and `js/scenario-builder-events.js` (UI).
+
 ## Agent mode
 
 The **Agent** tab provides **Build my exercise** and **Challenge my exercise**.
@@ -116,7 +172,7 @@ Exercise objectives, narrative arc and timed phases are optional fields inside
 Existing project files remain compatible, including projects with no actors.
 
 Implementation is separated into `js/agent-prompts.js` (editable designer/reviewer
-instructions), `js/agent-tools.js` (21 controlled tools, validation and bounded
+instructions), `js/agent-tools.js` (23 controlled tools, including storyboard read/edit, validation and bounded
 context), `js/agent-runner.js` (execution, approvals, cancellation and checkpoint),
 and `js/agent-view.js` (UI). Tools reuse existing actor/stimulus constructors,
 stimulus version history, generation prompts, provider transport and persistence.
@@ -131,6 +187,7 @@ node --test tests/*.test.js
 node tools/build_inline_html.mjs
 # Optional browser smoke, using an existing Playwright installation and local test host:
 BROWSER_CHANNEL=chrome node tests/agent-browser-smoke.cjs http://127.0.0.1:8765/
+BROWSER_CHANNEL=chrome node tests/scenario-builder-browser-smoke.cjs http://127.0.0.1:8765/
 # Or test the generated standalone document directly:
 BROWSER_CHANNEL=chrome node tests/agent-browser-smoke.cjs file:///absolute/path/to/crisismaker.html
 ```
