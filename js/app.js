@@ -100,6 +100,7 @@
             getAISettings: () => videoDebriefAISettings(),
             getInterfaceLanguage: () => currentLanguage(),
             getProjectState: () => normalizeVideoDebrief(appState.scenario.video_debrief),
+            getExerciseMaterial: () => videoDebriefExerciseMaterial(),
             setProjectState: (state) => applyVideoDebriefProjectState(state)
           };
         },
@@ -155,6 +156,35 @@
       function renderAfterPointer() {
         if (!pointerIsDown) { App.render(); return; }
         window.addEventListener('pointerup', () => setTimeout(() => App.render(), 0), { once: true, capture: true });
+      }
+
+      /* The story the Video Debrief studio tells: the exercise as written in CrisisMaker (context,
+         incident timeline, phases, key stimuli) and its debrief reconstruction, whose events
+         also give the first scenes of a manual creation. */
+      function videoDebriefExerciseMaterial() {
+        const project = appState.scenario;
+        const storyboard = project.storyboard;
+        const phases = storyboard && typeof sbMainBlocks === 'function' ? sbMainBlocks(storyboard) : [];
+        const keys = phases.flatMap((block) => block.beats.filter((beat) => beat.main).map((beat) => ({ block, beat })));
+        const events = (project.debrief?.events || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+        const lines = [
+          `Exercise: ${project.name || ''}`,
+          project.client?.name ? `Organisation: ${project.client.name}${project.client.sector ? ` (${project.client.sector})` : ''}` : '',
+          project.scenario?.type ? `Crisis type: ${project.scenario.type}` : '',
+          project.scenario?.summary ? `Summary: ${project.scenario.summary}` : '',
+          project.scenario?.detailed_context ? `Context: ${project.scenario.detailed_context}` : '',
+          project.scenario?.attack_path ? `Incident timeline (what really happened, in order):\n${project.scenario.attack_path}` : '',
+          project.scenario?.learning_objectives ? `Learning objectives:\n${project.scenario.learning_objectives}` : '',
+          phases.length ? `Main storyline:\n${phases.map((block) => `- ${sbFormatOffset(block.start_minutes)} ${block.title}${block.brief ? `: ${block.brief}` : ''}`).join('\n')}` : '',
+          keys.length ? `Key stimuli:\n${keys.map(({ block, beat }) => `- ${sbFormatOffset(sbBeatAbsolute(block, beat))} ${channelLabel(beat.channel)}: ${beat.title}${beat.intent ? ` (${beat.intent})` : ''}`).join('\n')}` : '',
+          events.length ? `Debrief reconstruction (the hidden story, in order):\n${events.map((event) => `- ${[event.dateLabel, event.title].filter(Boolean).join(' · ')}${event.headline ? `: ${event.headline}` : ''}${event.body ? ` ${event.body}` : ''}${event.location ? ` [${event.location}]` : ''}`).join('\n')}` : ''
+        ].filter(Boolean);
+        return {
+          name: project.name || '',
+          text: lines.length > 1 ? lines.join('\n\n').slice(0, 24000) : '',
+          events: deepClone(events),
+          counts: { events: events.length, phases: phases.length, keys: keys.length }
+        };
       }
 
       function videoDebriefAISettings() {

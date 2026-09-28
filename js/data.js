@@ -323,7 +323,7 @@
             language,
             theme: setup.theme || 'wavestone',
             voice: setup.voice || '',
-            tone: setup.tone || 'documentaire sobre',
+            tone: setup.tone || 'documentaire sobre et factuel',
             audience: setup.audience || 'comité exécutif'
           },
           project: input.project && typeof input.project === 'object'

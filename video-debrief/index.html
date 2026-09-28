@@ -49,13 +49,10 @@
     font-size: 0.82rem; font-weight: 600;
   }
   .step-btn.active { background: #fff; color: var(--primary-strong); }
-  .server-pill {
-    margin-left: auto; display: flex; align-items: center; gap: 9px;
-    padding: 8px 12px; border-radius: 0; font-size: 0.78rem; font-weight: 600;
-    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.14);
-  }
-  .server-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
-  .server-dot.on { background: var(--accent); box-shadow: 0 0 0 4px rgba(4, 240, 106,0.18); }
+  .vd-wide { width: 100%; margin-top: 4px; }
+  .hint.vd-small { font-size: 0.72rem; margin: 6px 0 14px; }
+  .vd-advanced { margin-top: 16px; }
+  .vd-advanced > summary { cursor: pointer; font-size: 0.78rem; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
 
   .workspace { display: grid; grid-template-columns: 440px minmax(0,1fr);
                flex: 1; min-height: 0; padding: 18px; gap: 18px; }
@@ -187,11 +184,6 @@
     border-color: var(--primary);
     color: #fff;
   }
-  html.integrated .server-pill {
-    color: var(--muted);
-    background: #f8f7fb;
-    border-color: var(--border);
-  }
   html.integrated .workspace {
     padding: 14px;
     gap: 14px;
@@ -208,7 +200,6 @@
     html.integrated .brand-name { max-width: 130px; line-height: 1.15; }
     html.integrated .steps { margin-left: 4px; }
     html.integrated .step-btn { padding: 7px 10px; }
-    html.integrated .server-pill { font-size: 0; padding: 8px; }
   }
   @media (max-width: 760px) {
     body { overflow: auto; }
@@ -216,7 +207,6 @@
     .topbar { align-items: flex-start; flex-wrap: wrap; padding: 12px; }
     .steps { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
     .step-btn { flex: 0 0 auto; }
-    .server-pill { margin-left: auto; }
     .workspace { grid-template-columns: 1fr; padding: 10px; }
     .panel { max-height: none; overflow: visible; }
     .preview-side { min-height: 360px; }
@@ -238,8 +228,6 @@
       <button class="step-btn" data-step="2">2 · Adaptation</button>
       <button class="step-btn" data-step="3">3 · Production</button>
     </div>
-    <div class="server-pill"><span class="server-dot" id="server-dot"></span>
-      <span id="server-label">serveur local : hors ligne</span></div>
   </div>
 
   <div class="workspace">
@@ -247,19 +235,6 @@
 
       <!-- ════════ STEP 1 — SCÉNARIO ════════ -->
       <div class="step-view active" id="view-1">
-        <h3>Matière première</h3>
-        <div class="hint">Collez une timeline (format Crisis Debriefer / TIMELINE_EVENTS),
-          un compte-rendu, des notes… Tout texte qui raconte la crise.</div>
-        <div class="field">
-          <textarea id="src-material" rows="9" placeholder='[{"title": "…", "headline": "…", …}] ou texte libre'>The ransomware group PharmLeaks triggers a coordinated attack against StonaWave, a global pharmaceutical company headquartered near Paris with manufacturing sites in New Jersey, Frankfurt, and Hyderabad. After gaining initial access two weeks earlier via a compromised VPN credential, the attackers moved laterally through Active Directory, mapped backup infrastructure, and deployed ransomware across manufacturing execution systems (MES), the clinical trial management system (CTMS), and ERP platforms. The encryption is triggered at 07:45 ET on Sunday when staffing is minimal. Over six hours, the crisis escalates from internal detection through partner disruption, a $25M ransom demand, international media coverage in French, English, and German, regulatory alerts from CERT-FR, and an attacker escalation threatening to publish stolen patient data.</textarea>
-        </div>
-        <div class="row2">
-          <button class="btn" id="btn-load-json">Charger un fichier…</button>
-          <button class="btn" id="btn-load-example">Exemple StonaWave</button>
-        </div>
-        <input type="file" id="file-input" accept=".json,.txt,.md" style="display:none">
-
-        <div class="divider"></div>
         <h3>Réglages de la vidéo</h3>
         <div class="row2">
           <div class="field"><label>Durée cible (s)</label>
@@ -299,19 +274,10 @@
         </div>
 
         <div class="divider"></div>
-        <h3>Génération du scénario</h3>
-        <div class="hint" id="generation-help">L’IA n’est utilisée <b>que pour cette étape</b> (rédaction du
-          brouillon). Le gabarit sans IA construit la structure depuis votre timeline ;
-          vous rédigez ensuite la voix off vous-même.</div>
-        <div class="scene-card" style="padding:12px 14px; margin-bottom:12px;">
-          <strong style="font-size:0.82rem;">Réglages IA CrisisMaker</strong>
-          <div class="hint" id="models-status" style="margin:4px 0 0;">
-            En attente des réglages CrisisMaker…
-          </div>
-          <div class="hint" style="margin:6px 0 0;">
-            La matière première, les réglages et les scènes vidéo sont inclus dans les sauvegardes et chargements du projet CrisisMaker.
-          </div>
-        </div>
+        <h3>Créer le scénario</h3>
+        <div class="hint" id="material-summary"></div>
+        <button class="btn btn-primary vd-wide" id="btn-generate">✦ Créer le scénario par génération IA</button>
+        <div class="hint vd-small" id="models-status">En attente des réglages IA de CrisisMaker…</div>
         <select id="ai-provider" hidden>
           <option value="none" selected>Aucun</option>
           <option value="anthropic">Anthropic</option>
@@ -324,16 +290,15 @@
         <input type="password" id="ai-key" hidden>
         <input type="url" id="ai-base-url" hidden>
         <input type="url" id="ai-proxy-url" hidden>
-        <div class="row2">
-          <button class="btn btn-primary" id="btn-generate">✦ Générer le scénario (IA)</button>
-          <button class="btn" id="btn-skeleton">Gabarit sans IA</button>
-        </div>
+        <button class="btn vd-wide" id="btn-manual">Création manuelle, aller à l’étape 2 →</button>
+        <div class="hint vd-small" id="manual-help">Un premier découpage en scènes est construit depuis la timeline du debrief : vous rédigez la voix off et les textes à l’étape 2.</div>
         <div class="hint" id="gen-status"></div>
       </div>
 
       <!-- ════════ STEP 2 — ADAPTATION ════════ -->
       <div class="step-view" id="view-2">
         <h3>Projet <span class="badge" id="dur-badge">—</span></h3>
+        <div class="hint">Ajustez chaque scène : voix off, textes à l’écran, photos. L’aperçu à droite montre la vidéo telle qu’elle sera produite.</div>
         <div class="row2">
           <div class="field"><label>Titre</label><input type="text" id="p-title"></div>
           <div class="field"><label>Style</label>
@@ -345,34 +310,36 @@
         <div class="divider"></div>
         <h3>Scènes <button class="mini-btn" id="btn-add-scene" title="Ajouter">＋</button></h3>
         <div id="scene-list"></div>
-        <div class="divider"></div>
-        <h3>JSON du projet</h3>
-        <div class="hint">Édition libre — toutes les options avancées
-          (cues <code>at</code>, caméra, moods, couleurs…) sont là.</div>
-        <div class="field"><textarea id="json-editor" rows="14" spellcheck="false"></textarea></div>
-        <div class="row2">
-          <button class="btn" id="btn-apply-json">Appliquer le JSON</button>
-          <button class="btn" id="btn-download">Télécharger le projet</button>
-        </div>
+        <button class="btn btn-primary vd-wide" id="btn-to-production">Passer à la production →</button>
+        <details class="vd-advanced">
+          <summary>Options avancées : JSON du projet</summary>
+          <div class="hint">Édition libre — toutes les options avancées
+            (cues <code>at</code>, caméra, moods, couleurs…) sont là.</div>
+          <div class="field"><textarea id="json-editor" rows="14" spellcheck="false"></textarea></div>
+          <div class="row2">
+            <button class="btn" id="btn-apply-json">Appliquer le JSON</button>
+            <button class="btn" id="btn-download">Télécharger le projet</button>
+          </div>
+        </details>
       </div>
 
       <!-- ════════ STEP 3 — PRODUCTION ════════ -->
       <div class="step-view" id="view-3">
-        <h3>Produire dans le navigateur <span class="badge">recommandé</span></h3>
-        <div class="hint" id="browser-production-help">Tout se fait <b>dans ce navigateur</b> : voix neurale locale, rendu 1080p24, musique synthétisée, mixage et encodage MP4. Aucun serveur, aucune clé, aucun cloud.</div>
+        <h3>Produire la vidéo</h3>
+        <div class="hint" id="browser-production-help">Tout se fait <b>dans ce navigateur</b> : voix off, images, musique et fichier MP4. Rien n’est envoyé ailleurs.</div>
         <div class="vd-box" id="local-voice-box">
           <div class="row2">
-            <div class="field"><label>Voix locale</label>
+            <div class="field"><label>Voix off</label>
               <select id="local-voice"></select></div>
             <div class="field"><label>Statut</label>
               <div class="vd-status" id="local-voice-status">Non chargée</div></div>
           </div>
           <div class="row2">
-            <button class="btn btn-primary" id="btn-local-voice">⬇ Charger la voix locale</button>
+            <button class="btn btn-primary" id="btn-local-voice">⬇ Charger la voix</button>
             <button class="btn" id="btn-local-voice-test" disabled>▶ Écouter</button>
           </div>
           <div class="progress-wrap" id="local-voice-progress" style="display:none"><div class="progress-bar" id="local-voice-bar"></div></div>
-          <div class="hint" id="local-voice-note" style="margin-bottom:0">Chargée seulement sur demande : le moteur et la voix se téléchargent une fois, puis restent dans ce navigateur.</div>
+          <div class="hint" id="local-voice-note" style="margin-bottom:0">Téléchargée une seule fois, puis gardée dans ce navigateur. Sans voix chargée, la vidéo sort avec la musique et des sous-titres.</div>
         </div>
         <label class="vd-check"><input type="checkbox" id="browser-subtitles"> <span>Sous-titres incrustés</span></label>
         <button class="btn btn-accent" id="btn-browser-produce" style="width:100%">▶ Produire la vidéo</button>
@@ -385,47 +352,6 @@
           <video id="browser-video" controls playsinline></video>
         </div>
         <div class="vd-actions"><button class="btn btn-danger" id="btn-browser-cancel" style="display:none">✕ Annuler</button></div>
-
-        <div class="divider"></div>
-        <h3>Produire en local</h3>
-        <div class="hint" id="local-production-help">La production tourne <b>en local</b> (voix neurale, rendu
-          1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.</div>
-
-        <div id="prod-server-ok" style="display:none">
-          <button class="btn btn-accent" id="btn-produce" style="width:100%">▶ Lancer la production</button>
-          <div style="margin:14px 0 6px"><div class="progress-wrap"><div class="progress-bar" id="prod-bar"></div></div></div>
-          <div class="hint" id="prod-stage"></div>
-          <div class="log-box" id="prod-log" style="display:none"></div>
-          <div id="prod-done" style="display:none; margin-top:10px">
-            <a class="btn btn-primary" id="prod-link" href="#" download style="text-decoration:none; display:inline-block">⬇ Télécharger le MP4</a>
-          </div>
-        </div>
-
-        <div id="prod-server-no">
-          <div class="hint"><b>Serveur local non détecté.</b> Lancez-le dans un terminal :</div>
-          <div class="log-box" style="display:block">cd video-debrief/pipeline
-python3 server.py</div>
-          <div class="hint">…puis revenez ici. Ou en ligne de commande directe :</div>
-          <div class="log-box" style="display:block">python3 pipeline/build.py mon-projet.json</div>
-          <button class="btn" id="btn-download2" style="margin-top:8px">Télécharger le projet JSON</button>
-        </div>
-
-        <div class="divider"></div>
-        <h3>Cloud GitHub</h3>
-        <div class="hint" id="github-production-help">Production sur <b>GitHub Actions</b> (~12 min) : le projet est
-          poussé dans <code>video-debrief/requests/</code>, le workflow produit le MP4 et le publie dans
-          la release <code>videos</code>. Token : <i>fine-grained PAT</i> du repo avec
-          permissions <b>Contents (read/write)</b> et <b>Actions (read)</b>.</div>
-        <div class="field"><label>Repo (owner/nom)</label>
-          <input type="text" id="gh-repo" value="gbillois/CrisisMaker"></div>
-        <div class="field"><label>Token GitHub (conservé pour cette session)</label>
-          <input type="password" id="gh-token" placeholder="github_pat_…"></div>
-        <button class="btn btn-primary" id="btn-gh-produce" style="width:100%">☁ Produire via GitHub Actions</button>
-        <div class="hint" id="gh-stage"></div>
-        <div id="gh-done" style="display:none; margin-top:8px">
-          <a class="btn btn-accent" id="gh-link" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-block">⬇ Télécharger le MP4</a>
-          <a class="btn" id="gh-run-link" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-block">Voir le run</a>
-        </div>
       </div>
     </aside>
 
@@ -453,87 +379,63 @@ const $ = id => document.getElementById(id);
 let project = null;
 let totalDur = 0, playing = false, playT = 0, lastTick = 0;
 let engineReady = false;
-const SERVER = 'http://localhost:8765';
-let serverOn = false;
 let applyingCrisisMakerState = false;
 let interfaceLanguage = 'fr';
+// Text kept with older projects; the scenario is now built from the CrisisMaker exercise.
+let storedMaterial = '';
 
 const UI_TEXT = {
   en: {
     '1 · Scénario': '1 · Scenario', '2 · Adaptation': '2 · Editing', '3 · Production': '3 · Production',
-    'serveur local : hors ligne': 'local server: offline',
-    'Matière première': 'Source material',
-    'Collez une timeline (format Crisis Debriefer / TIMELINE_EVENTS), un compte-rendu, des notes… Tout texte qui raconte la crise.': 'Paste a timeline (Crisis Debriefer / TIMELINE_EVENTS format), a report, notes… Any text that tells the story of the crisis.',
-    'Charger un fichier…': 'Load a file…', 'Exemple StonaWave': 'StonaWave example',
     'Réglages de la vidéo': 'Video settings', 'Durée cible (s)': 'Target duration (s)', 'Langue': 'Language',
     'Style graphique': 'Visual style', 'Voix': 'Voice', 'Ton': 'Tone', 'Public': 'Audience',
     'Wavestone (indigo / néon)': 'Wavestone (indigo / neon)', 'Cyber dark (sépia / rouge)': 'Cyber dark (sepia / red)',
     'Français': 'French', 'Documentaire sobre': 'Factual documentary', 'Dramatique': 'Dramatic',
     'Pédagogique': 'Educational', 'Executive brief': 'Executive brief', 'Comex': 'Executive committee',
     'Équipes cyber': 'Cyber teams', 'Tous collaborateurs': 'All employees',
-    'Génération du scénario': 'Scenario generation',
-    'L’IA n’est utilisée que pour cette étape (rédaction du brouillon). Le gabarit sans IA construit la structure depuis votre timeline ; vous rédigez ensuite la voix off vous-même.': 'AI is only used for this step (draft writing). The no-AI template builds the structure from your timeline; you then write the voice-over yourself.',
-    'Réglages IA CrisisMaker': 'CrisisMaker AI settings',
-    'En attente des réglages CrisisMaker…': 'Waiting for CrisisMaker settings…',
-    'La matière première, les réglages et les scènes vidéo sont inclus dans les sauvegardes et chargements du projet CrisisMaker.': 'Source material, settings and video scenes are included when saving and loading the CrisisMaker project.',
-    '✦ Générer le scénario (IA)': '✦ Generate scenario (AI)', 'Gabarit sans IA': 'Template without AI',
+    'Créer le scénario': 'Create the scenario',
+    '✦ Créer le scénario par génération IA': '✦ Create the scenario with AI generation',
+    'En attente des réglages IA de CrisisMaker…': 'Waiting for the CrisisMaker AI settings…',
+    'Création manuelle, aller à l’étape 2 →': 'Manual creation, go to step 2 →',
+    'Un premier découpage en scènes est construit depuis la timeline du debrief : vous rédigez la voix off et les textes à l’étape 2.': 'A first set of scenes is built from the debrief timeline: you write the voice-over and the texts in step 2.',
     'Projet': 'Project', 'Titre': 'Title', 'Style': 'Style', 'Scènes': 'Scenes',
-    'JSON du projet': 'Project JSON',
+    'Ajustez chaque scène : voix off, textes à l’écran, photos. L’aperçu à droite montre la vidéo telle qu’elle sera produite.': 'Adjust each scene: voice-over, on-screen texts, photos. The preview on the right shows the video as it will be produced.',
+    'Passer à la production →': 'Go to production →',
+    'Options avancées : JSON du projet': 'Advanced: project JSON',
     'Édition libre — toutes les options avancées (cues at, caméra, moods, couleurs…) sont là.': 'Free editing — all advanced options (at cues, camera, moods, colors…) are available here.',
     'Appliquer le JSON': 'Apply JSON', 'Télécharger le projet': 'Download project',
-    'Produire en local': 'Produce locally',
-    'La production tourne en local (voix neurale, rendu 1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.': 'Production runs locally (neural voice, 1080p24 rendering, synthesized music, mixing, H.264) — no AI, no cloud.',
-    '▶ Lancer la production': '▶ Start production', '⬇ Télécharger le MP4': '⬇ Download MP4',
-    'Serveur local non détecté. Lancez-le dans un terminal :': 'Local server not detected. Start it in a terminal:',
-    '…puis revenez ici. Ou en ligne de commande directe :': '…then come back here. Or use the command line directly:',
-    'Télécharger le projet JSON': 'Download project JSON', 'Cloud GitHub': 'GitHub Cloud',
-    'Repo (owner/nom)': 'Repository (owner/name)',
-    'Token GitHub (conservé pour cette session)': 'GitHub token (kept for this session)',
-    '☁ Produire via GitHub Actions': '☁ Produce via GitHub Actions', 'Voir le run': 'View run',
     'Auto (selon langue)': 'Auto (based on language)', 'Aucun': 'None',
-    'Produire dans le navigateur': 'Produce in your browser', 'recommandé': 'recommended',
-    'Voix locale': 'Local voice', 'Statut': 'Status', 'Non chargée': 'Not loaded',
-    '⬇ Charger la voix locale': '⬇ Load the local voice', '▶ Écouter': '▶ Listen',
-    'Chargée seulement sur demande : le moteur et la voix se téléchargent une fois, puis restent dans ce navigateur.': 'Loaded only when you ask: the engine and the voice download once, then stay in this browser.',
+    'Produire la vidéo': 'Produce the video',
+    'Voix off': 'Voice-over', 'Statut': 'Status', 'Non chargée': 'Not loaded',
+    '⬇ Charger la voix': '⬇ Load the voice', '▶ Écouter': '▶ Listen',
+    'Téléchargée une seule fois, puis gardée dans ce navigateur. Sans voix chargée, la vidéo sort avec la musique et des sous-titres.': 'Downloaded once, then kept in this browser. Without a voice, the video comes out with the music and subtitles.',
     'Sous-titres incrustés': 'Burned-in subtitles', '▶ Produire la vidéo': '▶ Produce the video',
     '⬇ Télécharger la vidéo': '⬇ Download the video', '✕ Annuler': '✕ Cancel'
   },
   de: {
     '1 · Scénario': '1 · Szenario', '2 · Adaptation': '2 · Bearbeitung', '3 · Production': '3 · Produktion',
-    'serveur local : hors ligne': 'Lokaler Server: offline',
-    'Matière première': 'Ausgangsmaterial',
-    'Collez une timeline (format Crisis Debriefer / TIMELINE_EVENTS), un compte-rendu, des notes… Tout texte qui raconte la crise.': 'Fügen Sie einen Zeitplan (Crisis Debriefer / TIMELINE_EVENTS), einen Bericht oder Notizen ein, die die Krise beschreiben.',
-    'Charger un fichier…': 'Datei laden…', 'Exemple StonaWave': 'StonaWave-Beispiel',
     'Réglages de la vidéo': 'Videoeinstellungen', 'Durée cible (s)': 'Zieldauer (s)', 'Langue': 'Sprache',
     'Style graphique': 'Grafikstil', 'Voix': 'Stimme', 'Ton': 'Ton', 'Public': 'Zielgruppe',
     'Wavestone (indigo / néon)': 'Wavestone (Indigo / Neon)', 'Cyber dark (sépia / rouge)': 'Cyber Dark (Sepia / Rot)',
     'Français': 'Französisch', 'Documentaire sobre': 'Sachliche Dokumentation', 'Dramatique': 'Dramatisch',
     'Pédagogique': 'Lehrreich', 'Executive brief': 'Executive Brief', 'Comex': 'Vorstand',
     'Équipes cyber': 'Cyber-Teams', 'Tous collaborateurs': 'Alle Mitarbeitenden',
-    'Génération du scénario': 'Szenarioerstellung',
-    'L’IA n’est utilisée que pour cette étape (rédaction du brouillon). Le gabarit sans IA construit la structure depuis votre timeline ; vous rédigez ensuite la voix off vous-même.': 'KI wird nur für diesen Schritt verwendet. Die Vorlage ohne KI erstellt die Struktur aus Ihrem Zeitplan; den Sprechertext schreiben Sie anschließend selbst.',
-    'Réglages IA CrisisMaker': 'CrisisMaker-KI-Einstellungen',
-    'En attente des réglages CrisisMaker…': 'Warten auf CrisisMaker-Einstellungen…',
-    'La matière première, les réglages et les scènes vidéo sont inclus dans les sauvegardes et chargements du projet CrisisMaker.': 'Ausgangsmaterial, Einstellungen und Videoszenen werden beim Speichern und Laden des CrisisMaker-Projekts berücksichtigt.',
-    '✦ Générer le scénario (IA)': '✦ Szenario generieren (KI)', 'Gabarit sans IA': 'Vorlage ohne KI',
+    'Créer le scénario': 'Szenario erstellen',
+    '✦ Créer le scénario par génération IA': '✦ Szenario mit KI erstellen',
+    'En attente des réglages IA de CrisisMaker…': 'Warten auf die KI-Einstellungen von CrisisMaker…',
+    'Création manuelle, aller à l’étape 2 →': 'Manuell erstellen, weiter zu Schritt 2 →',
+    'Un premier découpage en scènes est construit depuis la timeline du debrief : vous rédigez la voix off et les textes à l’étape 2.': 'Eine erste Szenenfolge wird aus der Debrief-Zeitleiste erstellt: Sprechertext und Texte schreiben Sie in Schritt 2.',
     'Projet': 'Projekt', 'Titre': 'Titel', 'Style': 'Stil', 'Scènes': 'Szenen',
-    'JSON du projet': 'Projekt-JSON',
+    'Ajustez chaque scène : voix off, textes à l’écran, photos. L’aperçu à droite montre la vidéo telle qu’elle sera produite.': 'Passen Sie jede Szene an: Sprechertext, Bildschirmtexte, Fotos. Die Vorschau rechts zeigt das Video so, wie es produziert wird.',
+    'Passer à la production →': 'Weiter zur Produktion →',
+    'Options avancées : JSON du projet': 'Erweitert: Projekt-JSON',
     'Édition libre — toutes les options avancées (cues at, caméra, moods, couleurs…) sont là.': 'Freie Bearbeitung — alle erweiterten Optionen sind hier verfügbar.',
     'Appliquer le JSON': 'JSON anwenden', 'Télécharger le projet': 'Projekt herunterladen',
-    'Produire en local': 'Lokal produzieren',
-    'La production tourne en local (voix neurale, rendu 1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.': 'Die Produktion läuft lokal — ohne KI und ohne Cloud.',
-    '▶ Lancer la production': '▶ Produktion starten', '⬇ Télécharger le MP4': '⬇ MP4 herunterladen',
-    'Serveur local non détecté. Lancez-le dans un terminal :': 'Lokaler Server nicht erkannt. Starten Sie ihn in einem Terminal:',
-    '…puis revenez ici. Ou en ligne de commande directe :': '…und kehren Sie dann hierher zurück. Oder direkt über die Befehlszeile:',
-    'Télécharger le projet JSON': 'Projekt-JSON herunterladen', 'Cloud GitHub': 'GitHub Cloud',
-    'Repo (owner/nom)': 'Repository (Owner/Name)',
-    'Token GitHub (conservé pour cette session)': 'GitHub-Token (nur für diese Sitzung gespeichert)',
-    '☁ Produire via GitHub Actions': '☁ Über GitHub Actions produzieren', 'Voir le run': 'Run anzeigen',
     'Auto (selon langue)': 'Auto (je nach Sprache)', 'Aucun': 'Keiner',
-    'Produire dans le navigateur': 'Im Browser produzieren', 'recommandé': 'empfohlen',
-    'Voix locale': 'Lokale Stimme', 'Statut': 'Status', 'Non chargée': 'Nicht geladen',
-    '⬇ Charger la voix locale': '⬇ Lokale Stimme laden', '▶ Écouter': '▶ Anhören',
-    'Chargée seulement sur demande : le moteur et la voix se téléchargent une fois, puis restent dans ce navigateur.': 'Nur auf Anfrage geladen: Engine und Stimme werden einmal heruntergeladen und bleiben dann in diesem Browser.',
+    'Produire la vidéo': 'Video produzieren',
+    'Voix off': 'Sprecherstimme', 'Statut': 'Status', 'Non chargée': 'Nicht geladen',
+    '⬇ Charger la voix': '⬇ Stimme laden', '▶ Écouter': '▶ Anhören',
+    'Téléchargée une seule fois, puis gardée dans ce navigateur. Sans voix chargée, la vidéo sort avec la musique et des sous-titres.': 'Einmal heruntergeladen und dann in diesem Browser gespeichert. Ohne Stimme enthält das Video Musik und Untertitel.',
     'Sous-titres incrustés': 'Eingebrannte Untertitel', '▶ Produire la vidéo': '▶ Video produzieren',
     '⬇ Télécharger la vidéo': '⬇ Video herunterladen', '✕ Annuler': '✕ Abbrechen'
   }
@@ -560,43 +462,20 @@ function applyInterfaceLanguage(language){
       : original;
   }
   const richText = {
-    fr: {
-      generation: 'L’IA n’est utilisée <b>que pour cette étape</b> (rédaction du brouillon). Le gabarit sans IA construit la structure depuis votre timeline ; vous rédigez ensuite la voix off vous-même.',
-      browser: 'Tout se fait <b>dans ce navigateur</b> : voix neurale locale, rendu 1080p24, musique synthétisée, mixage et encodage MP4. Aucun serveur, aucune clé, aucun cloud.',
-      local: 'La production tourne <b>en local</b> (voix neurale, rendu 1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.',
-      github: 'Production sur <b>GitHub Actions</b> (~12 min) : le projet est poussé dans <code>video-debrief/requests/</code>, le workflow produit le MP4 et le publie dans la release <code>videos</code>. Token : <i>fine-grained PAT</i> du repo avec permissions <b>Contents (read/write)</b> et <b>Actions (read)</b>.'
-    },
-    en: {
-      generation: 'AI is used <b>only for this step</b> (draft writing). The no-AI template builds the structure from your timeline; you then write the voice-over yourself.',
-      browser: 'Everything happens <b>in this browser</b>: local neural voice, 1080p24 rendering, synthesized music, mixing and MP4 encoding. No server, no key, no cloud.',
-      local: 'Production runs <b>locally</b> (neural voice, 1080p24 rendering, synthesized music, mixing, H.264) — no AI, no cloud.',
-      github: 'Production through <b>GitHub Actions</b> (~12 min): the project is pushed to <code>video-debrief/requests/</code>, the workflow produces the MP4 and publishes it in the <code>videos</code> release. Token: repository <i>fine-grained PAT</i> with <b>Contents (read/write)</b> and <b>Actions (read)</b> permissions.'
-    },
-    de: {
-      generation: 'KI wird <b>nur für diesen Schritt</b> verwendet. Die Vorlage ohne KI erstellt die Struktur aus Ihrem Zeitplan; den Sprechertext schreiben Sie anschließend selbst.',
-      browser: 'Alles geschieht <b>in diesem Browser</b>: lokale neuronale Stimme, 1080p24-Rendering, synthetisierte Musik, Mischung und MP4-Kodierung. Kein Server, kein Schlüssel, keine Cloud.',
-      local: 'Die Produktion läuft <b>lokal</b> (neuronale Stimme, 1080p24-Rendering, synthetisierte Musik, Mischung, H.264) — ohne KI und ohne Cloud.',
-      github: 'Produktion über <b>GitHub Actions</b> (~12 Min.): Das Projekt wird nach <code>video-debrief/requests/</code> übertragen, der Workflow erstellt die MP4-Datei und veröffentlicht sie im Release <code>videos</code>. Token: <i>Fine-grained PAT</i> des Repositorys mit den Berechtigungen <b>Contents (read/write)</b> und <b>Actions (read)</b>.'
-    }
+    fr: { browser: 'Tout se fait <b>dans ce navigateur</b> : voix off, images, musique et fichier MP4. Rien n’est envoyé ailleurs.' },
+    en: { browser: 'Everything happens <b>in this browser</b>: voice-over, images, music and the MP4 file. Nothing is sent anywhere.' },
+    de: { browser: 'Alles geschieht <b>in diesem Browser</b>: Sprechertext, Bilder, Musik und MP4-Datei. Nichts wird übertragen.' }
   }[interfaceLanguage];
-  $('generation-help').innerHTML = richText.generation;
-  $('local-production-help').innerHTML = richText.local;
   $('browser-production-help').innerHTML = richText.browser;
-  $('github-production-help').innerHTML = richText.github;
-  $('src-material').placeholder = interfaceLanguage === 'fr'
-    ? '[{"title": "…", "headline": "…", …}] ou texte libre'
-    : interfaceLanguage === 'de'
-      ? '[{"title": "…", "headline": "…", …}] oder Freitext'
-      : '[{"title": "…", "headline": "…", …}] or free text';
+  renderMaterialSummary();
   fillVoices();
-  checkServer();
   if (typeof refreshLocalVoice === 'function') refreshLocalVoice();
 }
 
 function videoDebriefState(){
   const activeStep = Number(document.querySelector('.step-btn.active')?.dataset.step) || 1;
   return {
-    source_material: $('src-material').value,
+    source_material: storedMaterial,
     setup: {
       duration: parseFloat($('set-duration').value) || 120,
       language: $('set-lang').value,
@@ -638,7 +517,7 @@ function applyCrisisMakerProjectState(state){
   if (!state || typeof state !== 'object') return;
   applyingCrisisMakerState = true;
   try {
-    if (typeof state.source_material === 'string') $('src-material').value = state.source_material;
+    if (typeof state.source_material === 'string') storedMaterial = state.source_material;
     const setup = state.setup || {};
     if (setup.duration) $('set-duration').value = setup.duration;
     if (setup.language) $('set-lang').value = setup.language;
@@ -646,6 +525,8 @@ function applyCrisisMakerProjectState(state){
     if (setup.voice !== undefined) $('set-voice').value = setup.voice;
     if (setup.tone) $('set-tone').value = setup.tone;
     if (setup.audience) $('set-audience').value = setup.audience;
+    // A value from an older version that no option matches: back to the first option.
+    ['set-tone', 'set-audience', 'set-theme', 'set-lang'].forEach((id) => { if (!$(id).value) $(id).selectedIndex = 0; });
     fillVoices();
     if (setup.voice !== undefined) $('set-voice').value = setup.voice;
     if (state.project) {
@@ -659,6 +540,7 @@ function applyCrisisMakerProjectState(state){
       pushProject();
     }
     if ([1, 2, 3].includes(Number(state.ui?.active_step))) setStep(Number(state.ui.active_step));
+    renderMaterialSummary();
   } finally {
     applyingCrisisMakerState = false;
     if (window.frameElement) window.frameElement._videoDebriefState = videoDebriefState();
@@ -718,6 +600,7 @@ document.querySelectorAll('.step-btn').forEach(b => b.addEventListener('click', 
   document.querySelectorAll('.step-btn').forEach(x => x.classList.toggle('active', x === b));
   document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
   $('view-' + b.dataset.step).classList.add('active');
+  if (b.dataset.step === '1') renderMaterialSummary();
   if (!applyingCrisisMakerState) notifyCrisisMakerProjectChange();
 }));
 
@@ -926,8 +809,8 @@ function fillVoices(){
 }
 $('set-lang').addEventListener('change', fillVoices);
 fillVoices();
-['src-material','set-duration','set-lang','set-theme','set-voice','set-tone','set-audience'].forEach(id => {
-  const eventName = id === 'src-material' || id === 'set-duration' ? 'input' : 'change';
+['set-duration','set-lang','set-theme','set-voice','set-tone','set-audience'].forEach(id => {
+  const eventName = id === 'set-duration' ? 'input' : 'change';
   $(id).addEventListener(eventName, notifyCrisisMakerProjectChange);
 });
 
@@ -944,22 +827,36 @@ function enforceSettings(p){
   return p;
 }
 
-/* ═══════════════════ source material ═══════════════════ */
-$('btn-load-json').addEventListener('click', () => $('file-input').click());
-$('file-input').addEventListener('change', e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  f.text().then(t => {
-    $('src-material').value = t;
-    notifyCrisisMakerProjectChange();
-  });
-});
-$('btn-load-example').addEventListener('click', () => {
-  fetch('examples/stonawave.json').then(r => r.json()).then(p => {
-    applyProject(p);
-    setStep(2);
-  }).catch(() => alert('Ouvrez le studio via le serveur local pour charger l’exemple (python3 pipeline/server.py).'));
-});
+/* ═══════════════════ the CrisisMaker exercise ═══════════════════
+   The story of the video comes from the open exercise: its debrief timeline, scenario,
+   incident timeline, phases and key stimuli (see CrisisMakerVideoDebrief). */
+function exerciseMaterial(){
+  try {
+    const material = window.parent !== window && window.parent.CrisisMakerVideoDebrief?.getExerciseMaterial?.();
+    if (material && (material.text || (material.events || []).length)) return material;
+  } catch (error) {}
+  return { name: '', text: storedMaterial || '', events: [], counts: {} };
+}
+function renderMaterialSummary(){
+  const m = exerciseMaterial(), c = m.counts || {};
+  const parts = [
+    c.events ? uiText(`${c.events} événements du debrief`, `${c.events} debrief events`, `${c.events} Debrief-Ereignisse`) : '',
+    c.phases ? uiText(`${c.phases} phases`, `${c.phases} phases`, `${c.phases} Phasen`) : '',
+    c.keys ? uiText(`${c.keys} stimuli clés`, `${c.keys} key stimuli`, `${c.keys} Schlüssel-Stimuli`) : ''
+  ].filter(Boolean).join(' · ');
+  const box = $('material-summary');
+  if (!m.text) {
+    box.textContent = uiText('Ouvrez un exercice dans CrisisMaker : le scénario de la vidéo est construit à partir de son histoire.',
+      'Open an exercise in CrisisMaker: the video scenario is built from its story.',
+      'Öffnen Sie eine Übung in CrisisMaker: Das Videoszenario entsteht aus ihrer Geschichte.');
+    return;
+  }
+  box.replaceChildren(
+    document.createTextNode(uiText('Construit à partir de votre exercice ', 'Built from your exercise ', 'Erstellt aus Ihrer Übung ')),
+    Object.assign(document.createElement('b'), { textContent: m.name || 'CrisisMaker' }),
+    document.createTextNode(parts ? ` (${parts}).` : '.'));
+}
+
 function setStep(n){
   document.querySelector(`.step-btn[data-step="${n}"]`).click();
 }
@@ -998,7 +895,7 @@ coords = [longitude, latitude]. Dramaturgie : accroche → montée → bascule �
 async function callAI(systemPrompt, userPrompt){
   const provider = $('ai-provider').value, key = $('ai-key').value.trim(), model = $('ai-model').value.trim();
   const baseUrl = ($('ai-base-url').value || 'http://localhost:11434').replace(/\/+$/, '');
-  if (!key && (provider !== 'ollama' || baseUrl === 'https://ollama.com')) throw new Error('Configurez une clé API compatible dans les réglages CrisisMaker (ou utilisez le gabarit sans IA).');
+  if (!key && (provider !== 'ollama' || baseUrl === 'https://ollama.com')) throw new Error(uiText('Configurez une clé API dans les réglages CrisisMaker, ou choisissez la création manuelle.', 'Add an API key in the CrisisMaker settings, or choose manual creation.', 'Hinterlegen Sie einen API-Schlüssel in den CrisisMaker-Einstellungen oder wählen Sie die manuelle Erstellung.'));
   if (provider === 'anthropic'){
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -1037,10 +934,12 @@ async function callAI(systemPrompt, userPrompt){
 }
 
 $('btn-generate').addEventListener('click', async () => {
-  const src = $('src-material').value.trim();
-  if (!src) return alert('Collez d’abord la matière première (timeline ou texte).');
-  if ($('ai-provider').value === 'none') return $('btn-skeleton').click();
-  $('gen-status').textContent = 'Génération en cours…';
+  const material = exerciseMaterial();
+  const src = (material.text || '').trim();
+  if (!src) return alert(uiText('Aucune histoire à raconter : ouvrez un exercice dans CrisisMaker.', 'No story to tell: open an exercise in CrisisMaker.', 'Keine Geschichte: Öffnen Sie eine Übung in CrisisMaker.'));
+  if ($('ai-provider').value === 'none') return alert(uiText('Configurez une connexion IA dans les réglages CrisisMaker, ou choisissez la création manuelle.', 'Configure an AI connection in the CrisisMaker settings, or choose manual creation.', 'Richten Sie eine KI-Verbindung in den CrisisMaker-Einstellungen ein oder wählen Sie die manuelle Erstellung.'));
+  if (project && !confirm(uiText('Remplacer le scénario vidéo actuel ?', 'Replace the current video scenario?', 'Das aktuelle Videoszenario ersetzen?'))) return;
+  $('gen-status').textContent = uiText('Génération en cours…', 'Generating…', 'Wird erstellt…');
   $('btn-generate').disabled = true;
   try {
     const user = `Matière première :\n${src.slice(0, 24000)}\n\nContraintes :
@@ -1051,26 +950,35 @@ $('btn-generate').addEventListener('click', async () => {
     const json = raw.replace(/^```json?\s*/m, '').replace(/```\s*$/m, '');
     const p = JSON.parse(json.slice(json.indexOf('{'), json.lastIndexOf('}') + 1));
     applyProject(enforceSettings(p));
-    $('gen-status').innerHTML = '<span class="badge">Scénario généré</span> — passez à l’adaptation.';
+    $('gen-status').textContent = '';
     setStep(2);
   } catch (e) {
     $('gen-status').replaceChildren();
     const badge = document.createElement('span');
     badge.className = 'badge warn';
-    badge.textContent = 'Erreur';
+    badge.textContent = uiText('Erreur', 'Error', 'Fehler');
     $('gen-status').append(badge, document.createTextNode(' ' + (e.message || String(e))));
   } finally {
     $('btn-generate').disabled = false;
   }
 });
 
+/* Manual creation: the current scenario is kept; without one, a first set of scenes is
+   built from the debrief timeline (no AI), ready to write in step 2. */
+$('btn-manual').addEventListener('click', () => {
+  if (!project) buildSkeleton();
+  setStep(2);
+});
+
 /* deterministic skeleton from a CrisisDebrifier-style timeline (no AI) */
-$('btn-skeleton').addEventListener('click', () => {
-  let events = [];
-  try {
-    const m = $('src-material').value.match(/\[[\s\S]*\]/);
-    if (m) events = JSON.parse(m[0]);
-  } catch (e) {}
+function buildSkeleton(){
+  let events = exerciseMaterial().events || [];
+  if (!events.length) {
+    try {
+      const m = storedMaterial.match(/\[[\s\S]*\]/);
+      if (m) events = JSON.parse(m[0]);
+    } catch (e) {}
+  }
   const lang = $('set-lang').value;
   const L = lang === 'fr';
   const sevSort = (a,b) => (b.severity||0) - (a.severity||0);
@@ -1119,9 +1027,8 @@ $('btn-skeleton').addEventListener('click', () => {
     ],
   };
   applyProject(enforceSettings(p));
-  $('gen-status').innerHTML = '<span class="badge">Gabarit créé</span> — rédigez les VO marquées '+todo;
-  setStep(2);
-});
+  $('gen-status').textContent = '';
+}
 
 /* ═══════════════════ step 2 : editor ═══════════════════ */
 function applyProject(p){
@@ -1151,7 +1058,7 @@ function updateDurBadge(){
   if (!project) return;
   const target = (project.target && project.target.duration) || 120;
   const b = $('dur-badge');
-  b.textContent = `≈ ${Math.round(totalDur)}s / cible ${target}s`;
+  b.textContent = `≈ ${Math.round(totalDur)}s / ${uiText('cible', 'target', 'Ziel')} ${target}s`;
   b.className = 'badge' + (totalDur > target + 4 ? ' warn' : '');
 }
 
@@ -1278,143 +1185,10 @@ function download(){
   a.click();
 }
 $('btn-download').addEventListener('click', download);
-$('btn-download2').addEventListener('click', download);
+$('btn-to-production').addEventListener('click', () => setStep(3));
 
 /* ═══════════════════ step 3 : production ═══════════════════ */
-async function checkServer(){
-  try {
-    const r = await fetch(SERVER + '/status', { signal: AbortSignal.timeout(1500) });
-    serverOn = (await r.json()).ok;
-  } catch (e) { serverOn = false; }
-  $('server-dot').classList.toggle('on', serverOn);
-  $('server-label').textContent = serverOn
-    ? uiText('serveur local : connecté', 'local server: connected', 'Lokaler Server: verbunden')
-    : uiText('serveur local : hors ligne', 'local server: offline', 'Lokaler Server: offline');
-  $('prod-server-ok').style.display = serverOn ? 'block' : 'none';
-  $('prod-server-no').style.display = serverOn ? 'none' : 'block';
-}
-setInterval(checkServer, 4000); checkServer();
-
-let polling = null;
-$('btn-produce').addEventListener('click', async () => {
-  if (!project) return alert('Pas de projet.');
-  $('btn-produce').disabled = true;
-  $('prod-log').style.display = 'block';
-  $('prod-done').style.display = 'none';
-  let r;
-  try { r = await fetch(SERVER + '/build', { method: 'POST', body: JSON.stringify(project) }); }
-  catch (e) { $('prod-stage').textContent = uiText('Serveur local injoignable : ', 'Local server unreachable: ', 'Lokaler Server nicht erreichbar: ') + e.message; $('btn-produce').disabled = false; return; }
-  if (!r.ok){ $('prod-stage').textContent = 'Erreur : ' + (await r.text()); $('btn-produce').disabled = false; return; }
-  clearInterval(polling);
-  polling = setInterval(async () => {
-    let p;
-    try { p = await (await fetch(SERVER + '/progress')).json(); }
-    catch (e) {
-      // The server stopped: stop polling and give the button back.
-      clearInterval(polling); $('btn-produce').disabled = false;
-      $('prod-stage').textContent = uiText('Connexion au serveur local perdue.', 'Lost the connection to the local server.', 'Verbindung zum lokalen Server verloren.');
-      return;
-    }
-    $('prod-bar').style.width = (p.pct || 0) + '%';
-    $('prod-stage').textContent = p.stage || '';
-    $('prod-log').textContent = (p.log || []).join('\n');
-    $('prod-log').scrollTop = 1e9;
-    if (p.done){
-      clearInterval(polling); $('btn-produce').disabled = false;
-      if (p.error){ $('prod-stage').textContent = 'Échec — voir le journal.'; $('prod-log').textContent += '\n' + p.error; }
-      else {
-        $('prod-stage').textContent = 'Vidéo prête !';
-        $('prod-done').style.display = 'block';
-        $('prod-link').href = SERVER + '/video';
-        $('prod-link').download = ((project.meta && project.meta.slug) || 'video') + '.mp4';
-      }
-    }
-  }, 1200);
-});
-
-
-/* ═══════════════ production cloud (GitHub Actions) ═══════════════ */
-const savedRepo = localStorage.getItem('vd-gh-repo');
-if (savedRepo) $('gh-repo').value = savedRepo;
-$('gh-repo').addEventListener('change', () => localStorage.setItem('vd-gh-repo', $('gh-repo').value));
-const legacyGithubToken = localStorage.getItem('vd-gh-token');
-if (legacyGithubToken) {
-  sessionStorage.setItem('vd-gh-token', legacyGithubToken);
-  localStorage.removeItem('vd-gh-token');
-}
-$('gh-token').value = sessionStorage.getItem('vd-gh-token') || '';
-$('gh-token').addEventListener('change', () => {
-  const token = $('gh-token').value;
-  if (token) sessionStorage.setItem('vd-gh-token', token);
-  else sessionStorage.removeItem('vd-gh-token');
-});
-async function gh(path, opts = {}){
-  const tok = $('gh-token').value.trim();
-  const r = await fetch('https://api.github.com' + path, Object.assign({}, opts, {
-    headers: Object.assign({ 'Authorization': 'Bearer ' + tok,
-      'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, opts.headers || {}),
-  }));
-  if (!r.ok) throw new Error('GitHub ' + r.status + ' — ' + (await r.text()).slice(0, 200));
-  return r.json();
-}
-let ghPoll = null;
-$('btn-gh-produce').addEventListener('click', async () => {
-  if (!project) return alert('Pas de projet.');
-  const repo = $('gh-repo').value.trim();
-  if (!repo.includes('/')) return alert('Repo au format owner/nom.');
-  if (!$('gh-token').value.trim()) return alert('Renseignez un token GitHub (fine-grained PAT).');
-  const btn = $('btn-gh-produce'); btn.disabled = true;
-  $('gh-done').style.display = 'none';
-  const stage = $('gh-stage');
-  try {
-    stage.textContent = 'Envoi du projet…';
-    const slug = (project.meta && project.meta.slug) || 'video';
-    const path = `video-debrief/requests/${slug}-${Date.now()}.json`;
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(project, null, 2))));
-    const put = await gh(`/repos/${repo}/contents/${encodeURIComponent(path)}`, { method: 'PUT',
-      body: JSON.stringify({ message: 'studio: production ' + slug, content }) });
-    const sha = put.commit.sha;
-    stage.textContent = 'Projet poussé — démarrage du workflow…';
-    const t0 = Date.now();
-    if (ghPoll) clearInterval(ghPoll);
-    ghPoll = setInterval(async () => {
-      try {
-        const runs = await gh(`/repos/${repo}/actions/workflows/produce-video.yml/runs?head_sha=${sha}`);
-        const run = (runs.workflow_runs || [])[0];
-        const mins = ((Date.now() - t0) / 60000).toFixed(1);
-        if (!run){ stage.textContent = `En attente du workflow… (${mins} min)`; return; }
-        $('gh-run-link').href = run.html_url;
-        if (run.status !== 'completed'){
-          stage.textContent = `Production ${run.status === 'queued' ? 'en file d’attente' : 'en cours'}… (${mins} min — comptez ~12)`;
-          return;
-        }
-        clearInterval(ghPoll); btn.disabled = false;
-        if (run.conclusion !== 'success'){
-          stage.textContent = 'Échec du workflow (' + run.conclusion + ') — ouvrez le run pour le détail.';
-          $('gh-link').style.display = 'none';
-          $('gh-done').style.display = 'block';
-          return;
-        }
-        stage.textContent = 'Vidéo prête !';
-        let href = run.html_url;
-        try {
-          const rel = await gh(`/repos/${repo}/releases/tags/videos`);
-          const asset = (rel.assets || []).filter(a => a.name.startsWith(slug))
-            .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
-          if (asset) href = asset.browser_download_url;
-        } catch (e) {}
-        $('gh-link').style.display = 'inline-block';
-        $('gh-link').href = href;
-        $('gh-done').style.display = 'block';
-      } catch (e) { stage.textContent = 'Erreur : ' + e.message; }
-    }, 6000);
-  } catch (e) {
-    stage.textContent = 'Erreur : ' + e.message;
-    btn.disabled = false;
-  }
-});
-
-/* ═══════════════ production in the browser (no server) ═══════════════ */
+/* ═══════════════ production, entirely in the browser ═══════════════ */
 const PROGRESS_TEXT = {
   fr: [['Loading the speech engine…', 'Chargement du moteur vocal…'], ['Downloading the phonemizer…', 'Téléchargement du phonétiseur…'],
        ['Downloading the voice', 'Téléchargement de la voix'], ['Preparing the voice…', 'Préparation de la voix…'],
@@ -1460,7 +1234,7 @@ async function refreshLocalVoice(){
   $('btn-local-voice').disabled = voiceBusy || ready || producing;
   $('btn-local-voice').textContent = ready ? uiText('✓ Voix chargée', '✓ Voice loaded', '✓ Stimme geladen')
     : stored ? uiText('▶ Activer la voix', '▶ Activate the voice', '▶ Stimme aktivieren')
-      : uiText(`⬇ Charger la voix locale (≈ ${(info ? info.mb : 60) + 28} Mo)`, `⬇ Load the local voice (≈ ${(info ? info.mb : 60) + 28} MB)`, `⬇ Lokale Stimme laden (≈ ${(info ? info.mb : 60) + 28} MB)`);
+      : uiText(`⬇ Charger la voix (≈ ${(info ? info.mb : 60) + 28} Mo)`, `⬇ Load the voice (≈ ${(info ? info.mb : 60) + 28} MB)`, `⬇ Stimme laden (≈ ${(info ? info.mb : 60) + 28} MB)`);
   $('btn-local-voice-test').disabled = !ready || voiceBusy || producing;
   if (!subtitlesTouched) $('browser-subtitles').checked = !ready && !stored;
   $('btn-browser-produce').textContent = ready || stored
@@ -1496,14 +1270,14 @@ $('btn-local-voice').addEventListener('click', async () => {
 $('btn-local-voice-test').addEventListener('click', async () => {
   const id = localVoiceId();
   const first = (project?.scenes || []).map(s => String(s.vo || '').trim()).find(Boolean) || '';
-  const sample = VDB.splitSentences(first)[0] || uiText('Voici la voix locale de votre vidéo de débrief.', 'This is the local voice of your debrief video.', 'Das ist die lokale Stimme Ihres Debrief-Videos.');
+  const sample = VDB.splitSentences(first)[0] || uiText('Voici la voix off de votre vidéo de débrief.', 'This is the voice-over of your debrief video.', 'Das ist die Sprecherstimme Ihres Debrief-Videos.');
   $('btn-local-voice-test').disabled = true;
   try { await VDB.previewLocalVoice(id, sample, parseInt(String(project?.audio?.rate || '+6').replace(/[^\-\d]/g, ''), 10) || 6); }
   catch (e) { $('local-voice-status').textContent = uiText('Échec : ', 'Failed: ', 'Fehler: ') + (e.message || e); }
   $('btn-local-voice-test').disabled = false;
 });
 $('btn-browser-produce').addEventListener('click', async () => {
-  if (!project) return alert(uiText('Pas de projet.', 'No project yet.', 'Noch kein Projekt.'));
+  if (!project) return alert(uiText('Créez d’abord le scénario à l’étape 1.', 'Create the scenario in step 1 first.', 'Erstellen Sie zuerst das Szenario in Schritt 1.'));
   if (producing) return;
   // Blocked at once: a double click must not start two productions.
   producing = true; produceCancelled = false;

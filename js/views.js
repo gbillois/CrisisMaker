@@ -191,11 +191,11 @@
                   ${renderNavIconButton('storyline', svgStoryboard(), 'Main storyline')}
                   ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
                   ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
-                  ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
+                  ${renderNavIconButton('library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'))}
                   ${renderNavIconButton('play', svgBroadcast(), 'Play')}
-                  ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
                   ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                   ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
+                  ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
                 </div>
               </nav>
             </header>
@@ -343,7 +343,7 @@
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgVideo()}</div>
                       <strong>${tt('Video Debrief', 'Video Debrief', 'Video-Debrief')}</strong>
-                      <p>${tt('Turn the crisis story into an editable documentary video, preview every scene, then produce an MP4 locally or through GitHub Actions.', 'Transformez le récit de crise en vidéo documentaire éditable, prévisualisez chaque scène puis produisez un MP4 localement ou via GitHub Actions.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo, zeigen Sie jede Szene in der Vorschau an und produzieren Sie anschließend lokal oder über GitHub Actions eine MP4-Datei.')}</p>
+                      <p>${tt('Turn the crisis story into an editable documentary video, preview every scene, then produce the MP4 right in your browser.', 'Transformez le récit de crise en vidéo documentaire éditable, prévisualisez chaque scène puis produisez le MP4 directement dans votre navigateur.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo, sehen Sie jede Szene vorab und erstellen Sie die MP4-Datei direkt im Browser.')}</p>
                     </div>
                   </div>
                 </div>

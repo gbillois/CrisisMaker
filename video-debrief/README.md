@@ -4,57 +4,35 @@ Un studio HTML qui transforme une timeline de crise (ou n'importe quel récit)
 en **vidéo documentaire 1080p de ~2 minutes** : voix off neurale, musique
 originale synthétisée, scènes animées (cartes, statistiques, leçons, photos).
 
-**Philosophie : le moins d'IA possible.** L'IA (Claude ou OpenAI, votre clé,
-conservée uniquement pour la session du navigateur) ne sert qu'à rédiger le *brouillon*
-de scénario — étape même optionnelle (gabarit déterministe). Toute la
-production (voix, images, musique, montage) est déterministe, en local ou
-sur GitHub Actions.
+**Philosophie : le moins d'IA possible.** L'IA (la connexion configurée dans
+CrisisMaker) ne sert qu'à rédiger le *brouillon* de scénario, étape optionnelle.
+Toute la production (voix, images, musique, montage) est déterministe et se fait
+dans le navigateur.
 
 ## Utiliser le studio
 
-**Dans CrisisMaker** : ouvrez l’onglet **Video Debrief**.
-
-**En local** :
-```sh
-cd video-debrief/pipeline
-python3 server.py            # → http://localhost:8765/studio
-```
-Pré-requis locaux : `brew install ffmpeg node` (ou apt), `pip3 install edge-tts numpy scipy`.
-Par défaut, le serveur de production n’accepte que les appels issus de `localhost`.
-Pour autoriser une instance CrisisMaker hébergée, définissez explicitement
-`CRISISMAKER_ALLOWED_ORIGINS=https://crisismaker.example`.
+Dans CrisisMaker, ouvrez l’onglet **Video Debrief**. Le studio lit l’exercice
+ouvert : sa timeline de debrief, son scénario, sa chronologie de l’incident, ses
+phases et ses stimuli clés.
 
 ## Les 3 étapes
 
-1. **Scénario** — collez votre matière première (timeline JSON, notes,
-   compte-rendu) ; réglez durée, langue, ton, public, style, voix. Générez
-   par IA (sélecteur de modèles dynamique) ou par gabarit sans IA.
-2. **Adaptation** — éditez chaque scène (voix off, textes, photos),
-   réordonnez ; l'aperçu live (scrubber + lecture) utilise le *même moteur*
-   que le rendu final.
-3. **Production** — quatre modes :
-   - **Dans le navigateur** *(recommandé, autonome)* : tout se fait dans la page,
-     sans serveur ni clé. Le bouton **Charger la voix locale** télécharge une fois
-     le moteur vocal Piper (ONNX Runtime Web, phonétiseur espeak-ng) et la voix
-     choisie (≈ 20 à 63 Mo selon la voix), gardés ensuite dans le navigateur ;
-     rien n'est chargé tant qu'on ne clique pas. Puis : voix off locale, timing
-     réel (auto-ajustement du débit comme `build.py`), musique synthétisée
-     (portage JS de `make_music.py`), mixage avec ducking, rendu des images par
-     le même moteur que l'aperçu, encodage WebCodecs (H.264 + AAC, sinon VP9)
-     et MP4 assemblé dans la page. Sans voix chargée, la vidéo sort avec la
-     musique et des sous-titres incrustés (option disponible dans tous les cas).
-     Chrome ou Edge récents recommandés ; ~1 min de rendu par 30 s de vidéo.
-   - **Cloud GitHub** *(recommandé)* : le studio pousse le projet dans
-     `video-debrief/requests/`, le workflow [produce-video](../.github/workflows/produce-video.yml)
-     fabrique le MP4 (~12 min) et le publie dans la release
-     [`videos`](../../releases/tag/videos). Il vous faut un *fine-grained PAT*
-     du repo avec **Contents read/write** et **Actions read**.
-   - **Serveur local** : un clic, progression en direct.
-   - **Ligne de commande** : `python3 pipeline/build.py mon-projet.json`.
-
-On peut aussi lancer une production à la main : onglet *Actions* →
-*produce-video* → *Run workflow* avec un chemin de projet (ex.
-`video-debrief/examples/notpetya.json`).
+1. **Scénario** : réglez durée, langue, style, voix, ton et public, puis
+   **Créer le scénario par génération IA** (à partir de l’exercice) ou
+   **Création manuelle** (un premier découpage en scènes depuis la timeline du
+   debrief, sans IA).
+2. **Adaptation** : éditez chaque scène (voix off, textes, photos), réordonnez ;
+   l'aperçu live (scrubber + lecture) utilise le *même moteur* que le rendu
+   final. Le JSON du projet reste accessible dans les options avancées.
+3. **Production**, entièrement dans le navigateur : le bouton **Charger la voix**
+   télécharge une fois le moteur vocal Piper (ONNX Runtime Web, phonétiseur
+   espeak-ng) et la voix choisie, gardés ensuite dans le navigateur ; rien n'est
+   chargé tant qu'on ne clique pas. Puis : voix off, timing réel (auto-ajustement
+   du débit), musique synthétisée, mixage avec ducking, rendu des images par le
+   même moteur que l'aperçu, encodage WebCodecs (H.264 + AAC, sinon VP9) et MP4
+   assemblé dans la page. Sans voix chargée, la vidéo sort avec la musique et des
+   sous-titres incrustés. Chrome ou Edge récents recommandés ; ~1 min de rendu
+   par 30 s de vidéo.
 
 ## Schéma d'un projet
 
@@ -93,19 +71,10 @@ uniformément si absentes). `coords` = `[longitude, latitude]`.
 
 ```
 video-debrief/
-├── index.html            ← le studio intégré / server.py
+├── index.html            ← le studio intégré à CrisisMaker
 ├── engine/scene.html     ← moteur de rendu déterministe (aperçu ET rendu final)
-├── browser/              ← production dans le navigateur : voice.js (Piper local),
+├── browser/              ← production dans le navigateur : voice.js (Piper),
 │                           music.js, produce.js (timing, mixage, rendu), encode.js
 │                           (WebCodecs), mp4.js (multiplexeur MP4)
-├── pipeline/
-│   ├── build.py          ← VO → timing → frames → musique → mix → MP4
-│   ├── server.py         ← serveur local (production en un clic)
-│   ├── render.js         ← capture Playwright 1080p24
-│   └── make_music.py     ← musique paramétrique par moods (synthèse pure)
-├── examples/             ← stonawave.json (EN, défaut) · notpetya.json (EN) · helios-leaks.json (FR)
-└── requests/             ← projets poussés par le studio (déclenche le workflow)
+└── examples/             ← stonawave.json (EN, défaut) · notpetya.json (EN) · helios-leaks.json (FR)
 ```
-
-Le workflow de production se trouve à la racine de CrisisMaker dans
-`.github/workflows/produce-video.yml`.

@@ -50,21 +50,15 @@ OLLAMA_ORIGINS=https://gbillois.github.io ollama serve
 
 ## Video Debrief
 
-The **Video Debrief** tab embeds the complete documentary video studio from
-VideoMaker. Its deterministic rendering engine, examples, local production
-server, and pipeline live in [`video-debrief/`](video-debrief/).
+The **Video Debrief** tab embeds the documentary video studio from VideoMaker
+([`video-debrief/`](video-debrief/)), in three steps:
 
-To run local MP4 production:
-
-```sh
-cd video-debrief/pipeline
-python3 server.py
-```
-
-Local production requires `ffmpeg`, `node`, and the Python packages documented in [`video-debrief/README.md`](video-debrief/README.md).
-
-Cloud production pushes project files to `video-debrief/requests/` and is
-handled by [`.github/workflows/produce-video.yml`](.github/workflows/produce-video.yml).
+1. **Scenario**: set the duration, language, style, voice, tone and audience,
+   then create the scenario with AI from the open exercise (its debrief
+   timeline, scenario, phases and key stimuli), or create it manually.
+2. **Editing**: adjust each scene with a live preview.
+3. **Production**: the MP4 is produced entirely in the browser (voice-over,
+   images, music and encoding); nothing is sent anywhere.
 
 ## Single-file build (standalone HTML)
 

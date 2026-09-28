@@ -12,7 +12,9 @@ const assert = require('assert');
   const external = [];
   page.on('request', request => { if (/onnxruntime|piper|huggingface/.test(request.url())) external.push(request.url()); });
   await page.goto(`${base}video-debrief/index.html`);
-  await page.click('#btn-load-example');
+  // The studio shows three steps only: no local server, no GitHub production.
+  for (const gone of ['#server-label', '#btn-produce', '#btn-gh-produce', '#src-material']) assert.equal(await page.$(gone), null, gone);
+  await page.evaluate(() => fetch('examples/stonawave.json').then((r) => r.json()).then((p) => applyProject(p)));
   await page.waitForFunction(() => project && project.scenes.length > 3);
   assert.equal(await page.evaluate(() => project.theme.preset), 'wavestone', 'Wavestone style by default');
   await page.evaluate(() => { const p = JSON.parse(JSON.stringify(project)); p.scenes = [p.scenes[0], p.scenes[p.scenes.length - 1]]; applyProject(p); });

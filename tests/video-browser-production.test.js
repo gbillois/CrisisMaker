@@ -79,7 +79,7 @@ test('browser video: the studio loads the production scripts and nothing heavy b
   for (const file of ['mp4', 'encode', 'music', 'voice', 'produce']) assert.ok(html.includes(`<script src="browser/${file}.js"></script>`), file);
   assert.ok(!/onnxruntime|piper_phonemize|huggingface/.test(html), 'the voice engine is only fetched by voice.js on demand');
   assert.ok(html.includes('id="btn-local-voice"') && html.includes('id="btn-browser-produce"'));
-  assert.ok(html.indexOf('Produire dans le navigateur') < html.indexOf('Produire en local'), 'browser production comes first');
+  assert.ok(html.includes('Produire la vidéo') && !html.includes('Produire en local') && !html.includes('GitHub'), 'production happens in the browser only');
   const voice = fs.readFileSync(path.join(__dirname, '..', 'video-debrief', 'browser', 'voice.js'), 'utf8');
   assert.ok(/VDB\.loadLocalVoice = function/.test(voice) && !/^\s*VDB\.loadLocalVoice\(/m.test(voice), "no load at startup");
 });
