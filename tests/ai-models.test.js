@@ -21,6 +21,7 @@ const context = {
 };
 context.window = context;
 context.globalThis = context;
+Object.assign(context, { AbortController, setTimeout, clearTimeout });
 vm.createContext(context);
 
 vm.runInContext(`const DEFAULT_MODELS = {

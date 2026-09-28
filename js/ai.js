@@ -318,8 +318,20 @@
           const promptInfo = PromptBuilder.forStimulus(stimulus, actor, appState.scenario, fieldName, guidedPrompt);
           return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 2000, options);
         },
-        async generateStreaming(channel, systemPrompt, userPrompt = null, onChunk = null, maxTokens = 2000) {
+        async generateStreaming(channel, systemPrompt, userPrompt = null, onChunk = null, maxTokens = 2000, options = {}) {
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
+          // One controller per request: the caller's signal, and a stop when the provider sends
+          // nothing for STREAM_IDLE_MS (a stalled stream would otherwise keep the UI busy forever).
+          const STREAM_IDLE_MS = 120000;
+          const controller = new AbortController();
+          let idleTimer = null, timedOut = false;
+          const touch = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => { timedOut = true; controller.abort(); }, STREAM_IDLE_MS); };
+          if (options.signal) {
+            if (options.signal.aborted) controller.abort();
+            else options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+          }
+          touch();
+          const stalled = (error) => (timedOut ? new Error(tt('The AI stopped responding (no data for 2 minutes). Try again.', 'L\'IA ne répond plus (aucune donnée depuis 2 minutes). Réessayez.', 'Die KI antwortet nicht mehr (seit 2 Minuten keine Daten). Erneut versuchen.')) : error);
 
           const readSSE = async (response, extractDelta) => {
             if (!response.ok) {
@@ -333,28 +345,34 @@
             const decoder = new TextDecoder();
             let buffer = '';
             let fullText = '';
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop();
-              for (const line of lines) {
-                if (!line.startsWith('data: ')) continue;
-                const data = line.slice(6).trim();
-                if (!data || data === '[DONE]') continue;
-                try {
-                  const event = JSON.parse(data);
-                  if (event.type === 'error') throw new Error(event.error?.message || 'Stream error');
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                touch();
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+                for (const line of lines) {
+                  if (!line.startsWith('data: ')) continue;
+                  const data = line.slice(6).trim();
+                  if (!data || data === '[DONE]') continue;
+                  let event;
+                  try { event = JSON.parse(data); } catch (_) { continue; } // keep-alive or partial line
+                  // Provider errors sent inside the stream (Anthropic "overloaded", OpenAI {"error":…}).
+                  if (event.type === 'error' || event.error) throw new Error(`${ai_provider} stream error: ${event.error?.message || event.error?.type || 'unknown error'}`);
                   const delta = extractDelta(event);
                   if (delta) {
                     fullText += delta;
                     if (onChunk) onChunk(delta);
                   }
-                } catch (e) {
-                  if (e.message === 'Stream error' || e.message?.startsWith('HTTP')) throw e;
                 }
               }
+            } catch (error) {
+              throw stalled(error);
+            } finally {
+              clearTimeout(idleTimer);
+              try { reader.cancel(); } catch (_) { /* already closed */ }
             }
             this.lastRawResponse = fullText;
             return fullText;
@@ -384,6 +402,7 @@
             };
             while (true) {
               const { done, value } = await reader.read();
+              touch();
               if (done) break;
               buffer += decoder.decode(value, { stream: true });
               const lines = buffer.split('\n');
@@ -396,10 +415,12 @@
             return fullText;
           };
 
-          const requestStream = async (url, options, context) => {
+          const requestStream = async (url, init, context) => {
             try {
-              return await fetch(url, options);
+              return await fetch(url, { ...init, signal: controller.signal });
             } catch (networkError) {
+              if (timedOut) throw stalled(networkError);
+              if (networkError?.name === 'AbortError') throw networkError;
               throw CrisisError.wrap(networkError, {
                 ...context,
                 message: `${context.provider || 'LLM'} streaming network error: ${networkError.message}`
@@ -407,6 +428,7 @@
             }
           };
 
+          try {
           if (ai_provider === 'anthropic') {
             if (!ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
             const response = await requestStream('https://api.anthropic.com/v1/messages', {
@@ -454,7 +476,7 @@
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const response = await fetchAzureChat(appState.scenario.settings,
               [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
-              { stream: true });
+              { stream: true, signal: controller.signal });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return parseLLMJson(fullText);
           }
@@ -484,7 +506,7 @@
                 model: ai_model,
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
                 ...(!isOllamaCloud() ? { format: 'json' } : {}),
-                options: { num_predict: maxTokens },
+                options: { num_predict: maxTokens, num_ctx: ollamaContextSize(systemPrompt, userPrompt, maxTokens) },
                 stream: true
               })
             };
@@ -496,6 +518,9 @@
           }
 
           throw new Error(tt(`Unsupported provider: ${ai_provider}`, `Fournisseur non supporté : ${ai_provider}`, `Nicht unterstützter Anbieter: ${ai_provider}`));
+          } finally {
+            clearTimeout(idleTimer);
+          }
         },
 
         async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000, options = {}) {
@@ -517,7 +542,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.', 'Leere Azure-OpenAI-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
+            const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Azure OpenAI.', 'Contenu généré avec Azure OpenAI.', 'Inhalt mit Azure OpenAI generiert.'), 'success');
             return parsed;
           }
@@ -550,7 +575,7 @@
               ), { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model, code: data.stop_reason || '', detail: JSON.stringify(data.content || []) });
             }
             this.lastRawResponse = text;
-            const parsed = options.strictJSON ? JSON.parse(text) : parseLLMJson(text);
+            const parsed = options.strictJSON ? parseStrictLLMJson(text) : parseLLMJson(text);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');
             return parsed;
           }
@@ -575,7 +600,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt(`Empty ${label} response.`, `Réponse ${label} vide.`, `Leere ${label}-Antwort.`));
             this.lastRawResponse = content;
-            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
+            const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt(`Content generated with ${label}.`, `Contenu généré avec ${label}.`, `Inhalt mit ${label} generiert.`), 'success');
             return parsed;
           }
@@ -600,7 +625,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Mistral response.', 'Réponse Mistral vide.', 'Leere Mistral-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
+            const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Mistral.', 'Contenu généré avec Mistral.', 'Inhalt mit Mistral generiert.'), 'success');
             return parsed;
           }
@@ -620,7 +645,7 @@
             const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!content) throw new Error(tt('Empty Google Gemini response.', 'Réponse Google Gemini vide.', 'Leere Google Gemini-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
+            const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Google Gemini.', 'Contenu généré avec Google Gemini.', 'Inhalt mit Google Gemini generiert.'), 'success');
             return parsed;
           }
@@ -634,7 +659,7 @@
                 model: ai_model,
                 messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
                 ...(!isOllamaCloud() ? { format: 'json' } : {}),
-                options: { num_predict: maxTokens },
+                options: { num_predict: maxTokens, num_ctx: ollamaContextSize(systemPrompt, userPrompt, maxTokens) },
                 stream: false
               })
             };
@@ -650,7 +675,7 @@
             const content = data.message?.content;
             if (!content) throw new Error(tt('Empty Ollama response.', 'Réponse Ollama vide.', 'Leere Ollama-Antwort.'));
             this.lastRawResponse = content;
-            const parsed = options.strictJSON ? JSON.parse(content) : parseLLMJson(content);
+            const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Ollama.', 'Contenu généré avec Ollama.', 'Inhalt mit Ollama generiert.'), 'success');
             return parsed;
           }
@@ -894,6 +919,21 @@ Return this structure:
           };
         }
       };
+
+      /* Strict mode (agent): exact JSON, but a Markdown fence or a sentence around the object
+         is tolerated, since providers without a JSON mode (Anthropic, Gemini) often add them. */
+      /* Ollama defaults to a 2-4k token window and silently drops the start of longer prompts
+         (the agent's protocol and tool list): size the window to the prompt, ~3 chars a token. */
+      function ollamaContextSize(systemPrompt, userPrompt, maxTokens) {
+        const tokens = Math.ceil((String(systemPrompt || '').length + String(userPrompt || '').length) / 3) + (maxTokens || 2000) + 512;
+        return Math.min(131072, Math.max(8192, 2 ** Math.ceil(Math.log2(tokens))));
+      }
+
+      function parseStrictLLMJson(text) {
+        let body = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        if (!body.startsWith('{') && body.includes('{') && body.includes('}')) body = body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1);
+        return JSON.parse(body);
+      }
 
       function parseLLMJson(text) {
         const trimmed = String(text || '').trim();

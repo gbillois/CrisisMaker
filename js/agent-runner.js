@@ -118,7 +118,7 @@ class AgentRunner {
     if (appState.ui.generatingField || Object.values(appState.llmState).some(state => state?.loading) || appState.checkerState.analysisLoading) throw new AgentValidationError('Wait for the current AI operation to finish before starting an agent.');
     this.kind = kind; this.mode = mode; this.objective = objective;
     this.status = 'running'; this.busy = true; this.controller = new AbortController(); this.project = appState.scenario;
-    this.step = 0; this.log = []; this.history = []; this.changed = 0; this.pending = null; this.question = null; this.questionRounds = 0; this.final = null;
+    this.step = 0; this.log = []; this.history = []; this.answers = []; this.changed = 0; this.pending = null; this.question = null; this.questionRounds = 0; this.final = null;
     this.checkpointRun();
     AgentLog.append(this, 'info', 'Analyzing current exercise. A pre-run checkpoint is available.');
     const runController = this.controller, runProject = this.project;
@@ -133,9 +133,17 @@ class AgentRunner {
         this.assertActive(); this.notify();
         let call;
         try {
-          const input = agentRedact({ objective, mode, step: this.step, remainingSteps: this.maxSteps - this.step, state: AgentContext.build(), recentResults: this.history });
-          // Bound the whole prompt without ever sending invalid, sliced JSON.
-          if (input.length + system.length > 100000) throw new Error('Context too large.');
+          // Bound the whole prompt without ever sending invalid, sliced JSON: shorten, then drop,
+          // the oldest tool results. The user's answers are kept for the whole run.
+          const state = AgentContext.build();
+          const build = (recent) => agentRedact({ objective, mode, step: this.step, remainingSteps: this.maxSteps - this.step, state, userAnswers: this.answers.length ? this.answers : undefined, recentResults: recent });
+          let recent = this.history, input = build(recent);
+          if (input.length + system.length > 100000) {
+            recent = this.history.map(entry => entry.result === undefined ? entry : { ...entry, result: agentExcerpt(entry.result, 2500) });
+            input = build(recent);
+            while (input.length + system.length > 100000 && recent.length) { recent = recent.slice(1); input = build(recent); }
+            if (input.length + system.length > 100000) throw new AgentValidationError('The exercise is too large for one agent step. Narrow the objective to a phase or a cell.');
+          }
           call = agentNormalizeResponse(await agentAwait(this.request(system, input, this.controller.signal), this.controller.signal));
           this.assertActive();
           if (call.type === 'question') {
@@ -145,8 +153,8 @@ class AgentRunner {
             }
             this.questionRounds++;
             const answers = await this.ask(call);
-            this.history.push(answers ? { questions: call.questions, userAnswers: answers } : { questions: call.questions, userAnswers: null, instruction: 'The user skipped these questions. Proceed with clearly disclosed reasonable assumptions.' });
-            this.history = this.history.slice(-8);
+            // Answers stay in every later step (not in the rolling history of tool results).
+            this.answers.push(answers ? { questions: call.questions, answers } : { questions: call.questions, answers: null, instruction: 'The user skipped these questions. Proceed with clearly disclosed reasonable assumptions.' });
             AgentLog.append(this, 'info', answers ? 'Answers sent to the agent.' : 'Questions skipped: the agent will make assumptions.', answers || '');
             continue;
           }
@@ -157,7 +165,8 @@ class AgentRunner {
           const tool = this.registry.get(call.tool);
           if (!tool) throw new AgentValidationError('Unknown tool. Choose a listed tool.');
           ToolValidator.validate(call.arguments, tool.inputSchema);
-          const signature = JSON.stringify([call.tool, call.arguments]);
+          // The same call again with no change in between is a loop; after an edit it is a re-check.
+          const signature = JSON.stringify([call.tool, call.arguments, this.changed]);
           calls.set(signature, (calls.get(signature) || 0) + 1);
           if (calls.get(signature) > 3) { this.status = 'limit'; AgentLog.append(this, 'warning', 'Repeated tool loop detected. Stopped for review.'); return; }
           const needsApproval = tool.risk === 'destructive' || (tool.risk !== 'read' && mode === 'assist') || (tool.risk === 'broad' && mode === 'agent');

@@ -754,6 +754,9 @@
               // Check & Challenge runs the five-axis analysis and, for the scenario, the timing review.
               if (typeof ccChallenge === 'function') ccChallenge(); else checkerRunAnalysis();
               break;
+            case 'checker-cancel':
+              appState.checkerState.controller?.abort();
+              break;
             case 'checker-toggle-llm-stream':
               appState.checkerState.showLLMStream = !appState.checkerState.showLLMStream;
               App.render();

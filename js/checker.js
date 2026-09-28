@@ -881,8 +881,10 @@ ${lines.join('\n')}`;
         let truncated = false;
         const maxContentLen = pd.rows.length > 500 ? 150 : 500;
         if (pd.rows.length > 500) truncated = true;
+        // Very large sheets are cut to keep one request within a model's context.
+        const MAX_ROWS = 800;
 
-        for (let i = 0; i < pd.rows.length; i++) {
+        for (let i = 0; i < Math.min(pd.rows.length, MAX_ROWS); i++) {
           const row = pd.rows[i];
           const cells = colKeys.map(k => {
             const idx = mapping[k];
@@ -895,7 +897,7 @@ ${lines.join('\n')}`;
         }
 
         const serialized = `CHRONOGRAM DATA
-Total lines: ${pd.rows.length}
+Total lines: ${pd.rows.length}${pd.rows.length > MAX_ROWS ? ` (the first ${MAX_ROWS} are listed below)` : ''}
 Columns detected: ${detectedCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none'}
 Columns missing: ${missingCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none'}
 
@@ -1337,21 +1339,26 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
           const prompt = checkerBuildPrompt(serialized, detectedCols, missingCols, false);
           const userPromptPreview = prompt.slice(0, 400);
           let result;
+          cs.controller = new AbortController();
+          const signal = cs.controller.signal;
           try {
             startLog(userPromptPreview);
-            result = await AITextGenerator.generateStreaming('checker_analysis', prompt, 'Reply in strict JSON.', onChunk, 8000);
+            result = await AITextGenerator.generateStreaming('checker_analysis', prompt, 'Reply in strict JSON.', onChunk, 8000, { signal });
             finishLog('done');
           } catch (firstErr) {
             finishLog('error');
+            // Retry once, shorter, only when the reply was malformed or cut: never on a key,
+            // quota, network or cancel error (it would fail again and cost a second request).
+            const retryable = !signal.aborted && /JSON|empty|vide|leer/i.test(String(firstErr?.message || ''));
+            if (!retryable) throw firstErr;
             CrisisError.log(firstErr, { operation: 'Crisis Checker analysis first LLM attempt' });
-            // Retry with lower max_tokens and concise instruction
             const concisePrompt = checkerBuildPrompt(serialized, detectedCols, missingCols, true);
             startLog(concisePrompt.slice(0, 400));
-            result = await AITextGenerator.generateStreaming('checker_analysis', concisePrompt, 'Reply in strict JSON.', onChunk, 4096);
+            result = await AITextGenerator.generateStreaming('checker_analysis', concisePrompt, 'Reply in strict JSON.', onChunk, 4096, { signal });
             finishLog('done');
           }
 
-          cs.analysisResult = result;
+          cs.analysisResult = checkerNormalizeResult(result);
           cs.analysisLoading = false;
           cs.activeAxisTab = 0;
           App.render();
@@ -1359,10 +1366,32 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         } catch (err) {
           finishLog('error');
           cs.analysisLoading = false;
+          if (cs.controller?.signal.aborted) { cs.controller = null; App.render(); return; }
           cs.analysisError = CrisisError.format(err, { operation: 'Crisis Checker analysis' });
           CrisisError.log(err, { operation: 'Crisis Checker analysis' });
           App.render();
         }
+      }
+
+      /* The model's reply, shaped so rendering never breaks on a missing or mistyped field. */
+      function checkerNormalizeResult(result) {
+        if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('The AI returned no analysis (malformed JSON).');
+        const list = (value) => (Array.isArray(value) ? value : value ? [value] : []).map((item) => typeof item === 'string' ? item : JSON.stringify(item)).filter(Boolean);
+        const verdicts = ['satisfactory', 'acceptable', 'insufficient'];
+        return {
+          ...result,
+          summary: typeof result.summary === 'string' ? result.summary : '',
+          maturity: ['first_draft', 'advanced_draft', 'ready_to_play'].includes(result.maturity) ? result.maturity : 'first_draft',
+          priority_actions: list(result.priority_actions),
+          axes: (Array.isArray(result.axes) ? result.axes : []).filter((axis) => axis && typeof axis === 'object').map((axis, index) => ({
+            ...axis,
+            id: axis.id ?? index + 1,
+            title: typeof axis.title === 'string' ? axis.title : `Axis ${index + 1}`,
+            verdict: verdicts.includes(axis.verdict) ? axis.verdict : 'acceptable',
+            positive: list(axis.positive), negative: list(axis.negative), recommendations: list(axis.recommendations)
+          })),
+          stimuli_per_cell_per_phase: result.stimuli_per_cell_per_phase && typeof result.stimuli_per_cell_per_phase === 'object' ? result.stimuli_per_cell_per_phase : {}
+        };
       }
 
       // ─── Render: Results section ──────────────────────────────────────────────────
@@ -1380,9 +1409,10 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
             <article class="card checker-loading">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                 <strong>${tt('Analyzing…', 'Analyse en cours…', 'Analyse läuft…')}</strong>
+                <span style="display:flex; gap:6px;"><button class="btn btn-secondary btn-sm" data-action="checker-cancel">${sbUiIcon('stop', 13)} ${tt('Cancel', 'Annuler', 'Abbrechen')}</button>
                 <button class="btn btn-secondary btn-sm" data-action="checker-toggle-llm-stream">
                   ${showStream ? tt('Hide LLM stream', 'Masquer le flux LLM', 'LLM-Stream ausblenden') : tt('Show LLM stream', 'Afficher le flux LLM', 'LLM-Stream anzeigen')}
-                </button>
+                </button></span>
               </div>
               <div class="${showStream ? 'checker-progress-layout' : ''}">
                 <div class="checker-progress-left">

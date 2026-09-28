@@ -150,8 +150,10 @@ function agentValidatePhases(phases) {
 function agentCleanFields(stimulus, fields) {
   const defs = getTemplateDefinition(stimulus).fields || [];
   const clean = {};
-  for (const [key, value] of Object.entries(fields)) {
+  for (let [key, value] of Object.entries(fields)) {
     const def = defs.find(f => f.key === key);
+    // Models often return numbers as text ("47"): accept them when they are clean numbers.
+    if (def?.type === 'number' && typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) value = Number(value);
     if (!def || /upload/.test(def.type) || /url|_data|audio|video/.test(key)) throw new AgentValidationError(`Field not editable by agents: ${key}`);
     if (def.type === 'checkbox' && typeof value !== 'boolean') throw new AgentValidationError(`Expected boolean field: ${key}`);
     if (def.type === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) throw new AgentValidationError(`Expected number field: ${key}`);
@@ -159,6 +161,9 @@ function agentCleanFields(stimulus, fields) {
     if (def.type === 'textarea') {
       if (['reaction_types', 'awards'].includes(key)) {
         if (!Array.isArray(value) || !value.every(item => typeof item === 'string')) throw new AgentValidationError(`Expected text array: ${key}`);
+      } else if (Array.isArray(value)) {
+        // List fields (e.g. the files of a dark web post): short lists of texts or flat records.
+        if (value.length > 50 || !value.every(item => typeof item === 'string' || (item && typeof item === 'object' && !Array.isArray(item) && Object.values(item).every(v => ['string', 'number', 'boolean'].includes(typeof v))))) throw new AgentValidationError(`Expected a short list: ${key}`);
       } else if (key === 'top_comment') {
         ToolValidator.validate(value, AgentSchema.object({ author: AgentSchema.text(), flair: AgentSchema.text(), text: AgentSchema.text(), upvotes: { type: 'number', minimum: 0, maximum: 1000000000 }, date: AgentSchema.text() }));
       } else if (typeof value !== 'string') throw new AgentValidationError(`Expected text field: ${key}`);
@@ -392,7 +397,9 @@ function createAgentToolRegistry() {
       const stimulus = requireItem(getStimulus, args.id);
       if (stimulus.generation_mode === 'manual') throw new AgentValidationError('Manual-mode content is protected; propose explicit field edits instead.');
       const before = JSON.stringify(stimulus);
-      const result = await AITextGenerator.generateForStimulus(stimulus, null, agentRedact(`${args.instructions}\nCurrent content: ${JSON.stringify(stimulus.fields)}`), { signal: run.controller.signal, quiet: true, strictJSON: true, promptFilter: agentRedact });
+      // Photos, logos and media stay out of the prompt (they can weigh megabytes).
+      const textFields = Object.fromEntries(Object.entries(stimulus.fields || {}).filter(([key]) => !SB_MEDIA_FIELD.test(key) && !/url|_data|audio|video|image/.test(key)));
+      const result = await AITextGenerator.generateForStimulus(stimulus, null, agentRedact(`${args.instructions}\nCurrent content: ${JSON.stringify(textFields)}`), { signal: run.controller.signal, quiet: true, strictJSON: true, promptFilter: agentRedact });
       run.assertActive();
       if (getStimulus(args.id) !== stimulus || JSON.stringify(stimulus) !== before) throw new AgentValidationError('Stimulus changed during generation; inspect it again.');
       ToolValidator.validate(result, fields);

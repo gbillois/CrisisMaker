@@ -113,7 +113,7 @@ function answerFor(system, user) {
   await page.waitForFunction(() => crisisAgentRunner.status === 'complete');
   assert.ok(await page.isVisible('.agent-panel.is-complete'));
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 3);
-  assert.ok(await page.evaluate(() => crisisAgentRunner.history.some((entry) => entry.userAnswers?.includes('executive committee'))));
+  assert.ok(await page.evaluate(() => crisisAgentRunner.answers.some((entry) => entry.answers?.includes('executive committee'))));
   assert.equal(await page.evaluate(() => sbMainBlocks(sbStoryboard())[1].beats[0].cell_id), await page.evaluate(() => appState.scenario.cells[1].id));
   await page.click('.nav-icon-btn[data-route="storyline"]');
 

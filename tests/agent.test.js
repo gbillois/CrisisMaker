@@ -200,7 +200,7 @@ test('builder agent asks questions, waits for answers, then continues with them'
   r.answer('Executive committee; isolation decisions.');
   await promise;
   assert.equal(r.status, 'complete');
-  assert.ok(r.history.some(entry => entry.userAnswers === 'Executive committee; isolation decisions.'));
+  assert.ok(r.answers.some(entry => entry.answers === 'Executive committee; isolation decisions.'));
   assert.equal(h.run('appState.scenario.scenario.objectives'), 'Test isolation');
 });
 

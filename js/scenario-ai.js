@@ -160,6 +160,8 @@ const SbAI = {
       if (!result || typeof result !== 'object' || Array.isArray(result)) throw new AgentValidationError('The AI response is not a JSON object.');
       return result;
     } catch (error) {
+      // A timeout rejects without cancelling: abort so the provider request stops (and stops billing).
+      controller?.abort();
       if (!nested && error?.name !== 'AbortError') this.lastError = sbErrorMessage(error);
       throw error;
     } finally {

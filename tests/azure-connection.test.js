@@ -6,7 +6,7 @@ const { test } = require('node:test');
 function harness(endpoint = 'https://example.services.ai.azure.com/openai/v1') {
   const requests = [], replies = [];
   const context = vm.createContext({
-    URL, TextDecoder, TextEncoder, console,
+    URL, TextDecoder, TextEncoder, console, AbortController, setTimeout, clearTimeout,
     tt: en => en, pushToast: () => {},
     appState: { scenario: { settings: { ai_provider: 'azure_openai', azure_endpoint: endpoint,
       azure_api_key: ' test-key ', azure_deployment: ' custom-deployment ', azure_api_version: '2024-10-21' } } },

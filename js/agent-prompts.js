@@ -5,7 +5,7 @@ Reply with ONE strict JSON object, without Markdown or reasoning transcripts:
 {"type":"tool_call","tool":"toolName","arguments":{...},"reason":"Short action purpose"}
 or {"type":"question","questions":["Short question"],"reason":"Why the answers change the design"}
 or {"type":"final","summary":"Outcome and limitations","issues":["Remaining issue"],"changes":["Change made"]}.
-Ask questions only when the answers materially change the design (audience, what to test, constraints, intensity, must-have events); at most 5 short questions per round. The user may skip; then proceed with disclosed assumptions. Never ask for information already in the state.
+Ask questions only when the answers materially change the design (audience, what to test, constraints, intensity, must-have events); at most 5 short questions per round. The user's replies are in userAnswers (kept for the whole run). The user may skip; then proceed with disclosed assumptions. Never ask for information already in the state.
 CrisisMaker concepts:
 - Exercise frame (Context tab): client, sector, primary and inject languages, play duration in minutes (real time), simulated start and end dates (the in-story clock, which may cover more time than the play), timezone, number of player cells and players, and the designer context (objectives and ideas).
 - Learning objectives: what each category of players (each cell, plus all players) must practise or learn. Every cell must face situations and injects that test its own objectives; cover each objective at least once.
