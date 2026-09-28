@@ -221,7 +221,7 @@ function sbNormalizeBeat(input = {}) {
     channel,
     template_id: sbValidTemplateId(channel, input.template_id),
     cast_id: sbSafeId(input.cast_id),
-    cell_id: sbSafeId(input.cell_id),
+    cell_id: sbSafeRecipient(input.cell_id),
     title: sbText(input.title, 300),
     intent: sbText(input.intent, 2000),
     // A main stimulus frames the whole story: set by the designer, kept by every AI re-plan.
@@ -812,9 +812,9 @@ function sbDesignContextLines(project, options = {}) {
   const cells = Array.isArray(project?.cells) ? project.cells : [];
   const objectives = sbText(scenario.learning_objectives, 6000);
   const timeline = sbText(scenario.attack_path, 6000);
-  const recipient = options.cellId ? cells.find((cell) => cell.id === options.cellId) : null;
+  const names = options.cellId && !sbIsAllCells(options.cellId) ? sbRecipientIds(options.cellId).map((id) => cells.find((cell) => cell.id === id)?.name).filter(Boolean) : [];
   const lines = [];
-  if (objectives) lines.push(`- Learning objectives (the designer's own words; work out which apply to ${recipient ? `the recipient, the ${recipient.name}` : 'each cell'}): ${objectives}`);
+  if (objectives) lines.push(`- Learning objectives (the designer's own words; work out which apply to ${names.length ? `the recipient${names.length > 1 ? 's' : ''}, the ${names.join(' and the ')}` : 'each cell'}): ${objectives}`);
   if (timeline) lines.push(`- Incident timeline (what really happened, in order: attack, detection, response): ${timeline}`);
   return lines;
 }
@@ -844,22 +844,39 @@ function sbMakeCell(key = 'custom', values = {}) {
   return sbNormalizeCell({ id: uid('cell'), key, name: preset?.name, description: preset?.description, color: preset?.color, ...values });
 }
 
-/* An inject can go to every cell (a main stimulus such as the ransom note or a TV flash):
-   its cell_id is SB_ALL_CELLS instead of one cell's id. */
+/* The recipient of an inject, in its cell_id: one cell's id, several ids joined by "+"
+   (sent to each of them), or SB_ALL_CELLS for every cell (a key stimulus such as the
+   ransom note or a TV flash). Read it only through these helpers. */
 const SB_ALL_CELLS = 'all';
+const SB_CELL_SEPARATOR = '+';
 function sbIsAllCells(cellId) {
   return cellId === SB_ALL_CELLS;
 }
+function sbRecipientIds(cellId) {
+  return typeof cellId === 'string' && cellId && !sbIsAllCells(cellId) ? cellId.split(SB_CELL_SEPARATOR).filter(Boolean) : [];
+}
+/* One recipient value from a list of cell ids (in the project's cell order). */
+function sbJoinRecipients(project, ids) {
+  const wanted = new Set(ids);
+  return (project.cells || []).filter((cell) => wanted.has(cell.id)).map((cell) => cell.id).join(SB_CELL_SEPARATOR);
+}
+function sbSafeRecipient(value) {
+  if (sbIsAllCells(value)) return SB_ALL_CELLS;
+  return [...new Set(sbRecipientIds(value).map((id) => sbSafeId(id)).filter(Boolean))].slice(0, 30).join(SB_CELL_SEPARATOR);
+}
 /* Does an inject addressed to cellId reach the cell targetId? */
 function sbReaches(cellId, targetId) {
-  return cellId === targetId || (sbIsAllCells(cellId) && !!targetId && targetId !== 'none');
+  if (cellId === targetId) return true;
+  if (!targetId || targetId === 'none') return false;
+  return sbIsAllCells(cellId) || sbRecipientIds(cellId).includes(targetId);
 }
-/* A known cell, or every cell. */
+/* Every cell, or at least one known cell. */
 function sbHasRecipient(project, cellId) {
-  return sbIsAllCells(cellId) || !!sbCell(project, cellId);
+  return sbIsAllCells(cellId) || sbRecipientIds(cellId).some((id) => sbCell(project, id));
 }
 function sbRecipientName(project, cellId) {
-  return sbIsAllCells(cellId) ? 'All cells' : sbCell(project, cellId)?.name || '';
+  if (sbIsAllCells(cellId)) return 'All cells';
+  return sbRecipientIds(cellId).map((id) => sbCell(project, id)?.name).filter(Boolean).join(' + ');
 }
 
 function sbCell(project, id) {

@@ -444,7 +444,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   for (const marker of ['data-tab-action="ds-cell"', 'ds-phase-row', 'data-ds-item', 'bottom-editor']) assert.ok(detailed.includes(marker), marker);
   h.run(`tabUI('detailed').cell = appState.scenario.cells[0].id; tabUI('detailed').selected = sbExerciseItems(appState.scenario).find(i => i.cell_id === appState.scenario.cells[0].id).key`);
   const inject = h.run('renderDetailedView()');
-  for (const marker of ['data-ds-time', 'data-ds-cell', 'data-tab-action="ds-plan"']) assert.ok(inject.includes(marker), marker);
+  for (const marker of ['data-ds-time', 'data-rcpt=', 'data-tab-action="ds-plan"']) assert.ok(inject.includes(marker), marker);
   h.run(`tabUI('summary').review = { score: null, summary: '', issues: sbExerciseChecks(appState.scenario) }; tabUI('summary').time = 120`);
   const summary = h.run('renderSummaryView()');
   for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'data-su-scrub', 'data-su-columns', 'data-su-rehearse', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
@@ -869,4 +869,23 @@ test('phase colour follows its stress level: from the type by default, or set in
   assert.ok(h.run('renderStorylineView()').includes('data-sb-field="stress"'));
   assert.equal(h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).storyboard.blocks.find((block) => block.id === '${id}').stress`), 5);
   assert.equal(h.json(`sbAIContext(appState.scenario).storyboard.blocks.find((block) => block.id === '${id}').stress`), 'Peak');
+});
+
+test('recipients: an inject goes to one cell, several cells or all cells', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const cells = h.json('appState.scenario.cells.map((cell) => cell.id)');
+  const two = h.run(`sbJoinRecipients(appState.scenario, ['${cells[2]}', '${cells[0]}'])`);
+  assert.equal(two, `${cells[0]}+${cells[2]}`, 'kept in the project order');
+  assert.ok(h.run(`sbReaches('${two}', '${cells[0]}') && sbReaches('${two}', '${cells[2]}') && !sbReaches('${two}', '${cells[1]}')`));
+  assert.ok(h.run(`sbHasRecipient(appState.scenario, '${two}')`));
+  assert.ok(h.run(`sbRecipientName(appState.scenario, '${two}')`).includes(' + '));
+  // A planned inject sent to two cells: a card in both rows, saved and reloaded as is.
+  const item = h.json(`(() => { const item = sbExerciseItems(appState.scenario).find((entry) => entry.kind === 'beat'); dsMoveItem(appState.scenario, item, item.time, '${two}'); return { key: item.key, id: item.beat.id }; })()`);
+  const detailed = h.run(`(() => { tabUI('detailed').cell = 'all'; return renderDetailedView(); })()`);
+  assert.equal((detailed.match(new RegExp(`data-ds-item="${item.key}"`, 'g')) || []).length, 2);
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).storyboard.blocks.flatMap((block) => block.beats).find((beat) => beat.id === '${item.id}').cell_id`);
+  assert.equal(reloaded, two);
+  assert.ok(!h.json('sbExerciseChecks(appState.scenario)').some((issue) => issue.code === 'no_cell' && issue.item_key === item.key));
+  assert.ok(h.run(`ExerciseModel.cellById(appState.scenario, '${two}').name`).includes(' + '));
 });

@@ -290,7 +290,8 @@ function sbGenerationBrief(project, block, beat, options = {}) {
     block.objectives.length ? `- Objectives tested: ${block.objectives.join('; ')}` : '',
     beat ? `- THIS INJECT (${channelLabel(beat.channel)} at ${sbFormatOffset(sbBeatAbsolute(block, beat))}): "${beat.title}". ${beat.intent}` : '',
     (() => {
-      if (sbIsAllCells(beat?.cell_id)) return `- Recipient: every player cell (${(project.cells || []).map((cell) => cell.name).join(', ') || 'all players'}). A main stimulus that frames the story: address it to all of them.`;
+      if (sbIsAllCells(beat?.cell_id)) return `- Recipient: every player cell (${(project.cells || []).map((cell) => cell.name).join(', ') || 'all players'}). A key stimulus that frames the story: address it to all of them.`;
+      if (sbRecipientIds(beat?.cell_id).length > 1) return `- Recipients: ${sbRecipientName(project, beat.cell_id)}. Address the inject to all of them.`;
       const cell = sbCell(project, beat?.cell_id || options.cellId);
       return cell ? `- Recipient: the ${cell.name}${cell.description ? ` (${cell.description})` : ''}. Address the inject to them.` : '';
     })(),

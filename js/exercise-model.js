@@ -159,6 +159,12 @@ const ExerciseModel = {
   /* A cell, or "All cells" for an inject every cell receives (a main stimulus). */
   cellById(project, id) {
     if (sbIsAllCells(id)) return { id: SB_ALL_CELLS, name: 'All cells', color: '#451dc7', description: '', players: [] };
+    // Several cells: one entry naming them all, in the colour of the first.
+    const ids = sbRecipientIds(id);
+    if (ids.length > 1) {
+      const cells = ids.map((cellId) => sbCell(project, cellId)).filter(Boolean);
+      if (cells.length) return { id, name: cells.map((cell) => cell.name).join(' + '), color: cells[0].color, description: '', players: cells.flatMap((cell) => cell.players || []) };
+    }
     return sbCell(project, id) || null;
   }
 };

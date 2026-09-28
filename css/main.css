@@ -3867,6 +3867,13 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sb-workspace .sl-main-title { font-weight: 700; }
 .sl-main-fields textarea { min-height: 52px; }
 .sl-main-unmark { justify-self: start; }
+.sl-main-to { display: flex; align-items: flex-start; gap: 8px; }
+.sl-main-to > span, .ds-to { font-size: 0.74rem; font-weight: 700; color: var(--primary-strong); }
+.sl-main-to > span { padding-top: 5px; }
+.ds-fields .ds-to { grid-column: 1 / -1; }
+.rcpt .chip-toggle .cell-dot { margin-right: 0; }
+.rcpt .chip-toggle:has(input:disabled) { cursor: default; opacity: 0.75; }
+.rcpt .rcpt-all { font-weight: 700; }
 .sl-ai { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--sb-line); }
 .sl-ai-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--primary-strong); }
 .sl-ai .btn { justify-self: end; }

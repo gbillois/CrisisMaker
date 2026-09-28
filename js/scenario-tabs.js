@@ -155,8 +155,8 @@ function renderPhaseEditor(storyboard, block) {
   const project = appState.scenario;
   const readOnly = sbReadOnly() || block.locked ? 'disabled' : '';
   const ui = sbUI();
-  const counts = new Map();
-  block.beats.forEach((beat) => counts.set(beat.cell_id, (counts.get(beat.cell_id) || 0) + 1));
+  // Per cell, every planned inject it receives (sent to it alone, to several cells or to all).
+  const counts = new Map((project.cells || []).map((cell) => [cell.id, block.beats.filter((beat) => sbReaches(beat.cell_id, cell.id)).length]));
   const ai = isLLMAvailable();
   return `<div class="bottom-editor-head" style="--clip-color:${sbBlockColor(block, storyboard)}">
       <span class="sb-clip-icon">${sbIcon((SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).icon, 16)}</span>
@@ -196,7 +196,6 @@ function renderPhaseEditor(storyboard, block) {
 function renderKeyStimuli(project, storyboard, block, readOnly) {
   const ui = sbUI();
   const keys = block.beats.filter((beat) => beat.main);
-  const cellOptions = (beat) => `${sbOption(SB_ALL_CELLS, 'All cells', beat.cell_id)}${project.cells.map((cell) => sbOption(cell.id, cell.name, beat.cell_id)).join('')}${sbHasRecipient(project, beat.cell_id) ? '' : sbOption('', 'No cell', beat.cell_id)}`;
   return `<section class="sl-main" aria-label="Key stimuli">
     <div class="sl-main-head">
       <strong title="The injects that frame the story of this phase. The AI plans the other injects of every cell around them and never changes them.">${sbUiIcon('star', 14)} Key stimuli</strong>
@@ -224,8 +223,8 @@ function renderKeyStimuli(project, storyboard, block, readOnly) {
           <input type="text" class="sl-main-title" data-sl-main="${key}.title" value="${escapeAttribute(beat.title)}" placeholder="Title, e.g. Ransom note on every screen" aria-label="Title" ${readOnly}>
           <div class="sl-main-row">
             <label class="be-inline">At (min)<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-main="${key}.at" value="${beat.offset_minutes}" aria-label="Minutes from the phase start" ${readOnly}></label>
-            <label class="be-inline">To<select data-sl-main="${key}.cell_id" aria-label="Recipient" ${readOnly}>${cellOptions(beat)}</select></label>
           </div>
+          <div class="sl-main-to"><span>To</span>${renderRecipientPicker(project, `beat:${beat.id}`, beat.cell_id, readOnly)}</div>
           <div class="sl-main-row">
             <select data-sl-main="${key}.channel" aria-label="Channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select>
             ${templates.length ? `<select data-sl-main="${key}.template_id" aria-label="Outlet" ${readOnly}>${sbOption('', 'Default outlet', beat.template_id)}${templates.map(([id, value]) => sbOption(id, value.label || id, beat.template_id)).join('')}</select>` : ''}
@@ -237,6 +236,16 @@ function renderKeyStimuli(project, storyboard, block, readOnly) {
       </div>`;
     }).join('') || '<p class="sl-main-empty">None yet. Add the moments that frame this phase: the ransom note, a TV flash, the regulator\'s call.</p>'}
   </section>`;
+}
+
+/* The recipients of an inject: "All cells", or any set of cells (none = unassigned). */
+function renderRecipientPicker(project, itemKey, cellId, readOnly) {
+  const all = sbIsAllCells(cellId);
+  const ids = sbRecipientIds(cellId);
+  return `<div class="rcpt chip-toggles" data-rcpt="${escapeAttribute(itemKey)}" role="group" aria-label="Recipient cells">
+    <label class="chip-toggle rcpt-all"><input type="checkbox" value="${SB_ALL_CELLS}" ${all ? 'checked' : ''} ${readOnly}>All cells</label>
+    ${project.cells.map((cell) => `<label class="chip-toggle" style="--cell-color:${cell.color}"><input type="checkbox" value="${escapeAttribute(cell.id)}" ${all || ids.includes(cell.id) ? 'checked' : ''} ${all || readOnly ? 'disabled' : ''}><span class="cell-dot"></span>${escapeHtml(cell.name)}</label>`).join('')}
+  </div>`;
 }
 
 /* The phase and planned inject of a beat id. */
@@ -466,12 +475,11 @@ function renderInjectEditor(project, item) {
   const ai = isLLMAvailable();
   const status = item.stimulus ? sbStimulusStatus(project, item.stimulus) : null;
   const phase = sbMainBlockAt(storyboard, item.time);
-  const cellSelect = `<select data-ds-cell aria-label="Recipient cell" ${readOnly}>${sbOption('', 'Unassigned', item.cell_id)}${sbOption(SB_ALL_CELLS, 'All cells', item.cell_id)}${project.cells.map((cell) => sbOption(cell.id, cell.name, item.cell_id)).join('')}</select>`;
+  const recipients = `<div class="sb-mini-field ds-to">To${renderRecipientPicker(project, item.key, item.cell_id, readOnly)}</div>`;
   const head = `<div class="bottom-editor-head" style="--clip-color:${sbChannelColor(item.channel)}">
       <span class="sb-status is-${item.status}">${escapeHtml(status?.label || (item.kind === 'beat' ? 'Planned' : 'Manual'))}</span>
       <label class="be-inline">Time (min) · ${sbFormatOffset(item.time)}<input type="number" min="0" step="1" data-ds-time value="${item.time}" ${readOnly}></label>
       <span class="be-phase">Phase: <b>${escapeHtml(phase?.title || '-')}</b></span>
-      <label class="be-inline">To ${cellSelect}</label>
       <span class="be-actions">
         ${item.kind === 'beat' ? `<button class="sb-icon-btn ${item.beat.main ? 'is-on' : ''}" data-tab-action="ds-main" title="${item.beat.main ? 'Key stimulus: it frames the story (click to unmark)' : 'Mark as a key stimulus that frames the story'}" ${readOnly}>${sbUiIcon('star', 15)}</button>` : ''}
         ${item.stimulus ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} Full editor</button>` : ''}
@@ -486,6 +494,7 @@ function renderInjectEditor(project, item) {
     return `${head}
       <div class="bottom-editor-body ds-editor-body">
         <div class="ds-fields">
+          ${recipients}
           <label class="sb-mini-field">Channel<select data-ds-beat="channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select></label>
           ${templates.length ? `<label class="sb-mini-field">Outlet<select data-ds-beat="template_id" ${readOnly}>${sbOption('', 'Default', beat.template_id)}${templates.map(([key, value]) => sbOption(key, value.label || key, beat.template_id)).join('')}</select></label>` : ''}
           <label class="sb-mini-field">From<select data-ds-beat="cast_id" ${readOnly}>${sbOption('', '- Sender role -', beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, `${cast.label}${cast.actor_id && getActor(cast.actor_id) ? ` (${getActor(cast.actor_id).name})` : ''}`, beat.cast_id)).join('')}</select></label>
@@ -505,6 +514,7 @@ function renderInjectEditor(project, item) {
   return `${head}
     <div class="bottom-editor-body ds-editor-body">
       <div class="ds-fields">
+        ${recipients}
         <label class="sb-mini-field">Channel<input type="text" value="${escapeAttribute(channelLabel(stimulus.channel))}" disabled></label>
         <label class="sb-mini-field">From<select data-ds-stim="actor_id" ${readOnly}>${project.actors.map((actor) => sbOption(actor.id, `${actor.name} · ${roleLabel(actor.role)}`, stimulus.actor_id)).join('')}</select></label>
         <label class="sb-mini-field ds-title">Title<input type="text" data-ds-stim="name" value="${escapeAttribute(stimulus.name || '')}" placeholder="${escapeAttribute(sbStimulusLabel(stimulus))}" ${readOnly}></label>
@@ -1373,10 +1383,15 @@ function tabBindInputs(root) {
     detailed.playhead = sbInt(input.value, item.time, 0, SB_MAX_DURATION);
     App.render();
   }));
-  root.querySelectorAll('[data-ds-cell]').forEach((select) => select.addEventListener('change', () => {
-    const item = selected();
-    if (!item) return;
-    dsMoveItem(project, item, item.time, select.value || 'none');
+  root.querySelectorAll('[data-rcpt]').forEach((group) => group.addEventListener('change', (event) => {
+    const item = tabItemByKey(project, group.dataset.rcpt);
+    if (!item || sbReadOnly()) return;
+    const box = event.target;
+    let value;
+    // Unticking "All cells" keeps every cell ticked, ready to untick some.
+    if (box.value === SB_ALL_CELLS) value = box.checked ? SB_ALL_CELLS : sbJoinRecipients(project, project.cells.map((cell) => cell.id));
+    else value = sbJoinRecipients(project, [...group.querySelectorAll('input:checked')].map((input) => input.value).filter((id) => id !== SB_ALL_CELLS));
+    dsMoveItem(project, item, item.time, value || 'none');
     App.render();
   }));
   root.querySelectorAll('[data-ds-stim]').forEach((input) => input.addEventListener('change', () => {

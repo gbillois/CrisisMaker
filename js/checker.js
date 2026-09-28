@@ -651,7 +651,7 @@ Response format (strict JSON):
 
         const cellMap = {};
         (sc.cells || []).forEach(cell => { cellMap[cell.id] = cell.name; });
-        if (typeof SB_ALL_CELLS !== 'undefined') cellMap[SB_ALL_CELLS] = 'All cells';
+        if (typeof sbRecipientName === 'function') stimuli.forEach(s => { if (s.cell_id && !cellMap[s.cell_id]) cellMap[s.cell_id] = sbRecipientName(sc, s.cell_id); });
         const hasRecipients = stimuli.some(s => cellMap[s.cell_id]);
         const colKeys = hasRecipients ? ['timestamp', 'phase', 'sender', 'recipient', 'channel', 'content', 'type'] : ['timestamp', 'phase', 'sender', 'channel', 'content', 'type'];
         const header = 'LINE | ' + colKeys.map(k => CHECKER_COLUMN_LABELS[k]().toUpperCase()).join(' | ');
