@@ -36,10 +36,15 @@ function agentNormalizeResponse(value) {
   ToolValidator.validate(value, schema, 'response');
   return value;
 }
+/* A reply cut at the token limit: the agent retries with a smaller step. */
+function agentTruncated(error) {
+  return error?.code === 'truncated';
+}
 function agentFailureMessage(error) {
   // Provider errors may contain URLs, payloads or headers. Do not log them.
   if (error instanceof AgentValidationError) return error.message;
-  if (error instanceof SyntaxError) return 'The provider returned malformed JSON.';
+  if (agentTruncated(error)) return 'The AI reply was cut off at its length limit. Ask for a smaller change, for example one inject at a time.';
+  if (error instanceof SyntaxError) return 'The AI reply was not valid JSON. Retry, or choose a more capable model in Settings.';
   return 'AI request or tool failed. Check the existing AI connection settings and retry. Completed edits are recoverable with Undo.';
 }
 function agentAwait(promise, signal, timeoutMs = 90000) {
@@ -54,7 +59,7 @@ function agentAwait(promise, signal, timeoutMs = 90000) {
 }
 class AgentRunner {
   constructor({ request, notify, maxSteps = AGENT_MAX_STEPS } = {}) {
-    this.request = request || ((system, user, signal) => AITextGenerator.generate('agent', system, user, true, 4000, { signal, strictJSON: true }));
+    this.request = request || ((system, user, signal) => AITextGenerator.generate('agent', system, user, true, 8000, { signal, strictJSON: true }));
     // Re-render wherever the agent is visible: its console, an embedded panel or the assistant.
     this.notify = notify || (() => { if (appState.route === 'agent' || (typeof document !== 'undefined' && document.querySelector('[data-agent-live]')) || (!this.active && !this.busy)) App.render(); });
     this.maxSteps = Math.max(1, Math.min(AGENT_MAX_STEPS, maxSteps));
@@ -191,9 +196,12 @@ class AgentRunner {
           AgentLog.append(this, 'success', `${call.tool}: ${tool.risk === 'read' ? 'reviewed' : 'applied'}`, result);
         } catch (error) {
           this.assertActive();
-          if (!(error instanceof AgentValidationError || error instanceof SyntaxError)) throw error;
+          if (!(error instanceof AgentValidationError || error instanceof SyntaxError || agentTruncated(error))) throw error;
           const message = agentFailureMessage(error);
-          this.history.push({ error: message, instruction: 'Correct your JSON/tool arguments; use the exact schema.' }); this.history = this.history.slice(-8);
+          const instruction = agentTruncated(error)
+            ? 'Your last reply, or the content a tool generated, was cut off at the length limit. Take a smaller step: one tool call on one inject, with fewer or shorter fields.'
+            : 'Correct your JSON/tool arguments; use the exact schema. Reply with exactly ONE JSON object per step: one tool call, the next ones come in later steps.';
+          this.history.push({ error: message, instruction }); this.history = this.history.slice(-8);
           AgentLog.append(this, 'warning', message);
           if (++invalidCount >= 3) throw error;
         }

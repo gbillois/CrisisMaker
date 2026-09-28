@@ -316,7 +316,8 @@
         async generateForStimulus(stimulus, fieldName = null, guidedPrompt = null, options = {}) {
           const actor = getActor(stimulus.actor_id);
           const promptInfo = PromptBuilder.forStimulus(stimulus, actor, appState.scenario, fieldName, guidedPrompt);
-          return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 2000, options);
+          // Room for long content and non-Latin scripts (Japanese or Chinese cost more tokens).
+          return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 4000, options);
         },
         async generateStreaming(channel, systemPrompt, userPrompt = null, onChunk = null, maxTokens = 2000, options = {}) {
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
@@ -542,6 +543,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Azure OpenAI response.', 'Réponse Azure OpenAI vide.', 'Leere Azure-OpenAI-Antwort.'));
             this.lastRawResponse = content;
+            assertCompleteReply(data.choices?.[0]?.finish_reason, 'azure_openai', azure_deployment);
             const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Azure OpenAI.', 'Contenu généré avec Azure OpenAI.', 'Inhalt mit Azure OpenAI generiert.'), 'success');
             return parsed;
@@ -575,6 +577,7 @@
               ), { operation: 'Call Anthropic', provider: 'anthropic', model: ai_model, code: data.stop_reason || '', detail: JSON.stringify(data.content || []) });
             }
             this.lastRawResponse = text;
+            assertCompleteReply(data.stop_reason, 'anthropic', ai_model);
             const parsed = options.strictJSON ? parseStrictLLMJson(text) : parseLLMJson(text);
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');
             return parsed;
@@ -600,6 +603,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt(`Empty ${label} response.`, `Réponse ${label} vide.`, `Leere ${label}-Antwort.`));
             this.lastRawResponse = content;
+            assertCompleteReply(data.choices?.[0]?.finish_reason, ai_provider, ai_model);
             const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt(`Content generated with ${label}.`, `Contenu généré avec ${label}.`, `Inhalt mit ${label} generiert.`), 'success');
             return parsed;
@@ -625,6 +629,7 @@
             const content = data.choices?.[0]?.message?.content;
             if (!content) throw new Error(tt('Empty Mistral response.', 'Réponse Mistral vide.', 'Leere Mistral-Antwort.'));
             this.lastRawResponse = content;
+            assertCompleteReply(data.choices?.[0]?.finish_reason, 'mistral', ai_model);
             const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Mistral.', 'Contenu généré avec Mistral.', 'Inhalt mit Mistral generiert.'), 'success');
             return parsed;
@@ -645,6 +650,7 @@
             const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!content) throw new Error(tt('Empty Google Gemini response.', 'Réponse Google Gemini vide.', 'Leere Google Gemini-Antwort.'));
             this.lastRawResponse = content;
+            assertCompleteReply(data.candidates?.[0]?.finishReason, 'google_gemini', ai_model);
             const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Google Gemini.', 'Contenu généré avec Google Gemini.', 'Inhalt mit Google Gemini generiert.'), 'success');
             return parsed;
@@ -675,6 +681,7 @@
             const content = data.message?.content;
             if (!content) throw new Error(tt('Empty Ollama response.', 'Réponse Ollama vide.', 'Leere Ollama-Antwort.'));
             this.lastRawResponse = content;
+            assertCompleteReply(data.done_reason, 'ollama', ai_model);
             const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Ollama.', 'Contenu généré avec Ollama.', 'Inhalt mit Ollama generiert.'), 'success');
             return parsed;
@@ -932,7 +939,43 @@ Return this structure:
       function parseStrictLLMJson(text) {
         let body = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
         if (!body.startsWith('{') && body.includes('{') && body.includes('}')) body = body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1);
-        return JSON.parse(body);
+        try {
+          return JSON.parse(body);
+        } catch (error) {
+          // Several objects in a row (e.g. three tool calls at once) or prose after the object:
+          // keep the first complete object; the agent gets the next ones on its next steps.
+          const first = firstJsonObject(body);
+          if (first) { try { return JSON.parse(first); } catch (_) { /* Report the original error. */ } }
+          throw error;
+        }
+      }
+
+      /* The first balanced {...} of a text, skipping braces inside strings; null when none closes. */
+      function firstJsonObject(text) {
+        const start = text.indexOf('{');
+        if (start < 0) return null;
+        let depth = 0, inString = false, escaped = false;
+        for (let i = start; i < text.length; i++) {
+          const char = text[i];
+          if (inString) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === '"') inString = false;
+          } else if (char === '"') inString = true;
+          else if (char === '{') depth++;
+          else if (char === '}' && --depth === 0) return text.slice(start, i + 1);
+        }
+        return null;
+      }
+
+      /* A reply cut at the token limit is never valid JSON: say so instead of "malformed JSON". */
+      function assertCompleteReply(reason, provider, model) {
+        if (!['max_tokens', 'length', 'MAX_TOKENS'].includes(reason)) return;
+        throw CrisisError.create(tt(
+          'The AI reply was cut off at its length limit. Ask for a smaller change, for example one inject at a time.',
+          'La réponse de l\'IA a été coupée à sa limite de longueur. Demandez un changement plus petit, par exemple un inject à la fois.',
+          'Die KI-Antwort wurde an ihrer Längengrenze abgeschnitten. Bitten Sie um eine kleinere Änderung, zum Beispiel ein Inject nach dem anderen.'
+        ), { operation: 'Read the AI reply', provider, model, code: 'truncated' });
       }
 
       function parseLLMJson(text) {
@@ -969,7 +1012,7 @@ Return this structure:
             language: (() => { const l = scenario.settings.inject_language || scenario.settings.language || 'en'; return { fr: 'French', de: 'German', en: 'English', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[l] || 'English'; })()
           };
           const eventDescription = stimulus.fields.subject || stimulus.fields.headline || stimulus.fields.thread_title || stimulus.fields.text || stimulus.fields.title || 'New development in the cyber crisis';
-          const guidedSuffix = guidedPrompt ? ` Additional instruction from the operator: ${guidedPrompt}` : '';
+          const guidedSuffix = guidedPrompt ? ` Additional instruction from the operator (it takes precedence over the defaults above, the language included): ${guidedPrompt}` : '';
           let result;
           switch (stimulus.channel) {
             case 'article_press': {

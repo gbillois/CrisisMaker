@@ -398,7 +398,7 @@ function createAgentToolRegistry() {
       const before = JSON.stringify(stimulus);
       // Photos, logos and media stay out of the prompt (they can weigh megabytes).
       const textFields = Object.fromEntries(Object.entries(stimulus.fields || {}).filter(([key]) => !SB_MEDIA_FIELD.test(key) && !/url|_data|audio|video|image/.test(key)));
-      const result = await AITextGenerator.generateForStimulus(stimulus, null, agentRedact(`${args.instructions}\nCurrent content: ${JSON.stringify(textFields)}`), { signal: run.controller.signal, quiet: true, strictJSON: true, promptFilter: agentRedact });
+      const result = await AITextGenerator.generateForStimulus(stimulus, null, agentRedact(`${args.instructions}\nCurrent content: ${JSON.stringify(textFields)}`), { signal: run.controller.signal, quiet: true, strictJSON: true, promptFilter: agentRedact, maxTokens: 8000 });
       run.assertActive();
       if (getStimulus(args.id) !== stimulus || JSON.stringify(stimulus) !== before) throw new AgentValidationError('Stimulus changed during generation; inspect it again.');
       ToolValidator.validate(result, fields);

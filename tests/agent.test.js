@@ -296,3 +296,23 @@ test('assistant run: answers from the data and applies a change through the agen
   assert.equal(h.run('appState.scenario.scenario.objectives'), 'Decide on isolation');
   assert.equal(r.kind, 'assistant'); assert.equal(r.mode, 'agent');
 });
+
+test('replies cut at the token limit or holding several objects: clear error, first object kept, smaller retry', async () => {
+  const h = harness();
+  // Several tool calls in one reply: the first complete object is used.
+  const two = JSON.stringify(call('getStimulus', { id: 'a' })) + '\n' + JSON.stringify(call('getStimulus', { id: 'b{"}' }));
+  assert.equal(h.json(`parseStrictLLMJson(${JSON.stringify(two)})`).arguments.id, 'a');
+  assert.throws(() => h.run(`parseStrictLLMJson('{"type":"final","summary":"cut')`), { name: 'SyntaxError' });
+  // A reply stopped by the token limit says so, whatever the provider.
+  for (const [provider, body] of [['anthropic', { content: [{ type: 'text', text: '{"type":"final","summary":"cu' }], stop_reason: 'max_tokens' }], ['openai', { choices: [{ message: { content: '{"type":"fi' }, finish_reason: 'length' }] }], ['google_gemini', { candidates: [{ content: { parts: [{ text: '{"a' }] }, finishReason: 'MAX_TOKENS' }] }]]) {
+    h.run(`appState.scenario.settings.ai_provider = '${provider}'; appState.scenario.settings.ai_model = 'test-model';`);
+    h.context.fetch = async () => ({ ok: true, json: async () => body });
+    await assert.rejects(h.run(`AITextGenerator.generate('agent', 'system', 'user', true, 8000, { strictJSON: true })`), (error) => error.code === 'truncated' && /cut off/.test(error.message));
+  }
+  // The agent retries with a smaller step instead of failing.
+  h.run(`globalThis.cutOnce = true; globalThis.runner = new AgentRunner({ notify: () => {}, request: async () => { if (cutOnce) { cutOnce = false; throw CrisisError.create('cut', { code: 'truncated' }); } return ${JSON.stringify(JSON.stringify(final))}; } });`);
+  const r = h.context.runner;
+  await r.start({ objective: 'Translate the first three injects into Japanese' });
+  assert.equal(r.status, 'complete');
+  assert.ok(r.history.some((entry) => /smaller step/.test(entry.instruction || '')));
+});
