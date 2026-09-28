@@ -384,6 +384,8 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
     const name = names.find((candidate) => typeof generated[candidate] === 'string' && generated[candidate].trim() && !allowed.has(candidate));
     if (name) clean[key] = scrub(generated[name]);
   }
+  // The time set from the simulated clock (HH:MM, shown in a small box) is kept over a long date text.
+  if (typeof clean.time === 'string' && /^\d{1,2}:\d{2}$/.test(String(stimulus.fields?.time || '')) && !/^\d{1,2}:\d{2}$/.test(clean.time.trim())) delete clean.time;
   if (!Object.keys(clean).length) throw new AgentValidationError('The AI returned no field of this template.');
   saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Storyline: adapted to scenario change' : 'Storyline: AI generation');
   Object.assign(stimulus.generated_text, clean);

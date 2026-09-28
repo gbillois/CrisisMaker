@@ -455,7 +455,10 @@
       /* All the PNG exports go through here, so every image carries the bundled webfonts. */
       async function renderNodeToPng(node, options) {
         const fontEmbedCSS = await ExportFonts.cssFor(node);
-        return htmlToImage.toPng(node, { ...options, fontEmbedCSS });
+        // A still image: scrolling TV tickers are frozen with their text in view (they start off-screen).
+        node.classList.add('is-exporting');
+        try { return await htmlToImage.toPng(node, { ...options, fontEmbedCSS }); }
+        finally { node.classList.remove('is-exporting'); }
       }
 
       const ExportEngine = {
@@ -523,11 +526,29 @@
               appState.ui.exportAllProgress = { current: i + 1, total: stimuli.length, isVideo };
               if (typeof App !== 'undefined') App.render();
               try {
+                let still = !isVideo;
                 if (isVideo) {
-                  const { blob: clipBlob } = await this.renderVideoStimulusClip(stimulus);
-                  zip.file(this.filenameForStimulus(stimulus, 'webm'), clipBlob);
-                } else {
+                  try {
+                    const { blob: clipBlob } = await this.renderVideoStimulusClip(stimulus);
+                    zip.file(this.filenameForStimulus(stimulus, 'webm'), clipBlob);
+                  } catch (videoError) {
+                    // A video this browser cannot read or encode: the inject is still exported, as a
+                    // still image of its screen (headline, ticker), and the reason is listed.
+                    CrisisError.log(videoError, { operation: 'Render video stimulus for ZIP export', detail: `Stimulus id=${stimulus?.id || 'unknown'}` });
+                    failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${tt('video not rendered, exported as a still image', 'vidéo non rendue, exportée en image fixe', 'Video nicht gerendert, als Standbild exportiert')} (${videoError?.message || videoError})`);
+                    still = true;
+                  }
+                }
+                if (still) {
                   sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
+                  // The still image of a video inject: its video is replaced by a dark frame, which the
+                  // image renderer can draw (an unreadable video makes it fail).
+                  if (isVideo) sandbox.querySelectorAll('video').forEach((video) => {
+                    const frame = document.createElement('div');
+                    frame.className = video.className;
+                    frame.style.cssText = `${video.getAttribute('style') || ''};background:#0b1220;`;
+                    video.replaceWith(frame);
+                  });
                   const node = sandbox.firstElementChild;
                   if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
                   let dataUrl = await renderNodeToPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
@@ -538,7 +559,8 @@
                 // One inject that cannot be rendered (a video under file://, a broken image) is
                 // listed in export_errors.txt; the others are still exported.
                 CrisisError.log(error, { operation: 'Render stimulus for ZIP export', detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}` });
-                failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${error?.message || error}`);
+                const reason = error?.message || (typeof Event !== 'undefined' && error instanceof Event ? tt(`a resource of the inject could not be loaded (${error.type})`, `une ressource de l'inject n'a pas pu être chargée (${error.type})`, `eine Ressource des Injects konnte nicht geladen werden (${error.type})`) : String(error));
+                failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${reason}`);
                 skipped.push(this.skippedLabel(stimulus));
               }
             }
