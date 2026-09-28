@@ -1,6 +1,6 @@
       const initialScenario = loadInitialScenario();
       const appState = {
-        route: 'project',
+        route: 'builder',
         selectedStimulusId: null,
         stimulusModalId: null,
         slideshowIndex: 0,
@@ -115,6 +115,7 @@
           bindGlobalEvents();
           bindCheckerEvents();
           bindAgentEvents();
+          bindScenarioBuilderEvents();
           bindStimuliSplitters();
           bindStimulusModalSplitter();
           mountDebriefEditor();
@@ -606,7 +607,7 @@
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = null;
-              appState.route = 'project';
+              appState.route = 'builder';
               appState.launchScreenOpen = false;
               saveLocal(false);
               App.render();
@@ -621,7 +622,7 @@
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
-              appState.route = 'project';
+              appState.route = 'builder';
               appState.launchScreenOpen = false;
               saveLocal(false);
               App.render();

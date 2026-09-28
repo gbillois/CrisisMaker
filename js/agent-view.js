@@ -3,6 +3,7 @@ function renderExercisePlan() {
   return `<article class="card"><h3>${tt('Exercise plan', 'Plan de l’exercice', 'Übungsplan')}</h3>
     <label class="field">${tt('Exercise objectives', 'Objectifs de l’exercice', 'Übungsziele')}<textarea data-bind="scenario.objectives" placeholder="${tt('Decisions and capabilities to test', 'Décisions et capacités à tester', 'Zu testende Entscheidungen und Fähigkeiten')}">${escapeHtml(s.objectives || '')}</textarea></label>
     <label class="field">${tt('Narrative arc', 'Arc narratif', 'Handlungsbogen')}<textarea data-bind="scenario.narrative_arc">${escapeHtml(s.narrative_arc || '')}</textarea></label>
+    <p class="subtle">${tt('Timed phases come from the main storyline of the Scenario Builder.', 'Les phases minutées proviennent de la trame principale du Scenario Builder.', 'Zeitliche Phasen stammen aus dem Hauptstrang des Scenario Builders.')} <button class="btn btn-ghost btn-xs" data-route="builder">Scenario Builder →</button></p>
     ${(s.phases || []).length ? `<div class="agent-phases">${s.phases.map(p => `<div><strong>T+${escapeHtml(p.start_minutes)}–${escapeHtml(p.end_minutes)} · ${escapeHtml(p.name)}</strong><p>${escapeHtml(p.purpose)}</p></div>`).join('')}</div>` : `<p class="subtle">${tt('The agent can organize timed phases from your brief.', 'L’agent peut organiser les phases à partir de votre brief.', 'Der Agent kann zeitliche Phasen aus Ihrem Briefing erstellen.')}</p>`}
   </article>`;
 }
@@ -43,6 +44,6 @@ function bindAgentEvents() {
   }));
   if (run?.active || run?.busy) {
     if (appState.route !== 'agent') document.querySelector('main.content')?.setAttribute('inert', '');
-    document.querySelectorAll('#app input, #app textarea, #app select, #app [data-action]').forEach(element => { element.disabled = true; });
+    document.querySelectorAll('#app input, #app textarea, #app select, #app [data-action], #app [data-sb-action]').forEach(element => { element.disabled = true; });
   }
 }

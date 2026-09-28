@@ -785,6 +785,13 @@ Response format (strict JSON):
           `- ${a.name} (${roleLabel(a.role)}, ${a.organization || ''})`
         ).join('\n');
 
+        function checkerSerializeStoryboard(project) {
+          const storyboard = project.storyboard;
+          if (!storyboard?.blocks?.length || typeof sbSortedBlocks !== 'function') return '';
+          const rows = sbSortedBlocks(storyboard).map((block) => `- [${sbTrack(storyboard, block.track_id)?.name || 'Track'}] H+${Math.floor(block.start_minutes / 60)}:${String(block.start_minutes % 60).padStart(2, '0')} → H+${Math.floor(sbBlockEnd(block) / 60)}:${String(sbBlockEnd(block) % 60).padStart(2, '0')} ${block.title} (${block.stimuli_target} planned injects): ${String(block.brief || block.narrative || '').slice(0, 240)}`);
+          return `\nSCENARIO BUILDER STORYBOARD (${storyboard.blocks.length} blocks, main storyline + parallel workstreams):\n${rows.join('\n')}\n`;
+        }
+
         const serialized = `SCENARIO: ${sc.name || 'Untitled'}
 TYPE: ${sc.scenario?.type || '—'}
 CLIENT: ${sc.client?.name || '—'} (${sc.client?.sector || '—'})
@@ -792,7 +799,7 @@ CONTEXT: ${sc.scenario?.summary || '—'}
 OBJECTIVES: ${sc.scenario?.objectives || '—'}
 NARRATIVE ARC: ${sc.scenario?.narrative_arc || '—'}
 DURATION: H+0 to H+${Math.round(maxOffset / 60)}h (${stimuli.length} stimuli)
-
+${checkerSerializeStoryboard(sc)}
 ACTORS (${actors.length}):
 ${actorList || 'None'}
 
