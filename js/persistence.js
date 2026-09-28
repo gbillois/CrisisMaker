@@ -493,7 +493,7 @@
         /* Play order number and time, so the files sort in the order the pilot sends them. */
         playPrefix(stimulus) {
           const numbers = ExerciseModel.numbers(appState.scenario);
-          const width = Math.max(2, String(numbers.size).length);
+          const width = Math.max(2, String(ExerciseModel.numberTop(numbers)).length);
           const number = String(numbers.get(stimulus.id) || 0).padStart(width, '0');
           const minutes = Math.max(0, Math.round(Number(stimulus.timestamp_offset_minutes) || 0));
           return `${number}_H+${String(Math.floor(minutes / 60)).padStart(2, '0')}-${String(minutes % 60).padStart(2, '0')}`;

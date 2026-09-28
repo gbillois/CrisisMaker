@@ -32,7 +32,8 @@
      - The phase of an inject is its linked phase when it is on the main track,
        otherwise the phase at its time.
      - Written injects are numbered #01..#NN in play order (time, then creation);
-       planned injects have no number until they are written.
+       planned injects have no number until they are written. Once the run starts
+       the numbers are frozen; an inject added later takes the next free number.
      - Two statuses, never mixed: `run` (planned / draft / ready / sent: the pilot's
        view) and `sync` (in sync, outdated, time changed, orphan, locked, manual edit,
        unlinked: the designer's view).
@@ -64,6 +65,7 @@ const ExerciseModel = {
     const phases = storyboard ? sbMainBlocks(storyboard) : [];
     const numbers = this.numbers(project);
     const total = numbers.size;
+    const top = this.numberTop(numbers);
     // Sync statuses cost hashing: computed only when a view reads inject.sync.
     const injects = (storyboard ? sbExerciseItems(project, { status: false }) : this.stimuliOnly(project)).map((item) => {
       const stimulus = item.stimulus || null;
@@ -82,7 +84,7 @@ const ExerciseModel = {
         channel: stimulus?.channel || item.channel,
         title: item.title, intent: item.intent,
         run: this.runStatus(stimulus),
-        number, numberLabel: number ? this.numberLabel(number, total) : ''
+        number, numberLabel: number ? this.numberLabel(number, top) : ''
       };
       let sync;
       Object.defineProperty(inject, 'sync', {
@@ -137,12 +139,26 @@ const ExerciseModel = {
   },
 
   // ── Numbers and statuses ────────────────────────────────────────────────────
-  /* #01..#NN for written injects in play order; shared by Play, the ZIP and the chronogram. */
+  /* #01..#NN for written injects in play order; shared by Play, the ZIP and the chronogram.
+     Frozen once the run starts (play.numbers): an inject added later takes the next free
+     number, so the log and the printed stimuli keep matching. */
   numbers(project = appState.scenario) {
     const sorted = project === appState.scenario && typeof getSortedStimuli === 'function'
       ? getSortedStimuli()
       : [...(project.stimuli || [])].sort((a, b) => a.timestamp_offset_minutes - b.timestamp_offset_minutes);
-    return new Map(sorted.map((stimulus, index) => [stimulus.id, index + 1]));
+    const frozen = project.play?.numbers && typeof project.play.numbers === 'object' ? project.play.numbers : null;
+    if (!frozen) return new Map(sorted.map((stimulus, index) => [stimulus.id, index + 1]));
+    const valid = (value) => Number.isInteger(value) && value > 0;
+    // Numbers of deleted injects are never given again.
+    let max = Math.max(0, ...Object.values(frozen).filter(valid));
+    const numbers = new Map();
+    for (const stimulus of sorted) if (valid(frozen[stimulus.id])) numbers.set(stimulus.id, frozen[stimulus.id]);
+    for (const stimulus of sorted) if (!numbers.has(stimulus.id)) numbers.set(stimulus.id, ++max);
+    return numbers;
+  },
+  /* The highest number, for the label width (#01 or #001). */
+  numberTop(numbers) {
+    return Math.max(numbers.size, 0, ...numbers.values());
   },
   numberLabel(number, total) {
     return `#${String(number).padStart(Math.max(2, String(total).length), '0')}`;

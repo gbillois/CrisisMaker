@@ -146,13 +146,17 @@ The menu follows the design workflow, from left to right:
    injects reach each cell, with preview).
 
 7. **Play**: runs the exercise live, for its pilot.
-   - **Generate all stimuli**: a ZIP with every stimulus numbered in play order
-     (`01_H+00-00_…`), the chronogram as a CSV for Excel, and the project file.
+   - The stimuli to send come from the Injects library (**Download all stimuli**: a ZIP
+     with every stimulus numbered in play order, `01_H+00-00_…`, the chronogram as a CSV
+     for Excel, and the project file).
    - A **control bar** that stays visible: Start/Pause (Space), clock shifts (±1, ±5
      min), speed (real time, or faster for rehearsals), **Add inject now**, the
      exercise time and simulated time, the current phase and time left, the next
      inject with its countdown, sent/to send/late counters, progress over the phases,
      and **Reset play** (two confirmations: clock, sent statuses and log).
+   - **Add inject now** creates a blank inject at the current time with the next free
+     number; the other injects keep theirs. When the exercise time is over, the clock
+     pauses once and the log records it.
    - Smart filters: to send now, late, next 15 minutes, to validate, sent; search,
      phase, cell, channel, sender; sort; follow the clock; show planned injects.
    - A vertical **chronogram** by phase with a moving NOW line: each inject shows its
@@ -209,7 +213,9 @@ exercise from, over the project data as it is saved (no separate copy):
   role, channel, title, intent); **cells**; **roles** and the **actors** who play them;
   **injects** (the written stimuli, linked to their planned inject); the **run** (Play).
 - **Shared rules**: an inject's phase is its linked phase, else the phase at its time;
-  written injects are numbered #01..#NN in play order (Play, ZIP names, chronogram);
+  written injects are numbered #01..#NN in play order (Play, ZIP names, chronogram),
+  frozen once the run starts (an inject added during play takes the next number, until
+  Reset play);
   two statuses never mixed, `run` (planned, draft, validated, sent) and `sync` (in
   sync, outdated, time changed, orphan, locked, manual edit, unlinked); the sender is
   the actor who signs a written inject, else the role of the planned one.
