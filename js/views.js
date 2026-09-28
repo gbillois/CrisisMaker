@@ -163,6 +163,7 @@
                 <a class="brand-lockup" href="https://www.wavestone.com/" target="_blank" rel="noopener noreferrer" title="Wavestone">
                   ${wavestoneLogo()}
                   <span class="brand-divider" aria-hidden="true"></span>
+                  ${crisisMakerIcon(26, 'cm-icon brand-mark')}
                   <span class="brand-product">Crisis<b>Maker</b></span>
                 </a>
                 <div class="brand-project">
@@ -225,6 +226,7 @@
             ${appState.historyModalStimulusId ? renderHistoryModal(getStimulus(appState.historyModalStimulusId)) : ''}
             ${appState.stimulusModalId ? renderStimulusModal(getStimulus(appState.stimulusModalId)) : ''}
             ${appState.chronogramImport ? renderChronogramImportModals() : ''}
+            ${renderAssistant()}
           </div>
         `;
       }

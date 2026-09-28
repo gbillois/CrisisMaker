@@ -25,7 +25,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       { type: 'tool_call', tool: 'runConsistencyCheck', arguments: {}, reason: 'Re-analyze the improvement' },
       { type: 'final', summary: 'Strengthened the isolation dilemma.', issues: [], changes: ['Added CEO decision, deadline and consequences'] }
     ];
-    const response = JSON.parse(route.request().postData()).messages[0].content.includes('You are the Crisis Reviewer Agent.') ? reviewer[Math.min(reviewStep++, reviewer.length - 1)] : responses[Math.min(step++, responses.length - 1)];
+    const system = JSON.parse(route.request().postData()).messages[0].content;
+    // Assistant chat: a question answered from the data, then a change request.
+    const assistant = input.objective.includes('Rename the exercise')
+      ? (input.step === 1 ? { type: 'tool_call', tool: 'updateExerciseObjectives', arguments: { objectives: 'Chat objective' }, reason: 'Apply the requested change' } : { type: 'final', summary: 'Done:\n- objectives updated', issues: [], changes: ['Objectives'] })
+      : (input.step === 1 ? { type: 'tool_call', tool: 'getStoryboard', arguments: {}, reason: 'Read the storyline' } : { type: 'final', summary: 'The exercise has one inject so far.', issues: [], changes: [] });
+    const response = system.includes('You are the CrisisMaker Assistant') ? assistant : system.includes('You are the Crisis Reviewer Agent.') ? reviewer[Math.min(reviewStep++, reviewer.length - 1)] : responses[Math.min(step++, responses.length - 1)];
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(response) } }] }) });
   });
   await page.goto(process.argv[2] || 'http://127.0.0.1:8765/', { waitUntil: 'load' });
@@ -80,6 +85,29 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   page.once('dialog', dialog => dialog.accept());
   await page.locator('[data-agent-action="undo"]').click();
   assert.equal(await page.evaluate(() => appState.scenario.stimuli[0].fields.body), built.stimuli[0].fields.body);
+
+  // Assistant: floating button, suggestions, a question, then a change and its undo.
+  await page.locator('.nav-icon-btn[data-route="project"]').click();
+  await page.locator('.assistant-fab').click();
+  await page.locator('.assistant-panel').waitFor();
+  assert.ok(await page.locator('.assistant-chip').count() >= 6);
+  await page.locator('[data-assistant-input]').fill('How many injects are there?');
+  await page.locator('[data-assistant-input]').press('Enter');
+  await page.waitForFunction(() => assistantState().messages.length === 2 && !crisisAgentRunner.active);
+  assert.ok((await page.locator('.assistant-thread').innerText()).includes('one inject so far'));
+  await page.locator('[data-assistant-input]').fill('Rename the exercise objectives');
+  await page.locator('.assistant-send').click();
+  await page.waitForFunction(() => assistantState().messages.length === 4 && !crisisAgentRunner.active);
+  assert.equal(await page.evaluate(() => appState.scenario.scenario.objectives), 'Chat objective');
+  assert.ok((await page.locator('.assistant-thread').innerText()).includes('objectives updated'));
+  await page.screenshot({ path: '/tmp/crisismaker-assistant.png' });
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('.assistant-panel [data-agent-action="undo"]').click();
+  assert.notEqual(await page.evaluate(() => appState.scenario.scenario.objectives), 'Chat objective');
+  await page.locator('[data-assistant="clear"]').click();
+  assert.equal(await page.evaluate(() => assistantState().messages.length), 0);
+  await page.locator('[data-assistant="close"]').click();
+  assert.equal(await page.locator('.assistant-panel').count(), 0);
   assert.deepEqual(errors, []);
-  await browser.close(); console.log('Browser smoke passed: build, content sanitization, normal UI, responsive layout, reviewer approval, undo.');
+  await browser.close(); console.log('Browser smoke passed: build, content sanitization, normal UI, responsive layout, reviewer approval, undo, assistant chat.');
 })().catch(error => { console.error(error); process.exit(1); });

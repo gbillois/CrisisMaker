@@ -171,6 +171,21 @@ operations), `js/scenario-sync.js` (links, generation pipeline, sync),
 modals and events), `js/scenario-tabs.js` (Main storyline, Cells & actors, Detailed
 storyline and Summary tabs).
 
+## Assistant
+
+A support chat sits at the bottom right of every tab (the round button). Ask a
+question about the exercise ("which cell receives the fewest injects?", "which
+objectives are not covered?") or ask for a change ("add a journalist to the cast",
+"make the second phase more intense"). Suggestions are offered on an empty
+conversation. The assistant runs on the same agent and tools as the rest of the
+app: it reads the whole exercise to answer, applies changes with the agent tools,
+asks before broad changes, can ask you a clarifying question, and offers **Undo
+these changes** after a run that changed something. The conversation stays in the
+current tab session; **Clear the conversation** starts over.
+
+The CrisisMaker icon (`img/crisismaker-icon.svg`, also used as the favicon and in the
+header) draws the letters from the bundled Poppins ExtraBold (SIL Open Font License).
+
 ## Agent mode
 
 The agent is a core component rather than a tab. Tabs start it where the content
@@ -215,7 +230,7 @@ Existing project files remain compatible, including projects with no actors.
 Implementation is separated into `js/agent-prompts.js` (editable builder/designer/reviewer
 instructions), `js/agent-tools.js` (30 controlled tools, including the exercise frame, main storyline,
 cells, cast and per-cell inject plan, validation and bounded context), `js/agent-runner.js` (execution, approvals, cancellation and checkpoint),
-and `js/agent-view.js` (UI). Tools reuse existing actor/stimulus constructors,
+and `js/agent-view.js` (UI) and `js/assistant.js` (the support chat). Tools reuse existing actor/stimulus constructors,
 stimulus version history, generation prompts, provider transport and persistence.
 Structural checks flag missing data, timing gaps and duplicate content; the agent's
 critical content review evaluates decisions, pressure, realism and objectives.

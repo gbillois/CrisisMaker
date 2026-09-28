@@ -260,3 +260,36 @@ test('builder tools set the frame, build the storyline, cells, cast and a per-ce
   assert.equal(context.storyboard.cells.length, 3);
   assert.ok(context.storyboard.blocks[1].planned_per_cell[decision.id] >= 1);
 });
+
+test('assistant: chat markup, escaping, suggestions and a bounded conversation for the agent', async () => {
+  const h = harness();
+  h.run('appState.launchScreenOpen = false');
+  assert.equal(h.run('renderAssistant().includes("assistant-fab")'), true);
+  assert.equal(h.run('renderAssistant().includes("assistant-panel")'), false, 'closed by default');
+  h.run(`assistantState().open = true`);
+  const empty = h.run('renderAssistant()');
+  for (const marker of ['assistant-panel', 'data-assistant-suggest', 'data-assistant-input', 'data-assistant="close"', 'cm-icon']) assert.ok(empty.includes(marker), marker);
+  assert.ok(!empty.includes('data-assistant="clear"'), 'nothing to clear yet');
+  h.context.chat = [{ role: 'user', text: '<img src=x onerror=alert(1)>' }, { role: 'assistant', text: 'Two cells:\n- Decision\n- IT', changes: 1, actions: ['updateStoryboardBlock: rename'] }];
+  h.run('assistantState().messages = chat');
+  const thread = h.run('renderAssistant()');
+  assert.ok(!thread.includes('<img src=x'), 'user text is escaped');
+  assert.ok(thread.includes('<li>Decision</li>') && thread.includes('1 change(s) applied') && thread.includes('data-assistant="clear"'));
+  h.context.long = Array.from({ length: 30 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', text: `message ${i} `.repeat(80) }));
+  const objective = h.run('assistantObjective(long)');
+  assert.ok(objective.length <= 8000 && objective.includes('Latest request from the user:\nmessage 29'));
+  assert.ok(h.run(`AGENT_KINDS.includes('assistant') && AgentPrompts.assistant.includes('CrisisMaker Assistant')`));
+});
+
+test('assistant run: answers from the data and applies a change through the agent tools', async () => {
+  const h = harness();
+  const r = runner(h, [call('getExerciseObjectives'), call('updateExerciseObjectives', { objectives: 'Decide on isolation' }), { type: 'final', summary: 'Set the objective.', issues: [], changes: ['Objectives'] }]);
+  h.run(`crisisAgentRunner = runner; appState.scenario.settings.ai_provider = 'openai'; appState.scenario.settings.ai_api_key = 'k'; appState.scenario.settings.ai_model = 'm'; isLLMAvailable = () => true`);
+  await h.run(`assistantSend('Set the objective to isolation')`);
+  const messages = h.json('assistantState().messages');
+  assert.equal(messages.length, 2);
+  assert.equal(messages[1].text, 'Set the objective.');
+  assert.equal(messages[1].changes, 1);
+  assert.equal(h.run('appState.scenario.scenario.objectives'), 'Decide on isolation');
+  assert.equal(r.kind, 'assistant'); assert.equal(r.mode, 'agent');
+});

@@ -1,6 +1,6 @@
 const AGENT_MAX_STEPS = 40;
 const AGENT_MAX_QUESTION_ROUNDS = 2;
-const AGENT_KINDS = ['builder', 'designer', 'reviewer'];
+const AGENT_KINDS = ['assistant', 'builder', 'designer', 'reviewer'];
 const AGENT_CHECKPOINT_KEY = 'crisismaker_agent_checkpoint_v1';
 const AgentLog = {
   append(run, kind, message, detail) {
@@ -55,7 +55,8 @@ function agentAwait(promise, signal, timeoutMs = 90000) {
 class AgentRunner {
   constructor({ request, notify, maxSteps = AGENT_MAX_STEPS } = {}) {
     this.request = request || ((system, user, signal) => AITextGenerator.generate('agent', system, user, true, 4000, { signal, strictJSON: true }));
-    this.notify = notify || (() => { if (appState.route === 'agent' || (typeof document !== 'undefined' && document.querySelector('.agent-panel')) || (!this.active && !this.busy)) App.render(); });
+    // Re-render wherever the agent is visible: its console, an embedded panel or the assistant.
+    this.notify = notify || (() => { if (appState.route === 'agent' || (typeof document !== 'undefined' && document.querySelector('[data-agent-live]')) || (!this.active && !this.busy)) App.render(); });
     this.maxSteps = Math.max(1, Math.min(AGENT_MAX_STEPS, maxSteps));
     this.registry = createAgentToolRegistry();
     this.status = 'idle'; this.step = 0; this.log = []; this.history = []; this.pending = null; this.checkpoint = null;
@@ -117,7 +118,7 @@ class AgentRunner {
     if (appState.ui.generatingField || Object.values(appState.llmState).some(state => state?.loading) || appState.checkerState.analysisLoading) throw new AgentValidationError('Wait for the current AI operation to finish before starting an agent.');
     this.kind = kind; this.mode = mode; this.objective = objective;
     this.status = 'running'; this.busy = true; this.controller = new AbortController(); this.project = appState.scenario;
-    this.step = 0; this.log = []; this.history = []; this.changed = 0; this.pending = null; this.question = null; this.questionRounds = 0;
+    this.step = 0; this.log = []; this.history = []; this.changed = 0; this.pending = null; this.question = null; this.questionRounds = 0; this.final = null;
     this.checkpointRun();
     AgentLog.append(this, 'info', 'Analyzing current exercise. A pre-run checkpoint is available.');
     const runController = this.controller, runProject = this.project;
@@ -150,6 +151,7 @@ class AgentRunner {
             continue;
           }
           if (call.type === 'final') {
+            this.final = { summary: call.summary, issues: call.issues, changes: call.changes };
             this.status = 'complete'; AgentLog.append(this, 'success', call.summary, { issues: call.issues, reportedChanges: call.changes, appliedOperations: this.changed }); return;
           }
           const tool = this.registry.get(call.tool);

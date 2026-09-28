@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="CrisisMaker">
+  <defs><linearGradient id="cm-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a33dc"/><stop offset="1" stop-color="#3a17a8"/></linearGradient></defs>
+  <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#cm-bg)"/>
+  <rect x="2.75" y="2.75" width="94.5" height="94.5" rx="21.25" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="1.5"/>
+  <path fill="#ffffff" d="M32.82 38.15Q37.93 38.15 41.42 40.88Q44.90 43.61 45.91 48.30H37.74Q37.01 46.75 35.71 45.94Q34.41 45.12 32.71 45.12Q30.07 45.12 28.51 47.00Q26.94 48.88 26.94 52.01Q26.94 55.19 28.51 57.07Q30.07 58.94 32.71 58.94Q34.41 58.94 35.71 58.13Q37.01 57.32 37.74 55.77H45.91Q44.90 60.45 41.42 63.18Q37.93 65.91 32.82 65.91Q28.80 65.91 25.70 64.15Q22.60 62.39 20.92 59.24Q19.23 56.08 19.23 52.01Q19.23 47.99 20.92 44.83Q22.60 41.68 25.70 39.92Q28.80 38.15 32.82 38.15Z M79.83 38.42V65.72H72.24V50.66L67.09 65.72H60.74L55.55 50.54V65.72H47.96V38.42H57.14L63.99 56.16L70.69 38.42Z"/>
+  <circle cx="80" cy="20" r="9.5" fill="#04f06a" fill-opacity="0.22"/>
+  <circle cx="80" cy="20" r="6" fill="#04f06a"/>
+</svg>

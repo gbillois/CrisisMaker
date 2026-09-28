@@ -5,11 +5,12 @@ function agentStatusLabels() {
 }
 async function startCrisisAgent({ kind = 'designer', mode = 'agent', objective = '', origin = '' } = {}) {
   const agent = getCrisisAgent();
-  agent.kind = kind; agent.mode = mode; agent.objective = objective; agent.origin = origin; agent.answerDraft = '';
+  if (agent.active || agent.busy) return false;
+  agent.kind = kind; agent.mode = mode; agent.objective = objective; agent.origin = origin; agent.answerDraft = ''; agent.final = null;
   // start() runs synchronously up to its first request, so the panel can show right away.
   const running = agent.start({ kind, mode, objective });
   App.render();
-  try { await running; } catch (error) { pushToast(agentFailureMessage(error), 'error'); App.render(); }
+  try { await running; return true; } catch (error) { pushToast(agentFailureMessage(error), 'error'); App.render(); return false; }
 }
 function renderAgentQuestion(run) {
   if (!run.question) return '';

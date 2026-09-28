@@ -104,6 +104,12 @@ html = html.replace(/^\s*<link rel="preload"[^>]*>\s*$/m, '');
 // Allow data: URIs as a media source so the embedded video plays under the CSP.
 html = html.replace("media-src 'self' blob:", "media-src 'self' blob: data:");
 
+// Inline the CM favicon as a data URI.
+html = html.replace(
+  '<link rel="icon" type="image/svg+xml" href="img/crisismaker-icon.svg">',
+  `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,${readBase64('img/crisismaker-icon.svg')}">`
+);
+
 // Inline the two stylesheets.
 html = html.replace(
   '<link rel="stylesheet" href="css/main.css">',

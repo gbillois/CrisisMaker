@@ -117,6 +117,7 @@
           bindGlobalEvents();
           bindCheckerEvents();
           bindAgentEvents();
+          bindAssistantEvents();
           bindScenarioBuilderEvents();
           bindScenarioTabsEvents();
           bindStimuliSplitters();
