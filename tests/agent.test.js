@@ -501,3 +501,21 @@ test('an inject created for AI writing carries no demo content of its template: 
     if ('date' in fields) assert.equal(fields.date, '27/11/2026 08:45');
   }
 });
+
+test('planned injects: the channel fits the sender (no internal email from a regulator, a bank or the press)', async () => {
+  const h = harness();
+  await execute(h, 'buildMainStoryline', { phases: [{ type: 'trigger', title: 'Detection', start_minutes: 0, duration_minutes: 60, brief: 'Alerts.' }] });
+  await execute(h, 'upsertCast', { cast: [{ label: 'CNIL desk', role: 'authority' }, { label: 'Acquiring bank', role: 'partner' }, { label: 'SOC analyst', role: 'internal' }] });
+  const block = h.json('sbMainBlocks(appState.scenario.storyboard)[0]');
+  const plan = await execute(h, 'planPhaseInjects', { id: block.id, replace: true, injects: [
+    { at: 1, channel: 'email_internal', cast: 'CNIL desk', title: 'Breach notification follow-up' },
+    { at: 2, channel: 'internal_memo', cast: 'Acquiring bank', title: 'Fraud pattern' },
+    { at: 3, channel: 'email_authority', cast: 'SOC analyst', title: 'SOC escalation' },
+    { at: 4, channel: 'sms_notification', cast: 'Acquiring bank', title: 'Call me back' }
+  ] });
+  const byTitle = Object.fromEntries(plan.planned.map(item => [item.title, item.channel]));
+  assert.equal(byTitle['Breach notification follow-up'], 'email_authority');
+  assert.equal(byTitle['Fraud pattern'], 'email_external');
+  assert.equal(byTitle['SOC escalation'], 'email_internal');
+  assert.equal(byTitle['Call me back'], 'sms_notification');
+});

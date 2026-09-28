@@ -126,14 +126,28 @@ function sbRepairTemplate(template, duration) {
   return { ...template, duration_minutes: total, tracks, blocks };
 }
 
+/* The channel must fit its sender: a regulator, the police, a bank or a journalist does not
+   write an internal email or memo, and staff do not send authority notices. */
+function sbChannelForSender(channel, cast) {
+  const role = cast?.role;
+  if (!role) return channel;
+  if (role !== 'internal' && ['email_internal', 'internal_memo'].includes(channel)) return role === 'authority' ? 'email_authority' : 'email_external';
+  if (role === 'internal' && channel === 'email_authority') return 'email_internal';
+  return channel;
+}
+
 /* Beats returned by the AI, mapped onto existing or new cast entries. */
 function sbBeatsFromAI(storyboard, items, castMap, project = appState.scenario, forcedCell = '') {
-  return (Array.isArray(items) ? items : []).filter((beat) => beat && typeof beat === 'object').map((beat) => sbMakeBeat({
+  return (Array.isArray(items) ? items : []).filter((beat) => beat && typeof beat === 'object').map((beat) => {
+    const castId = castMap.get(String(beat.cast ?? beat.cast_id ?? '')) || (storyboard.cast.some((cast) => cast.id === beat.cast) ? beat.cast : '');
+    const channel = sbChannelForSender(sbValidChannel(beat.channel), storyboard.cast.find((cast) => cast.id === castId));
+    return { ...beat, cast_id: castId, channel, template_id: channel === sbValidChannel(beat.channel) ? beat.template_id : '' };
+  }).map((beat) => sbMakeBeat({
     cell_id: forcedCell || (sbCell(project, beat.cell) ? beat.cell : (project.cells || []).find((cell) => cell.name.toLowerCase() === String(beat.cell || '').toLowerCase())?.id || sbDefaultCellId(project, sbValidChannel(beat.channel))),
     offset_minutes: beat.at ?? beat.offset_minutes,
     channel: beat.channel,
     template_id: beat.template_id,
-    cast_id: castMap.get(String(beat.cast ?? beat.cast_id ?? '')) || (storyboard.cast.some((cast) => cast.id === beat.cast) ? beat.cast : ''),
+    cast_id: beat.cast_id,
     title: beat.title,
     intent: beat.intent
   }));

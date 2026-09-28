@@ -352,7 +352,7 @@ function createAgentToolRegistry() {
     StoryboardHistory.commit('Agent: cast');
     return { cast: result };
   }, 'write');
-  add('planPhaseInjects', 'Plan the injects of one main-storyline phase, each addressed to a player cell and sent by a cast role. at = minutes from phase start (0 to duration-1), as in getStoryboard beats; exercise_minute is only informative. replace=true swaps the planned injects that are not yet written; written ones are kept. The Detailed storyline tab turns planned injects into written stimuli.', {
+  add('planPhaseInjects', 'Plan the injects of one main-storyline phase, each addressed to a player cell and sent by a cast role, on a channel that fits the sender (internal emails and memos only from staff; authorities use email_authority; outside organisations email_external, phone or SMS; press and public use press, TV and social channels; vary the channels). at = minutes from phase start (0 to duration-1), as in getStoryboard beats; exercise_minute is only informative. replace=true swaps the planned injects that are not yet written; written ones are kept. The Detailed storyline tab turns planned injects into written stimuli.', {
     ...id, replace: { type: 'boolean' }, injects: S.array(beatSchema, SB_MAX_BEATS)
   }, ['id', 'injects'], args => {
     const project = appState.scenario;

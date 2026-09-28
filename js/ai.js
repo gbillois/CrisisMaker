@@ -1469,7 +1469,11 @@ Return this structure:
           const template = typeof getTemplateDefinition === 'function' ? getTemplateDefinition(stimulus) : null;
           const writable = (template?.fields || []).filter((item) => ['text', 'textarea', 'select', 'number'].includes(item.type) && !/(^|_)(photo|logo_image|avatar_url|audio|video)|_data$|_color$/.test(item.key));
           if (writable.length) {
-            result.systemPrompt += `\n\nOUTPUT FORMAT: reply only with one JSON object whose keys are these template fields, each filled with content consistent with the scenario (other keys are ignored): ${writable.map((item) => `"${item.key}" (${item.label}${item.options ? `, one of ${item.options.join('|')}` : ''}${item.type === 'number' ? ', a number' : ''})`).join(', ')}. Long text fields such as "body" are HTML paragraphs (<p>).`;
+            result.systemPrompt += `\n\nOUTPUT FORMAT: reply only with one JSON object whose keys are these template fields, each filled with content consistent with the scenario (other keys are ignored): ${writable.map((item) => {
+              // Date and time are already set from the simulated clock: kept as they are.
+              const keep = ['date', 'time'].includes(item.key) && stimulus.fields?.[item.key] ? `, keep exactly "${stimulus.fields[item.key]}"` : item.key === 'time' ? ', HH:MM' : '';
+              return `"${item.key}" (${item.label}${item.options ? `, one of ${item.options.join('|')}` : ''}${item.type === 'number' ? ', a number' : ''}${keep})`;
+            }).join(', ')}. Long text fields such as "body" are HTML paragraphs (<p>).`;
           }
           return result;
         }
