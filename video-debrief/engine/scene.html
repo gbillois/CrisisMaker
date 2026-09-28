@@ -152,7 +152,11 @@ const easeOut = p => 1 - Math.pow(1-p, 3);
 const easeInOut = p => p<0.5 ? 4*p*p*p : 1 - Math.pow(-2*p+2,3)/2;
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
   let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; } }
-function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+/* Project values that reach attributes and styles: numbers, image addresses and colours only. */
+function num(v, fallback, min = 10, max = 400){ const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback; }
+function imageSrc(v){ const s = String(v || ''); return /^(data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+|https:\/\/[^"'<>\s]+)$/i.test(s) ? s : ''; }
+function safeColor(v, fallback){ const s = String(v ?? ''); return /^[#a-zA-Z0-9(),.%\s-]{1,120}$/.test(s) && !/url|expression/i.test(s) ? s : fallback; }
 function hexRGB(h){ const m=/^#?([0-9a-f]{6})$/i.exec(h||''); if(!m) return [255,69,48];
   const n=parseInt(m[1],16); return [n>>16&255,n>>8&255,n&255]; }
 
@@ -190,13 +194,13 @@ let mapC, grainC, ACC;
 /* preview VO duration estimate: chars/sec by language */
 const CPS = { fr: 15.0, en: 14.2, es: 14.5, de: 13.5, it: 14.5, default: 14.5 };
 function estimateTiming(project){
-  const lead = (project.pacing&&project.pacing.lead)||0.8;
-  const gap = (project.pacing&&project.pacing.gap)||0.55;
-  const tail = (project.pacing&&project.pacing.tail)||4.8;
+  // Same rule as the production (browser/produce.js computeTiming).
+  const pacing = project.pacing || {};
+  const lead = pacing.lead ?? 0.8, gap = pacing.gap ?? 0.55, tail = pacing.tail ?? 4.8;
   const cps = CPS[(project.meta&&project.meta.lang)||'fr'] || CPS.default;
   let t = lead; const scenes = [];
   (project.scenes||[]).forEach(s => {
-    const d = Math.max(3, (s.vo||'').length / cps);
+    const d = Math.max((s.vo||'').length / cps, Number(s.minDuration) || 3);
     scenes.push({ id:s.id, voStart:t, voEnd:t+d });
     t += d + gap;
   });
@@ -301,7 +305,7 @@ const BUILDERS = {
       <div class="co-wrap">
         <div class="co-date">${esc(spec.dateLine)}</div>
         <div class="co-kicker">${esc(spec.kicker)}</div>
-        <div class="co-title" style="font-size:${spec.titleSize||158}px">${esc(spec.title)}</div>
+        <div class="co-title" style="font-size:${num(spec.titleSize, 158)}px">${esc(spec.title)}</div>
         <div class="co-sub">${esc(spec.subtitle)}</div>
       </div>`;
     const [eb, date, kick, title, sub] =
@@ -374,7 +378,7 @@ const BUILDERS = {
       <div class="sc-eyebrow eyebrow" style="color:var(--c-accentsoft)">${esc(spec.eyebrow)}</div>
       <div class="sc-head">${esc(spec.heading)}</div>
       <div class="mf-panel">
-        <div class="mf-stat" style="font-size:${spec.statSize||170}px"></div>
+        <div class="mf-stat" style="font-size:${num(spec.statSize, 170)}px"></div>
         <div class="mf-statsub">${esc(spec.statLabel)}</div>
         <div class="mf-bullets">${bullets.map(b=>`<div class="mf-bullet">${esc(b.text||b)}</div>`).join('')}</div>
       </div>`;
@@ -592,7 +596,7 @@ const BUILDERS = {
 
   'image'(spec, el){
     el.innerHTML = `
-      <div class="img-frame"><img src="${spec.src||''}"><div class="img-shade"></div></div>
+      <div class="img-frame"><img src="${esc(imageSrc(spec.src))}"><div class="img-shade"></div></div>
       <div class="img-caption">
         <div class="ic-eyebrow eyebrow">${esc(spec.eyebrow)}</div>
         <div class="ic-text">${esc(spec.caption)}</div>
@@ -629,7 +633,11 @@ const MAP_TYPES = new Set(['map-focus','map-spread','map-trace']);
 function build(project, timing){
   PROJECT = project; TIMING = timing;
   const preset = (project.theme && project.theme.preset) || 'wavestone';
-  THEME = Object.assign({}, THEMES[preset] || THEMES.wavestone, project.theme && project.theme.overrides || {});
+  const base = THEMES[preset] || THEMES.wavestone;
+  // Overrides can only change colours (and keep the fonts of the theme).
+  const overrides = (project.theme && project.theme.overrides) || {};
+  THEME = Object.assign({}, base);
+  for (const key of Object.keys(overrides)) if (key in base && !/^f[A-Z]|fontsLoad|lessonsBg/.test(key)) THEME[key] = safeColor(overrides[key], base[key]);
   ACC = hexRGB(THEME.accent);
   const root = document.documentElement.style;
   root.setProperty('--c-bg', THEME.bg);       root.setProperty('--c-ink', THEME.ink);
@@ -729,20 +737,36 @@ async function prepareCapture(){
   try {
     const css = await (await fetch('fonts/fonts-local.css')).text();
     const blocks = css.match(/@font-face\s*{[^}]*}/g) || [];
-    const files = {};
+    // Several weights share one (variable) font file: embed each file once, with its weight range.
+    const faces = new Map();
     for (const block of blocks) {
       const family = (/font-family:\s*['"]?([^;'"]+)/.exec(block) || [])[1];
       const file = (/url\(([^)]+)\)/.exec(block) || [])[1];
+      const weight = Number((/font-weight:\s*(\d+)/.exec(block) || [])[1]) || 400;
+      const style = (/font-style:\s*(\w+)/.exec(block) || [])[1] || 'normal';
       if (!family || !file || !families.includes(family.trim())) continue;
-      if (!files[file]) files[file] = 'data:font/woff2;base64,' + bytesToBase64(await (await fetch('fonts/' + file.replace(/['"]/g, ''))).arrayBuffer());
-      fontCss += block.replace(/url\([^)]+\)/, `url(${files[file]})`).replace(/font-display:[^;]*;/, '') + '\n';
+      const data = bytesToBase64(await (await fetch('fonts/' + file.replace(/['"]/g, ''))).arrayBuffer());
+      const key = `${family.trim()}|${style}|${data.length}|${data.slice(0, 64)}|${data.slice(-64)}`;
+      const face = faces.get(key) || { family: family.trim(), style, data, weights: [] };
+      face.weights.push(weight);
+      faces.set(key, face);
+    }
+    for (const face of faces.values()) {
+      const min = Math.min(...face.weights), max = Math.max(...face.weights);
+      fontCss += `@font-face{font-family:'${face.family}';font-style:${face.style};font-weight:${min === max ? min : `${min} ${max}`};src:url(data:font/woff2;base64,${face.data}) format('woff2');}\n`;
     }
   } catch (e) { /* fonts fall back to the system ones */ }
   try { await document.fonts.load(`500 40px ${THEME.fBody.split(',')[0]}`); } catch (e) { /* subtitles use a fallback font */ }
   const style = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
   const canvas = document.createElement('canvas');
   canvas.width = 1920; canvas.height = 1080;
-  CAPTURE = { preset: THEME, css: fontCss + style, canvas, ctx: canvas.getContext('2d', { alpha: false }), serializer: new XMLSerializer() };
+  // The constant start of every frame's SVG (theme variables, styles, fonts), encoded once.
+  const vars = document.documentElement.style.cssText;
+  const head = `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><foreignObject x="0" y="0" width="1920" height="1080">`
+    + `<div xmlns="http://www.w3.org/1999/xhtml" style="${xmlEscape(vars)};position:relative;width:1920px;height:1080px;overflow:hidden">`
+    + `<style>${xmlEscape(fontCss + style)}</style><div id="stage" style="background:transparent">`;
+  CAPTURE = { preset: THEME, canvas, ctx: canvas.getContext('2d', { alpha: false }), serializer: new XMLSerializer(),
+    prefix: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(head), suffix: encodeURIComponent('</div></div></foreignObject></svg>') };
   return CAPTURE;
 }
 function xmlEscape(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -759,16 +783,16 @@ function subtitleAt(t){
   for (const sc of SC){
     const { voStart, voEnd } = sc.tw;
     if (!sc.spec.vo || t < voStart || t > voEnd) continue;
-    // Sentences first, then each sentence in balanced pieces of at most ~84 characters.
+    // Sentences first, then each sentence in balanced pieces that fit one line (~70 characters).
     const sentences = String(sc.spec.vo).replace(/\s+/g, ' ').trim().match(/[^.!?…]+[.!?…]*["»”)]*\s*/g) || [];
     const chunks = [];
     for (const sentence of sentences){
       const words = sentence.trim().split(' ');
-      const pieces = Math.max(1, Math.ceil(sentence.trim().length / 84));
+      const pieces = Math.max(1, Math.ceil(sentence.trim().length / 70));
       const size = Math.ceil(sentence.trim().length / pieces);
       let line = '';
       for (const w of words){
-        if (line && (line + ' ' + w).length > size + 12){ chunks.push(line); line = w; }
+        if (line && (line + ' ' + w).length > size + 6){ chunks.push(line); line = w; }
         else line = line ? line + ' ' + w : w;
       }
       if (line) chunks.push(line);
@@ -802,11 +826,7 @@ window.captureFrame = async function(t, opts = {}){
   const visible = SC.filter(sc => parseFloat(sc.el.style.opacity) > 0);
   if (visible.length){
     const html = visible.map(sc => cap.serializer.serializeToString(sc.el)).join('');
-    const vars = document.documentElement.style.cssText;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><foreignObject x="0" y="0" width="1920" height="1080">`
-      + `<div xmlns="http://www.w3.org/1999/xhtml" style="${xmlEscape(vars)};position:relative;width:1920px;height:1080px;overflow:hidden">`
-      + `<style>${xmlEscape(cap.css)}</style><div id="stage" style="background:transparent">${html}</div></div></foreignObject></svg>`;
-    const img = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+    const img = await loadImage(cap.prefix + encodeURIComponent(html) + cap.suffix);
     ctx.drawImage(img, 0, 0);
   }
   ctx.save();
@@ -858,6 +878,9 @@ function loadFonts(){
 }
 if (PREVIEW){
   window.addEventListener('message', ev => {
+    // Only the studio that embeds this engine may drive it.
+    if (ev.source !== window.parent) return;
+    if (ev.origin !== window.location.origin && ev.origin !== 'null') return;
     const m = ev.data || {};
     if (m.type === 'project'){
       const timing = m.timing || estimateTiming(m.project);

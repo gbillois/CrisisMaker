@@ -78,12 +78,12 @@
       script.src = src; script.async = true; script.crossOrigin = 'anonymous';
       script.dataset.vdbSrc = src;
       script.onload = () => { script._loaded = true; resolve(); };
-      script.onerror = () => reject(new Error('Could not load ' + src.split('/').pop() + ' (check the network).'));
+      script.onerror = () => { script.remove(); reject(new Error('Could not load ' + src.split('/').pop() + ' (check the network).')); };
       document.head.appendChild(script);
     });
   }
 
-  const state = { engine: null, voices: new Map(), loading: null };
+  const state = { engine: null, enginePromise: null, voices: new Map(), loadingVoices: new Map() };
 
   /** Is the voice already downloaded in this browser (no network)? */
   VDB.isLocalVoiceStored = async function (id) {
@@ -91,14 +91,12 @@
   };
   VDB.isLocalVoiceReady = id => state.voices.has(id);
 
-  /** Removes the downloaded voices and engine data from this browser. */
-  VDB.forgetLocalVoices = async function () {
-    state.voices.clear();
-    try { if (typeof caches !== 'undefined') await caches.delete(CACHE); } catch { /* ignore */ }
-  };
-
-  async function loadEngine(progress) {
-    if (state.engine) return state.engine;
+  function loadEngine(progress) {
+    if (state.engine) return Promise.resolve(state.engine);
+    if (!state.enginePromise) state.enginePromise = startEngine(progress).catch((error) => { state.enginePromise = null; throw error; });
+    return state.enginePromise;
+  }
+  async function startEngine(progress) {
     progress('engine', 0, 'Loading the speech engine…');
     await loadScript(`${ORT_BASE}ort.min.js`);
     await loadScript(`${PHONEMIZE_BASE}.js`);
@@ -120,8 +118,16 @@
    * Loads the engine and one voice (downloads on first use), reporting
    * progress(stage, ratio, label). Returns { id, sampleRate }.
    */
-  VDB.loadLocalVoice = async function (id, progress = () => {}) {
-    if (state.voices.has(id)) return state.voices.get(id);
+  VDB.loadLocalVoice = function (id, progress = () => {}) {
+    if (state.voices.has(id)) return Promise.resolve(state.voices.get(id));
+    // Two clicks (Activate, then Produce) share one download instead of starting a second one.
+    state.loadingVoices = state.loadingVoices || new Map();
+    if (!state.loadingVoices.has(id)) {
+      state.loadingVoices.set(id, loadVoice(id, progress).finally(() => state.loadingVoices.delete(id)));
+    }
+    return state.loadingVoices.get(id);
+  };
+  async function loadVoice(id, progress) {
     const engine = await loadEngine(progress);
     const path = voicePath(id);
     const [model, config] = await Promise.all([
@@ -141,7 +147,7 @@
     const voice = { id, session, config: cfg, sampleRate: cfg.audio.sample_rate };
     state.voices.set(id, voice);
     return voice;
-  };
+  }
 
   function phonemize(engine, text, espeakVoice) {
     return new Promise((resolve, reject) => {
@@ -178,6 +184,26 @@
     return ids;
   }
 
+  /* Every sentence in one run of the phonemizer (one output line per input); falls back to
+     one run per sentence if the output does not line up. */
+  function phonemizeAll(engine, list, espeakVoice) {
+    if (!list.length) return Promise.resolve([]);
+    return new Promise((resolve, reject) => {
+      const lines = [];
+      window.createPiperPhonemize({
+        print: line => { try { lines.push(JSON.parse(line).phonemes || []); } catch (_) { /* not a result line */ } },
+        printErr: () => {},
+        wasmBinary: engine.wasmBinary,
+        getPreloadedPackage: () => engine.data,
+        locateFile: file => (file.endsWith('.wasm') ? `${PHONEMIZE_BASE}.wasm` : file.endsWith('.data') ? `${PHONEMIZE_BASE}.data` : file),
+      }).then(module => {
+        module.callMain(['-l', espeakVoice, '--input', JSON.stringify(list.map(text => ({ text }))), '--espeak_data', '/espeak-ng-data']);
+        if (lines.length === list.length) { resolve(lines); return; }
+        Promise.all(list.map(sentence => phonemize(engine, sentence, espeakVoice))).then(resolve, reject);
+      }, reject);
+    });
+  }
+
   /** Sentences of at most ~220 characters, so each inference stays short. */
   function sentences(text) {
     const parts = String(text || '').replace(/\s+/g, ' ').trim().match(/[^.!?…;:]+[.!?…;:]*["»”)]*\s*/g) || [];
@@ -208,8 +234,11 @@
     const lengthScale = (inf.length_scale || 1) / (1 + rate / 100);
     const pause = new Float32Array(Math.round(voice.sampleRate * 0.28));
     const chunks = [];
-    for (const sentence of sentences(text)) {
-      const ids = phonemeIds(voice.config, await phonemize(engine, sentence, voice.config.espeak.voice));
+    const list = sentences(text);
+    // One phonemizer instance for the whole voice-over (it loads 18 MB of language data).
+    const phonemesList = await phonemizeAll(engine, list, voice.config.espeak.voice);
+    for (let index = 0; index < list.length; index++) {
+      const ids = phonemeIds(voice.config, phonemesList[index] || []);
       if (ids.length <= 3) continue;
       const feeds = {
         input: new ort.Tensor('int64', BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),

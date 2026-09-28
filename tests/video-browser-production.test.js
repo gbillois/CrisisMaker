@@ -81,5 +81,5 @@ test('browser video: the studio loads the production scripts and nothing heavy b
   assert.ok(html.includes('id="btn-local-voice"') && html.includes('id="btn-browser-produce"'));
   assert.ok(html.indexOf('Produire dans le navigateur') < html.indexOf('Produire en local'), 'browser production comes first');
   const voice = fs.readFileSync(path.join(__dirname, '..', 'video-debrief', 'browser', 'voice.js'), 'utf8');
-  assert.ok(/VDB\.loadLocalVoice = async function/.test(voice) && !/^\s*VDB\.loadLocalVoice\(/m.test(voice), 'no load at startup');
+  assert.ok(/VDB\.loadLocalVoice = function/.test(voice) && !/^\s*VDB\.loadLocalVoice\(/m.test(voice), "no load at startup");
 });

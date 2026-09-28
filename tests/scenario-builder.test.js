@@ -734,3 +734,70 @@ test('exercise model: one pivot, the same phase, number, cell, sender and status
   h.run(`getSortedStimuli()[0].timestamp_offset_minutes = sbStoryboard().duration_minutes + 500;`);
   assert.ok(h.json(`agentConsistencyCheck ? agentConsistencyCheck().issues : []`).some(issue => /outside every phase/.test(issue)));
 });
+
+test('audit regressions: safe loading, CSV, debrief theme, duplicates, agent fields, locked injects', async () => {
+  const h = harness();
+  // A shared project cannot smuggle markup through ids; injects follow a renamed actor.
+  const loaded = h.json(`(() => {
+    const p = mergeScenario({ scenario: { summary: 'x' }, actors: [{ id: 'a"><img src=x onerror=alert(1)>', name: 'Eve', role: '<b>' }], stimuli: [{ id: '"><svg onload=alert(2)>', actor_id: 'a"><img src=x onerror=alert(1)>', channel: 'x" onmouseover="y', status: '<i>' }] });
+    return { actorId: p.actors[0].id, role: p.actors[0].role, stimulusId: p.stimuli[0].id, actorOfStimulus: p.stimuli[0].actor_id, channel: p.stimuli[0].channel, status: p.stimuli[0].status };
+  })()`);
+  for (const value of Object.values(loaded)) assert.match(value, /^[A-Za-z0-9_-]+$/, value);
+  assert.equal(loaded.actorOfStimulus, loaded.actorId, 'the inject follows its renamed actor');
+  assert.equal(loaded.status, 'draft');
+  // A file without actors or injects never gets the demo's.
+  assert.deepEqual(h.json(`(() => { const p = mergeScenario({ scenario: {} }); return [p.actors.length, p.stimuli.length]; })()`), [0, 0]);
+  // CSV cells cannot start a formula in Excel.
+  assert.equal(h.run(`csvCell('=HYPERLINK("x")')`), `"'=HYPERLINK(""x"")"`);
+  assert.equal(h.run(`csvCell('@StonaWave')`), `"'@StonaWave"`);
+  assert.equal(h.run(`csvCell('Plain')`), '"Plain"');
+  // The debrief theme cannot break out of the exported page's <style>.
+  const theme = h.json(`debriefSafeTheme({ bg: 'red;}</style><script>alert(1)</script>', fontBody: 'Inter"</style>', accent: '#04F06A', preset: 'x' }, makeEmptyDebrief(appState.scenario).theme)`);
+  assert.ok(!JSON.stringify(theme).includes('<'), JSON.stringify(theme));
+  assert.equal(theme.accent, '#04F06A');
+  assert.equal(theme.preset, 'wavestone', 'Wavestone by default');
+  // Agent content: list fields and numbers given as text are accepted.
+  const clean = h.json(`(() => { const s = makeStimulus('dark_web_forum', appState.scenario.actors[0]?.id || 'a', 0); return agentCleanFields(s, { files: ['hr.csv', { name: 'ids.zip', size: '2 GB' }], replies_count: '47' }); })()`);
+  assert.deepEqual(clean.files, ['hr.csv', { name: 'ids.zip', size: '2 GB' }]);
+  assert.equal(clean.replies_count, 47);
+  // A duplicated inject is its own inject: visible, not tied to the original's planned item.
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const dup = h.json(`(() => { const s = appState.scenario.stimuli.find(x => x.scenario_link?.beat_id); const before = sbExerciseItems(appState.scenario).length; duplicateStimulus(s.id); const copy = appState.scenario.stimuli[appState.scenario.stimuli.length - 1]; return { before, after: sbExerciseItems(appState.scenario).length, linked: !!copy.scenario_link }; })()`);
+  assert.equal(dup.after, dup.before + 1);
+  assert.equal(dup.linked, false);
+});
+
+test('audit regressions: the cascade never deletes a locked inject and keeps skipped new injects out', async () => {
+  const h = harness();
+  h.run(`isLLMAvailable = () => true;
+    { const project = appState.scenario; const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
+      if (!project.cells.length) project.cells = sbNormalizeCells([{ name: 'Decision cell' }]);
+      const cell = project.cells[0].id;
+      sb.cast.push(sbMakeCast({ id: 'cast_ciso', label: 'CISO' }));
+      sb.blocks.push(sbMakeBlock('trigger', { id: 'b1', track_id: main, start_minutes: 0, duration_minutes: 60, stimuli_target: 2, brief: 'Alerts', beats: [
+        { id: 'k1', offset_minutes: 10, channel: 'email_internal', cast_id: 'cast_ciso', cell_id: cell, title: 'One' },
+        { id: 'k2', offset_minutes: 20, channel: 'email_internal', cast_id: 'cast_ciso', cell_id: cell, title: 'Two' }] }, sb));
+      StoryboardHistory.ensure(); }`);
+  h.run(`AITextGenerator.generateForStimulus = async (stimulus) => ({ subject: 'Fresh ' + (stimulus.name || ''), body: '<p>Body</p>' });`);
+  await h.run(`SbPipeline.run({ plan: false, cast: true, write: true })`);
+  h.run(`sbSealLinks(appState.scenario)`);
+  const [s1, s2] = h.json('getSortedStimuli().map(s => s.id)');
+  h.run(`sbLockStimulus(getStimulus('${s2}'), true); sbBlock(sbStoryboard(), 'b1').brief = 'Ransomware everywhere'; StoryboardHistory.commit('Rewrite');`);
+  // The AI keeps k1 only and adds one new planned inject.
+  mockAI(h, [() => ({ block: { beats: [{ id: 'k1', at: 5, channel: 'email_internal', cast: 'cast_ciso', title: 'One v2' }, { at: 30, channel: 'email_internal', cast: 'cast_ciso', title: 'New one' }] } })]);
+  // The new planned inject is skipped in the dialog: it must not be created.
+  const impacts = h.json('sbComputeImpacts(appState.scenario)');
+  await h.run(`(async () => {
+    const first = sbComputeImpacts(appState.scenario);
+    await SbPipeline.applyImpacts(first);
+  })()`);
+  const ids = h.json('appState.scenario.stimuli.map(s => s.id)');
+  assert.ok(ids.includes(s2), 'the locked inject of a dropped planned item is kept');
+  assert.ok(impacts.some(i => i.kind === 'replan'));
+  assert.deepEqual(h.json('sbComputeImpacts(appState.scenario).map(i => i.kind)').filter(k => k !== 'orphan'), [], 'the rest is up to date');
+  // Two new planned injects; the second is skipped in the dialog: only the first is created.
+  h.run(`{ const b = sbBlock(sbStoryboard(), 'b1'); b.beats.push(sbMakeBeat({ id: 'k8', offset_minutes: 40, channel: 'email_internal', cast_id: 'cast_ciso', cell_id: appState.scenario.cells[0].id, title: 'Eight' }), sbMakeBeat({ id: 'k9', offset_minutes: 50, channel: 'email_internal', cast_id: 'cast_ciso', cell_id: appState.scenario.cells[0].id, title: 'Nine' })); sbMarkPlanned(b); StoryboardHistory.commit('Add'); }`);
+  await h.run(`(async () => { const list = sbComputeImpacts(appState.scenario).filter(i => i.kind === 'missing'); list.find(i => i.beat_id === 'k9').action = 'skip'; await SbPipeline.applyImpacts(list); })()`);
+  const created = h.json(`['k8', 'k9'].map(id => !!sbStimulusForBeat(appState.scenario, id))`);
+  assert.deepEqual(created, [true, false]);
+});

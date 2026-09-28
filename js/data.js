@@ -24,13 +24,7 @@
         return ['fr', 'en', 'de'].includes(lang) ? lang : 'en';
       }
 
-      function isFrenchUI() {
-        return currentLanguage() === 'fr';
-      }
 
-      function isGermanUI() {
-        return currentLanguage() === 'de';
-      }
 
       function tt(en, fr, de) {
         const lang = currentLanguage();

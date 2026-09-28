@@ -106,11 +106,13 @@
       frame.tabIndex = -1;
       frame.style.cssText = 'position:fixed;left:-20000px;top:0;width:1920px;height:1080px;border:0;opacity:0;pointer-events:none;';
       frame.src = engineUrl;
-      const timer = setTimeout(() => reject(new Error('The render engine did not start.')), 30000);
+      let settled = false;
+      const timer = setTimeout(() => { settled = true; frame.remove(); reject(new Error('The render engine did not start.')); }, 30000);
       frame.onload = () => {
         const check = () => {
+          if (settled) return;
           const win = frame.contentWindow;
-          if (win && typeof win.captureFrame === 'function' && typeof win.loadForCapture === 'function') { clearTimeout(timer); resolve(frame); }
+          if (win && typeof win.captureFrame === 'function' && typeof win.loadForCapture === 'function') { settled = true; clearTimeout(timer); resolve(frame); }
           else setTimeout(check, 50);
         };
         check();
@@ -134,8 +136,18 @@
     // Weights of each stage in the overall progress.
     const W = opts.voiceId ? { voice: 0.3, music: 0.05, frames: 0.6, end: 0.05 } : { voice: 0, music: 0.05, frames: 0.88, end: 0.07 };
     let takes = {}, timing;
+    let subtitles = !!opts.subtitles, voiced = !!opts.voiceId, notice = '';
     if (opts.voiceId) {
-      await VDB.loadLocalVoice(opts.voiceId, (stage, r, label) => progress(0, label));
+      try {
+        await VDB.loadLocalVoice(opts.voiceId, (stage, r, label) => progress(0, label));
+      } catch (error) {
+        // Engine unreachable (offline, CDN down): the video is still produced, with subtitles.
+        voiced = false; subtitles = true;
+        notice = `Local voice unavailable (${error.message || error}): produced with subtitles.`;
+        progress(0, notice);
+      }
+    }
+    if (voiced) {
       let voice = await recordVoice(project, opts.voiceId, 0, (r, label) => progress(W.voice * r * 0.85, label), isCancelled);
       timing = VDB.computeTiming(project, voice.durations);
       // Too long: speak slightly faster once (at most +4%), as the Python pipeline does.
@@ -152,8 +164,10 @@
     if (isCancelled()) throw new Error('Production cancelled.');
     progress(W.voice, 'Composing the music…');
     await new Promise(r => setTimeout(r, 30));
-    const music = VDB.makeMusic(project, timing, SR);
+    let music = VDB.makeMusic(project, timing, SR);
     const mix = VDB.mixSoundtrack(project, timing, takes, music);
+    // Only the mix is needed from here: let the music and the voice takes be freed.
+    music = null; takes = {};
     progress(W.voice + W.music, 'Preparing the images…');
     const frame = await openRenderer(opts.engineUrl || 'engine/scene.html?preview=1&capture=1');
     try {
@@ -162,7 +176,7 @@
       const started = performance.now();
       const result = await VDB.encodeVideo({
         duration: timing.total, fps: 24, width: 1920, height: 1080, mix,
-        drawFrame: t => win.captureFrame(t, { subtitles: !!opts.subtitles }),
+        drawFrame: t => win.captureFrame(t, { subtitles }),
         isCancelled,
         onProgress: (stage, r) => {
           if (stage === 'frames') {
@@ -174,7 +188,7 @@
         },
       });
       progress(1, 'Video ready.');
-      return Object.assign(result, { duration: timing.total, voiced: !!opts.voiceId, timing });
+      return Object.assign(result, { duration: timing.total, voiced, notice, timing });
     } finally {
       frame.remove();
     }

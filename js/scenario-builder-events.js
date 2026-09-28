@@ -197,24 +197,6 @@ async function sbHandleAction(event) {
         SbAI.lastError = '';
         App.render();
         break;
-      case 'set-bin':
-        ui.bin = element.dataset.sbValue;
-        App.render();
-        break;
-      case 'open-library':
-        ui.modal = null;
-        appState.route = 'project';
-        App.render();
-        break;
-      case 'set-inspector':
-        ui.inspector = element.dataset.sbValue;
-        App.render();
-        break;
-      case 'select-block':
-        ui.selected = [element.dataset.sbBlock];
-        ui.scrollTo = element.dataset.sbBlock;
-              App.render();
-        break;
       case 'select-blocks':
         ui.selected = element.dataset.sbBlocks.split(',').filter((id) => sbBlock(storyboard, id));
         ui.scrollTo = ui.selected[0];
@@ -224,9 +206,6 @@ async function sbHandleAction(event) {
       case 'deselect':
         ui.selected = [];
         App.render();
-        break;
-      case 'add-block':
-        sbAddBlock(element.dataset.sbType);
         break;
       case 'duplicate-block':
         sbDuplicateSelected();
@@ -240,7 +219,6 @@ async function sbHandleAction(event) {
       case 'deepen-block':
         if (block) await sbRunAI(element.dataset.sbLevel === '3' ? 'Plan injects' : 'Deepen block', () => SbAI.deepen([block.id], element.dataset.sbLevel ? Number(element.dataset.sbLevel) : null));
         break;
-      case 'deepen-selection':
       case 'deepen-all': {
         const pool = action === 'deepen-all' ? storyboard.blocks : ui.selected.map((id) => sbBlock(storyboard, id)).filter(Boolean);
         const targets = pool.filter((item) => !item.locked && (sbDetailLevel(item) < 3 || item.beats.length < item.stimuli_target));
@@ -255,42 +233,6 @@ async function sbHandleAction(event) {
         const result = await sbRunAI('Rewrite block', () => SbAI.rewrite(block.id, instruction));
         if (result) ui.rewrite = '';
         App.render();
-        break;
-      }
-      case 'generate-block':
-        ui.generate.scope = 'selection';
-        ui.modal = 'generate';
-        App.render();
-        break;
-      case 'generate-beat': {
-        const beatId = element.dataset.sbBeatId;
-        const owner = storyboard.blocks.find((item) => item.beats.some((beat) => beat.id === beatId));
-        if (!owner) break;
-        const result = await SbPipeline.run({ blockIds: [owner.id], beatIds: [beatId], plan: false, cast: true, write: isLLMAvailable() });
-        pushToast(`${result.created} inject created${result.written ? ' and written' : ''}.`, 'success');
-        App.render();
-        break;
-      }
-      case 'send-to-agent':
-        if (block) { sbSendToAgent(block); pushToast('Agent brief prepared for this block. Review it and press Start.', 'info'); App.render(); }
-        break;
-      case 'add-beat': {
-        if (!block) break;
-        const last = block.beats[block.beats.length - 1];
-        const offset = Math.min(Math.max(0, block.duration_minutes - 1), last ? last.offset_minutes + Math.max(5, Math.round(block.duration_minutes / Math.max(2, block.stimuli_target + 1))) : 0);
-        block.beats.push(sbMakeBeat({ offset_minutes: offset, channel: last?.channel || 'email_internal', cast_id: last?.cast_id || '' }));
-        block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
-        ui.inspector = 'plan';
-        sbCommitRender('Add planned inject');
-        break;
-      }
-      case 'delete-beat': {
-        if (!block) break;
-        const beatId = element.dataset.sbBeatId;
-        const linked = sbStimulusForBeat(project, beatId);
-        block.beats = block.beats.filter((beat) => beat.id !== beatId);
-        if (linked) pushToast('The generated inject is kept; Sync lists it as an orphan.', 'info');
-        sbCommitRender('Remove planned inject');
         break;
       }
       case 'open-stimulus':
@@ -308,39 +250,10 @@ async function sbHandleAction(event) {
         if (stimulus?.scenario_link) { sbLockStimulus(stimulus, !stimulus.scenario_link.locked); saveLocal(false); App.render(); }
         break;
       }
-      case 'unlink-stimulus': {
-        const stimulus = getStimulus(element.dataset.sbStimulus);
-        if (stimulus && window.confirm('Unlink this inject from the storyboard? It will no longer follow scenario changes.')) { delete stimulus.scenario_link; saveLocal(false); App.render(); }
-        break;
-      }
-      case 'link-stimulus': {
-        const select = document.querySelector('[data-sb-link-select]');
-        const stimulus = select && getStimulus(select.value);
-        if (!block || !stimulus) break;
-        sbStampStimulus(stimulus, block, null, storyboard);
-        saveLocal(false);
-        pushToast('Inject linked to this block.', 'success');
-        App.render();
-        break;
-      }
-      case 'auto-link': {
-        const count = sbAutoLinkByTime(project);
-        saveLocal(false);
-        pushToast(`${count} inject(s) linked to the storyboard.`, 'success');
-        App.render();
-        break;
-      }
       case 'zoom-in': sbSetZoom(ui.zoom * 1.25); App.render(); break;
       case 'zoom-out': sbSetZoom(ui.zoom / 1.25); App.render(); break;
       case 'zoom-fit': sbFitZoom(); App.render(); break;
       case 'toggle-ripple': ui.ripple = !ui.ripple; App.render(); break;
-      case 'add-track': {
-        const used = new Set(storyboard.tracks.map((track) => track.key));
-        const preset = SB_TRACK_PRESETS.find((item) => item.kind !== 'main' && !used.has(item.key));
-        storyboard.tracks.push({ id: uid('track'), key: preset?.key || 'custom', name: preset?.name || 'New workstream', kind: 'workstream', color: preset?.color || '#6d687e', collapsed: false });
-        sbCommitRender('Add track');
-        break;
-      }
       case 'delete-track': {
         const track = sbTrack(storyboard, element.dataset.sbTrack);
         if (!track || track.kind === 'main') break;
@@ -389,28 +302,6 @@ async function sbHandleAction(event) {
         saveLocal(false);
         appState.route = 'scenario';
         pushToast(`"${template.name}" loaded. Set the key information, then generate the scenario with AI or load the basic scenario.`, 'success');
-        App.render();
-        break;
-      }
-      case 'adapt-template': {
-        const template = sbFindTemplate(element.dataset.sbTemplate);
-        if (!template) break;
-        if (storyboard.blocks.length && !window.confirm(`Adapt "${template.name}" to your organisation with AI and replace the current storyboard? A version is saved first.`)) break;
-        StoryboardHistory.snapshot(`Before adapting "${template.name}"`, 'ai');
-        try {
-          const adapted = await SbAI.adaptTemplate(template);
-          const before = project.storyboard;
-          sbApplyTemplate({ ...adapted, id: template.id, name: adapted.name || template.name }, 'replace');
-          if (project.storyboard !== before) StoryboardHistory.ensure(project, `Adapt template "${template.name}"`);
-          sbAfterStoryboardChange(project, { save: true });
-          ui.modal = null;
-          ui.selected = [];
-          ui.zoom = null;
-          appState.route = 'storyline';
-          pushToast(`"${template.name}" adapted to your organisation.`, 'success');
-        } catch (error) {
-          pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
-        }
         App.render();
         break;
       }
@@ -510,32 +401,6 @@ async function sbHandleAction(event) {
         ui.diffVersionId = null;
         App.render();
         break;
-      case 'generate-skeleton': {
-        const brief = (ui.skeleton.brief || storyboard.meta.brief || project.scenario.summary || '').trim();
-        if (!brief) { pushToast('Describe the exercise you want in the brief.', 'info'); break; }
-        const duration = sbInt(ui.skeleton.duration || storyboard.duration_minutes, SB_DEFAULT_DURATION, 30, SB_MAX_DURATION);
-        StoryboardHistory.flush();
-        StoryboardHistory.snapshot('Before AI skeleton', 'ai');
-        try {
-          const result = await SbAI.skeleton({ brief, duration, tracks: ui.skeleton.tracks, injects: Number(ui.skeleton.injects) || 0 });
-          result.storyboard.meta.brief = brief;
-          for (const cast of result.storyboard.cast) { const actor = sbFindActorForCast(project, cast); if (actor) cast.actor_id = actor.id; }
-          sbReplaceStoryboard(result.storyboard, 'AI skeleton');
-          if (!sbObjectivesList(project).length && result.objectives.length) project.scenario.objectives = result.objectives.join('\n');
-          if (!project.scenario.summary?.trim() && result.storyboard.meta.synopsis) project.scenario.summary = result.storyboard.meta.synopsis;
-          if (!project.name?.trim() && result.title) project.name = result.title;
-          saveLocal(false);
-          ui.modal = null;
-          ui.selected = [];
-          ui.zoom = null;
-          appState.route = 'storyline';
-          pushToast('Skeleton generated. Deepen blocks layer by layer, then generate injects.', 'success');
-        } catch (error) {
-          pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
-        }
-        App.render();
-        break;
-      }
       case 'run-coherence':
         try {
           await SbAI.coherence({ ai: element.dataset.sbValue === 'ai' });

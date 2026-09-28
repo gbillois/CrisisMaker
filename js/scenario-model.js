@@ -361,9 +361,6 @@ function sbSortedBlocks(storyboard, trackId = null) {
 function sbMainBlocks(storyboard) {
   return sbSortedBlocks(storyboard, sbMainTrack(storyboard)?.id);
 }
-function sbBlocksAt(storyboard, minute) {
-  return storyboard.blocks.filter((block) => minute >= block.start_minutes && minute < sbBlockEnd(block));
-}
 function sbBlockColor(block, storyboard = null) {
   if (block.color) return block.color;
   if (block.type === 'custom' && storyboard) return sbTrack(storyboard, block.track_id)?.color || SB_BLOCK_TYPES.custom.color;
@@ -379,17 +376,6 @@ function sbBeatAbsolute(block, beat) {
 }
 function sbCastLabel(storyboard, castId) {
   return storyboard.cast.find((cast) => cast.id === castId)?.label || '';
-}
-function sbStats(storyboard, stimuli = []) {
-  const linked = stimuli.filter((stimulus) => stimulus.scenario_link && sbBlock(storyboard, stimulus.scenario_link.block_id));
-  return {
-    blocks: storyboard.blocks.length,
-    planned: storyboard.blocks.reduce((sum, block) => sum + block.stimuli_target, 0),
-    beats: storyboard.blocks.reduce((sum, block) => sum + block.beats.length, 0),
-    generated: linked.length,
-    end: sbStoryboardEnd(storyboard),
-    levels: [1, 2, 3].map((level) => storyboard.blocks.filter((block) => sbDetailLevel(block) === level).length)
-  };
 }
 
 /* Interval partitioning so overlapping blocks of one lane stack in sub-rows. */

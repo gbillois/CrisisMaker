@@ -137,12 +137,6 @@ function sbUiIcon(name, size = 16) {
   return sbSvg(SB_UI_ICONS[name] || '', size);
 }
 
-// ── View ─────────────────────────────────────────────────────────────────────
-function sbScoreDot(score) {
-  if (score === undefined || score === null) return sbUiIcon('check');
-  const tone = score >= 80 ? 'good' : score >= 60 ? 'mid' : 'low';
-  return `<span class="sb-score-dot is-${tone}">${score}</span>`;
-}
 
 function renderSbStatusBar() {
   const busy = SbAI.busy || (SbPipeline.active ? SbPipeline.label || 'Generating' : '');
@@ -377,25 +371,6 @@ function renderSbModal(storyboard) {
   }
 }
 
-function renderSbSkeletonForm(storyboard) {
-  const ui = sbUI();
-  const project = appState.scenario;
-  const skeleton = ui.skeleton;
-  const brief = skeleton.brief || storyboard.meta.brief || project.scenario.summary || '';
-  const linked = project.stimuli.filter((stimulus) => sbStimulusLink(stimulus)).length;
-  const ai = isLLMAvailable();
-  return `<p class="sb-help">The AI drafts the main storyline: its phases, timing, injects per phase, roles and objectives. You then refine it in Main storyline.</p>
-    <label class="sb-mini-field">Brief
-      <textarea data-sb-ui="skeleton.brief" rows="5" placeholder="e.g. 3-hour ransomware exercise for the executive crisis cell of a regional hospital group, testing isolation, patient safety, communication and regulatory decisions">${escapeHtml(brief)}</textarea>
-    </label>
-    <div class="sb-field-grid sb-field-grid-2">
-      <label class="sb-mini-field">Duration (min)<input type="number" min="30" step="15" data-sb-ui="skeleton.duration" value="${skeleton.duration || storyboard.duration_minutes}"></label>
-      <label class="sb-mini-field">Target injects (optional)<input type="number" min="0" step="1" data-sb-ui="skeleton.injects" value="${escapeAttribute(skeleton.injects)}"></label>
-    </div>
-    ${storyboard.blocks.length ? `<p class="agent-warning">Replaces the current storyboard. A version is saved first and can be restored${linked ? `; ${linked} linked inject(s) will be flagged in Sync` : ''}.</p>` : ''}
-    ${!ai ? '<p class="agent-warning">Configure an AI connection in Settings to draft with AI, or start from the scenario library in the Project tab.</p>' : ''}
-    <div class="sb-ai-row"><button class="btn btn-primary btn-sm" data-sb-action="generate-skeleton" ${ai && !sbBusy() ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Draft the storyline</button></div>`;
-}
 
 /* Scenario context tab: starting points (library, AI) and exercise framing. */
 function renderSbVersionsModal(storyboard) {

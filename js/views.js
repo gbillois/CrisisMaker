@@ -248,7 +248,6 @@
 
       function svgBroadcast() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8a6 6 0 0 1 0 8.4"></path><path d="M7.8 16.2a6 6 0 0 1 0-8.4"></path><path d="M19.1 4.9a10 10 0 0 1 0 14.2"></path><path d="M4.9 19.1a10 10 0 0 1 0-14.2"></path></svg>'; }
       function svgUsers() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21a7 7 0 0 1 14 0"></path><path d="M16 4a4 4 0 0 1 0 8"></path><path d="M22 21a7 7 0 0 0-5-6.7"></path></svg>'; }
-      function svgPlayCircle() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m10 8 6 4-6 4z"></path></svg>'; }
       function svgStoryboard() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path><path d="M6 13h5"></path><path d="M9 16h8"></path><path d="M14 13h4"></path><path d="M7 4v5"></path><path d="M12 4v5"></path><path d="M17 4v5"></path></svg>'; }
       function svgFolder() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'; }
       function svgTarget() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'; }
@@ -979,116 +978,7 @@
         });
       }
 
-      function renderStimuliView() {
-        const maxOffset = Math.max(360, ...appState.scenario.stimuli.map((item) => item.timestamp_offset_minutes));
-        const zoom = appState.ui?.timelineZoom || 1.0;
-        const hourWidth = Math.round(108 * zoom);
-        const width = Math.max(900, (Math.ceil(maxOffset / 60) + 1) * hourWidth + 120);
-        const ticks = Array.from({ length: Math.ceil(maxOffset / 60) + 2 }, (_, index) => index);
-        const stimuliCount = appState.scenario.stimuli.length;
-        const rowCount = Math.max(1, Math.min(stimuliCount, 3));
-        const autoTimelineHeight = 56 + 24 + (rowCount * 58) + 40;
-        const sortedStimuli = getSortedStimuli();
-        return `
-          <section class="stimuli-workspace" data-stimuli-workspace>
-            <article class="card stimuli-timeline-panel">
-              <div class="section-header">
-                <h3>${tt('Visual Timeline', 'Timeline visuelle', 'Visuelle Zeitleiste')}</h3>
-                <div class="actions">
-                  <div class="timeline-zoom-controls">
-                    <button class="btn btn-xs" data-action="timeline-zoom-out" title="${tt('Zoom out', 'Dézoomer', 'Herauszoomen')}">−</button>
-                    <span class="timeline-zoom-label">${Math.round(zoom * 100)}%</span>
-                    <button class="btn btn-xs" data-action="timeline-zoom-in" title="${tt('Zoom in', 'Zoomer', 'Hineinzoomen')}">+</button>
-                  </div>
-                  <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add inject', '+ Ajouter un inject', '+ Inject hinzufügen')}</button>
-                </div>
-              </div>
-              ${renderLLMConfigBlock('stimuli_batch', tt(
-                'Ex: "Create 12 injects from H+0 to H+6 mixing internal emails, customer complaints, press coverage, regulator outreach, and social posts. Keep the tone escalating but credible."',
-                'Ex : "Crée 12 injects de H+0 à H+6 en mélangeant emails internes, plaintes clients, couverture presse, sollicitations du régulateur et posts sociaux. Fais monter la tension de façon crédible."',
-                'Bsp.: „Erstellen Sie 12 Injects von H+0 bis H+6 mit internen E-Mails, Kundenbeschwerden, Presseberichterstattung, Regulierungsbehörden-Kontakten und Social-Media-Posts. Eskalation glaubwürdig gestalten."'
-              ), {
-                title: tt('Mass create with LLM', 'Création en lot avec le LLM', 'Massenerstellung mit LLM'),
-                subtitle: tt(
-                  'Describe the batch you want above the timeline and the LLM will add multiple injects directly to it.',
-                  'Décrivez le lot souhaité au-dessus de la timeline et le LLM ajoutera directement plusieurs injects.',
-                  'Beschreiben Sie den gewünschten Batch über dem Zeitplan und das LLM fügt mehrere Injects direkt hinzu.'
-                ),
-                generateLabel: tt('Generate batch', 'Générer le lot', 'Batch generieren'),
-                loadingLabel: tt('Generating batch…', 'Génération du lot…', 'Batch wird generiert…'),
-                successMessage: (count) => tt(`${count} inject(s) added to the timeline. Review and adjust them if needed.`, `${count} inject(s) ajouté(s) à la timeline. Vérifiez-les et ajustez-les si besoin.`, `${count} Inject(s) zum Zeitplan hinzugefügt. Überprüfen und anpassen falls nötig.`)
-              })}
-              <div class="timeline" data-timeline-scroll style="min-height:${autoTimelineHeight}px;">
-                <div class="timeline-track" style="width:${width}px;">
-                  ${ticks.map((tick) => `<div class="timeline-tick" style="left:${tick * hourWidth}px;">H+${tick}</div>`).join('')}
-                  ${appState.scenario.stimuli.map((stimulus, index) => renderStimulusCard(stimulus, index, hourWidth)).join('')}
-                </div>
-              </div>
-            </article>
-            <article class="card stimuli-table-card">
-              <div class="section-header">
-                <h3>${tt('Stimuli Table', 'Tableau des stimuli', 'Stimuli-Tabelle')}</h3>
-              </div>
-              ${sortedStimuli.length > 0 ? `
-              <div class="stimuli-table-panel">
-                <table class="stimuli-table">
-                  <thead>
-                    <tr>
-                      <th>${tt('Time', 'Heure', 'Uhrzeit')}</th>
-                      <th>${tt('Type', 'Type', 'Typ')}</th>
-                      <th>${tt('Name / Subject', 'Nom / Sujet', 'Name / Betreff')}</th>
-                      <th>${tt('Actor', 'Acteur', 'Akteur')}</th>
-                      <th>${tt('Status', 'Statut', 'Status')}</th>
-                      <th>${tt('Actions', 'Actions', 'Aktionen')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${sortedStimuli.map((s, sortedIdx) => {
-                      const meta = CHANNEL_META[s.channel] || CHANNEL_META.email_internal;
-                      const actor = getActor(s.actor_id);
-                      const h = Math.floor(s.timestamp_offset_minutes / 60);
-                      const m = String(s.timestamp_offset_minutes % 60).padStart(2, '0');
-                      const titleText = s.fields?.subject || s.fields?.headline || s.fields?.thread_title || s.fields?.title || s.fields?.text || s.name || '—';
-                      const statusColors = { draft: '#888', ready: '#2a7a2a', sent: '#1a3e6f' };
-                      return `
-                        <tr class="stimuli-table-row${appState.selectedStimulusId === s.id ? ' selected' : ''}" data-action="select-stimulus" data-stimulus-id="${s.id}">
-                          <td class="stimuli-table-time"><strong>H+${h}:${m}</strong></td>
-                          <td class="stimuli-table-type"><span class="stimuli-table-channel-pill" style="background:${meta.color};">${escapeHtml(channelLabel(s.channel))}</span></td>
-                          <td class="stimuli-table-content">${escapeHtml(titleText.slice(0, 100))}${titleText.length > 100 ? '…' : ''}</td>
-                          <td class="stimuli-table-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}</td>
-                          <td class="stimuli-table-status"><span class="pill pill-status" style="background:${statusColors[s.status] || '#888'}; color:#fff; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${s.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut', 'Klicken zum Status ändern')}">${escapeHtml(s.status)}</span></td>
-                          <td class="stimuli-table-actions">
-                            <button class="btn btn-xs" data-action="move-stimulus-up" data-stimulus-id="${s.id}" title="${tt('Move up', 'Monter', 'Nach oben')}"${sortedIdx === 0 ? ' disabled' : ''}>${sbUiIcon('up', 14)}</button>
-                            <button class="btn btn-xs" data-action="move-stimulus-down" data-stimulus-id="${s.id}" title="${tt('Move down', 'Descendre', 'Nach unten')}"${sortedIdx === sortedStimuli.length - 1 ? ' disabled' : ''}>${sbUiIcon('down', 14)}</button>
-                            <button class="btn btn-xs" data-action="open-stimulus-modal" data-stimulus-id="${s.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">${sbUiIcon('edit', 14)}</button>
-                            <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${s.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">${sbUiIcon('copy', 14)}</button>
-                            <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${s.id}" title="${tt('Export PNG', 'Exporter PNG', 'PNG exportieren')}">${sbUiIcon('download', 14)}</button>
-                          </td>
-                        </tr>
-                      `;
-                    }).join('')}
-                  </tbody>
-                </table>
-              </div>` : ''}
-            </article>
-          </section>
-        `;
-      }
 
-      function renderStimulusCard(stimulus, index, hourWidth = 108) {
-        const meta = CHANNEL_META[stimulus.channel] || CHANNEL_META.email_internal;
-        const left = (stimulus.timestamp_offset_minutes / 60) * hourWidth;
-        const top = 24 + (index % 3) * 58;
-        const actor = getActor(stimulus.actor_id);
-        return `
-          <div class="stimulus-card ${appState.selectedStimulusId === stimulus.id ? 'selected' : ''}" data-action="select-stimulus" data-stimulus-id="${stimulus.id}" style="left:${left}px; top:${top}px; background:${meta.color};">
-            <strong>${escapeHtml(channelLabel(stimulus.channel))}</strong>
-            <small>${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}</small>
-            <small>H+${Math.floor(stimulus.timestamp_offset_minutes / 60)}:${String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0')}</small>
-            ${stimulus.name ? `<small>${escapeHtml(stimulus.name)}</small>` : ''}
-          </div>
-        `;
-      }
 
       function renderStimulusEditorModal(stimulus) {
         const library = getTemplateDefinition(stimulus);
@@ -1530,61 +1420,6 @@
         `;
       }
 
-      function renderPreviewView() {
-        const stimuli = getSortedStimuli();
-        if (!stimuli.length) {
-          return `<article class="card"><p class="subtle">${tt('No inject to preview.', 'Aucun inject à prévisualiser.', 'Kein Inject zur Vorschau.')}</p></article>`;
-        }
-        const index = Math.min(appState.slideshowIndex, stimuli.length - 1);
-        const current = stimuli[index];
-        return `
-          <section class="grid">
-            <article class="preview-toolbar">
-              <div>
-                <strong>${escapeHtml(channelLabel(current.channel))}</strong>
-                <div class="subtle">${escapeHtml(getActor(current.actor_id)?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))} · H+${Math.floor(current.timestamp_offset_minutes / 60)}:${String(current.timestamp_offset_minutes % 60).padStart(2, '0')}</div>
-              </div>
-              <div class="actions">
-                <button class="btn btn-secondary" data-action="preview-prev">← ${tt('Previous', 'Précédent', 'Zurück')}</button>
-                <button class="btn btn-secondary" data-action="preview-next">${tt('Next', 'Suivant', 'Weiter')} →</button>
-                <button class="btn btn-primary" data-action="goto-stimuli" data-stimulus-id="${current.id}">${tt('Edit', 'Éditer', 'Bearbeiten')}</button>
-                ${String(current.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${current.id}">${tt('Export .eml file', 'Exporter le fichier .eml', '.eml-Datei exportieren')}</button>` : ''}
-                ${appState.videoFiles?.[current.id] && current.channel === 'breaking_news_tv' ? `<button class="btn btn-success" data-action="export-video" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
-                ${current.channel === 'audio_message' ? `
-                  ${(current.fields.audio_mode || 'create') === 'create' ? `
-                    <button class="btn btn-primary" data-action="generate-tts" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['generate-tts'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['generate-tts'] ? `<span class="ai-spinner"></span>${tt('Generating…', 'Génération…', 'Wird generiert…')}` : tt('Generate audio', 'Générer l\'audio', 'Audio generieren')}</button>
-                  ` : ''}
-                  ${appState.audioFiles?.[current.id] ? `
-                    <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${current.id}">${sbUiIcon('play', 12)} ${tt('Play', 'Lecture', 'Abspielen')}</button>
-                    <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${current.id}">${sbUiIcon('pause', 12)} ${tt('Pause', 'Pause', 'Pause')}</button>
-                    <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${current.id}">${sbUiIcon('rewind', 12)} ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
-                    <button class="btn btn-success" data-action="export-audio" data-stimulus-id="${current.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')}</button>
-                  ` : ''}
-                ` : ''}
-                ${current.channel !== 'audio_message' ? `<button class="btn btn-success" data-action="export-png" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>` : ''}
-              </div>
-            </article>
-            <article class="preview-shell">
-              <div class="preview-stage">${renderStimulusPreview(current, 'fullscreen-preview')}</div>
-            </article>
-            <article class="card">
-              <div class="section-header"><h3>${tt('Inject slideshow', 'Diaporama d\'injects', 'Inject-Diashow')}</h3></div>
-              <div class="thumb-grid">
-                ${stimuli.map((stimulus, idx) => `
-                  <div class="thumb-card">
-                    <div class="thumb-preview">${renderStimulusPreview(stimulus, `thumb-slide-${stimulus.id}`, true)}</div>
-                    <div class="thumb-body">
-                      <strong>${escapeHtml(channelLabel(stimulus.channel))}</strong>
-                      <p class="subtle">${escapeHtml(getActor(stimulus.actor_id)?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))} · H+${Math.floor(stimulus.timestamp_offset_minutes / 60)}:${String(stimulus.timestamp_offset_minutes % 60).padStart(2, '0')}</p>
-                      <button class="btn btn-secondary" data-action="preview-select" data-index="${idx}">${tt('Show', 'Afficher', 'Anzeigen')}</button>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </article>
-          </section>
-        `;
-      }
 
       function resolveWatermarkConfig(stimulus) {
         const settings = appState.scenario?.settings || {};

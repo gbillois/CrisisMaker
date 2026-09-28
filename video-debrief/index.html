@@ -1145,7 +1145,8 @@ $('p-theme').addEventListener('change', () => { if (project){ project.theme.pres
 function commitJsonOnly(){ $('json-editor').value = JSON.stringify(project, null, 2); notifyCrisisMakerProjectChange(); }
 
 const CPS = { fr: 15.0, en: 14.2, es: 14.5, de: 13.5, it: 14.5, pt: 14.5 };
-function estDur(s){ return s.vo ? Math.max(3, s.vo.length / (CPS[(project.meta||{}).lang] || 14.5)) : (s.minDuration || 3); }
+/* Same rule as the production (VDB.computeTiming): the voice-over, never under minDuration (3 s). */
+function estDur(s){ return Math.max(s.vo ? s.vo.length / (CPS[(project.meta||{}).lang] || 14.5) : 0, Number(s.minDuration) || 3); }
 function updateDurBadge(){
   if (!project) return;
   const target = (project.target && project.target.duration) || 120;
@@ -1224,8 +1225,9 @@ function renderSceneCards(){
       goto.className = 'btn'; goto.textContent = '⌖ Voir cette scène';
       goto.onclick = () => {
         const idx = project.scenes.indexOf(s);
-        let t = 0.8;
-        for (let k = 0; k < idx; k++) t += estDur(project.scenes[k]) + 0.55;
+        const pacing = project.pacing || {};
+        let t = pacing.lead ?? 0.8;
+        for (let k = 0; k < idx; k++) t += estDur(project.scenes[k]) + (pacing.gap ?? 0.55);
         playing = false; $('btn-play').textContent = '▶';
         seekPreview(t + estDur(s) * 0.55);
       };
@@ -1283,10 +1285,20 @@ $('btn-produce').addEventListener('click', async () => {
   $('btn-produce').disabled = true;
   $('prod-log').style.display = 'block';
   $('prod-done').style.display = 'none';
-  const r = await fetch(SERVER + '/build', { method: 'POST', body: JSON.stringify(project) });
+  let r;
+  try { r = await fetch(SERVER + '/build', { method: 'POST', body: JSON.stringify(project) }); }
+  catch (e) { $('prod-stage').textContent = uiText('Serveur local injoignable : ', 'Local server unreachable: ', 'Lokaler Server nicht erreichbar: ') + e.message; $('btn-produce').disabled = false; return; }
   if (!r.ok){ $('prod-stage').textContent = 'Erreur : ' + (await r.text()); $('btn-produce').disabled = false; return; }
+  clearInterval(polling);
   polling = setInterval(async () => {
-    const p = await (await fetch(SERVER + '/progress')).json();
+    let p;
+    try { p = await (await fetch(SERVER + '/progress')).json(); }
+    catch (e) {
+      // The server stopped: stop polling and give the button back.
+      clearInterval(polling); $('btn-produce').disabled = false;
+      $('prod-stage').textContent = uiText('Connexion au serveur local perdue.', 'Lost the connection to the local server.', 'Verbindung zum lokalen Server verloren.');
+      return;
+    }
     $('prod-bar').style.width = (p.pct || 0) + '%';
     $('prod-stage').textContent = p.stage || '';
     $('prod-log').textContent = (p.log || []).join('\n');
@@ -1476,10 +1488,12 @@ $('btn-local-voice-test').addEventListener('click', async () => {
 });
 $('btn-browser-produce').addEventListener('click', async () => {
   if (!project) return alert(uiText('Pas de projet.', 'No project yet.', 'Noch kein Projekt.'));
-  const id = localVoiceId();
-  const withVoice = VDB.isLocalVoiceReady(id) || await VDB.isLocalVoiceStored(id);
+  if (producing) return;
+  // Blocked at once: a double click must not start two productions.
   producing = true; produceCancelled = false;
   $('btn-browser-produce').disabled = true;
+  const id = localVoiceId();
+  const withVoice = VDB.isLocalVoiceReady(id) || await VDB.isLocalVoiceStored(id);
   $('btn-browser-cancel').style.display = 'inline-block';
   $('browser-done').style.display = 'none';
   refreshLocalVoice();
@@ -1504,7 +1518,7 @@ $('btn-browser-produce').addEventListener('click', async () => {
     const minutes = ((performance.now() - started) / 60000).toFixed(1);
     $('browser-stage').textContent = uiText(
       `Vidéo prête : ${name}, ${Math.round(result.duration)} s, ${(result.blob.size / 1048576).toFixed(1)} Mo, produite en ${minutes} min${result.voiced ? '' : ', sans voix'}.`,
-      `Video ready: ${name}, ${Math.round(result.duration)} s, ${(result.blob.size / 1048576).toFixed(1)} MB, produced in ${minutes} min${result.voiced ? '' : ', without voice'}.`,
+      `Video ready: ${name}, ${Math.round(result.duration)} s, ${(result.blob.size / 1048576).toFixed(1)} MB, produced in ${minutes} min${result.voiced ? '' : ', without voice'}.${result.notice ? ' ' + result.notice : ''}`,
       `Video fertig: ${name}, ${Math.round(result.duration)} s, ${(result.blob.size / 1048576).toFixed(1)} MB, in ${minutes} Min. produziert${result.voiced ? '' : ', ohne Stimme'}.`);
   } catch (e) {
     $('browser-stage').textContent = produceCancelled ? progressText('Production cancelled.') : uiText('Échec : ', 'Failed: ', 'Fehler: ') + (e.message || e);

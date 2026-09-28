@@ -137,7 +137,6 @@
           bindScenarioBuilderEvents();
           bindScenarioTabsEvents();
           bindPlayEvents();
-          bindStimuliSplitters();
           bindStimulusModalSplitter();
           mountDebriefEditor();
           mountVideoDebrief();
@@ -871,13 +870,6 @@
             case 'delete-actor': deleteActor(event.currentTarget.dataset.actorId); break;
             case 'generate-sample-actors': generateSampleActors(); break;
             case 'add-stimulus': addStimulus(); break;
-            case 'select-stimulus': {
-              const sid = event.currentTarget.dataset.stimulusId;
-              appState.selectedStimulusId = sid;
-              appState.stimulusModalId = sid;
-              App.render();
-              break;
-            }
             case 'open-stimulus-modal': {
               appState.stimulusModalId = event.currentTarget.dataset.stimulusId;
               App.render();
@@ -999,8 +991,6 @@
               }
               break;
             }
-            case 'timeline-zoom-in': appState.ui.timelineZoom = Math.min(3.0, (appState.ui.timelineZoom || 1.0) + 0.25); App.render(); break;
-            case 'timeline-zoom-out': appState.ui.timelineZoom = Math.max(0.5, (appState.ui.timelineZoom || 1.0) - 0.25); App.render(); break;
             case 'expand-library-card': {
               const sid = event.currentTarget.dataset.stimulusId;
               appState.libraryExpandedId = appState.libraryExpandedId === sid ? null : sid;
@@ -1015,10 +1005,6 @@
               });
               break;
             case 'export-msg': await ExportEngine.exportRawEmail(getStimulus(event.currentTarget.dataset.stimulusId)); break;
-            case 'preview-prev': appState.slideshowIndex = Math.max(0, appState.slideshowIndex - 1); App.render(); break;
-            case 'preview-next': appState.slideshowIndex = Math.min(getSortedStimuli().length - 1, appState.slideshowIndex + 1); App.render(); break;
-            case 'goto-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.stimulusModalId = event.currentTarget.dataset.stimulusId; App.render(); break;
-            case 'preview-select': appState.slideshowIndex = Number(event.currentTarget.dataset.index); App.render(); break;
             case 'cycle-status': {
               const s = getStimulus(event.currentTarget.dataset.stimulusId);
               // Same path as Play: sent time, re-send count and the exercise log stay right.
@@ -1063,38 +1049,6 @@
               App.render();
               break;
             }
-            case 'llm-generate-scenario': {
-              const state = appState.llmState.scenario;
-              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
-              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
-              try {
-                const result = await AITextGenerator.generateScenario(state.text);
-                captureLLMRawResponse(state);
-                let filled = 0;
-                if (result.client) {
-                  if (result.client.name) { appState.scenario.client.name = result.client.name; filled++; }
-                  if (result.client.sector) { appState.scenario.client.sector = result.client.sector; filled++; }
-                  if (result.client.language) { appState.scenario.client.language = result.client.language; filled++; }
-                }
-                if (result.scenario) {
-                  if (result.scenario.type) { appState.scenario.scenario.type = result.scenario.type; filled++; }
-                  if (result.scenario.summary) { appState.scenario.scenario.summary = result.scenario.summary; filled++; }
-                  if (result.scenario.detailed_context) { appState.scenario.scenario.detailed_context = result.scenario.detailed_context; filled++; }
-                  if (result.scenario.start_date) { appState.scenario.scenario.start_date = result.scenario.start_date.slice(0, 16); filled++; }
-                  if (result.scenario.timezone) { appState.scenario.scenario.timezone = result.scenario.timezone; filled++; }
-                }
-                state.loading = false;
-                state.lastFilledCount = filled;
-                App.render();
-                highlightLLMFields(['client.name', 'client.sector', 'client.language', 'scenario.type', 'scenario.summary', 'scenario.detailed_context', 'scenario.start_date', 'scenario.timezone']);
-              } catch (err) {
-                captureLLMRawResponse(state);
-                state.loading = false;
-                state.error = classifyLLMError(err);
-                App.render();
-              }
-              break;
-            }
             case 'llm-generate-actors': {
               const state = appState.llmState.actors;
               if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
@@ -1128,26 +1082,6 @@
                 await applyStimulusConfig(selected, config, { preserveType: true });
                 state.lastFilledCount = Object.keys(config.fields || {}).length + 3;
                 state.loading = false;
-                App.render();
-              } catch (err) {
-                captureLLMRawResponse(state);
-                state.loading = false;
-                state.error = classifyLLMError(err);
-                App.render();
-              }
-              break;
-            }
-            case 'llm-generate-stimuli_batch': {
-              const state = appState.llmState.stimuli_batch;
-              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
-              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; AITextGenerator.lastRawResponse = ''; App.render();
-              try {
-                const result = await AITextGenerator.generateStimulusConfig(state.text, appState.scenario, appState.scenario.actors, 8000);
-                captureLLMRawResponse(state);
-                const configs = Array.isArray(result) ? result : (Array.isArray(result?.stimuli) ? result.stimuli : [result]);
-                const addedCount = await handleMultiStimulusResult(configs, state.text);
-                state.loading = false;
-                state.lastFilledCount = addedCount;
                 App.render();
               } catch (err) {
                 captureLLMRawResponse(state);
@@ -2261,27 +2195,6 @@
         settings.azure_speech_region = settings.azure_speech_region || 'westeurope';
       }
 
-      function renderProviderSummary(settings) {
-        if (settings.ai_provider === 'azure_openai') {
-          return `Azure OpenAI / ${escapeHtml(settings.azure_deployment || tt('deployment not set', 'déploiement non défini', 'Deployment nicht festgelegt'))}`;
-        }
-        if (settings.ai_provider === 'openai') {
-          return `OpenAI / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
-        }
-        if (settings.ai_provider === 'openrouter') {
-          return `OpenRouter / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
-        }
-        if (settings.ai_provider === 'google_gemini') {
-          return `Google Gemini / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
-        }
-        if (settings.ai_provider === 'mistral') {
-          return `Mistral / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
-        }
-        if (settings.ai_provider === 'ollama') {
-          return `Ollama${settings.ollama_mode === 'cloud' ? ' Cloud' : ''} / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
-        }
-        return `Anthropic / ${escapeHtml(settings.ai_model || tt('model not set', 'modèle non défini', 'Modell nicht festgelegt'))}`;
-      }
 
       function setByPath(target, path, value) {
         const BLOCKED = new Set(['__proto__', 'constructor', 'prototype']);
@@ -2293,41 +2206,6 @@
         ref[last] = value;
       }
 
-      function bindStimuliSplitters() {
-        const workspace = document.querySelector('[data-stimuli-workspace]');
-        if (!workspace) return;
-        const panelHandle = workspace.querySelector('[data-resize-handle="editor-width"]');
-        if (panelHandle) panelHandle.addEventListener('pointerdown', (event) => startStimuliResize(event, 'editor-width', workspace));
-
-        // Pinch-to-zoom on timeline
-        const timeline = workspace.querySelector('[data-timeline-scroll]');
-        if (timeline) {
-          let lastPinchDist = null;
-          timeline.addEventListener('touchstart', (event) => {
-            if (event.touches.length === 2) {
-              const dx = event.touches[0].clientX - event.touches[1].clientX;
-              const dy = event.touches[0].clientY - event.touches[1].clientY;
-              lastPinchDist = Math.sqrt(dx * dx + dy * dy);
-            } else {
-              lastPinchDist = null;
-            }
-          }, { passive: true });
-          timeline.addEventListener('touchmove', (event) => {
-            if (event.touches.length === 2 && lastPinchDist !== null) {
-              const dx = event.touches[0].clientX - event.touches[1].clientX;
-              const dy = event.touches[0].clientY - event.touches[1].clientY;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              const delta = dist - lastPinchDist;
-              lastPinchDist = dist;
-              if (Math.abs(delta) > 2) {
-                const step = delta > 0 ? 0.05 : -0.05;
-                appState.ui.timelineZoom = Math.min(3.0, Math.max(0.5, (appState.ui.timelineZoom || 1.0) + step));
-                App.render();
-              }
-            }
-          }, { passive: true });
-        }
-      }
 
       function bindStimulusModalSplitter() {
         const modal = document.querySelector('[data-stimulus-modal-body]');
@@ -2360,37 +2238,6 @@
         });
       }
 
-      function startStimuliResize(event, type, workspace) {
-        if (!workspace) return;
-        event.preventDefault();
-        const bounds = workspace.getBoundingClientRect();
-        const pointerId = event.pointerId;
-        const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-        const onMove = (moveEvent) => {
-          if (type === 'timeline-height') {
-            const height = clamp(moveEvent.clientY - bounds.top, 190, Math.max(190, bounds.height - 260));
-            appState.ui.stimuliTimelineHeight = Math.round(height);
-          } else {
-            const widthPercent = ((moveEvent.clientX - bounds.left) / bounds.width) * 100;
-            appState.ui.stimuliEditorWidth = Math.round(clamp(widthPercent, 28, 72));
-          }
-          workspace.style.setProperty('--stimuli-timeline-height', `${appState.ui.stimuliTimelineHeight}px`);
-          workspace.style.setProperty('--stimuli-editor-width', `${appState.ui.stimuliEditorWidth}%`);
-          workspace.style.setProperty('--stimuli-preview-width', `${100 - appState.ui.stimuliEditorWidth}%`);
-        };
-        const stop = () => {
-          window.removeEventListener('pointermove', onMove);
-          window.removeEventListener('pointerup', stop);
-          window.removeEventListener('pointercancel', stop);
-          if (workspace.hasPointerCapture?.(pointerId)) workspace.releasePointerCapture(pointerId);
-          document.body.classList.remove('is-resizing-panels');
-        };
-        document.body.classList.add('is-resizing-panels');
-        if (workspace.setPointerCapture) workspace.setPointerCapture(pointerId);
-        window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', stop);
-        window.addEventListener('pointercancel', stop);
-      }
 
       function initialsFromName(name) {
         return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'NA';

@@ -30,6 +30,23 @@
         };
       }
 
+      /* The theme is written into the exported page's <style>: colours and font names only. */
+      function debriefSafeTheme(theme, fallback) {
+        const out = { ...theme };
+        for (const key of ['bg', 'fg', 'ink', 'accent', 'panel', 'line', 'muted']) {
+          const value = String(theme[key] ?? '');
+          out[key] = /^[#a-zA-Z0-9(),.%\s-]{1,80}$/.test(value) && !/url|expression/i.test(value) ? value : fallback[key];
+        }
+        for (const key of ['fontTitle', 'fontBody', 'fontMono']) {
+          const value = String(theme[key] ?? '');
+          out[key] = /^[A-Za-z0-9 _-]{1,60}$/.test(value) ? value : fallback[key];
+        }
+        out.preset = ['wavestone', 'cyber-dark'].includes(theme.preset) ? theme.preset : fallback.preset;
+        const scale = Number(theme.scale);
+        out.scale = Number.isFinite(scale) ? Math.min(2, Math.max(0.5, scale)) : 1;
+        return out;
+      }
+
       function normalizeDebrief(input, scenario) {
         const base = makeEmptyDebrief(scenario);
         const isLegacyStimulusDebrief = input && (input.schema_version !== 2 || (input.events || []).some((event) => event.stimulus_id));
@@ -37,7 +54,7 @@
         const normalized = {
           ...base, ...input, schema_version: 2,
           meta: { ...base.meta, ...(input.meta || {}) },
-          theme: { ...base.theme, ...(input.theme || {}) },
+          theme: debriefSafeTheme({ ...base.theme, ...(input.theme || {}) }, base.theme),
           layout: { ...base.layout, ...(input.layout || {}) },
           map: { ...base.map, ...(input.map || {}) },
           kindLabels: { ...base.kindLabels, ...(input.kindLabels || {}) },
@@ -106,7 +123,6 @@
 
       function cleanDebriefText(value) { return String(value || '').replace(/<br\s*\/?>/gi,' ').replace(/<\/p>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/\s+/g,' ').trim(); }
       function debriefStimulusText(stimulus) { const fields=stimulus?.fields || {}; return cleanDebriefText(fields.body || fields.message_content || fields.text || fields.subheadline || fields.description || fields.headline || fields.thread_title || fields.subject || stimulus?.generation_prompt || ''); }
-      function formatDebriefOffset(offsetMinutes) { const minutes=Math.max(0,Number(offsetMinutes||0)),hours=Math.floor(minutes/60),remainder=minutes%60; return `H+${String(hours).padStart(2,'0')}:${String(remainder).padStart(2,'0')}`; }
       function refreshDebriefPositions(debrief) { const events=[...(debrief.events||[])].sort((a,b)=>Number(a.order||0)-Number(b.order||0)); events.forEach((event,index)=>{event.order=index;event.t=events.length===1?0:index/(events.length-1);}); debrief.events=events; return debrief; }
 
       function debriefToTimelineConfig(debrief) {
@@ -179,7 +195,7 @@
       function applyLLMDebrief(result, scenario) {
         const current = makeEmptyDebrief(scenario);
         if (result.meta && typeof result.meta === 'object') current.meta = { ...current.meta, ...result.meta };
-        if (result.theme && typeof result.theme === 'object') current.theme = { ...current.theme, ...result.theme };
+        if (result.theme && typeof result.theme === 'object') current.theme = debriefSafeTheme({ ...current.theme, ...result.theme }, current.theme);
         if (result.map && typeof result.map === 'object') current.map = { ...current.map, ...result.map };
         if (Array.isArray(result.phases) && result.phases.length) current.phases = result.phases.map((phase,index)=>({ ...deepClone(DEBRIEF_PHASE_PRESETS[index] || DEBRIEF_PHASE_PRESETS[2]), ...phase, id:phase.id || `phase_${index+1}` }));
         const proposedEvents = Array.isArray(result) ? result : (result.events || []);
@@ -214,7 +230,7 @@
           ...deepClone(config),
           schema_version: 2,
           meta: { ...current.meta, ...(config.meta || {}) },
-          theme: { ...current.theme, ...(config.theme || {}) },
+          theme: debriefSafeTheme({ ...current.theme, ...(config.theme || {}) }, current.theme),
           layout: { ...current.layout, ...(config.layout || {}) },
           map: { ...current.map, ...(config.map || {}) },
           kindLabels: { ...current.kindLabels, ...(config.kindLabels || {}) },

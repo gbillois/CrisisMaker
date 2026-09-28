@@ -152,16 +152,7 @@ const ExerciseModel = {
     return ['draft', 'ready', 'sent'].includes(stimulus.status) ? stimulus.status : 'draft';
   },
 
-  // ── People ──────────────────────────────────────────────────────────────────
-  sender(project, stimulus) {
-    return (project.actors || []).find((actor) => actor.id === stimulus?.actor_id) || null;
-  },
   cell(project, stimulus) {
     return sbCell(project, stimulus?.cell_id) || null;
-  },
-
-  // ── Changes (the Update button) ─────────────────────────────────────────────
-  changes(project = appState.scenario) { return sbComputeImpacts(project); },
-  pendingChanges(project = appState.scenario) { return sbPendingSyncCount(project); },
-  update(impacts) { return SbPipeline.applyImpacts(impacts); }
+  }
 };

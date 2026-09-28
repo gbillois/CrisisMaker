@@ -165,6 +165,7 @@
     encoder.configure(config);
     const [left, right] = mix.channels;
     const block = 4800;
+    try {
     for (let offset = 0; offset < left.length; offset += block) {
       if (failure) throw failure;
       const frames = Math.min(block, left.length - offset);
@@ -183,7 +184,9 @@
       }
     }
     await encoder.flush();
-    encoder.close();
+    } finally {
+      if (encoder.state !== 'closed') encoder.close();
+    }
     if (failure) throw failure;
     if (!samples.length) throw new Error('The browser encoded no audio. Try Chrome or Edge on a computer.');
     if (config.codec !== 'opus') {
@@ -224,18 +227,22 @@
     encoder.configure(support.video);
     const total = Math.ceil(opts.duration * fps);
     const frameDuration = Math.round(1e6 / fps);
-    for (let i = 0; i < total; i++) {
-      if (failure) throw failure;
-      if (opts.isCancelled && opts.isCancelled()) { encoder.close(); throw new Error('Production cancelled.'); }
-      const canvas = await opts.drawFrame(i / fps);
-      const frame = new VideoFrame(canvas, { timestamp: i * frameDuration, duration: frameDuration });
-      encoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
-      frame.close();
-      await drain(encoder, 6);
-      if (i % 6 === 0) opts.onProgress('frames', i / total);
+    try {
+      for (let i = 0; i < total; i++) {
+        if (failure) throw failure;
+        if (opts.isCancelled && opts.isCancelled()) throw new Error('Production cancelled.');
+        const canvas = await opts.drawFrame(i / fps);
+        const frame = new VideoFrame(canvas, { timestamp: i * frameDuration, duration: frameDuration });
+        encoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
+        frame.close();
+        await drain(encoder, 6);
+        if (i % 6 === 0) opts.onProgress('frames', i / total);
+      }
+      await encoder.flush();
+    } finally {
+      // Always release the encoder (it can hold a hardware slot until garbage collection).
+      if (encoder.state !== 'closed') encoder.close();
     }
-    await encoder.flush();
-    encoder.close();
     if (failure) throw failure;
     opts.onProgress('frames', 1);
     const audio = opts.mix ? await encodeAudio(opts.mix, support.audio, r => opts.onProgress('audio', r)) : null;
