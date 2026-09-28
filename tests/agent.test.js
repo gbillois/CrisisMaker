@@ -176,10 +176,12 @@ test('checkpoint can be recovered after reload and cannot undo into another proj
 test('all existing providers normalize the same structured response and forward cancellation', async () => {
   for (const provider of ['anthropic', 'openai', 'openrouter', 'mistral', 'azure_openai', 'google_gemini', 'ollama']) {
     const h = harness(); const seen = [];
-    h.context.fetch = async (url, init) => { seen.push({ url, init }); return { ok: true, json: async () => ({ content: [{ type: 'text', text: JSON.stringify(final) }], choices: [{ message: { content: JSON.stringify(final) } }], candidates: [{ content: { parts: [{ text: JSON.stringify(final) }] } }], message: { content: JSON.stringify(final) } }) }; };
+    h.context.fetch = async (url, init) => { seen.push({ url, init, before: init.signal.aborted, after: (h.context.abort.abort(), init.signal.aborted) }); return { ok: true, json: async () => ({ content: [{ type: 'text', text: JSON.stringify(final) }], choices: [{ message: { content: JSON.stringify(final) } }], candidates: [{ content: { parts: [{ text: JSON.stringify(final) }] } }], message: { content: JSON.stringify(final) } }) }; };
     h.run(`Object.assign(appState.scenario.settings, { ai_provider: '${provider}', azure_endpoint: 'https://example.openai.azure.com', azure_api_key: 'TEST-SECRET', azure_deployment: 'model' }); globalThis.abort = new AbortController();`);
     const result = await h.run(`AITextGenerator.generate('agent', 'Return JSON', '{}', true, 2000, { signal: abort.signal, strictJSON: true })`);
-    assert.equal(result.type, 'final'); assert.equal(seen.length, 1); assert.equal(seen[0].init.signal, h.context.abort.signal);
+    assert.equal(result.type, 'final'); assert.equal(seen.length, 1);
+    // A child of the caller's signal (the call's own time limit): cancelling during the call propagates.
+    assert.equal(seen[0].before, false); assert.equal(seen[0].after, true);
     assert.ok(!seen[0].init.body.includes('TEST-SECRET'));
   }
 });

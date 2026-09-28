@@ -66,6 +66,7 @@
           error.detail = trimDetail(details.detail || details.raw || '');
           error.fileName = details.fileName || '';
           error.fileSize = details.fileSize || null;
+          if (details.retryAfter) error.retryAfter = details.retryAfter;
           if (details.cause) error.cause = details.cause;
           return error;
         }
@@ -74,7 +75,13 @@
           if (error?.name === 'AbortError') return error;
           const base = errorText(error);
           const message = details.message || base || tt('Operation failed.', 'Opération échouée.', 'Vorgang fehlgeschlagen.');
-          return create(message, { ...details, cause: error, detail: details.detail || error?.detail });
+          // Keep what the wrapped error knew (provider, model, HTTP status, code, detail).
+          const detail = [details.detail, error?.detail].filter(Boolean).join(' | ');
+          return create(message, {
+            provider: error?.provider, model: error?.model, status: error?.status, statusText: error?.statusText, code: error?.code, retryAfter: error?.retryAfter,
+            ...Object.fromEntries(Object.entries(details).filter(([, value]) => value !== undefined && value !== '')),
+            cause: error, detail
+          });
         }
 
         async function fromHttpResponse(response, details = {}) {
@@ -88,6 +95,7 @@
             status,
             statusText,
             code: payloadCode(payload),
+            retryAfter: response.headers?.get?.('retry-after') || '',
             detail: payload.raw
           });
         }
@@ -100,6 +108,7 @@
               status: response.status,
               statusText: response.statusText || '',
               code: payloadCode(payload),
+              retryAfter: response.headers?.get?.('retry-after') || '',
               detail: payload.raw
             });
           }
@@ -137,10 +146,12 @@
 
         function log(error, details = {}) {
           console.error('[CrisisMaker]', format(error, details), error);
+          if (typeof CrisisTechLog !== 'undefined') CrisisTechLog.error(error, details);
         }
 
         function toast(error, details = {}) {
           const message = format(error, details);
+          if (typeof CrisisTechLog !== 'undefined') CrisisTechLog.error(error, details);
           if (typeof pushToast === 'function') pushToast(message, 'error');
           return message;
         }

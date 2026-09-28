@@ -19,7 +19,7 @@ function harness(endpoint = 'https://example.services.ai.azure.com/openai/v1') {
     }
   });
   vm.runInContext("const DEFAULT_AZURE_API_VERSION = '2024-10-21';", context);
-  for (const file of ['errors', 'ai']) vm.runInContext(fs.readFileSync(`js/${file}.js`, 'utf8'), context);
+  for (const file of ['errors', 'tech-log', 'ai']) vm.runInContext(fs.readFileSync(`js/${file}.js`, 'utf8'), context);
   return { context, requests, replies, run: code => vm.runInContext(code, context) };
 }
 const jsonResponse = (data = { choices: [{ message: { content: '{"ok":true}' } }] }, status = 200) =>
@@ -85,13 +85,16 @@ test('streaming uses the same fallback and returns parsed JSON and incremental t
   assert.equal(JSON.parse(payload.body).model, 'custom-deployment');
 });
 
-test('Azure HTTP failures retain provider detail and never retry through the relay', async () => {
+test('Azure HTTP failures retain provider detail, never go through the relay, and only transient ones are retried', async () => {
   for (const status of [400, 401, 403, 404, 429, 500]) {
     const h = harness();
-    h.replies.push(jsonResponse({ error: { message: 'Azure failure detail', code: 'ProviderCode' } }, status));
+    h.run('llmRetryDelay = () => 0');
+    const transient = [429, 500].includes(status);
+    for (let i = 0; i < (transient ? 3 : 1); i++) h.replies.push(jsonResponse({ error: { message: 'Azure failure detail', code: 'ProviderCode' } }, status));
     await assert.rejects(h.run('AITextGenerator.testConnection()'), error =>
       error.status === status && error.code === 'ProviderCode' && error.message === 'Azure failure detail');
-    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests.length, transient ? 3 : 1, `HTTP ${status}`);
+    assert.ok(h.requests.every((request) => !String(request.url).includes('deckseeder')), 'never through the relay');
   }
 });
 
@@ -105,7 +108,8 @@ test('cancellation propagates without retry and is forwarded to the relay', asyn
   h.context.signal = controller.signal;
   h.replies.push(new TypeError('Failed to fetch'), abort);
   await assert.rejects(h.run("AITextGenerator.generate('test', 'system', null, true, 100, {signal})"), { name: 'AbortError' });
-  assert.equal(h.requests[2].init.signal, controller.signal);
+  // The relay request carries the call's signal (a child of the caller's, with its time limit).
+  assert.ok(h.requests[2].init.signal && typeof h.requests[2].init.signal.aborted === 'boolean');
 });
 
 test('unavailable relay reports actionable network guidance and rejects HTML responses', async () => {

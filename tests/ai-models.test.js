@@ -35,6 +35,7 @@ vm.runInContext(`const DEFAULT_MODELS = {
 };
 const DEFAULT_AZURE_API_VERSION = '2024-10-21';`, context);
 vm.runInContext(fs.readFileSync('js/errors.js', 'utf8'), context, { filename: 'js/errors.js' });
+vm.runInContext(fs.readFileSync('js/tech-log.js', 'utf8'), context, { filename: 'js/tech-log.js' });
 vm.runInContext(fs.readFileSync('js/ai.js', 'utf8'), context, { filename: 'js/ai.js' });
 
 function response(data, ok = true, status = 200) {
