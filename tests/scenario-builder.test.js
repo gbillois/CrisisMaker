@@ -1033,6 +1033,12 @@ test('debrief: one tab with three parts; the slide deck shows the timeline, the 
   assert.ok(calls[0].payload.evaluation[0].criteria.some((line) => line.startsWith('U')) && calls[0].payload.evaluation[0].strengths === 'Clear leadership');
   assert.ok(calls[0].payload.phases.some((phase) => phase.main_events.length));
   assert.equal(h.run('appState.scenario.slide_debrief.key_messages'), 'Isolate early\nOne voice outside');
+  // A render during the call that replaces the debrief object (a reload, a merge) does not lose the answer.
+  h.run(`var renderBefore = App.render; App.render = () => { appState.scenario.slide_debrief = JSON.parse(JSON.stringify(appState.scenario.slide_debrief)); };`);
+  mockAI(h, [{ key_messages: ['Decide the isolation by 10:00'], went_well: ['Shared picture'], to_improve: ['Ransom stance'], recommendations: ['Write a GDPR notification template (DPO, 1 month)'], next_steps: ['Review'] }]);
+  await h.run('SdAI.write(appState.scenario)');
+  assert.equal(h.run('appState.scenario.slide_debrief.key_messages'), 'Decide the isolation by 10:00');
+  h.run('App.render = renderBefore');
   kinds = h.json('sdSlides(appState.scenario).map((slide) => slide.kind)');
   assert.ok(kinds.includes('bullets') && kinds.filter((kind) => kind === 'columns').length === 2 && kinds.includes('cells'));
   // Sections can be left out; everything is saved with the project.
