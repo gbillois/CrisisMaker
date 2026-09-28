@@ -444,29 +444,44 @@
           sandbox.style.top = '0';
           document.body.appendChild(sandbox);
           const failures = [];
+          const notes = [];
           try {
             for (let i = 0; i < stimuli.length; i++) {
               const stimulus = stimuli[i];
               const isVideo = this.isVideoStimulus(stimulus);
               appState.ui.exportAllProgress = { current: i + 1, total: stimuli.length, isVideo };
               if (typeof App !== 'undefined') App.render();
+              const renderPng = async ({ withoutVideo = false } = {}) => {
+                sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
+                const node = sandbox.firstElementChild;
+                if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
+                const options = { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' };
+                // Still image of a TV inject: the layout without the video that cannot play here.
+                if (withoutVideo) options.filter = (element) => element.tagName !== 'VIDEO';
+                let dataUrl = await htmlToImage.toPng(node, options);
+                dataUrl = PngMetadata.injectMetadata(dataUrl);
+                zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
+              };
               try {
                 if (isVideo) {
-                  const { blob: clipBlob } = await this.renderVideoStimulusClip(stimulus);
-                  zip.file(this.filenameForStimulus(stimulus, 'webm'), clipBlob);
+                  try {
+                    const { blob: clipBlob } = await this.renderVideoStimulusClip(stimulus);
+                    zip.file(this.filenameForStimulus(stimulus, 'webm'), clipBlob);
+                  } catch (videoError) {
+                    // The video cannot be recorded here (codec, file:// page): the TV inject is
+                    // still delivered, as a still image, and the reason is noted.
+                    await renderPng({ withoutVideo: true });
+                    notes.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: video not recorded (${videoError?.message || videoError}), exported as a still image.`);
+                  }
                 } else {
-                  sandbox.innerHTML = renderStimulusPreview(stimulus, `zip-${stimulus.id}`);
-                  const node = sandbox.firstElementChild;
-                  if (!node) throw new Error(tt('Rendered stimulus preview is empty.', 'L’aperçu du stimulus rendu est vide.', 'Die gerenderte Stimulus-Vorschau ist leer.'));
-                  let dataUrl = await htmlToImage.toPng(node, { quality: 1.0, pixelRatio: 2, backgroundColor: '#FFFFFF' });
-                  dataUrl = PngMetadata.injectMetadata(dataUrl);
-                  zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
+                  await renderPng();
                 }
               } catch (error) {
                 // One inject that cannot be rendered (a video under file://, a broken image) is
                 // listed in export_errors.txt; the others are still exported.
                 CrisisError.log(error, { operation: 'Render stimulus for ZIP export', detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}` });
-                failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${error?.message || error}`);
+                const reason = error?.message || (error?.type ? tt(`a resource failed to load (${error.type})`, `une ressource n'a pas pu être chargée (${error.type})`, `eine Ressource konnte nicht geladen werden (${error.type})`) : String(error));
+                failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${reason}`);
               }
             }
             if (failures.length === stimuli.length) throw new Error(tt('No inject could be rendered.', 'Aucun inject n\'a pu être rendu.', 'Kein Inject konnte gerendert werden.') + ` ${failures[0] || ''}`);
@@ -475,10 +490,11 @@
             const crisisSlug = slugify(appState.scenario.name);
             zip.file(`${crisisSlug}.json`, json);
             zip.file(`${crisisSlug}_chronogram.csv`, this.chronogramCsv(stimuli));
-            if (failures.length) zip.file('export_errors.txt', failures.join('\r\n'));
+            if (failures.length || notes.length) zip.file('export_errors.txt', [...failures, ...notes].join('\r\n'));
             const blob = await zip.generateAsync({ type: 'blob' });
             downloadBlob(blob, `${crisisSlug}.zip`);
-            if (failures.length) pushToast(tt(`ZIP generated, but ${failures.length} inject(s) could not be rendered: see export_errors.txt in the archive.`, `ZIP généré, mais ${failures.length} inject(s) n'ont pas pu être rendus : voir export_errors.txt dans l'archive.`, `ZIP erstellt, aber ${failures.length} Inject(s) konnten nicht gerendert werden: siehe export_errors.txt im Archiv.`), 'warning');
+            if (!failures.length && notes.length) pushToast(tt(`ZIP generated. ${notes.length} TV inject(s) exported as still images (video not available here): see export_errors.txt.`, `ZIP généré. ${notes.length} inject(s) TV exportés en image fixe (vidéo indisponible ici) : voir export_errors.txt.`, `ZIP erstellt. ${notes.length} TV-Inject(s) als Standbild exportiert (Video hier nicht verfügbar): siehe export_errors.txt.`), 'warning');
+            else if (failures.length) pushToast(tt(`ZIP generated, but ${failures.length} inject(s) could not be rendered: see export_errors.txt in the archive.`, `ZIP généré, mais ${failures.length} inject(s) n'ont pas pu être rendus : voir export_errors.txt dans l'archive.`, `ZIP erstellt, aber ${failures.length} Inject(s) konnten nicht gerendert werden: siehe export_errors.txt im Archiv.`), 'warning');
             else pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
           } catch (error) {
             throw CrisisError.wrap(error, {

@@ -281,7 +281,7 @@ const SbAI = {
     if (Array.isArray(patch.beats)) {
       // An id the AI repeats is only kept once: the repeat becomes a new planned inject.
       const seen = new Set();
-      block.beats = patch.beats.filter((beat) => beat && typeof beat === 'object').slice(0, SB_MAX_BEATS).map((beat) => {
+      block.beats = patch.beats.filter((beat) => beat && typeof beat === 'object').slice(0, SB_MAX_STORED_BEATS).map((beat) => {
         if (beat.id && seen.has(beat.id)) beat = { ...beat, id: undefined };
         if (beat.id) seen.add(beat.id);
         const existing = block.beats.find((item) => item.id === beat.id);

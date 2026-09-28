@@ -4,7 +4,12 @@ const STORYBOARD_SCHEMA = 1;
 const SB_DEFAULT_DURATION = 300;
 const SB_MAX_DURATION = 10080;
 const SB_MAX_BLOCKS = 80;
+// How many planned injects the AI may produce in one request (keeps prompts and answers small).
 const SB_MAX_BEATS = 24;
+// How many planned injects a phase can hold: loading, editing and re-planning never drop any
+// below this (a 300-inject exercise easily has 40+ in one phase).
+const SB_MAX_STORED_BEATS = 500;
+const SB_MAX_CAST = 200;
 
 const SB_TRACK_PRESETS = [
   { key: 'main', name: 'Main storyline', kind: 'main', color: '#451dc7' },
@@ -213,7 +218,7 @@ function sbNormalizeBlock(input = {}, storyboard = null) {
   let trackId = sbSafeId(input.track_id);
   if (trackIds && !trackIds.includes(trackId)) trackId = (sbTrackByKey(storyboard, preset.track) || sbMainTrack(storyboard))?.id || trackIds[0];
   const duration = sbInt(input.duration_minutes, preset.duration, 5, SB_MAX_DURATION);
-  const beats = (Array.isArray(input.beats) ? input.beats : []).slice(0, SB_MAX_BEATS).map(sbNormalizeBeat)
+  const beats = (Array.isArray(input.beats) ? input.beats : []).slice(0, SB_MAX_STORED_BEATS).map(sbNormalizeBeat)
     .map((beat) => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, Math.max(0, duration - 1)) }))
     .sort((a, b) => a.offset_minutes - b.offset_minutes);
   return {
@@ -223,7 +228,7 @@ function sbNormalizeBlock(input = {}, storyboard = null) {
     track_id: trackId || 'track_main',
     start_minutes: sbInt(input.start_minutes, 0, 0, SB_MAX_DURATION),
     duration_minutes: duration,
-    stimuli_target: sbInt(input.stimuli_target, preset.stimuli, 0, SB_MAX_BEATS),
+    stimuli_target: sbInt(input.stimuli_target, preset.stimuli, 0, SB_MAX_STORED_BEATS),
     brief: sbText(input.brief, 4000),
     narrative: sbText(input.narrative, 8000),
     objectives: sbTextList(input.objectives, 12, 600),
@@ -270,7 +275,7 @@ function normalizeStoryboard(input, legacyPhases = []) {
   // Exactly one main track, always first.
   const mainIndex = storyboard.tracks.findIndex((track) => track.kind === 'main');
   storyboard.tracks = [storyboard.tracks[mainIndex], ...storyboard.tracks.filter((_, index) => index !== mainIndex).map((track) => ({ ...track, kind: 'workstream' }))];
-  storyboard.cast = (Array.isArray(input.cast) ? input.cast : []).slice(0, 60).map(sbNormalizeCast);
+  storyboard.cast = (Array.isArray(input.cast) ? input.cast : []).slice(0, SB_MAX_CAST).map(sbNormalizeCast);
   const seenBlocks = new Set();
   storyboard.blocks = input.blocks.slice(0, SB_MAX_BLOCKS).map((block) => sbNormalizeBlock(block, storyboard))
     .filter((block) => !seenBlocks.has(block.id) && seenBlocks.add(block.id));
@@ -312,7 +317,7 @@ function sbPickBlockPatch(patch = {}) {
   for (const key of ['title', 'brief', 'narrative', 'notes']) if (typeof patch[key] === 'string') clean[key] = sbText(patch[key], key === 'narrative' ? 8000 : 4000);
   if (patch.start_minutes !== undefined) clean.start_minutes = sbInt(patch.start_minutes, 0, 0, SB_MAX_DURATION);
   if (patch.duration_minutes !== undefined) clean.duration_minutes = sbInt(patch.duration_minutes, 30, 5, SB_MAX_DURATION);
-  if (patch.stimuli_target !== undefined) clean.stimuli_target = sbInt(patch.stimuli_target, 2, 0, SB_MAX_BEATS);
+  if (patch.stimuli_target !== undefined) clean.stimuli_target = sbInt(patch.stimuli_target, 2, 0, SB_MAX_STORED_BEATS);
   if (patch.objectives !== undefined) clean.objectives = sbTextList(patch.objectives, 12, 600);
   return clean;
 }

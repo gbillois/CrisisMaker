@@ -502,7 +502,7 @@ function sbBindInputs(root) {
       if (!block) return;
       if (SB_NUMBER_FIELDS.has(field)) {
         const previousEnd = sbBlockEnd(block);
-        const value = sbInt(input.value, block[field], field === 'duration_minutes' ? 5 : 0, field === 'stimuli_target' ? SB_MAX_BEATS : SB_MAX_DURATION);
+        const value = sbInt(input.value, block[field], field === 'duration_minutes' ? 5 : 0, field === 'stimuli_target' ? SB_MAX_STORED_BEATS : SB_MAX_DURATION);
         block[field] = value;
         if (field === 'duration_minutes') block.beats.forEach((beat) => { beat.offset_minutes = Math.min(beat.offset_minutes, Math.max(0, value - 1)); });
         if (ui.ripple && field !== 'stimuli_target' && sbTrack(storyboard, block.track_id)?.kind === 'main') sbRipple(storyboard, block, previousEnd);

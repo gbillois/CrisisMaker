@@ -353,7 +353,7 @@ function createAgentToolRegistry() {
     const castMap = new Map(project.storyboard.cast.flatMap(cast => [[cast.id, cast.id], [cast.label, cast.id]]));
     const planned = sbBeatsFromAI(project.storyboard, args.injects, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) }));
     const kept = args.replace ? block.beats.filter(beat => sbStimulusForBeat(project, beat.id)) : block.beats;
-    block.beats = [...kept, ...planned].slice(0, SB_MAX_BEATS).sort((a, b) => a.offset_minutes - b.offset_minutes);
+    block.beats = [...kept, ...planned].slice(0, SB_MAX_STORED_BEATS).sort((a, b) => a.offset_minutes - b.offset_minutes);
     sbMarkPlanned(block);
     block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
     block.key_cast = [...new Set(block.beats.map(beat => beat.cast_id).filter(Boolean))];
