@@ -1016,7 +1016,8 @@ Return this structure:
       const PromptBuilder = {
         forStimulus(stimulus, actor, scenario, fieldName = null, guidedPrompt = null) {
           const common = {
-            scenarioSummary: scenario.scenario.summary,
+            // Written by the AI; for a scenario built by hand, the designer's own context.
+            scenarioSummary: scenario.scenario.summary || scenario.storyboard?.meta?.brief || '',
             timestamp: `H+${stimulus.timestamp_offset_minutes} minutes`,
             actorName: actor?.name || 'Spokesperson',
             actorTitle: actor?.title || 'Lead',

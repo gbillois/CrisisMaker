@@ -909,6 +909,7 @@ function renderContextGlance(project) {
   return `<article class="card cx-frame" data-sb-scope>
     <div class="section-header"><div><h3>Context</h3><p class="subtle">Who the exercise is for, how long it plays, the simulated clock and the audience.</p></div></div>
     <div class="cx-row cx-row-client">
+      <label class="field">Exercise name<input type="text" data-bind="name" value="${escapeAttribute(project.name || '')}" placeholder="e.g. Operation Bitter Pill"></label>
       <label class="field">Client name<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="Organisation name"></label>
       <label class="field">Sector<span class="cx-sector ${otherSector ? 'is-other' : ''}"><select data-cx-sector aria-label="Sector">${sectors.map((sector) => sbOption(sector, sector, otherSector ? 'Other' : project.client.sector)).join('')}</select>${otherSector ? `<input type="text" data-cx-sector-other value="${escapeAttribute(project.client.sector === 'Other' ? '' : project.client.sector)}" placeholder="Type the sector" aria-label="Other sector">` : ''}</span></label>
       <div class="field cx-logo">
@@ -1014,24 +1015,6 @@ function contextAgentObjective(project) {
     `Fit the play duration of ${storyboard.duration_minutes} minutes, ${project.exercise.cells_count || project.cells.length || 'a suitable number of'} player cells and ${project.exercise.players_count || 'an unknown number of'} players.`,
     contextExerciseFileExcerpt()
   ].filter(Boolean).join('\n').slice(0, 7900);
-}
-
-function renderContextDetails(project) {
-  const storyboard = project.storyboard;
-  const types = ['Ransomware', 'Data Breach', 'Supply Chain', 'DDoS', 'Insider Threat', 'Fraud', 'Other'];
-  return `<details class="card cx-details" data-sb-scope>
-    <summary><span><strong>Scenario details</strong><span class="subtle">Name, type, summary, objectives, synopsis and threat. Filled in by the AI, editable by hand.</span></span>${sbUiIcon('down', 16)}</summary>
-    <div class="field-grid cols-2">
-      <label class="field">Scenario name<input type="text" data-bind="name" value="${escapeAttribute(project.name || '')}"></label>
-      <label class="field">Type<select data-bind="scenario.type">${[...new Set([project.scenario.type, ...types].filter(Boolean))].map((type) => sbOption(type, type, project.scenario.type)).join('')}</select></label>
-      <label class="field">Summary<textarea data-bind="scenario.summary" rows="4">${escapeHtml(project.scenario.summary || '')}</textarea></label>
-      <label class="field">Exercise objectives · one per line<textarea data-sb-project="scenario.objectives" rows="4" placeholder="Decide on isolation under uncertainty&#10;Notify authorities on time">${escapeHtml(project.scenario.objectives || '')}</textarea></label>
-      <label class="field">Synopsis · the hidden story<textarea data-sb-meta="synopsis" rows="4">${escapeHtml(storyboard.meta.synopsis)}</textarea></label>
-      <label class="field">Threat<textarea data-sb-meta="threat" rows="4" placeholder="Threat actor, initial access, impact">${escapeHtml(storyboard.meta.threat)}</textarea></label>
-      <label class="field">Detailed context<textarea data-bind="scenario.detailed_context" rows="3" placeholder="Affected systems, attack vector, compromised data…">${escapeHtml(project.scenario.detailed_context || '')}</textarea></label>
-      <label class="field">Narrative arc<textarea data-sb-project="scenario.narrative_arc" rows="3">${escapeHtml(project.scenario.narrative_arc || '')}</textarea></label>
-    </div>
-  </details>`;
 }
 
 // ═══ Events ══════════════════════════════════════════════════════════════════

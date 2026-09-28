@@ -980,7 +980,6 @@
           <section class="tab-page sc-page">
             ${renderContextGlance(project)}
             ${renderContextBrief(project)}
-            ${renderContextDetails(project)}
           </section>`;
         });
       }

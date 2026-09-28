@@ -713,7 +713,7 @@ function sbStructuralChecks(storyboard, project = null) {
   const objectives = sbObjectivesList(project);
   const covered = new Set(storyboard.blocks.flatMap((block) => block.objectives));
   objectives.filter((objective) => !covered.has(objective)).forEach((objective) => add('warning', 'objective_uncovered', `Objective not covered by any block: "${objective}".`));
-  if (!objectives.length) add('info', 'no_objectives', 'No exercise objectives: add them in the scenario panel to check coverage.');
+  if (!objectives.length && !String(project?.scenario?.learning_objectives || '').trim()) add('info', 'no_objectives', 'No learning objectives: describe them in the Context tab.');
   const usedCast = new Set(storyboard.blocks.flatMap((block) => block.beats.map((beat) => beat.cast_id)));
   storyboard.cast.filter((cast) => !usedCast.has(cast.id)).forEach((cast) => add('info', 'cast_unused', `Role "${cast.label}" never sends an inject.`));
   const planned = storyboard.blocks.reduce((sum, block) => sum + block.stimuli_target, 0);

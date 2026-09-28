@@ -409,8 +409,9 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
   const context = h.run('renderScenarioView()');
-  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-cx-sector', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-cx-generate', 'Generate with AI', 'data-sb-meta="synopsis"']) assert.ok(context.includes(marker), marker);
-  assert.ok(context.indexOf('data-sc-players') < context.indexOf('data-sb-meta="brief"') && context.indexOf('data-cx-generate') < context.indexOf('data-sb-meta="synopsis"'), 'context, then objectives and AI, then details');
+  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-cx-sector', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-cx-generate', 'Generate with AI']) assert.ok(context.includes(marker), marker);
+  assert.ok(context.indexOf('data-sc-players') < context.indexOf('data-sb-meta="brief"'), 'context, then objectives and AI');
+  assert.ok(context.includes('data-bind="name"') && !context.includes('cx-details') && !context.includes('data-sb-meta="synopsis"'), 'the exercise name in the Context card; no "Scenario details" block');
   assert.ok(!context.includes('skeleton.brief') && !context.includes('llm-block-scenario'), 'the old AI blocks are gone');
   assert.ok(!context.includes('sb-template-card'), 'the library moved to the Project tab');
   const projectView = h.run('renderProjectView()');
