@@ -156,13 +156,12 @@ function answerFor(system, user) {
   await page.dispatchEvent(playerInput, 'change');
   assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
 
-  // 4. Detailed storyline: pick a cell, plan with AI, add an inject, generate the cell.
+  // 4. Detailed storyline: pick a cell, add an inject, generate the cell (no "+ Cell", no "Plan with AI").
+  assert.equal(await page.locator('.ds-cell-chip.is-add, [data-tab-action="ds-plan"]').count(), 0);
   await page.click('.nav-icon-btn[data-route="detailed"]');
   assert.ok(await page.isVisible('.ds-phase-row'));
   await page.click(`[data-tab-action="ds-cell"][data-tab-value="${firstCell}"]`);
   await page.evaluate(() => { tabUI('detailed').playhead = 10; App.render(); });
-  await page.click('[data-tab-action="ds-plan"]');
-  await page.waitForFunction(cell => sbStoryboard().blocks.flatMap(block => block.beats).filter(beat => beat.cell_id === cell && beat.title.startsWith('Cell inject')).length === 3, firstCell);
   const before = await page.evaluate(() => sbExerciseItems(appState.scenario).length);
   await page.click('[data-tab-action="ds-add"]');
   assert.equal(await page.evaluate(() => sbExerciseItems(appState.scenario).length), before + 1);
@@ -171,7 +170,7 @@ function answerFor(system, user) {
   await page.click('[data-sb-action="start-generation"]');
   await page.waitForFunction(() => SbPipeline.status === 'complete', null, { timeout: 30000 });
   const stimuli = await page.evaluate(() => appState.scenario.stimuli.map(s => ({ cell: s.cell_id, linked: !!s.scenario_link })));
-  assert.ok(stimuli.length >= 4);
+  assert.ok(stimuli.length >= 1);
   assert.ok(stimuli.every(s => s.cell === firstCell && s.linked), 'only the selected cell was generated');
   await page.click('[data-sb-action="close-modal"]');
 

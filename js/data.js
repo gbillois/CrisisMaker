@@ -162,6 +162,31 @@
           scenario.exercise = { players_count: 12, cells_count: '' };
           sbFlattenWorkstreams(scenario);
           scenario.exercise.cells_count = scenario.cells.length;
+          // The designer's context, the players of each cell, the main events of each phase and
+          // one inject for every cell: the demo shows every tab at work.
+          scenario.storyboard.meta.brief = 'Three-hour executive exercise for StonaWave, a global pharmaceutical group. Test the isolation decision under uncertainty, patient safety, the regulatory notifications (NIS2, GDPR, health authorities) and media pressure in three languages. Players are experienced crisis managers; the attacker escalates in the last hour.';
+          const demoPlayers = {
+            operational: [['Claire Martin', 'Crisis director'], ['Tom Becker', 'IT operations lead'], ['Nadia Haddad', 'Site manager, New Jersey']],
+            communication: [['Sofia Rossi', 'Head of communications'], ['Mark Chen', 'Social media lead'], ['Julie Moreau', 'Internal communications']],
+            legal: [['Laura Schmidt', 'General counsel'], ['Hugo Lefèvre', 'Data protection officer'], ['Priya Nair', 'Regulatory affairs']],
+            business: [['Anika Patel', 'Head of manufacturing'], ['James Carter', 'Supply chain director'], ['Elena Vogel', 'Customer service director']]
+          };
+          scenario.cells.forEach((cell) => { cell.players = (demoPlayers[cell.key] || []).map(([name, role]) => sbNormalizePlayer({ name, role })); });
+          const demoEvents = [
+            [[0, 'Ransomware detonates across the MES, ERP and identity systems'], [10, 'Production lines stop in New Jersey and Frankfurt']],
+            [[5, 'PharmLeaks ransom note: $25M, 72-hour deadline'], [20, 'The leak site shows a countdown and sample patient files']],
+            [[10, 'IT asks to cut the interconnections between sites'], [30, 'A partner hospital reports missing deliveries']],
+            [[10, 'The CEO addresses all staff; manual production procedures start'], [30, 'International press coverage in French, English and German']],
+            [[5, 'Clean backups confirmed for the ERP'], [15, 'PharmLeaks threatens to publish clinical-trial data']],
+            [[5, 'Crisis exit criteria met; handover to the recovery teams']]
+          ];
+          sbMainBlocks(scenario.storyboard).forEach((block, index) => {
+            block.events = (demoEvents[index] || []).map(([at, text]) => sbMakeEvent({ offset_minutes: Math.min(at, Math.max(0, block.duration_minutes - 1)), text }));
+          });
+          const ceo = sbMainBlocks(scenario.storyboard).flatMap((block) => block.beats).find((beat) => /CEO/i.test(beat.title));
+          if (ceo) ceo.cell_id = SB_ALL_CELLS;
+          const ceoStimulus = ceo && scenario.stimuli.find((stimulus) => stimulus.scenario_link?.beat_id === ceo.id);
+          if (ceoStimulus) ceoStimulus.cell_id = SB_ALL_CELLS;
           scenario.scenario.phases = sbDerivePhases(scenario.storyboard);
           sbSealLinks(scenario);
         }

@@ -65,7 +65,7 @@ test('model: legacy phases migrate to main-track blocks and phases stay derived'
 test('model: example project ships a single linked storyline with recipient cells and no pending sync', () => {
   const h = harness();
   h.run('appState.scenario = defaultScenario()');
-  const info = h.json(`({ blocks: appState.scenario.storyboard.blocks.length, tracks: appState.scenario.storyboard.tracks.length, cells: appState.scenario.cells.map(c => c.key), beatsWithoutCell: appState.scenario.storyboard.blocks.flatMap(b => b.beats).filter(b => !sbCell(appState.scenario, b.cell_id)).length, stimuliWithoutCell: appState.scenario.stimuli.filter(s => !s.cell_id).length, linked: appState.scenario.stimuli.filter(s => s.scenario_link).length, impacts: sbComputeImpacts(appState.scenario).length, issues: sbStructuralChecks(appState.scenario.storyboard, appState.scenario).filter(i => i.severity !== 'info').map(i => i.message), exercise: appState.scenario.exercise })`);
+  const info = h.json(`({ blocks: appState.scenario.storyboard.blocks.length, tracks: appState.scenario.storyboard.tracks.length, cells: appState.scenario.cells.map(c => c.key), beatsWithoutCell: appState.scenario.storyboard.blocks.flatMap(b => b.beats).filter(b => !sbHasRecipient(appState.scenario, b.cell_id)).length, stimuliWithoutCell: appState.scenario.stimuli.filter(s => !s.cell_id).length, linked: appState.scenario.stimuli.filter(s => s.scenario_link).length, impacts: sbComputeImpacts(appState.scenario).length, issues: sbStructuralChecks(appState.scenario.storyboard, appState.scenario).filter(i => i.severity !== 'info').map(i => i.message), exercise: appState.scenario.exercise })`);
   assert.equal(info.tracks, 1);
   assert.equal(info.blocks, 6);
   assert.deepEqual(info.cells, ['operational', 'communication', 'legal', 'business']);
@@ -210,24 +210,13 @@ test('AI: skeleton output is repaired, validated and applied as one undoable ste
   assert.equal(h.run('sbStoryboard().blocks.length'), 0);
 });
 
-test('AI: planCellInjects adds beats for one cell and reviewExercise merges rules with AI findings', async () => {
+test('AI: reviewExercise merges rules with AI findings', async () => {
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); Object.assign(appState.scenario.settings, { ai_api_key: 'TEST-SECRET', ai_provider: 'openai' }); StoryboardHistory.ensure();`);
-  const target = h.json(`({ block: sbMainBlocks(sbStoryboard())[1].id, cell: appState.scenario.cells[1].id, name: appState.scenario.cells[1].name, before: sbMainBlocks(sbStoryboard())[1].beats.length })`);
+  const target = h.json(`({ cell: appState.scenario.cells[1].id, name: appState.scenario.cells[1].name })`);
   const calls = mockAI(h, [
-    () => ({ beats: [{ at: 5, channel: 'article_press', cast: 'new_reporter', title: 'Reporter calls', intent: 'Pressure' }, { at: 9999, channel: 'email_internal', cast: 'new_reporter', title: 'Too late', intent: 'Clamp' }, { at: 1, channel: 'sms_notification', title: 'Extra', intent: 'Dropped' }], cast: [{ key: 'new_reporter', label: 'Reporter', role: 'journalist', organization: 'Daily' }] }),
     () => ({ score: 71, summary: 'Rhythm is uneven.', issues: [{ severity: 'warning', at: 90, cell: target.name, message: 'Two floods in a row.', suggestion: 'Spread them.' }, { severity: 'bogus', message: '' }] })
   ]);
-  h.context.target = target;
-  const added = await h.run(`SbAI.planCellInjects(target.block, target.cell, 2, 'more pressure').then(r => JSON.stringify(r))`).then(JSON.parse);
-  assert.equal(added.length, 2);
-  assert.ok(added.every(beat => beat.cell_id === target.cell));
-  const block = h.json(`sbBlock(sbStoryboard(), target.block)`);
-  assert.equal(block.beats.length, target.before + 2);
-  assert.ok(block.beats.every(beat => beat.offset_minutes < block.duration_minutes));
-  assert.ok(h.json('sbStoryboard().cast').some(cast => cast.label === 'Reporter'));
-  assert.equal(calls[0].payload.target.cell_id, target.cell);
-  assert.equal(calls[0].payload.instruction, 'more pressure');
   const review = await h.run(`SbAI.reviewExercise().then(r => JSON.stringify(r))`).then(JSON.parse);
   assert.equal(review.score, 71);
   const ai = review.issues.filter(issue => issue.source === 'ai');
@@ -235,9 +224,10 @@ test('AI: planCellInjects adds beats for one cell and reviewExercise merges rule
   assert.equal(ai[0].cell_id, target.cell);
   assert.equal(ai[0].at, 90);
   assert.ok(review.issues.some(issue => issue.source === 'rules'));
-  assert.ok(calls[1].payload.injects.length > 19);
+  assert.equal(calls[0].payload.injects.length, h.run('sbExerciseItems(appState.scenario).length'));
   assert.ok(!JSON.stringify(calls).includes('TEST-SECRET'));
 });
+
 test('AI: deepen adds narrative then exactly the missing beats, keeping existing ones and locked blocks', async () => {
   const h = harness();
   h.run(`const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
@@ -445,7 +435,8 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   for (const marker of ['data-tab-action="ds-cell"', 'ds-phase-row', 'data-ds-item', 'bottom-editor']) assert.ok(detailed.includes(marker), marker);
   h.run(`tabUI('detailed').cell = appState.scenario.cells[0].id; tabUI('detailed').selected = sbExerciseItems(appState.scenario).find(i => i.cell_id === appState.scenario.cells[0].id).key`);
   const inject = h.run('renderDetailedView()');
-  for (const marker of ['data-ds-time', 'data-rcpt=', 'data-tab-action="ds-plan"']) assert.ok(inject.includes(marker), marker);
+  for (const marker of ['data-ds-time', 'data-rcpt=', 'data-tab-action="ds-add"']) assert.ok(inject.includes(marker), marker);
+  assert.ok(!inject.includes('data-tab-action="ds-plan"') && !inject.includes('ds-cell-chip is-add'), 'no "Plan with AI", no "+ Cell"');
   h.run(`tabUI('summary').review = { score: null, summary: '', issues: sbExerciseChecks(appState.scenario) }; tabUI('summary').time = 120`);
   const summary = h.run('renderSummaryView()');
   for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'data-su-scrub', 'data-su-columns', 'data-su-rehearse', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
@@ -513,7 +504,8 @@ test('scenario first: injects grouped by phase, phase and cell filters, scenario
   const one = h.run('renderLibraryView()');
   assert.ok(one.includes(`<strong>${phases[1].title}</strong>`) && !one.includes(`<strong>${phases[0].title}</strong>`));
   // The agent's check reads the storyline and the cells before the injects.
-  h.run(`appState.scenario.cells.push(sbMakeCell('custom', { name: 'Idle cell' }))`);
+  // (an inject sent to all cells reaches a new cell too: give the demo's to one cell first)
+  h.run(`(() => { const first = appState.scenario.cells[0].id; sbStoryboard().blocks.forEach((b) => b.beats.forEach((beat) => { if (beat.cell_id === 'all') beat.cell_id = first; })); appState.scenario.stimuli.forEach((s) => { if (s.cell_id === 'all') s.cell_id = first; }); appState.scenario.cells.push(sbMakeCell('custom', { name: 'Idle cell' })); })()`);
   const check = h.json('agentConsistencyCheck()');
   assert.ok(check.issues.some((issue) => issue.includes('Cell "Idle cell" receives no inject')));
   assert.ok(check.note.includes('scenario first'));
@@ -836,8 +828,8 @@ test('main events: a line of text at a time in each phase, framing the AI plans 
   assert.ok(view.includes('sb-key-card') && !view.includes('Key stimuli'), 'shown under the phases');
   // Saved, exported with templates, and given to the AI with their time.
   const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).storyboard.blocks.find((block) => block.id === '${blockId}').events`);
-  assert.equal(reloaded[0].text, 'The ransom note appears on every screen');
-  assert.equal(h.json(`sbAIContext(appState.scenario).storyboard.blocks.find((block) => block.id === '${blockId}').key_events[0].at`), 10);
+  assert.ok(reloaded.some((item) => item.text === 'The ransom note appears on every screen'));
+  assert.ok(h.json(`sbAIContext(appState.scenario).storyboard.blocks.find((block) => block.id === '${blockId}').key_events`).some((item) => item.at === 10 && item.text.includes('ransom note appears')));
   // Writing an inject: events before its time have happened, later ones are not revealed.
   const early = h.run(`(() => { const block = sbBlock(sbStoryboard(), '${blockId}'); return sbGenerationBrief(appState.scenario, block, sbMakeBeat({ offset_minutes: 2, title: 'x' }), {}); })()`);
   const late = h.run(`(() => { const block = sbBlock(sbStoryboard(), '${blockId}'); return sbGenerationBrief(appState.scenario, block, sbMakeBeat({ offset_minutes: 20, title: 'x' }), {}); })()`);
@@ -847,7 +839,7 @@ test('main events: a line of text at a time in each phase, framing the AI plans 
   mockAI(h, [{ block: { beats: [{ at: 3, channel: 'email_internal', cast: '', title: 'New planned inject', intent: 'x' }] } }]);
   h.run(`Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'TEST', ai_model: 'gpt-test' })`);
   await h.run(`SbAI.rewrite('${blockId}', 'Replan')`);
-  assert.equal(h.json(`sbBlock(sbStoryboard(), '${blockId}').events`).length, 1);
+  assert.ok(h.json(`sbBlock(sbStoryboard(), '${blockId}').events`).some((item) => item.id === event.id));
   // Older projects: planned injects marked "main" become main events, the injects stay.
   const legacy = h.json(`normalizeStoryboard({ ...JSON.parse(JSON.stringify(sbStoryboard())), blocks: [{ id: 'b_old', type: 'trigger', title: 'Old', start_minutes: 0, duration_minutes: 30, beats: [{ id: 'beat_old', at: 5, channel: 'breaking_news_tv', title: 'TV flash', intent: 'Hospitals hit', main: true }] }] }).blocks[0]`);
   assert.equal(legacy.events[0].text, 'TV flash — Hospitals hit');

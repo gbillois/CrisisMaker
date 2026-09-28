@@ -15,7 +15,7 @@ function tabUI(name) {
   if (!ui.tabs) ui.tabs = {};
   if (!ui.tabs[name]) {
     ui.tabs[name] = {
-      detailed: { cell: 'all', selected: null, zoom: null, needsFit: true, scrollLeft: 0, scrollTop: 0, playhead: 0, planCount: 3, focusTime: null },
+      detailed: { cell: 'all', selected: null, zoom: null, needsFit: true, scrollLeft: 0, scrollTop: 0, playhead: 0, focusTime: null },
       summary: { time: 0, speed: 60, playing: false, preview: null, review: null },
       storyline: { editorOpen: true }
     }[name] || {};
@@ -332,7 +332,7 @@ function renderCellsView() {
         </div>
         <div class="ce-grid">
           ${project.cells.map((cell) => {
-            const count = items.filter((item) => item.cell_id === cell.id).length;
+            const count = items.filter((item) => sbReaches(item.cell_id, cell.id)).length;
             return `<div class="ce-cell" style="--cell-color:${cell.color}">
               <div class="ce-cell-head">
                 <input type="color" data-ce-cell="${cell.id}.color" value="${cell.color}" aria-label="Cell colour">
@@ -424,7 +424,6 @@ function renderDetailedView() {
           <button class="ds-cell-chip ${state.cell === 'all' ? 'active' : ''}" data-tab-action="ds-cell" data-tab-value="all">All cells <b>${items.length}</b></button>
           ${project.cells.map((cell) => `<button class="ds-cell-chip ${state.cell === cell.id ? 'active' : ''}" style="--cell-color:${cell.color}" data-tab-action="ds-cell" data-tab-value="${cell.id}"><i></i>${escapeHtml(cell.name)} <b>${counts.get(cell.id) || 0}</b></button>`).join('')}
           ${counts.get('none') ? `<button class="ds-cell-chip ${state.cell === 'none' ? 'active' : ''}" data-tab-action="ds-cell" data-tab-value="none">Unassigned <b>${counts.get('none')}</b></button>` : ''}
-          <button class="ds-cell-chip is-add" data-route="cells" title="Manage cells">+ Cell</button>
         </div>
         <div class="sb-tb-group">
           <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="Undo (Ctrl+Z)">${sbUiIcon('undo')}</button>
@@ -432,7 +431,6 @@ function renderDetailedView() {
         </div>
         <div class="sb-tb-group">
           <button class="sb-tool sb-tool-label" data-tab-action="ds-add" ${readOnly || !storyboard.blocks.length ? 'disabled' : ''} title="Add an inject at the playhead">${sbUiIcon('plus')}<span>Inject</span></button>
-          <span class="ds-plan"><input type="number" min="1" max="10" data-tab-ui="planCount" value="${state.planCount}" aria-label="Number of injects to plan" ${cellScope ? '' : 'disabled'}><button class="sb-tool sb-tool-label" data-tab-action="ds-plan" ${ai && cellScope && !readOnly ? '' : 'disabled'} title="${cellScope ? `Plan injects for the ${escapeAttribute(cellScope.name)} in the phase at the playhead` : 'Select a cell first'}">${sbUiIcon('wand')}<span>Plan with AI</span></button></span>
         </div>
         <div class="sb-tb-group sb-tb-output">
           ${renderUpdateButton(project, pending)}
@@ -1157,14 +1155,6 @@ async function tabHandleAction(event) {
       case 'ds-delete':
         dsDeleteSelected(project);
         break;
-      case 'ds-plan': {
-        const block = sbMainBlockAt(storyboard, detailed.playhead);
-        const cell = sbCell(project, detailed.cell);
-        if (!block || !cell) throw new AgentValidationError('Select a cell and place the playhead in a phase.');
-        const added = await sbRunAI(`Plan injects for the ${cell.name}`, () => SbAI.planCellInjects(block.id, cell.id, detailed.planCount));
-        if (added?.[0]) detailed.selected = `beat:${added[0].id}`;
-        break;
-      }
       case 'ds-generate':
         sbUI().generate.scope = detailed.cell !== 'all' && sbCell(project, detailed.cell) ? 'cell' : 'all';
         sbUI().generate.cellId = sbCell(project, detailed.cell)?.id || '';
@@ -1387,9 +1377,6 @@ function tabBindInputs(root) {
     item.stimulus.updated_at = new Date().toISOString();
     saveLocal(false);
     renderAfterPointer();
-  }));
-  root.querySelectorAll('[data-tab-ui]').forEach((input) => input.addEventListener('change', () => {
-    detailed[input.dataset.tabUi] = sbInt(input.value, 3, 1, 10);
   }));
 
   // Summary playback controls.

@@ -301,35 +301,6 @@ const SbAI = {
     return block;
   },
 
-  /* Plans additional injects for one cell during one phase. */
-  async planCellInjects(blockId, cellId, count = 3, instruction = '') {
-    const project = appState.scenario;
-    const storyboard = project.storyboard;
-    const block = sbBlock(storyboard, blockId);
-    const cell = sbCell(project, cellId);
-    if (!block || !cell) throw new AgentValidationError('Select a phase and a cell first.');
-    if (block.locked) throw new AgentValidationError('This phase is locked.');
-    const total = sbInt(count, 3, 1, 10);
-    const payload = {
-      task: `Plan ${total} new injects addressed to the ${cell.name} during the phase "${block.title}", consistent with the whole storyline and with the injects already planned for every cell.`,
-      instruction: sbText(instruction, 2000) || undefined,
-      target: { phase_id: block.id, phase_duration: block.duration_minutes, cell_id: cell.id, cell: cell.name, cell_description: cell.description, count: total },
-      context: sbAIContext(project, { focus: [block.id] }),
-      response_format: { beats: [{ at: 'minutes from phase start (0 <= at < phase_duration)', channel: 'allowed channel', template_id: 'optional', cast: 'existing cast id or key of a new role', title: 'short inject title', intent: 'what the inject says and the decision or pressure it creates for this cell' }], cast: [{ key: 'new role key', label: 'Role label', role: 'allowed role', organization: 'organisation', description: '1 sentence' }] },
-      rules: ['Return exactly `count` beats.', 'Do not repeat existing injects; build on them.', 'Space them realistically within the phase.']
-    };
-    const result = await this.request(`Planning injects for the ${cell.name}`, payload, 5000);
-    const castMap = sbMergeCastFromAI(storyboard, result.cast);
-    const added = sbBeatsFromAI(storyboard, result.beats, castMap, project, cell.id).slice(0, total)
-      .map((beat) => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, Math.max(0, block.duration_minutes - 1)) }));
-    if (!added.length) throw new AgentValidationError('The AI returned no inject.');
-    block.beats = [...block.beats, ...added].sort((a, b) => a.offset_minutes - b.offset_minutes);
-    block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
-    block.ai_rev = storyboard.rev + 1;
-    sbMarkPlanned(block);
-    return added;
-  },
-
   /* Reviews the whole exercise: rhythm per cell, inconsistencies, disclosure, coverage. */
   async reviewExercise() {
     const project = appState.scenario;

@@ -670,30 +670,50 @@
           if (ai_provider === 'ollama') {
             const endpoint = ollamaEndpoint();
             const url = `${endpoint}/api/chat`;
-            const init = {
-              method: 'POST', signal: options.signal,
-              headers: ollamaHeaders(appState.scenario.settings, true),
-              body: JSON.stringify({
-                model: ai_model,
-                messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
-                ...(!isOllamaCloud() ? { format: 'json' } : {}),
-                options: { num_predict: maxTokens, num_ctx: ollamaContextSize(systemPrompt, userPrompt, maxTokens) },
-                stream: false
-              })
+            const call = async (extra = {}, predict = maxTokens) => {
+              const init = {
+                method: 'POST', signal: options.signal,
+                headers: ollamaHeaders(appState.scenario.settings, true),
+                body: JSON.stringify({
+                  model: ai_model,
+                  messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
+                  ...(!isOllamaCloud() ? { format: 'json' } : {}),
+                  options: { num_predict: predict, num_ctx: ollamaContextSize(systemPrompt, userPrompt, predict) },
+                  stream: false,
+                  ...extra
+                })
+              };
+              let response;
+              try {
+                response = await fetch(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
+                  isOllamaCloud() ? ollamaProxyOptions(url, init) : init);
+              } catch (networkError) {
+                throw CrisisError.wrap(networkError, { operation: 'Call Ollama', provider: 'ollama', model: ai_model, message: `Ollama network error: ${networkError.message}` });
+              }
+              return CrisisError.responseJson(response, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
             };
-            let response;
-            try {
-              response = await fetch(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
-                isOllamaCloud() ? ollamaProxyOptions(url, init) : init);
-            } catch (networkError) {
-              throw CrisisError.wrap(networkError, { operation: 'Call Ollama', provider: 'ollama', model: ai_model, message: `Ollama network error: ${networkError.message}` });
+            let data = await call();
+            // A reasoning model (gpt-oss, qwen3, deepseek-r1…) can spend its whole budget
+            // thinking and answer nothing: once more without reasoning and with more room.
+            if (!data.message?.content && (data.message?.thinking || data.done_reason === 'length')) {
+              try { data = await call({ think: false }, Math.min(32768, maxTokens * 2)); }
+              catch (error) { if (options.signal?.aborted) throw error; }
             }
-            const data = await CrisisError.responseJson(response, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
             this.lastRawResponse = JSON.stringify(data, null, 2);
-            const content = data.message?.content;
-            if (!content) throw new Error(tt('Empty Ollama response.', 'Réponse Ollama vide.', 'Leere Ollama-Antwort.'));
+            let content = data.message?.content;
+            // Last resort: the answer written at the end of the reasoning.
+            if (!content && options.strictJSON !== false && typeof data.message?.thinking === 'string' && data.message.thinking.includes('{')) {
+              const first = firstJsonObject(data.message.thinking.slice(data.message.thinking.lastIndexOf('{"')));
+              if (first) content = first;
+            }
+            if (!content) {
+              throw CrisisError.create(data.message?.thinking
+                ? tt('The Ollama model only returned its reasoning, no answer. Choose a model without reasoning in Settings (for example llama3.3, mistral or qwen2.5), or a larger one.', 'Le modèle Ollama n’a renvoyé que son raisonnement, sans réponse. Choisissez dans les réglages un modèle sans raisonnement (par exemple llama3.3, mistral ou qwen2.5), ou un modèle plus grand.', 'Das Ollama-Modell hat nur sein Reasoning geliefert, keine Antwort. Wählen Sie in den Einstellungen ein Modell ohne Reasoning (z. B. llama3.3, mistral oder qwen2.5) oder ein größeres Modell.')
+                : tt('Empty Ollama response: the model answered nothing. Retry, or choose another model in Settings.', 'Réponse Ollama vide : le modèle n’a rien répondu. Réessayez ou choisissez un autre modèle dans les réglages.', 'Leere Ollama-Antwort: Das Modell hat nichts geantwortet. Erneut versuchen oder ein anderes Modell wählen.'),
+                { operation: 'Call Ollama', provider: 'ollama', model: ai_model, code: data.done_reason || 'empty' });
+            }
             this.lastRawResponse = content;
-            assertCompleteReply(data.done_reason, 'ollama', ai_model);
+            if (data.message?.content) assertCompleteReply(data.done_reason, 'ollama', ai_model);
             const parsed = options.strictJSON ? parseStrictLLMJson(content) : parseLLMJson(content);
             if (!quiet) pushToast(tt('Content generated with Ollama.', 'Contenu généré avec Ollama.', 'Inhalt mit Ollama generiert.'), 'success');
             return parsed;

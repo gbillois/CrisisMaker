@@ -192,11 +192,11 @@
                   ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
                   ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
                   ${renderNavIconButton('library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'))}
+                  ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
                   ${renderNavIconButton('play', svgBroadcast(), 'Play')}
                   ${renderNavIconButton('evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung'))}
                   ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                   ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
-                  ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
                 </div>
               </nav>
             </header>

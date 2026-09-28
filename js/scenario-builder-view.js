@@ -491,7 +491,7 @@ function renderSbGenerateModal(storyboard) {
         </div>
       </div>
       <div class="sb-pipeline">
-        <label class="${options.plan && ai && !cell ? 'on' : ''}"><input type="checkbox" data-sb-generate="plan" ${options.plan && ai && !cell ? 'checked' : ''} ${ai && !cell ? '' : 'disabled'}><span><b>1 · Plan</b>${cell ? 'Not used for a single cell: plan it with “Plan with AI”' : `Complete the inject plan with AI (${toPlanCount} to plan in ${toPlan.length} phase(s))`}</span></label>
+        <label class="${options.plan && ai && !cell ? 'on' : ''}"><input type="checkbox" data-sb-generate="plan" ${options.plan && ai && !cell ? 'checked' : ''} ${ai && !cell ? '' : 'disabled'}><span><b>1 · Plan</b>${cell ? 'Not used for a single cell: its planned injects are written as they are' : `Complete the inject plan with AI (${toPlanCount} to plan in ${toPlan.length} phase(s))`}</span></label>
         <label class="${options.cast ? 'on' : ''}"><input type="checkbox" data-sb-generate="cast" ${options.cast ? 'checked' : ''}><span><b>2 · Cast</b>Create missing actors for the roles (${castMissing} role(s) without actor)</span></label>
         <label class="on"><input type="checkbox" checked disabled><span><b>3 · Create</b>Create one inject per planned item (${missing} ready now), linked to its block</span></label>
         <label class="${options.write && ai ? 'on' : ''}"><input type="checkbox" data-sb-generate="write" ${options.write && ai ? 'checked' : ''} ${ai ? '' : 'disabled'}><span><b>4 · Write</b>Write each inject with AI in ${escapeHtml(sbLanguageName(project))}, with the storyboard as context</span></label>

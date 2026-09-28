@@ -3831,9 +3831,6 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .ds-cell-chip b { font-weight: 800; color: var(--muted); }
 .ds-cell-chip.active { background: var(--primary-strong); border-color: var(--primary-strong); color: #fff; }
 .ds-cell-chip.active b { color: rgba(255, 255, 255, 0.75); }
-.ds-cell-chip.is-add { border-style: dashed; color: var(--muted); }
-.ds-plan { display: inline-flex; align-items: center; gap: 2px; }
-.sb-workspace .ds-plan input { width: 48px; min-height: 30px; padding: 3px 6px; }
 .ds-phase-row .sb-track-head { height: 62px; }
 .ds-phase-lane { height: 62px; }
 .ds-phase { position: absolute; top: 6px; bottom: 6px; display: grid; align-content: start; gap: 1px; padding: 5px 8px; overflow: hidden; text-align: left; border: 1px solid color-mix(in srgb, var(--clip-color) 40%, transparent); border-left: 4px solid var(--clip-color); border-radius: 0; background: color-mix(in srgb, var(--clip-color) 12%, #fff); color: var(--primary-strong); cursor: pointer; }

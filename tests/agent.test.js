@@ -339,3 +339,24 @@ test('failures say why: the provider reason (secrets and links removed), timeout
   assert.equal(reply.summary, 'ok');
   assert.deepEqual(asked, [8000, 4096]);
 });
+
+test('Ollama: a reasoning model that answers nothing is asked again without reasoning, else a clear message', async () => {
+  const h = harness();
+  h.run(`appState.scenario.settings.ai_provider = 'ollama'; appState.scenario.settings.ai_model = 'qwen3'; appState.scenario.settings.ollama_endpoint = 'http://localhost:11434';`);
+  const bodies = [];
+  const reply = (data) => ({ ok: true, status: 200, clone() { return this; }, text: async () => JSON.stringify(data), json: async () => data });
+  h.context.fetch = async (url, init) => {
+    const body = JSON.parse(init.body); bodies.push(body);
+    return body.think === false
+      ? reply({ message: { content: '{"type":"final","summary":"ok","issues":[],"changes":[]}' }, done_reason: 'stop' })
+      : reply({ message: { content: '', thinking: 'Let me think for a long time…' }, done_reason: 'length' });
+  };
+  const result = await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`);
+  assert.equal(result.summary, 'ok');
+  assert.equal(bodies.length, 2);
+  assert.equal(bodies[1].think, false);
+  assert.ok(bodies[1].options.num_predict > bodies[0].options.num_predict);
+  // Still nothing: the message says to pick a model without reasoning.
+  h.context.fetch = async () => reply({ message: { content: '', thinking: 'Only thoughts' }, done_reason: 'stop' });
+  await assert.rejects(h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`), (error) => /only returned its reasoning/.test(error.message));
+});
