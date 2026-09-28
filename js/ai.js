@@ -870,7 +870,7 @@ SCENARIO:
 - Crisis type: ${scenario.scenario?.type || ''}
 - Summary: ${scenario.scenario?.summary || ''}
 - Detailed context: ${scenario.scenario?.detailed_context || ''}
-- Attack path (the technical steps the attacker really followed): ${scenario.scenario?.attack_path || 'Not provided'}
+- Incident timeline (what really happened, in order): ${scenario.scenario?.attack_path || 'Not provided'}
 
 INJECTS SHOWN DURING THE EXERCISE — SUPPORTING CONTEXT ONLY, NEVER TURN THEM DIRECTLY INTO EVENTS:
 ${JSON.stringify(supportingInjectContext)}
@@ -1054,10 +1054,10 @@ Return this structure:
                 userPrompt: fieldName ? `Generate a credible value for ${fieldName}.` : 'Generate the full content.'
               };
           }
-          // Learning objectives and attack path from the Context tab shape every inject.
+          // Learning objectives and incident timeline from the Context tab shape every inject.
           const design = typeof sbDesignContextLines === 'function' ? sbDesignContextLines(scenario, { cellId: stimulus.cell_id }) : [];
           if (design.length) {
-            result.systemPrompt += `\n\nExercise design (use it to shape the content, never quote it or mention an exercise):\n${design.join('\n')}\n- Make this message serve the learning objectives of its recipient.\n- Stay consistent with the attack path: only state technical facts this sender could plausibly know at ${common.timestamp}, in the order the attacker performs them.`;
+            result.systemPrompt += `\n\nExercise design (use it to shape the content, never quote it or mention an exercise):\n${design.join('\n')}\n- Make this message serve the learning objectives that concern its recipient.\n- Stay consistent with the incident timeline: only state facts this sender could plausibly know at ${common.timestamp}, in the order they happen.`;
           }
           if (guidedSuffix) result.systemPrompt += guidedSuffix;
           return result;

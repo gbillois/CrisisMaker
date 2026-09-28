@@ -138,7 +138,13 @@
           'Communicate to staff, partners and media without premature disclosure',
           'Prioritise the recovery of critical production from trusted backups'
         ].join('\n');
-        scenario.scenario.learning_objectives = 'Apply the crisis management procedure, take documented decisions under uncertainty and keep every cell aligned.';
+        scenario.scenario.learning_objectives = [
+          'Everyone: apply the crisis management procedure, take documented decisions under uncertainty and keep every cell aligned.',
+          'Operational crisis cell: qualify the incident quickly, decide on isolation of the manufacturing sites and keep a shared situation picture.',
+          'Communication cell: hold consistent internal, partner and media messages without premature disclosure of the data theft.',
+          'Legal & compliance cell: meet NIS2 and GDPR notification deadlines and document every legal decision.',
+          'Business continuity cell: run degraded production and prioritise the recovery of critical lines from trusted backups.'
+        ].join('\n');
         scenario.scenario.attack_path = [
           '1. Initial access: PharmLeaks logs in to the VPN with a stolen contractor credential (no MFA), three weeks before D-day',
           '2. Discovery and privilege escalation: Active Directory enumeration, Kerberoasting of a service account, then domain administrator',
@@ -156,13 +162,6 @@
           scenario.exercise = { players_count: 12, cells_count: '' };
           sbFlattenWorkstreams(scenario);
           scenario.exercise.cells_count = scenario.cells.length;
-          const cellObjectives = {
-            operational: 'Qualify the incident quickly, decide on isolation of the manufacturing sites and keep a shared situation picture.',
-            communication: 'Hold consistent internal, partner and media messages without premature disclosure of the data theft.',
-            legal: 'Meet NIS2 and GDPR notification deadlines and document every legal decision.',
-            business: 'Run degraded production and prioritise the recovery of critical lines from trusted backups.'
-          };
-          scenario.cells.forEach((cell) => { if (cellObjectives[cell.key]) cell.objectives = cellObjectives[cell.key]; });
           scenario.scenario.phases = sbDerivePhases(scenario.storyboard);
           sbSealLinks(scenario);
         }
@@ -300,7 +299,7 @@
           cells: storyboardModelLoaded() ? sbNormalizeCells(input.cells) : [],
           exercise: storyboardModelLoaded() ? sbNormalizeExercise(input.exercise) : { players_count: '', cells_count: '' }
         };
-        if (storyboardModelLoaded()) sbFlattenWorkstreams(merged);
+        if (storyboardModelLoaded()) { sbFlattenWorkstreams(merged); sbFoldCellObjectives(merged); }
         // The storyboard owns the timed phases; keep the legacy field derived from it.
         if (storyboardModelLoaded() && (merged.storyboard.blocks.length || !Array.isArray(input.scenario?.phases))) merged.scenario.phases = sbDerivePhases(merged.storyboard);
         if (!input.scenario || !('objectives' in input.scenario)) delete merged.scenario.objectives;

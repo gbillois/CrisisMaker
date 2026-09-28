@@ -238,10 +238,10 @@ test('builder tools set the frame, build the storyline, cells, cast and a per-ce
   const main = h.json('sbMainBlocks(appState.scenario.storyboard).map(b => ({ id: b.id, start: b.start_minutes, end: b.start_minutes + b.duration_minutes, beats: b.beats.length }))');
   assert.equal(main.length, 3); assert.equal(main[2].end, 180); assert.equal(main[0].beats, 1);
   assert.equal(h.run('appState.scenario.scenario.objectives'), 'Decide on isolation\nNotify on time');
-  const cells = await execute(h, 'upsertCells', { cells: [{ name: 'Decision cell', description: 'Executive committee', objectives: 'Decide on isolation under uncertainty', players: [{ name: 'Ann Lee', role: 'CEO' }] }, { name: 'Communication cell' }] });
+  const cells = await execute(h, 'upsertCells', { cells: [{ name: 'Decision cell', description: 'Executive committee', players: [{ name: 'Ann Lee', role: 'CEO' }] }, { name: 'Communication cell' }] });
   await execute(h, 'setExerciseFrame', { attack_path: '1. Phishing\n2. Lateral movement', learning_objectives: 'Follow the crisis procedure' });
   assert.equal(h.run('appState.scenario.scenario.attack_path'), '1. Phishing\n2. Lateral movement');
-  assert.ok(h.json('agentExerciseFrame()').learning_objectives.by_cell.some(item => item.objectives === 'Decide on isolation under uncertainty'));
+  assert.equal(h.json('agentExerciseFrame()').learning_objectives, 'Follow the crisis procedure');
   assert.equal(cells.cells.length, 2);
   const decision = h.json(`appState.scenario.cells.find(c => c.name === 'Decision cell')`);
   assert.equal(decision.players[0].role, 'CEO');

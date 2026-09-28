@@ -696,7 +696,7 @@ OBJECTIVES: ${sc.scenario?.objectives || '—'}
 NARRATIVE ARC: ${sc.scenario?.narrative_arc || '—'}
 DURATION: H+0 to H+${Math.round(maxOffset / 60)}h (${stimuli.length} stimuli)
 ${checkerSerializeStoryboard(sc)}
-${typeof sbDesignContextLines === 'function' && sbDesignContextLines(sc).length ? `EXERCISE DESIGN (check that each cell's learning objectives are tested and that technical injects follow the attack path):\n${sbDesignContextLines(sc).join('\n')}\n` : ''}
+${typeof sbDesignContextLines === 'function' && sbDesignContextLines(sc).length ? `EXERCISE DESIGN (check that the learning objectives of each cell are tested and that technical injects follow the incident timeline):\n${sbDesignContextLines(sc).join('\n')}\n` : ''}
 ACTORS (${actors.length}):
 ${actorList || 'None'}
 

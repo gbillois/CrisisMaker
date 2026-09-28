@@ -775,7 +775,7 @@ function sbNormalizeCell(input = {}) {
     key: sbSafeId(input.key) || 'custom',
     name: sbText(input.name, 160) || preset?.name || 'New cell',
     description: sbText(input.description, 1000),
-    // Learning objectives of this category of players, set in the Context tab.
+    // Legacy: learning objectives are now one text in scenario (sbFoldCellObjectives).
     objectives: sbText(input.objectives, 2000),
     color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : (preset?.color || '#6d687e'),
     players: (Array.isArray(input.players) ? input.players : []).slice(0, 200).map(sbNormalizePlayer)
@@ -783,23 +783,28 @@ function sbNormalizeCell(input = {}) {
 }
 
 /* Pedagogical and technical design inputs from the Context tab, as prompt lines for every
-   AI operation: learning objectives per category of players, and the attack path.
-   With cellId, the objectives of that cell come first (an inject addressed to it). */
+   AI operation: the learning objectives (one free text) and the incident timeline.
+   With cellId (an inject addressed to that cell), the AI keeps the objectives that concern it. */
 function sbDesignContextLines(project, options = {}) {
   const scenario = project?.scenario || {};
   const cells = Array.isArray(project?.cells) ? project.cells : [];
-  const general = sbText(scenario.learning_objectives, 3000);
-  const perCell = cells.filter((cell) => cell.objectives).map((cell) => ({ id: cell.id, name: cell.name, objectives: sbText(cell.objectives, 2000) }));
-  const attack = sbText(scenario.attack_path, 6000);
+  const objectives = sbText(scenario.learning_objectives, 6000);
+  const timeline = sbText(scenario.attack_path, 6000);
+  const recipient = options.cellId ? cells.find((cell) => cell.id === options.cellId) : null;
   const lines = [];
-  const target = options.cellId ? perCell.find((cell) => cell.id === options.cellId) : null;
-  if (target) lines.push(`- Learning objectives of the recipient (${target.name}): ${target.objectives}`);
-  if (!options.cellId || options.all) {
-    if (general) lines.push(`- Learning objectives for all players: ${general}`);
-    perCell.filter((cell) => cell !== target).forEach((cell) => lines.push(`- Learning objectives of the ${cell.name}: ${cell.objectives}`));
-  } else if (general) lines.push(`- Learning objectives for all players: ${general}`);
-  if (attack) lines.push(`- Attack path (technical steps the attacker follows, in order): ${attack}`);
+  if (objectives) lines.push(`- Learning objectives (the designer's own words; work out which apply to ${recipient ? `the recipient, the ${recipient.name}` : 'each cell'}): ${objectives}`);
+  if (timeline) lines.push(`- Incident timeline (what really happened, in order: attack, detection, response): ${timeline}`);
   return lines;
+}
+
+/* Learning objectives are one free text for the whole exercise. Older projects kept them per
+   cell: fold those into the text, one line per cell, so nothing is lost. */
+function sbFoldCellObjectives(project) {
+  const cells = (Array.isArray(project?.cells) ? project.cells : []).filter((cell) => cell.objectives);
+  if (!cells.length || !project.scenario) return;
+  const lines = cells.map((cell) => `${cell.name}: ${cell.objectives}`);
+  project.scenario.learning_objectives = sbText([project.scenario.learning_objectives, ...lines].filter(Boolean).join('\n'), 6000);
+  cells.forEach((cell) => { cell.objectives = ''; });
 }
 
 function sbNormalizeCells(value) {

@@ -465,35 +465,36 @@ test('library: every built-in scenario and the demo play in 3 hours', () => {
   assert.ok(h.run('Math.max(...appState.scenario.stimuli.map((item) => item.timestamp_offset_minutes))') < 180);
 });
 
-test('context: learning objectives per player category and the attack path feed every AI operation', async () => {
+test('context: the learning objectives (one text) and the incident timeline feed every AI operation', async () => {
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
-  assert.ok(h.run('appState.scenario.scenario.attack_path').includes('Initial access'), 'demo has an attack path');
+  assert.ok(h.run('appState.scenario.scenario.attack_path').includes('Initial access'), 'demo has an incident timeline');
   assert.equal(h.run(`emptyScenario().scenario.attack_path`), '', 'a new project starts blank');
   assert.equal(h.run(`emptyScenario().scenario.learning_objectives`), '');
+  assert.ok(h.run('appState.scenario.scenario.learning_objectives').includes('NIS2'), 'one text, cells named inside');
+  assert.ok(h.run('appState.scenario.cells.every((cell) => !cell.objectives)'));
   const cell = h.json(`appState.scenario.cells.find((item) => item.key === 'legal')`);
-  assert.ok(cell.objectives.includes('NIS2'));
-  // Context tab markup.
+  // Context tab markup: one block of objectives, the incident timeline.
   const context = h.run('renderScenarioView()');
-  for (const marker of ['Learning objectives by player category', 'data-bind="scenario.learning_objectives"', `data-cx-cell-objectives="${cell.id}"`, 'Attack path', 'data-bind="scenario.attack_path"']) assert.ok(context.includes(marker), marker);
-  // Shared prompt lines: the recipient cell first, then the attack path.
+  for (const marker of ['Learning objectives', 'data-bind="scenario.learning_objectives"', 'Incident timeline', 'data-bind="scenario.attack_path"']) assert.ok(context.includes(marker), marker);
+  assert.ok(!context.includes('data-cx-cell-objectives') && !context.includes('Attack path'));
+  // Shared prompt lines: the objectives, pointed at the recipient, then the incident timeline.
   const lines = h.json(`sbDesignContextLines(appState.scenario, { cellId: '${cell.id}' })`);
-  assert.ok(lines[0].startsWith('- Learning objectives of the recipient (Legal'));
-  assert.ok(lines.some((line) => line.startsWith('- Attack path')));
-  assert.ok(!lines.some((line) => line.includes('Communication cell')), 'only the recipient cell objectives for one inject');
+  assert.ok(lines[0].startsWith('- Learning objectives') && lines[0].includes(`the recipient, the ${cell.name}`) && lines[0].includes('NIS2'));
+  assert.ok(lines[1].startsWith('- Incident timeline'));
   // Every stimulus prompt, whatever its channel.
   const stimulus = h.run(`(() => { const s = appState.scenario.stimuli.find((item) => item.channel === 'email_authority'); s.cell_id = '${cell.id}'; return PromptBuilder.forStimulus(s, getActor(s.actor_id), appState.scenario).systemPrompt; })()`);
   assert.ok(stimulus.includes('Exercise design') && stimulus.includes('NIS2') && stimulus.includes('Kerberoasting'));
   // Storyline AI context and the agent frame.
   const ai = h.json('sbAIContext(appState.scenario)');
   assert.ok(ai.exercise.attack_path.includes('Exfiltration') && ai.exercise.learning_objectives.includes('crisis management'));
-  assert.ok(ai.storyboard.cells.some((item) => item.objectives.includes('NIS2')));
   const frame = h.json('agentExerciseFrame()');
   assert.ok(frame.attack_path.includes('Lateral movement'));
-  assert.ok(frame.learning_objectives.by_cell.some((item) => item.cell_id === cell.id));
-  // Cell objectives survive a save and reload.
-  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario)))`);
-  assert.ok(reloaded.cells.find((item) => item.id === cell.id).objectives.includes('NIS2'));
+  assert.ok(frame.learning_objectives.includes('NIS2'));
+  // Older projects kept objectives per cell: they fold into the text on load.
+  const reloaded = h.json(`(() => { const data = JSON.parse(JSON.stringify(appState.scenario)); data.scenario.learning_objectives = 'Everyone: follow the procedure.'; data.cells.find((item) => item.id === '${cell.id}').objectives = 'Notify the regulator on time.'; return mergeScenario(data); })()`);
+  assert.equal(reloaded.scenario.learning_objectives, `Everyone: follow the procedure.\n${cell.name}: Notify the regulator on time.`);
+  assert.ok(reloaded.cells.every((item) => !item.objectives));
   assert.ok(reloaded.scenario.attack_path.includes('Impact'));
 });
 

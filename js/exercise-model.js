@@ -7,13 +7,13 @@
    the agent agree on what an inject is, its phase, its number, its cell and sender.
 
    Entities (where they live in the project):
-     Exercise ── context: client, scenario (summary, learning objectives, attack path),
+     Exercise ── context: client, scenario (summary, learning objectives, incident timeline),
      │           exercise (players, cells count), storyboard.meta (brief, synopsis, threat)
      ├─ Phase ─────────── storyboard.blocks on the main track: title, "what happens"
      │   │                (brief), hidden story (narrative), notes, start, duration
      │   └─ Planned inject  block.beats: time in the phase, recipient cell, role, channel,
      │                    title and intent (the plan)
-     ├─ Cell ──────────── cells: name, mission, learning objectives, players
+     ├─ Cell ──────────── cells: name, mission, players
      ├─ Role ──────────── storyboard.cast: who speaks in the story (CISO, journalist…)
      │   └─ Actor ─────── actors: the simulated person who plays the role and signs
      ├─ Inject ────────── stimuli: the written inject (content, sender actor, recipient
