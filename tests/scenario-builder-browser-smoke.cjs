@@ -130,11 +130,11 @@ function answerFor(system, user) {
   // One AI button: empty prompt, it details the phase; the key stimuli are managed beside it.
   await page.click('.sl-editor [data-sb-action="modify-block"]');
   await page.waitForFunction(id => sbBlock(sbStoryboard(), id).narrative, id);
-  // Adding a key stimulus opens its full editor, on an inject sent to all cells.
-  await page.click('.sl-editor [data-tab-action="sl-main-add"]');
-  await page.waitForFunction(() => !!appState.stimulusModalId);
-  assert.ok(await page.evaluate(id => { const beat = sbBlock(sbStoryboard(), id).beats.find(item => item.main); return beat.cell_id === 'all' && getStimulus(appState.stimulusModalId).scenario_link?.beat_id === beat.id; }, id));
-  await page.evaluate(() => { appState.stimulusModalId = null; App.render(); });
+  // A main event: a line of text at a time, shown under the phases.
+  await page.click('.sl-editor [data-tab-action="sl-event-add"]');
+  await page.keyboard.type('The ransom note appears on every screen');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(id => sbBlock(sbStoryboard(), id).events[0].text, id), 'The ransom note appears on every screen');
   assert.equal(await page.locator('.sb-key-card').count(), 1, 'shown under the phases');
 
   // Drag the containment phase 30 minutes later.
@@ -172,8 +172,7 @@ function answerFor(system, user) {
   await page.waitForFunction(() => SbPipeline.status === 'complete', null, { timeout: 30000 });
   const stimuli = await page.evaluate(() => appState.scenario.stimuli.map(s => ({ cell: s.cell_id, linked: !!s.scenario_link })));
   assert.ok(stimuli.length >= 4);
-  // Only the selected cell, plus the key stimulus every cell receives.
-  assert.ok(stimuli.every(s => (s.cell === firstCell || s.cell === 'all') && s.linked), 'only the selected cell was generated');
+  assert.ok(stimuli.every(s => s.cell === firstCell && s.linked), 'only the selected cell was generated');
   await page.click('[data-sb-action="close-modal"]');
 
   // 5. Check & Challenge: readiness, live checks, one AI challenge, folded rehearsal.

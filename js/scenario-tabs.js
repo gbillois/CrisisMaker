@@ -174,87 +174,56 @@ function renderPhaseEditor(storyboard, block) {
     </div>
     <div class="bottom-editor-body sl-editor-body">
       <label class="sb-mini-field sl-what">What happens during this phase
-        <textarea data-sb-field="brief" rows="5" placeholder="${escapeAttribute(`In plain words, what happens during this phase: the events, what the players discover, the pressure they face. ${(SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint}`)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
+        <textarea data-sb-field="brief" rows="3" placeholder="${escapeAttribute(`In plain words, what happens during this phase: the events, what the players discover, the pressure they face. ${(SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint}`)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
       </label>
-      <div class="sl-side">
+      ${renderMainEvents(block, readOnly)}
+      <div class="sl-foot">
         ${sbNeedsReplan(block) ? `<div class="sl-replan">${sbUiIcon('alert', 14)}<span>What happens changed: the ${block.beats.length} planned inject(s) still follow the previous version.</span>${renderUpdateButton(project)}</div>` : ''}
         <div class="sl-injects">${block.beats.length ? `<b>${block.beats.length}</b> injects planned · ${(project.cells || []).filter((cell) => counts.get(cell.id)).map((cell) => `<span class="cell-dot" style="--cell-color:${cell.color}"></span>${escapeHtml(cell.name)} ${counts.get(cell.id)}`).join(' · ')}` : 'No inject planned in this phase yet.'} <button class="btn btn-ghost btn-xs" data-tab-action="open-detailed" data-tab-value="${block.id}">Detailed storyline →</button></div>
-        ${renderKeyStimuli(project, storyboard, block, readOnly)}
         <div class="sl-ai">
-          <label class="sl-ai-label" for="sl-ai-prompt">${sbUiIcon('wand', 14)} Modify with AI</label>
-          <textarea id="sl-ai-prompt" data-sb-ui="rewrite" rows="2" placeholder="Say what to change, e.g. make it more ambiguous, add a regulator deadline. Leave empty to let the AI detail the phase and plan its injects." ${readOnly}>${escapeHtml(ui.rewrite)}</textarea>
+          <span class="sl-ai-label">${sbUiIcon('wand', 14)} Modify with AI</span>
+          <input type="text" data-sb-ui="rewrite" value="${escapeAttribute(ui.rewrite)}" placeholder="What to change, e.g. make it more ambiguous. Empty: the AI details the phase and plans its injects." aria-label="Instruction for the AI" ${readOnly}>
           <button class="btn btn-secondary btn-sm" data-sb-action="modify-block" ${ai && !readOnly ? '' : 'disabled'} title="${ai ? 'With an instruction, the AI rewrites the phase; empty, it details it and plans its injects' : 'Configure an AI connection in Settings'}">${sbUiIcon('wand', 13)} Modify with AI</button>
         </div>
       </div>
     </div>`;
 }
 
-/* The key stimuli of a phase: the injects that frame the whole story (the ransom note, a TV
-   flash, the regulator's letter). Planned injects marked main, sent to every cell or to one;
-   the AI plans the other injects around them and never changes them. A compact list; the
-   one being edited opens in place. */
-function renderKeyStimuli(project, storyboard, block, readOnly) {
-  const ui = sbUI();
-  const keys = block.beats.filter((beat) => beat.main);
-  return `<section class="sl-main" aria-label="Key stimuli">
-    <div class="sl-main-head">
-      <strong title="The injects that frame the story of this phase. The AI plans the other injects of every cell around them and never changes them.">${sbUiIcon('star', 14)} Key stimuli</strong>
-      <button class="btn btn-ghost btn-xs" data-tab-action="sl-main-add" data-tab-value="${block.id}" ${readOnly}>${sbUiIcon('plus', 12)} Add</button>
+/* The main events of a phase: a line of text at a time (minutes from the phase start),
+   such as "the ransom note appears on every screen". They frame the story; the AI plans
+   the injects of every cell around them and never changes them. */
+function renderMainEvents(block, readOnly) {
+  const events = block.events || [];
+  return `<section class="sl-events" aria-label="Main events">
+    <div class="sl-events-head">
+      <strong>${sbUiIcon('star', 14)} Main events</strong>
+      <span class="subtle">The moments that frame this phase; the injects are planned around them.</span>
+      <button class="btn btn-ghost btn-xs" data-tab-action="sl-event-add" data-tab-value="${block.id}" ${readOnly}>${sbUiIcon('plus', 12)} Add</button>
     </div>
-    ${keys.map((beat) => {
-      const stimulus = sbStimulusForBeat(project, beat.id);
-      const status = stimulus ? sbStimulusStatus(project, stimulus) : null;
-      const open = ui.keyOpen === beat.id;
-      const key = escapeAttribute(beat.id);
-      const templates = beat.channel === 'article_press' ? Object.entries(ARTICLE_TEMPLATE_LIBRARY) : beat.channel === 'breaking_news_tv' ? Object.entries(TV_TEMPLATE_LIBRARY) : [];
-      return `<div class="sl-main-item ${open ? 'is-open' : ''}" style="--beat-color:${sbChannelColor(beat.channel)}">
-        <div class="sl-main-line">
-          <button class="sl-main-toggle" data-tab-action="sl-main-edit" data-tab-value="${key}" title="Open the full editor">
-            <span class="sl-main-time">${sbFormatOffset(sbBeatAbsolute(block, beat))}</span>
-            <strong data-sl-main-label="${key}">${escapeHtml(beat.title || (stimulus ? sbStimulusLabel(stimulus) : 'Untitled key stimulus'))}</strong>
-            <span class="sl-main-meta">${escapeHtml(channelLabel(beat.channel))} · ${escapeHtml(sbRecipientName(project, beat.cell_id) || 'No cell')}${stimulus ? ` · ${escapeHtml(status?.label || 'Written')}` : ''}</span>
-          </button>
-          <span class="be-actions">
-            <button class="btn btn-secondary btn-xs" data-tab-action="sl-main-edit" data-tab-value="${key}" title="Open the full editor">${sbUiIcon('edit', 12)} Edit</button>
-            <button class="sb-icon-btn ${open ? 'is-on' : ''}" data-tab-action="sl-main-toggle" data-tab-value="${key}" aria-expanded="${open}" title="${open ? 'Close the planning' : 'Planning: time, recipients, channel, sender'}">${sbUiIcon(open ? 'up' : 'down', 13)}</button>
-            <button class="sb-icon-btn is-danger" data-tab-action="sl-main-delete" data-tab-value="${key}" title="Delete" ${readOnly}>${sbUiIcon('trash', 13)}</button>
-          </span>
-        </div>
-        ${open ? `<div class="sl-main-fields">
-          <input type="text" class="sl-main-title" data-sl-main="${key}.title" value="${escapeAttribute(beat.title)}" placeholder="Title, e.g. Ransom note on every screen" aria-label="Title" ${readOnly}>
-          <div class="sl-main-row">
-            <label class="be-inline">At (min)<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-main="${key}.at" value="${beat.offset_minutes}" aria-label="Minutes from the phase start" ${readOnly}></label>
-          </div>
-          <div class="sl-main-to"><span>To</span>${renderRecipientPicker(project, `beat:${beat.id}`, beat.cell_id, readOnly)}</div>
-          <div class="sl-main-row">
-            <select data-sl-main="${key}.channel" aria-label="Channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select>
-            ${templates.length ? `<select data-sl-main="${key}.template_id" aria-label="Outlet" ${readOnly}>${sbOption('', 'Default outlet', beat.template_id)}${templates.map(([id, value]) => sbOption(id, value.label || id, beat.template_id)).join('')}</select>` : ''}
-            <select data-sl-main="${key}.cast_id" aria-label="Sender role" ${readOnly}>${sbOption('', 'Sender role…', beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, cast.label, beat.cast_id)).join('')}</select>
-          </div>
-          <textarea data-sl-main="${key}.intent" rows="2" placeholder="What it says and the reaction or decision it should trigger" aria-label="What it says" ${readOnly}>${escapeHtml(beat.intent)}</textarea>
-          <button class="btn btn-ghost btn-xs sl-main-unmark" data-tab-action="sl-main-unmark" data-tab-value="${key}" title="It stays a planned inject of its cell" ${readOnly}>No longer a key stimulus</button>
-        </div>` : ''}
-      </div>`;
-    }).join('') || '<p class="sl-main-empty">None yet. Add the moments that frame this phase: the ransom note, a TV flash, the regulator\'s call.</p>'}
+    ${events.map((event) => `<div class="sl-event">
+      <label class="sl-event-time" title="Minutes from the phase start">${sbFormatOffset(block.start_minutes + event.offset_minutes)}<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-event="${escapeAttribute(event.id)}.at" value="${event.offset_minutes}" aria-label="Minutes from the phase start" ${readOnly}></label>
+      <input type="text" data-sl-event="${escapeAttribute(event.id)}.text" value="${escapeAttribute(event.text)}" placeholder="e.g. The ransom note appears on every screen" aria-label="Main event" ${readOnly}>
+      <button class="sb-icon-btn is-danger" data-tab-action="sl-event-delete" data-tab-value="${escapeAttribute(event.id)}" title="Delete" ${readOnly}>${sbUiIcon('trash', 13)}</button>
+    </div>`).join('') || '<p class="sl-main-empty">None yet: add the moments that frame this phase, e.g. the ransom note, a TV flash, the regulator\'s call.</p>'}
   </section>`;
 }
 
-/* The recipients of an inject: "All cells", or any set of cells (none = unassigned). */
-function renderRecipientPicker(project, itemKey, cellId, readOnly) {
+/* The phase and main event of an event id. */
+function slFindEvent(storyboard, eventId) {
+  for (const block of storyboard.blocks) {
+    const event = (block.events || []).find((item) => item.id === eventId);
+    if (event) return { block, event };
+  }
+  return null;
+}
+
+/* The recipients of an inject: "All cells", or any set of cells (none = unassigned). */function renderRecipientPicker(project, itemKey, cellId, readOnly) {
   const all = sbIsAllCells(cellId);
   const ids = sbRecipientIds(cellId);
   return `<div class="rcpt chip-toggles" data-rcpt="${escapeAttribute(itemKey)}" role="group" aria-label="Recipient cells">
     <label class="chip-toggle rcpt-all"><input type="checkbox" value="${SB_ALL_CELLS}" ${all ? 'checked' : ''} ${readOnly}>All cells</label>
     ${project.cells.map((cell) => `<label class="chip-toggle" style="--cell-color:${cell.color}"><input type="checkbox" value="${escapeAttribute(cell.id)}" ${all || ids.includes(cell.id) ? 'checked' : ''} ${all || readOnly ? 'disabled' : ''}><span class="cell-dot"></span>${escapeHtml(cell.name)}</label>`).join('')}
   </div>`;
-}
-
-/* Opens the full editor of a key stimulus; its phase is selected in the timeline. */
-async function slOpenKeyEditor(project, beatId) {
-  const found = slFindBeat(project.storyboard, beatId);
-  if (!found) return;
-  sbUI().selected = [found.block.id];
-  await openItemEditor(project, `beat:${beatId}`);
 }
 
 /* Opens the full inject editor of an item, creating its inject first (empty, without AI)
@@ -336,17 +305,6 @@ function slFindBeat(storyboard, beatId) {
   return null;
 }
 
-function slAddMainStimulus(project, block) {
-  if (block.locked) throw new AgentValidationError('This phase is locked.');
-  const last = block.beats.filter((beat) => beat.main).reduce((max, beat) => Math.max(max, beat.offset_minutes), -1);
-  const beat = sbMakeBeat({ main: true, cell_id: SB_ALL_CELLS, channel: 'breaking_news_tv', offset_minutes: Math.min(Math.max(0, block.duration_minutes - 1), last < 0 ? 0 : last + 10), title: '' });
-  block.beats.push(beat);
-  block.beats.sort((a, b) => a.offset_minutes - b.offset_minutes);
-  if (!block.plan_hash) sbMarkPlanned(block);
-  block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
-  StoryboardHistory.commit('Add key stimulus');
-  return beat;
-}
 
 // ═══ Cells & actors ═════════════════════════════════════════════════════════
 function renderCellsView() {
@@ -538,8 +496,8 @@ function renderDetailedRow(project, row, items, width, ppm) {
     <div class="sb-lane" data-ds-lane="${escapeAttribute(row.id)}" style="width:${width}px;height:${height}px">
       ${items.map((item) => {
         const color = sbChannelColor(item.channel);
-        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''} ${item.beat?.main ? 'is-main' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || 'no sender'}\n${item.title}\n${item.intent || ''}`)}">
-          <span class="ds-card-meta">${item.beat?.main ? sbUiIcon('star', 10) : '<i></i>'}${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}${sbIsAllCells(item.cell_id) ? ' · all cells' : ''}</span>
+        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || 'no sender'}\n${item.title}\n${item.intent || ''}`)}">
+          <span class="ds-card-meta"><i></i>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}${sbIsAllCells(item.cell_id) ? ' · all cells' : ''}</span>
           <strong>${escapeHtml(item.title)}</strong>
         </div>`;
       }).join('')}
@@ -560,7 +518,6 @@ function renderInjectEditor(project, item) {
       <label class="be-inline">Time (min) · ${sbFormatOffset(item.time)}<input type="number" min="0" step="1" data-ds-time value="${item.time}" ${readOnly}></label>
       <span class="be-phase">Phase: <b>${escapeHtml(phase?.title || '-')}</b></span>
       <span class="be-actions">
-        ${item.kind === 'beat' ? `<button class="sb-icon-btn ${item.beat.main ? 'is-on' : ''}" data-tab-action="ds-main" title="${item.beat.main ? 'Key stimulus: it frames the story (click to unmark)' : 'Mark as a key stimulus that frames the story'}" ${readOnly}>${sbUiIcon('star', 15)}</button>` : ''}
         ${item.stimulus ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} Full editor</button>` : ''}
         ${item.stimulus?.scenario_link ? `<button class="sb-icon-btn ${item.stimulus.scenario_link.locked ? 'is-on' : ''}" data-sb-action="lock-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}" title="${item.stimulus.scenario_link.locked ? 'Unlock' : 'Lock: never modified by sync'}" ${readOnly}>${sbUiIcon(item.stimulus.scenario_link.locked ? 'lock' : 'unlock', 15)}</button>` : ''}
         <button class="sb-icon-btn is-danger" data-tab-action="ds-delete" title="Delete (Del)" ${readOnly}>${sbUiIcon('trash', 15)}</button>
@@ -1110,7 +1067,7 @@ async function tabHandleAction(event) {
   const storyboard = project.storyboard;
   const detailed = tabUI('detailed');
   const summary = tabUI('summary');
-  const readOnlyAllowed = ['sl-main-toggle', 'sl-main-open', 'sl-main-edit', 'ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
+  const readOnlyAllowed = ['sl-event-focus', 'ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
   if (sbReadOnly() && !readOnlyAllowed.includes(action)) return;
   try {
     switch (action) {
@@ -1171,48 +1128,31 @@ async function tabHandleAction(event) {
       case 'ds-add':
         dsAddInject(project);
         break;
-      case 'sl-main-add': {
+      case 'sl-event-add': {
         const block = sbBlock(storyboard, value);
-        if (!block) break;
-        const beat = slAddMainStimulus(project, block);
-        await slOpenKeyEditor(project, beat.id);
-        break;
+        if (!block || block.locked) break;
+        const last = (block.events || []).reduce((max, event) => Math.max(max, event.offset_minutes), -5);
+        const event = sbMakeEvent({ offset_minutes: Math.min(Math.max(0, block.duration_minutes - 1), last + 5) });
+        block.events = [...(block.events || []), event].sort((a, b) => a.offset_minutes - b.offset_minutes);
+        StoryboardHistory.commit('Add main event');
+        App.render();
+        document.querySelector(`[data-sl-event="${event.id}.text"]`)?.focus();
+        return;
       }
-      case 'sl-main-edit':
-        await slOpenKeyEditor(project, value);
-        break;
-      case 'sl-main-toggle':
-        sbUI().keyOpen = sbUI().keyOpen === value ? null : value;
-        break;
-      case 'sl-main-unmark':
-      case 'sl-main-delete': {
-        const found = slFindBeat(storyboard, value);
+      case 'sl-event-delete': {
+        const found = slFindEvent(storyboard, value);
         if (!found) break;
-        if (action === 'sl-main-unmark') { found.beat.main = false; StoryboardHistory.commit('Unmark key stimulus'); break; }
-        const stimulus = sbStimulusForBeat(project, found.beat.id);
-        if (!window.confirm(`Delete the key stimulus "${found.beat.title || 'Untitled'}"?${stimulus ? ' Its written inject is deleted too.' : ''}`)) break;
-        found.block.beats = found.block.beats.filter((beat) => beat.id !== found.beat.id);
-        if (stimulus) project.stimuli = project.stimuli.filter((item) => item.id !== stimulus.id);
-        StoryboardHistory.commit('Delete key stimulus');
-        saveLocal(false);
+        found.block.events = found.block.events.filter((event) => event.id !== value);
+        StoryboardHistory.commit('Delete main event');
         break;
       }
-      case 'sl-main-open': {
-        const found = slFindBeat(storyboard, value);
+      case 'sl-event-focus': {
+        const found = slFindEvent(storyboard, value);
         if (!found) break;
-        detailed.cell = 'all';
-        detailed.selected = `beat:${found.beat.id}`;
-        detailed.playhead = sbBeatAbsolute(found.block, found.beat);
-        detailed.focusTime = detailed.playhead;
-        appState.route = 'detailed';
-        break;
-      }
-      case 'ds-main': {
-        const item = dsSelectedItem(project);
-        if (item?.kind !== 'beat') break;
-        item.beat.main = !item.beat.main;
-        StoryboardHistory.commit(item.beat.main ? 'Mark key stimulus' : 'Unmark key stimulus');
-        break;
+        sbUI().selected = [found.block.id];
+        App.render();
+        document.querySelector(`[data-sl-event="${value}.text"]`)?.focus();
+        return;
       }
       case 'ds-delete':
         dsDeleteSelected(project);
@@ -1412,32 +1352,23 @@ function tabBindInputs(root) {
     });
     if (isText) input.addEventListener('change', () => StoryboardHistory.flush());
   });
-  // Main stimuli, edited in the phase editor of the Main storyline.
-  root.querySelectorAll('[data-sl-main]').forEach((input) => {
-    const [beatId, field] = input.dataset.slMain.split('.');
-    const isText = field === 'title' || field === 'intent';
-    input.addEventListener(isText ? 'input' : 'change', () => {
-      const found = slFindBeat(storyboard, beatId);
-      if (!found) return;
-      const { block, beat } = found;
-      if (isText) {
-        beat[field] = sbText(input.value, field === 'title' ? 300 : 2000);
-        if (field === 'title') { const label = document.querySelector(`[data-sl-main-label="${beatId}"]`); if (label) label.textContent = input.value || 'Untitled key stimulus'; }
-        StoryboardHistory.commit('Edit key stimulus', { debounce: true });
+  // Main events, edited in the phase editor of the Main storyline.
+  root.querySelectorAll('[data-sl-event]').forEach((input) => {
+    const [eventId, field] = input.dataset.slEvent.split('.');
+    input.addEventListener(field === 'text' ? 'input' : 'change', () => {
+      const found = slFindEvent(storyboard, eventId);
+      if (!found || found.block.locked) return;
+      if (field === 'text') {
+        found.event.text = sbText(input.value, 1000);
+        StoryboardHistory.commit('Edit main event', { debounce: true });
         return;
       }
-      const item = tabItemByKey(project, `beat:${beat.id}`);
-      if (field === 'at' && item) dsMoveItem(project, item, block.start_minutes + sbInt(input.value, beat.offset_minutes, 0, Math.max(0, block.duration_minutes - 1)), undefined);
-      else if (field === 'cell_id' && item) dsMoveItem(project, item, item.time, input.value || 'none');
-      else {
-        if (field === 'channel') { beat.channel = sbValidChannel(input.value); beat.template_id = ''; }
-        else if (field === 'template_id') beat.template_id = sbValidTemplateId(beat.channel, input.value);
-        else if (field === 'cast_id') beat.cast_id = storyboard.cast.some((cast) => cast.id === input.value) ? input.value : '';
-        StoryboardHistory.commit('Edit key stimulus');
-      }
+      found.event.offset_minutes = sbInt(input.value, found.event.offset_minutes, 0, Math.max(0, found.block.duration_minutes - 1));
+      found.block.events.sort((a, b) => a.offset_minutes - b.offset_minutes);
+      StoryboardHistory.commit('Move main event');
       App.render();
     });
-    if (isText) input.addEventListener('change', () => StoryboardHistory.flush());
+    if (field === 'text') input.addEventListener('change', () => { StoryboardHistory.flush(); renderAfterPointer(); });
   });
   root.querySelectorAll('[data-ds-time]').forEach((input) => input.addEventListener('change', () => {
     const item = selected();

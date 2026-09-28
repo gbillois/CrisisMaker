@@ -289,24 +289,19 @@ function renderSbRuler(storyboard, ppm) {
   return marks.join('');
 }
 
-/* The key stimuli of every phase, under the phases: click one to open its full editor. */
+/* The main events of every phase, under the phases: click one to edit it in its phase. */
 const SB_KEY_CARD_WIDTH = 150;
 function renderSbKeyRow(storyboard, width, ppm) {
-  const project = appState.scenario;
-  const keys = sbMainBlocks(storyboard).flatMap((block) => block.beats.filter((beat) => beat.main).map((beat) => ({ block, beat, at: sbBeatAbsolute(block, beat) })));
-  const packing = sbPackTrack(keys.map(({ beat, at }) => ({ id: beat.id, start_minutes: at, duration_minutes: (SB_KEY_CARD_WIDTH + 6) / ppm })));
+  const events = sbMainBlocks(storyboard).flatMap((block) => (block.events || []).map((event) => ({ block, event, at: block.start_minutes + event.offset_minutes })));
+  const packing = sbPackTrack(events.map(({ event, at }) => ({ id: event.id, start_minutes: at, duration_minutes: (SB_KEY_CARD_WIDTH + 6) / ppm })));
   const height = Math.max(1, packing.rows) * 44 + 10;
   return `<div class="sb-track-row sb-key-row">
-    <div class="sb-track-head" style="height:${height}px"><strong>${sbUiIcon('star', 12)} Key stimuli</strong><small>${keys.length ? `${keys.length} key stimul${keys.length > 1 ? 'i' : 'us'} · click to edit` : 'Add them in the phase editor'}</small></div>
+    <div class="sb-track-head" style="height:${height}px"><strong>${sbUiIcon('star', 12)} Main events</strong><small>${events.length ? `${events.length} main event${events.length > 1 ? 's' : ''} · click to edit` : 'Add them in the phase editor'}</small></div>
     <div class="sb-lane sb-key-lane" style="width:${width}px;height:${height}px">
-      ${keys.map(({ block, beat, at }) => {
-        const stimulus = sbStimulusForBeat(project, beat.id);
-        const title = beat.title || (stimulus ? sbStimulusLabel(stimulus) : 'Untitled key stimulus');
-        return `<button class="sb-key-card ${stimulus ? 'is-written' : ''}" data-tab-action="sl-main-edit" data-tab-value="${escapeAttribute(beat.id)}" style="left:${(at * ppm).toFixed(1)}px;top:${packing.placement.get(beat.id) * 44 + 5}px;width:${SB_KEY_CARD_WIDTH}px;--beat-color:${sbChannelColor(beat.channel)};--clip-color:${sbBlockColor(block)}" title="${escapeAttribute(`${sbFormatOffset(at)} · ${channelLabel(beat.channel)} → ${sbRecipientName(project, beat.cell_id) || 'no cell'}\n${title}\nClick to open the full editor`)}">
-          <span class="sb-key-meta">${sbUiIcon('star', 10)}${sbFormatOffset(at)} · ${escapeHtml(channelLabel(beat.channel))}</span>
-          <strong>${escapeHtml(title)}</strong>
-        </button>`;
-      }).join('')}
+      ${events.map(({ block, event, at }) => `<button class="sb-key-card is-written" data-tab-action="sl-event-focus" data-tab-value="${escapeAttribute(event.id)}" style="left:${(at * ppm).toFixed(1)}px;top:${packing.placement.get(event.id) * 44 + 5}px;width:${SB_KEY_CARD_WIDTH}px;--beat-color:${sbBlockColor(block)};--clip-color:${sbBlockColor(block)}" title="${escapeAttribute(`${sbFormatOffset(at)} · ${event.text || 'Main event'}`)}">
+          <span class="sb-key-meta">${sbUiIcon('star', 10)}${sbFormatOffset(at)}</span>
+          <strong>${escapeHtml(event.text || 'Main event')}</strong>
+        </button>`).join('')}
     </div>
   </div>`;
 }
@@ -351,8 +346,8 @@ function renderSbClip(storyboard, block, top, height) {
   const beats = block.beats.map((beat) => {
     const stimulus = sbStimulusForBeat(project, beat.id);
     const status = stimulus ? sbStimulusStatus(project, stimulus)?.key : 'planned';
-    return `<i class="sb-beat is-${status} ${beat.main ? 'is-main' : ''}" style="left:${(100 * Math.min(beat.offset_minutes, block.duration_minutes - 1) / block.duration_minutes).toFixed(2)}%;--beat-color:${sbChannelColor(beat.channel)}" title="${escapeAttribute(`${beat.main ? 'Main stimulus · ' : ''}${sbFormatOffset(sbBeatAbsolute(block, beat))} · ${channelLabel(beat.channel)} · ${beat.title}`)}"></i>`;
-  }).join('');
+    return `<i class="sb-beat is-${status}" style="left:${(100 * Math.min(beat.offset_minutes, block.duration_minutes - 1) / block.duration_minutes).toFixed(2)}%;--beat-color:${sbChannelColor(beat.channel)}" title="${escapeAttribute(`${sbFormatOffset(sbBeatAbsolute(block, beat))} · ${channelLabel(beat.channel)} · ${beat.title}`)}"></i>`;
+  }).join('') + (block.events || []).map((event) => `<i class="sb-beat is-main" style="left:${(100 * Math.min(event.offset_minutes, block.duration_minutes - 1) / block.duration_minutes).toFixed(2)}%;--beat-color:var(--clip-color)" title="${escapeAttribute(`Main event · ${sbFormatOffset(block.start_minutes + event.offset_minutes)} · ${event.text}`)}"></i>`).join('');
   return `<div class="sb-clip ${selected ? 'is-selected' : ''} ${block.locked ? 'is-locked' : ''} ${widthPx < 90 ? 'is-narrow' : ''} ${aiFresh ? 'is-ai' : ''} is-${block.status}" data-sb-clip="${block.id}" tabindex="0" role="button" aria-pressed="${selected}" aria-label="${escapeAttribute(`${block.title}, ${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))}`)}"
       style="left:${(block.start_minutes * ppm).toFixed(1)}px;width:${Math.max(6, widthPx).toFixed(1)}px;top:${top}px;height:${height}px;--clip-color:${sbBlockColor(block, storyboard)}">
     <span class="sb-clip-handle is-left" data-sb-resize="left"></span>
@@ -364,7 +359,7 @@ function renderSbClip(storyboard, block, top, height) {
       <span class="sb-clip-flags">
         <span class="sb-level-pips" title="Level of detail: ${['structure', 'narrative', 'inject plan'][level - 1]}">${[1, 2, 3].map((index) => `<i class="${index <= level ? 'on' : ''}"></i>`).join('')}</span>
         ${block.status === 'validated' ? `<span class="sb-flag is-ok" title="Validated">${sbUiIcon('check', 11)}</span>` : ''}
-        ${block.beats.some((beat) => beat.main) ? `<span class="sb-flag is-main" title="${escapeAttribute(`Main stimuli: ${block.beats.filter((beat) => beat.main).map((beat) => beat.title || 'Untitled').join(', ')}`)}">${sbUiIcon('star', 10)}${block.beats.filter((beat) => beat.main).length}</span>` : ''}
+        ${(block.events || []).length ? `<span class="sb-flag is-main" title="${escapeAttribute(`Main events: ${block.events.map((event) => event.text || 'Main event').join(' · ')}`)}">${sbUiIcon('star', 10)}${block.events.length}</span>` : ''}
         ${block.locked ? `<span class="sb-flag" title="Locked">${sbUiIcon('lock', 11)}</span>` : ''}
         ${aiFresh ? '<span class="sb-flag is-ai" title="Updated by AI">AI</span>' : ''}
         ${outdated ? `<span class="sb-flag is-warn" title="${outdated} inject(s) need sync">${outdated}</span>` : ''}

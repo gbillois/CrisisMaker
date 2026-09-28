@@ -229,7 +229,7 @@ function createAgentToolRegistry() {
       synopsis: agentExcerpt(storyboard.meta.synopsis, 2000),
       cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, description: agentExcerpt(cell.description, 300), players: cell.players.map(player => agentPick(player, ['name', 'role'])) })),
       cast: storyboard.cast.map(cast => ({ ...agentPick(cast, ['id', 'label', 'role', 'organization']), actor_id: cast.actor_id || null })),
-      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null, ...(beat.main ? { main: true } : {}) })) }))
+      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })), key_events: (block.events || []).map(event => ({ at: block.start_minutes + event.offset_minutes, text: agentExcerpt(event.text, 400) })) }))
     };
   });
   add('updateStoryboardBlock', 'Patch one Scenario Builder block (title, brief, narrative, timing, inject count, notes). Locked blocks are refused.', { ...id, patch: S.object({ title: S.text(200), brief: S.text(4000), narrative: S.text(8000), notes: S.text(4000), start_minutes: S.minutes, duration_minutes: { type: 'integer', minimum: 5, maximum: 525600 }, stimuli_target: { type: 'integer', minimum: 0, maximum: 24 } }) }, ['id', 'patch'], args => {
@@ -351,14 +351,13 @@ function createAgentToolRegistry() {
     if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
     const castMap = new Map(project.storyboard.cast.flatMap(cast => [[cast.id, cast.id], [cast.label, cast.id]]));
     const planned = sbBeatsFromAI(project.storyboard, args.injects, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) }));
-    // Written injects and the designer's main stimuli are always kept.
-    const kept = args.replace ? block.beats.filter(beat => beat.main || sbStimulusForBeat(project, beat.id)) : block.beats;
+    const kept = args.replace ? block.beats.filter(beat => sbStimulusForBeat(project, beat.id)) : block.beats;
     block.beats = [...kept, ...planned].slice(0, SB_MAX_BEATS).sort((a, b) => a.offset_minutes - b.offset_minutes);
     sbMarkPlanned(block);
     block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
     block.key_cast = [...new Set(block.beats.map(beat => beat.cast_id).filter(Boolean))];
     StoryboardHistory.commit('Agent: plan injects');
-    return { id: block.id, title: block.title, planned: block.beats.map(beat => ({ at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id, cast_id: beat.cast_id, channel: beat.channel, title: beat.title, ...(beat.main ? { main: true } : {}) })) };
+    return { id: block.id, title: block.title, planned: block.beats.map(beat => ({ at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id, cast_id: beat.cast_id, channel: beat.channel, title: beat.title })) };
   }, 'write');
   add('listActors', 'Read actors with pagination.', page, [], args => paginate(appState.scenario.actors, args, agentActor));
   add('getActor', 'Read a single actor.', id, ['id'], args => agentActor(requireItem(getActor, args.id)));

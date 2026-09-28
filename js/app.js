@@ -160,13 +160,13 @@
       }
 
       /* The story the Video Debrief studio tells: the exercise as written in CrisisMaker (context,
-         incident timeline, phases, key stimuli) and its debrief reconstruction, whose events
+         incident timeline, phases, main events) and its debrief reconstruction, whose events
          also give the first scenes of a manual creation. */
       function videoDebriefExerciseMaterial() {
         const project = appState.scenario;
         const storyboard = project.storyboard;
         const phases = storyboard && typeof sbMainBlocks === 'function' ? sbMainBlocks(storyboard) : [];
-        const keys = phases.flatMap((block) => block.beats.filter((beat) => beat.main).map((beat) => ({ block, beat })));
+        const keys = phases.flatMap((block) => (block.events || []).map((event) => ({ at: block.start_minutes + event.offset_minutes, text: event.text }))).filter((event) => event.text);
         const events = (project.debrief?.events || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
         const lines = [
           `Exercise: ${project.name || ''}`,
@@ -177,7 +177,7 @@
           project.scenario?.attack_path ? `Incident timeline (what really happened, in order):\n${project.scenario.attack_path}` : '',
           project.scenario?.learning_objectives ? `Learning objectives:\n${project.scenario.learning_objectives}` : '',
           phases.length ? `Main storyline:\n${phases.map((block) => `- ${sbFormatOffset(block.start_minutes)} ${block.title}${block.brief ? `: ${block.brief}` : ''}`).join('\n')}` : '',
-          keys.length ? `Key stimuli:\n${keys.map(({ block, beat }) => `- ${sbFormatOffset(sbBeatAbsolute(block, beat))} ${channelLabel(beat.channel)}: ${beat.title}${beat.intent ? ` (${beat.intent})` : ''}`).join('\n')}` : '',
+          keys.length ? `Main events:\n${keys.map((event) => `- ${sbFormatOffset(event.at)} ${event.text}`).join('\n')}` : '',
           events.length ? `Debrief reconstruction (the hidden story, in order):\n${events.map((event) => `- ${[event.dateLabel, event.title].filter(Boolean).join(' · ')}${event.headline ? `: ${event.headline}` : ''}${event.body ? ` ${event.body}` : ''}${event.location ? ` [${event.location}]` : ''}`).join('\n')}` : ''
         ].filter(Boolean);
         return {

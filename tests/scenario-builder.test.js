@@ -423,7 +423,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   assert.ok(!storyline.includes('sb-inspector') && !storyline.includes('sb-bin'), 'no side columns');
   h.run(`sbUI().selected = [sbStoryboard().blocks[1].id]`);
   const phase = h.run('renderStorylineView()');
-  for (const marker of ['bottom-editor-head', 'data-sb-field="brief"', 'What happens during this phase', 'data-tab-action="open-detailed"', 'modify-block', 'Key stimuli', 'data-sb-modal="sync"']) assert.ok(phase.includes(marker), marker);
+  for (const marker of ['bottom-editor-head', 'data-sb-field="brief"', 'What happens during this phase', 'data-tab-action="open-detailed"', 'modify-block', 'Main events', 'data-sb-modal="sync"']) assert.ok(phase.includes(marker), marker);
   for (const gone of ['data-sb-field="narrative"', 'deepen-all', 'rewrite-block', 'Behind the scenes']) assert.ok(!phase.includes(gone), gone);
   assert.ok(!phase.includes('data-sb-objective'), 'objectives are not edited in the phase editor');
   for (const modal of ['versions', 'coherence', 'generate', 'sync']) {
@@ -823,42 +823,35 @@ test('Context duration reads h:min, minutes or hours', () => {
   assert.equal(h.run('sbFormatHoursMinutes(180)'), '3:00');
 });
 
-test('main stimuli: added in the phase editor, sent to all cells or one, kept by AI re-plans', async () => {
+test('main events: a line of text at a time in each phase, framing the AI plans and the injects', async () => {
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'storyline';`);
   const blockId = h.run('sbMainBlocks(sbStoryboard())[1].id');
-  const beat = h.json(`slAddMainStimulus(appState.scenario, sbBlock(sbStoryboard(), '${blockId}'))`);
-  assert.equal(beat.main, true);
-  assert.equal(beat.cell_id, 'all');
-  h.run(`(() => { const beat = slFindBeat(sbStoryboard(), '${beat.id}').beat; beat.title = 'Ransom note on every screen'; beat.intent = 'Everyone sees it.'; })()`);
-  // The phase editor lists it, with "All cells" as its recipient.
-  h.run(`sbUI().selected = ['${blockId}']; sbUI().keyOpen = null`);
-  const closed = h.run('renderStorylineView()');
-  assert.ok(closed.includes('Key stimuli') && closed.includes('Ransom note on every screen') && !closed.includes(`data-sl-main="${beat.id}.title"`), 'listed, closed');
-  h.run(`sbUI().keyOpen = '${beat.id}'`);
+  const event = h.json(`(() => { const block = sbBlock(sbStoryboard(), '${blockId}'); const event = sbMakeEvent({ offset_minutes: 10, text: 'The ransom note appears on every screen' }); block.events.push(event); return event; })()`);
+  // The phase editor: name and settings, "What happens", then the main events.
+  h.run(`sbUI().selected = ['${blockId}']`);
   const view = h.run('renderStorylineView()');
-  assert.ok(view.includes(`data-sl-main="${beat.id}.title"`), 'opened for editing');
-  assert.ok(view.includes('sb-beat is-planned is-main') || view.includes('is-main'), 'marked on the timeline');
-  // Every cell receives it: no "no recipient" warning, it counts in every cell row.
-  const issues = h.json('sbExerciseChecks(appState.scenario)');
-  assert.ok(!issues.some((issue) => issue.code === 'no_cell' && issue.message.includes('Ransom note')));
-  const cells = h.json('appState.scenario.cells.map((cell) => cell.id)');
-  assert.ok(cells.every((id) => h.run(`sbReaches('all', '${id}')`)));
-  const detailed = h.run(`(() => { tabUI('detailed').cell = 'all'; return renderDetailedView(); })()`);
-  assert.equal((detailed.match(new RegExp(`data-ds-item="beat:${beat.id}"`, 'g')) || []).length, cells.length, 'one card per cell row');
-  // Saved and reloaded: still main, still for all cells.
-  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).storyboard.blocks.find((block) => block.id === '${blockId}').beats.find((item) => item.id === '${beat.id}')`);
-  assert.equal(reloaded.main, true);
-  assert.equal(reloaded.cell_id, 'all');
-  // An AI re-plan that returns a new list keeps the main stimulus unchanged.
-  mockAI(h, [{ block: { beats: [{ at: 3, channel: 'email_internal', cast: '', title: 'New planned inject', intent: 'x' }, { id: beat.id, at: 9, channel: 'sms', title: 'Rewritten', intent: 'y' }] } }]);
+  assert.ok(view.includes('Main events') && view.includes(`data-sl-event="${event.id}.text"`) && view.includes('The ransom note appears on every screen'));
+  assert.ok(view.indexOf('data-sb-field="brief"') < view.indexOf(`data-sl-event="${event.id}.text"`), 'what happens, then the main events');
+  assert.ok(view.includes('sb-key-card') && !view.includes('Key stimuli'), 'shown under the phases');
+  // Saved, exported with templates, and given to the AI with their time.
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).storyboard.blocks.find((block) => block.id === '${blockId}').events`);
+  assert.equal(reloaded[0].text, 'The ransom note appears on every screen');
+  assert.equal(h.json(`sbAIContext(appState.scenario).storyboard.blocks.find((block) => block.id === '${blockId}').key_events[0].at`), 10);
+  // Writing an inject: events before its time have happened, later ones are not revealed.
+  const early = h.run(`(() => { const block = sbBlock(sbStoryboard(), '${blockId}'); return sbGenerationBrief(appState.scenario, block, sbMakeBeat({ offset_minutes: 2, title: 'x' }), {}); })()`);
+  const late = h.run(`(() => { const block = sbBlock(sbStoryboard(), '${blockId}'); return sbGenerationBrief(appState.scenario, block, sbMakeBeat({ offset_minutes: 20, title: 'x' }), {}); })()`);
+  assert.ok(/still to come[^\n]*ransom note/.test(early) && !/already happened[^\n]*ransom note/.test(early));
+  assert.ok(/already happened[^\n]*ransom note/.test(late));
+  // An AI re-plan never touches them.
+  mockAI(h, [{ block: { beats: [{ at: 3, channel: 'email_internal', cast: '', title: 'New planned inject', intent: 'x' }] } }]);
   h.run(`Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'TEST', ai_model: 'gpt-test' })`);
   await h.run(`SbAI.rewrite('${blockId}', 'Replan')`);
-  const after = h.json(`sbBlock(sbStoryboard(), '${blockId}').beats`);
-  const kept = after.find((item) => item.id === beat.id);
-  assert.equal(kept.title, 'Ransom note on every screen');
-  assert.equal(kept.main, true);
-  assert.ok(after.some((item) => item.title === 'New planned inject'));
+  assert.equal(h.json(`sbBlock(sbStoryboard(), '${blockId}').events`).length, 1);
+  // Older projects: planned injects marked "main" become main events, the injects stay.
+  const legacy = h.json(`normalizeStoryboard({ ...JSON.parse(JSON.stringify(sbStoryboard())), blocks: [{ id: 'b_old', type: 'trigger', title: 'Old', start_minutes: 0, duration_minutes: 30, beats: [{ id: 'beat_old', at: 5, channel: 'breaking_news_tv', title: 'TV flash', intent: 'Hospitals hit', main: true }] }] }).blocks[0]`);
+  assert.equal(legacy.events[0].text, 'TV flash — Hospitals hit');
+  assert.equal(legacy.beats.length, 1);
 });
 
 test('phase colour follows its stress level: from the type by default, or set in the phase editor', () => {

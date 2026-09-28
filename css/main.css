@@ -3771,9 +3771,9 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sl-workspace .sl-timeline > .sb-timeline-panel { flex: 1 1 auto; min-height: 0; }
 .sl-add { display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; color: var(--primary-strong); }
 .sb-workspace .sl-add select { width: auto; min-height: 30px; padding: 3px 6px; border: none; background: transparent; font-weight: 700; }
-.sl-editor-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; }
+.sl-editor-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
 .sl-what { grid-template-rows: auto minmax(0, 1fr); align-content: stretch; }
-.sl-what textarea { min-height: 120px; height: auto; resize: vertical; font-size: 0.95rem; line-height: 1.55; }
+.sl-what textarea { min-height: 76px; height: auto; resize: vertical; font-size: 0.95rem; line-height: 1.55; }
 .sl-replan { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; background: #fff7e8; border-left: 3px solid var(--warning); font-size: 0.82rem; color: var(--primary-strong); }
 .sl-replan > span { flex: 1; min-width: 180px; }
 .sl-replan .sb-update { height: 32px; }
@@ -4464,3 +4464,16 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
   .sl-workspace .sl-timeline, .ds-workspace .ds-timeline { flex: none; min-height: 0; }
   .sl-workspace .bottom-editor, .ds-workspace .bottom-editor { flex: none; }
 }
+
+/* Main events of a phase (phase editor, third row). */
+.sl-events { display: grid; gap: 6px; }
+.sl-events-head { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.sl-events-head strong { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--primary-strong); }
+.sl-events-head .subtle { flex: 1 1 240px; font-size: 0.74rem; }
+.sl-event { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.sl-event-time { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 800; color: var(--primary-strong); font-variant-numeric: tabular-nums; min-width: 118px; }
+.sb-workspace .sl-event-time input { width: 60px; min-height: 32px; padding: 4px 6px; }
+.sb-workspace .sl-event > input { min-height: 34px; }
+.sl-foot { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--sb-line); }
+.sl-foot .sl-ai { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 0; border-top: none; }
+.sl-foot .sl-ai input { flex: 1 1 260px; }

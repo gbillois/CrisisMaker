@@ -287,10 +287,23 @@ function sbGenerationBrief(project, block, beat, options = {}) {
     previousBlock ? `- Previously: "${previousBlock.title}" - ${sbText(previousBlock.brief || previousBlock.narrative, 400)}` : '',
     `- Current phase "${block.title}" (${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))}): ${sbText(block.brief, 800)}`,
     block.narrative ? `- What is happening: ${sbText(block.narrative, 1600)}` : '',
+    (() => {
+      // The main events around this inject: what has already happened at its time, and what
+      // has not (never reveal it before it happens).
+      const at = beat ? sbBeatAbsolute(block, beat) : block.start_minutes;
+      const events = sbMainBlocks(storyboard).flatMap((phase) => (phase.events || []).map((event) => ({ at: phase.start_minutes + event.offset_minutes, text: event.text })))
+        .filter((event) => event.text && event.at <= sbBlockEnd(block)).sort((a, b) => a.at - b.at);
+      const done = events.filter((event) => event.at <= at).slice(-6).map((event) => `${sbFormatOffset(event.at)} ${sbText(event.text, 200)}`);
+      const next = events.filter((event) => event.at > at).slice(0, 3).map((event) => `${sbFormatOffset(event.at)} ${sbText(event.text, 200)}`);
+      return [
+        done.length ? `- Main events that have already happened at this inject's time: ${done.join(' | ')}. The inject reflects them.` : '',
+        next.length ? `- Main events still to come (do not reveal them; the inject may build up to them): ${next.join(' | ')}` : ''
+      ].filter(Boolean).join('\n');
+    })(),
     block.objectives.length ? `- Objectives tested: ${block.objectives.join('; ')}` : '',
     beat ? `- THIS INJECT (${channelLabel(beat.channel)} at ${sbFormatOffset(sbBeatAbsolute(block, beat))}): "${beat.title}". ${beat.intent}` : '',
     (() => {
-      if (sbIsAllCells(beat?.cell_id)) return `- Recipient: every player cell (${(project.cells || []).map((cell) => cell.name).join(', ') || 'all players'}). A key stimulus that frames the story: address it to all of them.`;
+      if (sbIsAllCells(beat?.cell_id)) return `- Recipient: every player cell (${(project.cells || []).map((cell) => cell.name).join(', ') || 'all players'}). Address it to all of them.`;
       if (sbRecipientIds(beat?.cell_id).length > 1) return `- Recipients: ${sbRecipientName(project, beat.cell_id)}. Address the inject to all of them.`;
       const cell = sbCell(project, beat?.cell_id || options.cellId);
       return cell ? `- Recipient: the ${cell.name}${cell.description ? ` (${cell.description})` : ''}. Address the inject to them.` : '';

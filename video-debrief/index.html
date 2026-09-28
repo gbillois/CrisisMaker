@@ -842,7 +842,7 @@ function renderMaterialSummary(){
   const parts = [
     c.events ? uiText(`${c.events} événements du debrief`, `${c.events} debrief events`, `${c.events} Debrief-Ereignisse`) : '',
     c.phases ? uiText(`${c.phases} phases`, `${c.phases} phases`, `${c.phases} Phasen`) : '',
-    c.keys ? uiText(`${c.keys} stimuli clés`, `${c.keys} key stimuli`, `${c.keys} Schlüssel-Stimuli`) : ''
+    c.keys ? uiText(`${c.keys} événements majeurs`, `${c.keys} main events`, `${c.keys} Hauptereignisse`) : ''
   ].filter(Boolean).join(' · ');
   const box = $('material-summary');
   if (!m.text) {

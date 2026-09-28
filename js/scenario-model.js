@@ -223,10 +223,23 @@ function sbNormalizeBeat(input = {}) {
     cast_id: sbSafeId(input.cast_id),
     cell_id: sbSafeRecipient(input.cell_id),
     title: sbText(input.title, 300),
-    intent: sbText(input.intent, 2000),
-    // A main stimulus frames the whole story: set by the designer, kept by every AI re-plan.
-    main: input.main === true
+    intent: sbText(input.intent, 2000)
   };
+}
+
+/* A main event of a phase: a line of text at a time (minutes from the phase start) that
+   frames the story, such as "the ransom note appears on every screen". Not an inject: the
+   injects of every cell are planned around it. */
+function sbNormalizeEvent(input = {}) {
+  const text = typeof input.text === 'string' ? input.text : [input.title, input.description ?? input.intent].filter((part) => typeof part === 'string' && part.trim()).join(' — ');
+  return {
+    id: sbSafeId(input.id, 'event'),
+    offset_minutes: sbInt(input.offset_minutes ?? input.at, 0, 0, SB_MAX_DURATION),
+    text: sbText(text, 1000)
+  };
+}
+function sbMakeEvent(values = {}) {
+  return sbNormalizeEvent({ id: uid('event'), offset_minutes: 0, text: '', ...values });
 }
 
 function sbNormalizeCast(input = {}) {
@@ -250,6 +263,13 @@ function sbNormalizeBlock(input = {}, storyboard = null) {
   const beats = (Array.isArray(input.beats) ? input.beats : []).slice(0, SB_MAX_BEATS).map(sbNormalizeBeat)
     .map((beat) => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, Math.max(0, duration - 1)) }))
     .sort((a, b) => a.offset_minutes - b.offset_minutes);
+  // Key events; older projects marked some planned injects "main": they become key events
+  // (the injects stay planned as they were).
+  const legacy = Array.isArray(input.events) ? [] : (Array.isArray(input.beats) ? input.beats : []).filter((beat) => beat && beat.main === true)
+    .map((beat) => ({ offset_minutes: beat.offset_minutes ?? beat.at, title: beat.title, intent: beat.intent }));
+  const events = [...(Array.isArray(input.events) ? input.events : []), ...legacy].filter((event) => event && typeof event === 'object').slice(0, 30).map(sbNormalizeEvent)
+    .map((event) => ({ ...event, offset_minutes: Math.min(event.offset_minutes, Math.max(0, duration - 1)) }))
+    .sort((a, b) => a.offset_minutes - b.offset_minutes);
   return {
     id: sbSafeId(input.id, 'block'),
     type,
@@ -263,6 +283,7 @@ function sbNormalizeBlock(input = {}, storyboard = null) {
     objectives: sbTextList(input.objectives, 12, 600),
     key_cast: (Array.isArray(input.key_cast) ? input.key_cast : []).map((id) => sbSafeId(id)).filter(Boolean).slice(0, 20),
     beats,
+    events,
     status: ['draft', 'refined', 'validated'].includes(input.status) ? input.status : 'draft',
     locked: input.locked === true,
     color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : '',
@@ -549,8 +570,7 @@ function sbTemplateToStoryboard(template, options = {}) {
       cast_id: castIds.get(String(beat.cast ?? beat.cast_id ?? '')) || '',
       cell_id: beat.cell_id || '',
       title: beat.title,
-      intent: beat.intent,
-      main: beat.main === true
+      intent: beat.intent
     }));
     return sbMakeBlock(type, {
       title: block.title,
@@ -559,6 +579,7 @@ function sbTemplateToStoryboard(template, options = {}) {
       duration_minutes: block.duration ?? block.duration_minutes,
       stimuli_target: block.stimuli ?? block.stimuli_target ?? beats.length,
       stress: block.stress,
+      events: block.events,
       brief: block.brief,
       narrative: block.narrative,
       objectives: blockObjectives,
@@ -639,14 +660,15 @@ function sbStoryboardToTemplate(storyboard, project, name = '') {
       narrative: block.narrative,
       objectives: block.objectives.map((objective) => objectives.indexOf(objective)).filter((index) => index >= 0),
       ...(block.stress ? { stress: block.stress } : {}),
-      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent, ...(beat.main ? { main: true, ...(sbIsAllCells(beat.cell_id) ? { cell_id: SB_ALL_CELLS } : {}) } : {}) }))
+      ...(block.events?.length ? { events: block.events.map((event) => ({ at: event.offset_minutes, text: event.text })) } : {}),
+      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent }))
     })),
     created_at: new Date().toISOString()
   };
 }
 
 // ── Diff between two storyboard snapshots ────────────────────────────────────
-const SB_DIFF_FIELDS = ['title', 'type', 'track_id', 'start_minutes', 'duration_minutes', 'stimuli_target', 'brief', 'narrative', 'objectives', 'beats', 'status', 'locked', 'notes'];
+const SB_DIFF_FIELDS = ['title', 'type', 'track_id', 'start_minutes', 'duration_minutes', 'stimuli_target', 'brief', 'narrative', 'objectives', 'beats', 'events', 'status', 'locked', 'notes'];
 function storyboardDiff(before, after) {
   const result = { added: [], removed: [], changed: [], meta: [], cast: { added: [], removed: [], changed: [] } };
   if (!before || !after) return result;
@@ -845,8 +867,8 @@ function sbMakeCell(key = 'custom', values = {}) {
 }
 
 /* The recipient of an inject, in its cell_id: one cell's id, several ids joined by "+"
-   (sent to each of them), or SB_ALL_CELLS for every cell (a key stimulus such as the
-   ransom note or a TV flash). Read it only through these helpers. */
+   (sent to each of them), or SB_ALL_CELLS for every cell (such as a TV flash everyone
+   sees). Read it only through these helpers. */
 const SB_ALL_CELLS = 'all';
 const SB_CELL_SEPARATOR = '+';
 function sbIsAllCells(cellId) {
