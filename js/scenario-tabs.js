@@ -562,7 +562,7 @@ function renderInjectEditor(project, item) {
    and phase, the live checks, the AI challenge and the checklist. */
 function ccChecklistProgress() {
   if (typeof checkerGetChecklistCategories !== 'function') return { done: 0, total: 0 };
-  const checklist = appState.checkerState.checklist || {};
+  const checklist = checkerChecklist();
   const checked = checklist.checked || {}, custom = checklist.customItems || {};
   let done = 0, total = 0;
   for (const category of checkerGetChecklistCategories()) {
@@ -596,11 +596,17 @@ function ccAiScore(summaryState) {
   return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
 }
 
+/* No storyline and no inject: nothing to check, so no score and no verdict. */
+function ccNothingToCheck(project) {
+  return !project.storyboard?.blocks?.length && !sbExerciseItems(project).length;
+}
+
 function ccReadiness(project, rules, summaryState) {
-  const structure = sbScore(rules);
   const ai = ccAiScore(summaryState);
   const list = ccChecklistProgress();
   const checklist = list.total ? Math.round(100 * list.done / list.total) : null;
+  if (ccNothingToCheck(project)) return { structure: null, ai, checklist, list, overall: null, verdict: 'empty' };
+  const structure = sbScore(rules);
   const signals = [structure, ai, checklist].filter((value) => value !== null);
   const overall = Math.round(signals.reduce((a, b) => a + b, 0) / signals.length);
   const verdict = overall >= 80 && ai !== null ? 'ready' : overall >= 60 ? 'almost' : 'work';
@@ -641,7 +647,7 @@ function renderSummaryView() {
     const source = fileLoaded && cs.mode === 'file' ? 'file' : 'scenario';
     if (cs.mode !== source) cs.mode = source;
     const kpi = (value, label) => `<div class="su-kpi"><strong>${value}</strong><span>${escapeHtml(label)}</span></div>`;
-    const verdicts = { ready: 'Ready to play', almost: 'Almost ready', work: 'Needs work' };
+    const verdicts = { ready: 'Ready to play', almost: 'Almost ready', work: 'Needs work', empty: 'Nothing to check yet' };
     // The next steps, from what actually holds the score down.
     const errors = rules.filter((issue) => issue.severity === 'error').length;
     const steps = [
@@ -649,7 +655,9 @@ function renderSummaryView() {
       readiness.ai === null ? 'challenge the exercise with AI' : (readiness.ai < 80 && cs.analysisResult?.priority_actions?.length ? 'work through the priority actions of the challenge' : ''),
       readiness.list.total && readiness.list.done < readiness.list.total ? `tick the ready-to-play checklist (${readiness.list.done}/${readiness.list.total})` : ''
     ].filter(Boolean);
-    const hint = steps.length ? `Next: ${steps.join(', then ')}.` : 'The checks, the AI challenge and the checklist agree.';
+    const hint = readiness.verdict === 'empty'
+      ? 'Build the main storyline or plan injects first (Context, Main storyline, Detailed storyline): the checks start once there is something to check.'
+      : steps.length ? `Next: ${steps.join(', then ')}.` : 'The checks, the AI challenge and the checklist agree.';
     const gauge = (label, value, hint, action = '') => `<div class="cc-gauge ${value === null ? 'is-empty' : value >= 80 ? 'is-good' : value >= 60 ? 'is-mid' : 'is-low'}">
       <span class="cc-gauge-label">${escapeHtml(label)}${action}</span>
       <strong>${value === null ? '—' : `${value}<small>/100</small>`}</strong>
@@ -670,11 +678,11 @@ function renderSummaryView() {
         <div class="cc-verdict">
           <span class="page-eyebrow">Readiness</span>
           <strong>${escapeHtml(verdicts[readiness.verdict])}</strong>
-          <span class="cc-overall">${readiness.overall}<small>/100</small></span>
+          <span class="cc-overall">${readiness.overall === null ? '-' : `${readiness.overall}<small>/100</small>`}</span>
           <p class="subtle">${escapeHtml(hint)}</p>
         </div>
         <div class="cc-gauges">
-          ${gauge('Automatic checks', readiness.structure, `${rules.filter((issue) => issue.severity === 'error').length} error(s), ${rules.filter((issue) => issue.severity === 'warning').length} warning(s)`)}
+          ${gauge('Automatic checks', readiness.structure, readiness.verdict === 'empty' ? 'Nothing to check yet' : `${rules.filter((issue) => issue.severity === 'error').length} error(s), ${rules.filter((issue) => issue.severity === 'warning').length} warning(s)`)}
           ${gauge('AI challenge', readiness.ai, readiness.ai === null ? 'Not run yet' : 'Last challenge of the current scenario', launch)}
           ${gauge('Ready-to-play checklist', readiness.checklist, `${readiness.list.done} / ${readiness.list.total} items checked`)}
         </div>
@@ -724,9 +732,10 @@ function renderSummaryOverview(project, items, phases, duration) {
   const reaches = (item, row) => (row.id === 'none' ? !sbHasRecipient(project, item.cell_id) : sbReaches(item.cell_id, row.id));
   const max = Math.max(1, ...rows.flatMap((row) => phases.map((block) => items.filter((item) => reaches(item, row) && inPhase(item, block)).length)));
   const buckets = Math.max(1, Math.ceil(duration / 30));
-  return `<div class="su-band">${phases.map((block) => `<span style="flex:${block.duration_minutes};--clip-color:${sbBlockColor(block, project.storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}">${escapeHtml(block.title)}</span>`).join('') || '<span class="sb-empty">No phase</span>'}</div>
+  // Phase names head their own column, so names and counts always line up.
+  return `${phases.length ? '' : '<p class="sb-empty">No phase</p>'}
     <div class="su-heat-wrap"><table class="su-heat">
-      <thead><tr><th>Cell</th>${phases.map((block) => `<th title="${escapeAttribute(block.title)}">${escapeHtml(sbFormatOffset(block.start_minutes))}</th>`).join('')}<th>Total</th><th>Load (per 30 min)</th></tr></thead>
+      <thead><tr><th>Cell</th>${phases.map((block) => `<th class="su-phase" style="--clip-color:${sbBlockColor(block, project.storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}"><span>${escapeHtml(block.title)}</span><small>${escapeHtml(sbFormatOffset(block.start_minutes))}</small></th>`).join('')}<th>Total</th><th>Load (per 30 min)</th></tr></thead>
       <tbody>${rows.map((row) => {
         const own = items.filter((item) => reaches(item, row));
         const load = Array.from({ length: buckets }, (_, index) => own.filter((item) => Math.floor(item.time / 30) === index).length);

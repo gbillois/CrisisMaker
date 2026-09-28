@@ -154,13 +154,17 @@ function renderSbLibrary() {
   ui.libraryCategory = ui.libraryCategory || '';
   const entries = sbLibraryEntries();
   const categories = [...new Set(entries.map((entry) => entry.category || 'Custom'))];
-  const visible = entries.filter((entry) => !ui.libraryCategory || (entry.category || 'Custom') === ui.libraryCategory);
+  const inCategory = entries.filter((entry) => !ui.libraryCategory || (entry.category || 'Custom') === ui.libraryCategory);
+  // The query survives a category change and a re-render: both filters apply.
+  const query = String(ui.libraryQuery || '');
+  const matches = inCategory.filter((template) => sbTemplateMatches(template, query)).length;
   return `<div class="sb-library-tools">
-      <input type="search" class="sb-search" data-sb-filter="library" placeholder="Search scenarios…" aria-label="Search the library">
+      <input type="search" class="sb-search" data-sb-filter="library" value="${escapeAttribute(query)}" placeholder="Search scenarios…" aria-label="Search the library">
       <div class="sb-chips">${['', ...categories].map((category) => `<button class="sb-filter-chip ${ui.libraryCategory === category ? 'active' : ''}" data-sb-action="library-category" data-sb-value="${escapeAttribute(category)}">${escapeHtml(category || 'All')}</button>`).join('')}</div>
     </div>
     <div class="sb-library-list">
-      ${visible.map(renderSbTemplateCard).join('') || '<p class="sb-empty">No scenario in this category.</p>'}
+      ${inCategory.map((template) => renderSbTemplateCard(template, !sbTemplateMatches(template, query))).join('')}
+      <p class="sb-empty" data-sb-library-empty ${matches ? 'hidden' : ''}>${escapeHtml(sbLibraryEmptyText(query, inCategory.length))}</p>
     </div>
     <div class="sb-library-footer">
       <label class="sb-mini-field">Save the current storyboard as a template
@@ -176,11 +180,25 @@ function sbMiniTimeline(template) {
   return `<div class="sb-mini-timeline" aria-hidden="true">${rows.slice(0, 5).map((row) => `<div class="sb-mini-row ${row === 'main' ? 'is-main' : ''}">${blocks.filter((block) => (block.track || 'main') === row).map((block) => `<i style="left:${(100 * (block.start || 0) / duration).toFixed(2)}%;width:${Math.max(1, 100 * (block.duration || 0) / duration).toFixed(2)}%;background:${(SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).color}"></i>`).join('')}</div>`).join('')}</div>`;
 }
 
-function renderSbTemplateCard(template) {
+function sbTemplateSearchText(template) {
+  return `${template.name} ${template.category} ${(template.tags || []).join(' ')} ${template.summary || ''}`.toLowerCase();
+}
+
+function sbTemplateMatches(template, query) {
+  const text = String(query || '').trim().toLowerCase();
+  return !text || sbTemplateSearchText(template).includes(text);
+}
+
+function sbLibraryEmptyText(query, inCategory) {
+  const text = String(query || '').trim();
+  if (!text) return inCategory ? '' : 'No scenario in this category.';
+  return `No scenario matches "${text}"${sbUI().libraryCategory ? ' in this category' : ''}.`;
+}
+
+function renderSbTemplateCard(template, hidden = false) {
   const stats = sbTemplateStats(template);
-  const search = `${template.name} ${template.category} ${(template.tags || []).join(' ')} ${template.summary || ''}`.toLowerCase();
   const loaded = sbStoryboard().meta.library_id === template.id;
-  return `<article class="sb-template-card ${loaded ? 'is-loaded' : ''}" data-sb-search="${escapeAttribute(search)}">
+  return `<article class="sb-template-card ${loaded ? 'is-loaded' : ''}" data-sb-search="${escapeAttribute(sbTemplateSearchText(template))}" ${hidden ? 'hidden' : ''}>
     <div class="sb-template-head">
       <span class="sb-template-icon">${sbIcon(template.icon || 'square', 18)}</span>
       <div><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.category || 'Custom')}${template.builtin ? '' : ' · My template'}</small></div>
@@ -391,6 +409,7 @@ function renderSbModal(storyboard) {
     case 'generate': return renderSbGenerateModal(storyboard);
     case 'sync': return renderSbSyncModal(storyboard);
     case 'preview': return renderSbPreviewModal();
+    case 'load-choice': return renderSbLoadChoiceModal();
     default: return '';
   }
 }
@@ -450,7 +469,7 @@ function renderSbCoherenceModal(storyboard) {
   const body = `<div class="sb-coherence-head">
       ${sbScoreRing(report?.score)}
       <div>
-        <strong>${report ? `Score ${report.score}/100` : 'Not checked yet'}</strong>
+        <strong>${report ? (report.score === null ? 'Nothing to check yet' : `Score ${report.score}/100`) : 'Not checked yet'}</strong>
         <p class="sb-help">${report ? `${escapeHtml(report.summary || 'Deterministic checks only.')} Checked on rev ${report.checked_rev}${report.checked_rev !== storyboard.rev ? ' (storyboard changed since)' : ''}.` : 'Run the checks to review structure, timing, objectives coverage and workload across cells.'}</p>
       </div>
     </div>
@@ -567,6 +586,21 @@ function renderSbPreviewModal() {
     ${hasBlocks ? `<button class="btn btn-secondary btn-sm" data-sb-action="use-template" data-sb-template="${escapeAttribute(template.id)}" data-sb-mode="insert">Insert after current storyline</button>` : ''}
     <button class="btn btn-primary btn-sm" data-sb-action="select-template" data-sb-template="${escapeAttribute(template.id)}" title="Load it, set the key information in Context, then generate with AI or load the basic scenario">Load</button>`;
   return sbModalShell(escapeHtml(template.name), body, footer, 'sb-modal-wide');
+}
+
+/* Loading a library scenario into a project with content: a new project, or the storyline only. */
+function renderSbLoadChoiceModal() {
+  const ui = sbUI();
+  const template = sbFindTemplate(ui.previewId);
+  if (!template) return '';
+  const name = String(appState.scenario.name || '').trim() || 'Untitled project';
+  const id = escapeAttribute(template.id);
+  const body = `<p>The current project <b>${escapeHtml(name)}</b> already has content. How do you want to use <b>${escapeHtml(template.name)}</b>?</p>
+    <div class="sb-load-choices">
+      <button class="sb-load-choice is-primary" data-sb-action="select-template" data-sb-template="${id}" data-sb-load="new">${sbUiIcon('plus', 16)}<strong>Start a new project from this scenario</strong><small>A fresh project framed by this scenario. The current project is replaced, including its copy saved in this browser: export it first to keep it.</small></button>
+      <button class="sb-load-choice" data-sb-action="select-template" data-sb-template="${id}" data-sb-load="storyline">${sbUiIcon('layers', 16)}<strong>Replace only the storyline</strong><small>Keep the client, context, cells, actors and injects of this project. The scenario replaces the main storyline when you load it or generate with AI in Context.</small></button>
+    </div>`;
+  return sbModalShell('Load a library scenario', body, '<button class="btn btn-secondary btn-sm" data-sb-action="close-modal">Cancel</button>');
 }
 
 // ── Focus preservation across full re-renders ────────────────────────────────

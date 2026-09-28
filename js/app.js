@@ -38,7 +38,6 @@
           analysisLoading: false,
           analysisError: null,
           llmLogs: [],
-          checklist: {},
           activeAxisTab: 0
         }
       };
@@ -50,7 +49,10 @@
             restoreLLMPrompts(appState.scenario._llm_prompts);
             delete appState.scenario._llm_prompts;
           }
+          // The checklist once shared by every project moves into the one opened now.
+          checkerLoadChecklist();
           this.bindBeforeUnload();
+          this.bindEscape();
           this.bindDebriefEditorBridge();
           this.installVideoDebriefBridge();
           this.bindVideoDebriefBridge();
@@ -59,6 +61,27 @@
           if (window.__crisisRestoreFailed) {
             pushToast(tt('The project saved in this browser could not be restored. A copy was kept (key crisismaker_autosave_corrupt_…); the demo is shown meanwhile.', 'Le projet enregistré dans ce navigateur n\'a pas pu être restauré. Une copie a été conservée (clé crisismaker_autosave_corrupt_…) ; la démo est affichée en attendant.', 'Das in diesem Browser gespeicherte Projekt konnte nicht wiederhergestellt werden. Eine Kopie wurde behalten (Schlüssel crisismaker_autosave_corrupt_…); inzwischen wird die Demo angezeigt.'), 'error');
           }
+        },
+        /* Esc closes the topmost overlay: the technical log, a library or builder dialog outside
+           the Main storyline (which handles its own keys), the welcome screen, then Settings. */
+        bindEscape() {
+          window.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
+            if (event.target?.closest?.('[data-assistant-form]')) return;
+            if (appState.techLogOpen) { appState.techLogOpen = false; App.render(); return; }
+            if (appState.stimulusModalId || appState.historyModalStimulusId || appState.chronogramImport) return;
+            const ui = typeof sbUI === 'function' ? sbUI() : null;
+            const overlay = appState.launchScreenOpen || appState.settingsDrawerOpen;
+            if (ui?.modal && (appState.route !== 'storyline' || overlay)) {
+              if (typeof SbPipeline !== 'undefined' && SbPipeline.active) return;
+              ui.modal = null;
+              ui.previewId = null;
+              App.render();
+              return;
+            }
+            if (appState.launchScreenOpen) { appState.launchScreenOpen = false; App.render(); return; }
+            if (appState.settingsDrawerOpen) { appState.settingsDrawerOpen = false; App.render(); }
+          });
         },
         bindBeforeUnload() {
           window.addEventListener('beforeunload', () => {
@@ -654,6 +677,44 @@
         pushToast(tt('Scenario data cleared.', 'Données du scénario effacées.', 'Szenariodaten gelöscht.'), 'success');
       }
 
+      /* New, demo or library project over a project with content: ask first, then keep a
+         version of its storyline (Main storyline versions of that project) before replacing it. */
+      function confirmReplaceProject(kind = 'new', { ask = true } = {}) {
+        const project = appState.scenario;
+        if (!projectHasContent(project)) return true;
+        const name = String(project.name || '').trim() || tt('Untitled project', 'Projet sans titre', 'Projekt ohne Titel');
+        const intro = {
+          new: tt('Start a new blank project?', 'Démarrer un nouveau projet vierge ?', 'Neues leeres Projekt starten?'),
+          demo: tt('Load the demo project?', 'Charger le projet de démonstration ?', 'Demoprojekt laden?'),
+          library: tt('Start a new project from this library scenario?', 'Démarrer un nouveau projet à partir de ce scénario de la bibliothèque ?', 'Neues Projekt aus diesem Bibliotheksszenario starten?')
+        }[kind];
+        const detail = tt(
+          `The current project "${name}" is replaced, including its copy saved in this browser: unsaved work is lost. To keep it, cancel and export it first (Export text content).`,
+          `Le projet actuel « ${name} » est remplacé, y compris sa copie enregistrée dans ce navigateur : le travail non exporté est perdu. Pour le garder, annulez et exportez-le d’abord (Exporter le contenu texte).`,
+          `Das aktuelle Projekt „${name}“ wird ersetzt, auch seine in diesem Browser gespeicherte Kopie: nicht exportierte Arbeit geht verloren. Um es zu behalten, abbrechen und zuerst exportieren (Textinhalt exportieren).`
+        );
+        if (ask && !window.confirm(`${intro}\n\n${detail}`)) return false;
+        try {
+          if (project.storyboard?.blocks?.length) StoryboardHistory.snapshot(`Before replacing the project "${name}"`, 'auto');
+        } catch (_) { /* Versions are a convenience. */ }
+        return true;
+      }
+
+      /* Puts a fresh project in place of the current one (New, demo, library). */
+      function startProject(scenario) {
+        appState.scenario = scenario;
+        restoreApiKeysFromStorage(appState.scenario.settings);
+        appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
+        appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
+        appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
+        appState.checkerState.analysisResult = null;
+        appState.checkerState.analysisError = null;
+        appState.route = 'scenario';
+        appState.launchScreenOpen = false;
+        _fileHandle = null; // Save must not write the new project over the file of the old one.
+        saveLocal(false);
+      }
+
       async function handleAction(event) {
         const action = event.currentTarget.dataset.action;
         try {
@@ -666,6 +727,14 @@
               appState.launchScreenOpen = false;
               App.render();
               break;
+            case 'launch-open-route': {
+              // A welcome card opens its tab.
+              captureVideoDebriefProjectState();
+              appState.route = event.currentTarget.dataset.launchRoute || appState.route;
+              appState.launchScreenOpen = false;
+              App.render();
+              break;
+            }
             case 'toggle-settings-drawer':
               appState.settingsDrawerOpen = !appState.settingsDrawerOpen;
               App.render();
@@ -708,6 +777,9 @@
             }
             case 'nav-scenario': appState.route = 'scenario'; App.render(); break;
             case 'project-scroll-library': {
+              // "Create from library": the next Load from the library starts a new project.
+              sbUI().libraryIntent = 'new';
+              App.render();
               const library = document.getElementById('project-library');
               library?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               library?.querySelector('[data-sb-filter="library"]')?.focus({ preventScroll: true });
@@ -717,30 +789,19 @@
             case 'nav-library': appState.route = 'library'; App.render(); break;
             case 'nav-debrief': appState.route = 'debrief'; App.render(); break;
             case 'new-scenario': {
+              if (!confirmReplaceProject('new')) break;
               const preservedSettings = { ...appState.scenario.settings };
-              appState.scenario = emptyScenario(preservedSettings);
-              restoreApiKeysFromStorage(appState.scenario.settings);
-              appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
-              appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
-              appState.selectedStimulusId = null;
-              appState.route = 'scenario';
-              appState.launchScreenOpen = false;
-              saveLocal(false);
+              startProject(emptyScenario(preservedSettings));
               App.render();
               pushToast(tt('New scenario initialized.', 'Nouveau scénario initialisé.', 'Neues Szenario initialisiert.'), 'success');
               break;
             }
             case 'load-example': {
+              if (!confirmReplaceProject('demo')) break;
               const preservedSettings = { ...appState.scenario.settings };
-              appState.scenario = defaultScenario();
-              appState.scenario.settings = { ...appState.scenario.settings, ...preservedSettings };
-              restoreApiKeysFromStorage(appState.scenario.settings);
-              appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
-              appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
-              appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
-              appState.route = 'scenario';
-              appState.launchScreenOpen = false;
-              saveLocal(false);
+              const demo = defaultScenario();
+              demo.settings = { ...demo.settings, ...preservedSettings };
+              startProject(demo);
               App.render();
               pushToast(tt('Example scenario loaded.', 'Scénario exemple chargé.', 'Beispielszenario geladen.'), 'success');
               break;
@@ -865,6 +926,13 @@
             }
             case 'checker-export-report':
               checkerExportReport();
+              break;
+            // Bound by the checker itself (bindCheckerEvents): nothing to do here.
+            case 'checker-toggle-check':
+            case 'checker-add-custom-item':
+            case 'checker-remove-custom-item':
+            case 'checker-select-sheet':
+            case 'checker-update-mapping':
               break;
             case 'checker-export-report-docx':
               checkerExportReportDocx();

@@ -494,10 +494,6 @@ Response format (strict JSON):
           appState.checkerState.columnMappingLoading = false;
           appState.checkerState.analysisResult = null;
           appState.checkerState.analysisError = null;
-          appState.checkerState.checklist = {};
-
-          // Load persisted checklist for this file
-          checkerLoadChecklist();
 
           if (isLLMAvailable()) {
             appState.checkerState.columnMappingLoading = true;
@@ -570,7 +566,6 @@ Response format (strict JSON):
           analysisLoading: false,
           analysisError: keep.analysisError || null,
           llmLogs: keep.llmLogs || [],
-          checklist: cs.checklist || {},
           activeAxisTab: keep.activeAxisTab || 0,
           resultsByMode: {}
         };
@@ -1544,40 +1539,48 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
 
       // ─── Checklist persistence ────────────────────────────────────────────────────
 
-      function checkerChecklistKey() {
-        const cs = appState.checkerState;
-        const name = cs.file ? cs.file.name : '_default';
-        // Simple string hash
+      /* The ready-to-play checklist belongs to the project (project.checklist): it is saved
+         in the browser autosave and in project files with the rest of the exercise. */
+      function checkerChecklist() {
+        const project = appState.scenario;
+        if (!project.checklist || typeof project.checklist !== 'object') project.checklist = normalizeChecklist(null);
+        if (!project.checklist.checked) project.checklist.checked = {};
+        if (!project.checklist.customItems) project.checklist.customItems = {};
+        return project.checklist;
+      }
+
+      // Older versions kept one checklist for every project under this browser key.
+      function checkerLegacyChecklistKey() {
         let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-          hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
-        }
+        for (const char of '_default') hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
         return `crisis_checker_checklist_${Math.abs(hash)}`;
       }
 
+      /* Moves the old shared checklist into the current project, once, unless it has its own. */
       function checkerLoadChecklist() {
         try {
-          const key = checkerChecklistKey();
+          const key = checkerLegacyChecklistKey();
           const stored = localStorage.getItem(key);
-          if (stored) {
-            appState.checkerState.checklist = JSON.parse(stored);
-          }
-        } catch (e) { /* ignore parse errors */ }
+          if (!stored) return false;
+          localStorage.removeItem(key);
+          const current = checkerChecklist();
+          if (Object.keys(current.checked).length || Object.values(current.customItems).some((list) => list.length)) return false;
+          appState.scenario.checklist = normalizeChecklist(JSON.parse(stored));
+          if (typeof saveLocal === 'function') saveLocal(false);
+          return true;
+        } catch (e) { return false; /* ignore parse and storage errors */ }
       }
 
       function checkerSaveChecklist() {
-        try {
-          const key = checkerChecklistKey();
-          localStorage.setItem(key, JSON.stringify(appState.checkerState.checklist));
-        } catch (e) { /* ignore quota errors */ }
+        appState.scenario.checklist = normalizeChecklist(checkerChecklist());
+        if (typeof saveLocal === 'function') saveLocal(false);
       }
 
       // ─── Render: Checklist ────────────────────────────────────────────────────────
 
       function renderCheckerChecklist() {
-        const cs = appState.checkerState;
         const categories = checkerGetChecklistCategories();
-        const cl = cs.checklist || {};
+        const cl = checkerChecklist();
         const checked = cl.checked || {};
         const customItems = cl.customItems || {};
 
@@ -1645,8 +1648,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         document.querySelectorAll('[data-action="checker-toggle-check"]').forEach(cb => {
           cb.addEventListener('change', () => {
             const key = cb.dataset.checkKey;
-            if (!appState.checkerState.checklist.checked) appState.checkerState.checklist.checked = {};
-            appState.checkerState.checklist.checked[key] = cb.checked;
+            checkerChecklist().checked[key] = cb.checked;
             checkerSaveChecklist();
             App.render();
           });
@@ -1657,9 +1659,9 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
             const catKey = btn.dataset.catKey;
             const text = prompt(tt('Enter custom checklist item:', 'Saisissez l\'élément personnalisé :', 'Eigenes Listenelement eingeben:'));
             if (!text || !text.trim()) return;
-            if (!appState.checkerState.checklist.customItems) appState.checkerState.checklist.customItems = {};
-            if (!appState.checkerState.checklist.customItems[catKey]) appState.checkerState.checklist.customItems[catKey] = [];
-            appState.checkerState.checklist.customItems[catKey].push(text.trim());
+            const customItems = checkerChecklist().customItems;
+            if (!customItems[catKey]) customItems[catKey] = [];
+            customItems[catKey].push(text.trim());
             checkerSaveChecklist();
             App.render();
           });
@@ -1670,7 +1672,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
             e.preventDefault();
             const catKey = btn.dataset.catKey;
             const idx = parseInt(btn.dataset.customIndex, 10);
-            const customs = appState.checkerState.checklist.customItems?.[catKey];
+            const customs = checkerChecklist().customItems[catKey];
             if (customs && idx >= 0 && idx < customs.length) {
               customs.splice(idx, 1);
               checkerSaveChecklist();
@@ -1692,7 +1694,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
             : (cs.file ? cs.file.name : 'unknown');
           const date = new Date().toISOString().slice(0, 10);
           const categories = checkerGetChecklistCategories();
-          const cl = cs.checklist || {};
+          const cl = checkerChecklist();
           const checked = cl.checked || {};
           const customItems = cl.customItems || {};
 
@@ -1798,7 +1800,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
           : (cs.file ? cs.file.name : 'unknown');
         const date = new Date().toISOString().slice(0, 10);
         const categories = checkerGetChecklistCategories();
-        const cl = cs.checklist || {};
+        const cl = checkerChecklist();
         const checked = cl.checked || {};
         const customItems = cl.customItems || {};
 

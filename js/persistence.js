@@ -49,8 +49,10 @@
         }
       }
 
-      async function openWithFileSystemAPI() {
-        if (!supportsFileSystemAccess()) return null;
+      // Picker only: parsing is done by the caller so a bad file is reported, not retried.
+      // Returns null on cancel; throws only when the picker itself fails.
+      async function pickFileWithFileSystemAPI() {
+        if (!supportsFileSystemAccess() || typeof window.showOpenFilePicker !== 'function') return null;
         try {
           const [handle] = await window.showOpenFilePicker({
             types: [{
@@ -61,14 +63,10 @@
               }
             }]
           });
-          const file = await handle.getFile();
-          const data = await parseProjectFile(file);
-          // Save back to this file only when it is a JSON project (never over a ZIP).
-          _fileHandle = /\.zip$/i.test(file.name) ? null : handle;
-          return data;
+          return { handle, file: await handle.getFile() };
         } catch (e) {
-          if (e.name === 'AbortError') return null; // user cancelled
-          throw e; // re-throw other errors so the caller can fall back
+          if (e.name === 'AbortError') return { cancelled: true }; // user cancelled
+          throw e;
         }
       }
 
@@ -795,17 +793,27 @@
       }
 
       async function loadScenarioFromFile() {
-        // Try File System Access API first (Chrome/Edge)
-        if (supportsFileSystemAccess()) {
+        // Try File System Access API first (Chrome/Edge). Only a picker failure falls back
+        // to the classic input; a cancel stays silent and a bad file shows an error.
+        let picked = null;
+        try {
+          picked = await pickFileWithFileSystemAPI();
+        } catch (e) {
+          CrisisError.log(e, { operation: 'Open project with File System Access API' });
+        }
+        if (picked?.cancelled) return;
+        if (picked?.file) {
+          const { file, handle } = picked;
+          let data;
           try {
-            const data = await openWithFileSystemAPI();
-            if (!data) return; // user cancelled
-            applyLoadedScenario(data);
+            data = await parseProjectFile(file);
+          } catch (error) {
+            CrisisError.toast(error, { operation: 'Import project file', fileName: file.name, fileSize: file.size });
             return;
-          } catch (e) {
-            CrisisError.log(e, { operation: 'Open project with File System Access API' });
-            // fall through to classic file input below
           }
+          // Save back to this file only when it is a JSON project (never over a ZIP).
+          if (applyLoadedScenario(data)) _fileHandle = /\.zip$/i.test(file.name) ? null : handle;
+          return;
         }
         // Fallback: classic file input (element must be in DOM for Safari/Firefox compatibility)
         await new Promise((resolve) => {
@@ -938,8 +946,10 @@
               'info'
             );
           }
+          return true;
         } catch (error) {
           CrisisError.toast(error, { operation: 'Apply imported project data' });
+          return false;
         }
       }
 

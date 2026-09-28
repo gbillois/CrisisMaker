@@ -766,7 +766,7 @@ function sbExerciseChecks(project = appState.scenario) {
   const items = sbExerciseItems(project);
   const duration = project.storyboard?.duration_minutes || Math.max(0, ...items.map((item) => item.time));
   const cells = project.cells || [];
-  if (!items.length) { add('info', 'empty', 'No inject yet: plan injects in the Detailed storyline.'); return issues; }
+  if (!items.length) { add('warning', 'empty', 'No inject yet: plan injects in the Detailed storyline.'); return issues; }
   if (!cells.length) add('warning', 'no_cells', 'No player cell: create cells in Cells & actors.');
   for (const cell of cells) {
     const times = items.filter((item) => sbReaches(item.cell_id, cell.id)).map((item) => item.time).sort((a, b) => a - b);

@@ -347,7 +347,7 @@ function normalizeStoryboard(input, legacyPhases = []) {
 
 function sbNormalizeCoherence(value) {
   return {
-    score: sbInt(value.score, 0, 0, 100),
+    score: value.score === null ? null : sbInt(value.score, 0, 0, 100),
     summary: sbText(value.summary, 4000),
     checked_rev: Number.isInteger(value.checked_rev) ? value.checked_rev : null,
     checked_at: sbText(value.checked_at, 40),
@@ -706,7 +706,8 @@ function sbStructuralChecks(storyboard, project = null) {
   const issues = [];
   const add = (severity, code, message, blockIds = []) => issues.push({ severity, code, message, block_ids: blockIds, fix: null, source: 'rules' });
   if (!storyboard.blocks.length) {
-    add('info', 'empty', 'The storyboard is empty. Start from the library, generate a skeleton with AI or drag blocks onto the timeline.');
+    // Nothing to play yet: a warning, never a near-perfect score.
+    add('warning', 'empty', 'The storyboard is empty. Start from the library, generate a skeleton with AI or drag blocks onto the timeline.');
     return issues;
   }
   const main = sbMainBlocks(storyboard);

@@ -148,7 +148,7 @@ function sbReplaceStoryboard(storyboard, label) {
 function sbUseTemplate(template, mode = 'replace') {
   const project = appState.scenario;
   const ui = sbUI();
-  if (mode === 'replace' && project.storyboard.blocks.length && !window.confirm(`Replace the current storyboard with "${template.name}"? A version is saved first and Undo is available.`)) return false;
+  if (mode === 'replace' && project.storyboard.blocks.length && !window.confirm(`Replace the main storyline (its phases and objectives) with "${template.name}"? The client, context, cells, actors and injects of this project stay. A version is saved first and Undo is available.`)) return false;
   StoryboardHistory.snapshot(`Before template "${template.name}"`, 'ai');
   const before = project.storyboard;
   sbApplyTemplate(template, mode);
@@ -170,7 +170,7 @@ async function sbHandleAction(event) {
   const project = appState.scenario;
   const storyboard = sbStoryboard();
   const block = sbSelectedBlock();
-  const allowedWhileBusy = ['stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template', 'export-current'];
+  const allowedWhileBusy = ['stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'library-intent-clear', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template', 'export-current'];
   if (sbReadOnly() && !allowedWhileBusy.includes(action)) return;
   try {
     switch (action) {
@@ -314,18 +314,37 @@ async function sbHandleAction(event) {
         break;
       }
       case 'select-template': {
-        // Load from the library: remember the scenario, then frame it in Context.
+        // Load from the library: remember the scenario, then frame it in Context. Over a
+        // project with content the choice is explicit: a new project, or only the storyline.
         const template = sbFindTemplate(element.dataset.sbTemplate);
         if (!template) break;
-        storyboard.meta.library_id = template.id;
+        const fromIntent = !element.dataset.sbLoad && ui.libraryIntent === 'new';
+        const choice = element.dataset.sbLoad || (fromIntent ? 'new' : '');
+        if (!choice && projectHasContent(project)) {
+          ui.previewId = template.id;
+          ui.modal = 'load-choice';
+          App.render();
+          break;
+        }
+        // The load-choice modal already says the project is replaced; "Create from library" asks here.
+        if (choice === 'new' && !confirmReplaceProject('library', { ask: fromIntent })) break;
+        ui.libraryIntent = '';
         ui.modal = null;
         ui.previewId = null;
+        if (choice === 'new') startProject(emptyScenario({ ...project.settings }));
+        sbStoryboard().meta.library_id = template.id;
         saveLocal(false);
         appState.route = 'scenario';
-        pushToast(`"${template.name}" loaded. Set the key information, then generate the scenario with AI or load the basic scenario.`, 'success');
+        pushToast(choice === 'new'
+          ? `New project from "${template.name}". Set the key information, then generate the scenario with AI or load the basic scenario.`
+          : `"${template.name}" loaded. Set the key information, then generate the scenario with AI or load the basic scenario.`, 'success');
         App.render();
         break;
       }
+      case 'library-intent-clear':
+        ui.libraryIntent = '';
+        App.render();
+        break;
       case 'export-template': {
         const template = sbFindTemplate(element.dataset.sbTemplate);
         if (template) sbExportTemplate(template);
@@ -685,9 +704,17 @@ function sbBindInputs(root) {
   });
 
   root.querySelectorAll('[data-sb-filter="library"]').forEach((input) => {
+    // Filters in place (typing keeps its focus); the query is kept for the next render.
     input.addEventListener('input', () => {
+      ui.libraryQuery = input.value;
       const query = input.value.trim().toLowerCase();
-      root.querySelectorAll('.sb-template-card').forEach((card) => { card.hidden = !!query && !card.dataset.sbSearch.includes(query); });
+      const cards = [...root.querySelectorAll('.sb-template-card')];
+      cards.forEach((card) => { card.hidden = !!query && !card.dataset.sbSearch.includes(query); });
+      const empty = root.querySelector('[data-sb-library-empty]');
+      if (empty) {
+        empty.textContent = sbLibraryEmptyText(input.value, cards.length);
+        empty.hidden = cards.some((card) => !card.hidden);
+      }
     });
   });
 
