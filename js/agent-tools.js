@@ -229,7 +229,7 @@ function createAgentToolRegistry() {
       synopsis: agentExcerpt(storyboard.meta.synopsis, 2000),
       cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, description: agentExcerpt(cell.description, 300), players: cell.players.map(player => agentPick(player, ['name', 'role'])) })),
       cast: storyboard.cast.map(cast => ({ ...agentPick(cast, ['id', 'label', 'role', 'organization']), actor_id: cast.actor_id || null })),
-      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })), key_events: (block.events || []).map(event => ({ at: block.start_minutes + event.offset_minutes, text: agentExcerpt(event.text, 400) })) }))
+      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })), key_events: (block.events || []).map(event => ({ at: block.start_minutes + event.offset_minutes, text: agentExcerpt(event.text, 400) })) }))
     };
   });
   add('updateStoryboardBlock', 'Patch one Scenario Builder block (title, brief, narrative, timing, inject count, notes). Locked blocks are refused.', { ...id, patch: S.object({ title: S.text(200), brief: S.text(4000), narrative: S.text(8000), notes: S.text(4000), start_minutes: S.minutes, duration_minutes: { type: 'integer', minimum: 5, maximum: 525600 }, stimuli_target: { type: 'integer', minimum: 0, maximum: 24 } }) }, ['id', 'patch'], args => {
@@ -271,6 +271,15 @@ function createAgentToolRegistry() {
     return { synopsis: agentExcerpt(meta.synopsis, 600), threat: agentExcerpt(meta.threat, 400) };
   }, 'write');
   const blockTypes = Object.keys(SB_BLOCK_TYPES), channels = sbChannelKeys();
+  /* Planned inject times are minutes from the phase start. A time given from the exercise start
+     (it falls inside the phase that way only) is converted; any other time outside the phase is
+     refused with the phase range, rather than moved silently to the phase end. */
+  const agentBeatsInPhase = (phase, beats) => (beats || []).map(beat => {
+    const at = Number(beat.at), start = Number(phase.start_minutes) || 0, duration = Number(phase.duration_minutes) || 0;
+    if (at < duration) return beat;
+    if (at >= start && at < start + duration) return { ...beat, at: at - start };
+    throw new AgentValidationError(`Planned inject "${beat.title}": at=${at} is outside phase "${phase.title}". Use minutes from the phase start, 0 to ${Math.max(0, duration - 1)} (exercise minutes ${start} to ${start + Math.max(0, duration - 1)}).`);
+  });
   const beatSchema = S.object({ at: S.minutes, channel: { ...S.text(), enum: channels }, cell: S.text(160), cast: S.text(200), title: S.text(300), intent: S.text(2000) }, ['at', 'channel', 'title']);
   add('buildMainStoryline', 'Create or replace the whole main storyline: ordered phases fitted to the play duration, the cast of simulated senders and objectives. Phases use minutes from exercise start. Optional beats plan injects per phase (at = minutes from phase start, cell = cell id or name, cast = cast key). Replaces the current storyline; a version is saved first.', {
     title: S.text(300), summary: S.text(8000), threat: S.text(2000), objectives: S.array(S.text(600), 12),
@@ -279,6 +288,8 @@ function createAgentToolRegistry() {
   }, ['phases'], args => {
     const project = appState.scenario;
     if (!args.phases.length) throw new AgentValidationError('Provide at least one phase.');
+    // Checked before anything is replaced.
+    args.phases.forEach(phase => { phase.beats = agentBeatsInPhase(phase, phase.beats); });
     StoryboardHistory.ensure(project); StoryboardHistory.snapshot('Before the agent storyline', 'ai');
     const cells = project.cells || [];
     const template = {
@@ -341,7 +352,7 @@ function createAgentToolRegistry() {
     StoryboardHistory.commit('Agent: cast');
     return { cast: result };
   }, 'write');
-  add('planPhaseInjects', 'Plan the injects of one main-storyline phase, each addressed to a player cell and sent by a cast role. at = minutes from phase start. replace=true swaps the planned injects that are not yet written; written ones are kept. The Detailed storyline tab turns planned injects into written stimuli.', {
+  add('planPhaseInjects', 'Plan the injects of one main-storyline phase, each addressed to a player cell and sent by a cast role. at = minutes from phase start (0 to duration-1), as in getStoryboard beats; exercise_minute is only informative. replace=true swaps the planned injects that are not yet written; written ones are kept. The Detailed storyline tab turns planned injects into written stimuli.', {
     ...id, replace: { type: 'boolean' }, injects: S.array(beatSchema, SB_MAX_BEATS)
   }, ['id', 'injects'], args => {
     const project = appState.scenario;
@@ -350,14 +361,14 @@ function createAgentToolRegistry() {
     if (!block) throw new AgentValidationError('Unknown item ID.');
     if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
     const castMap = new Map(project.storyboard.cast.flatMap(cast => [[cast.id, cast.id], [cast.label, cast.id]]));
-    const planned = sbBeatsFromAI(project.storyboard, args.injects, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) }));
+    const planned = sbBeatsFromAI(project.storyboard, agentBeatsInPhase(block, args.injects), castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) }));
     const kept = args.replace ? block.beats.filter(beat => sbStimulusForBeat(project, beat.id)) : block.beats;
     block.beats = [...kept, ...planned].slice(0, SB_MAX_BEATS).sort((a, b) => a.offset_minutes - b.offset_minutes);
     sbMarkPlanned(block);
     block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
     block.key_cast = [...new Set(block.beats.map(beat => beat.cast_id).filter(Boolean))];
     StoryboardHistory.commit('Agent: plan injects');
-    return { id: block.id, title: block.title, planned: block.beats.map(beat => ({ at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id, cast_id: beat.cast_id, channel: beat.channel, title: beat.title })) };
+    return { id: block.id, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, planned: block.beats.map(beat => ({ at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(block, beat), cell_id: beat.cell_id, cast_id: beat.cast_id, channel: beat.channel, title: beat.title })) };
   }, 'write');
   add('listActors', 'Read actors with pagination.', page, [], args => paginate(appState.scenario.actors, args, agentActor));
   add('getActor', 'Read a single actor.', id, ['id'], args => agentActor(requireItem(getActor, args.id)));

@@ -256,8 +256,14 @@ test('builder tools set the frame, build the storyline, cells, cast and a per-ce
   ] });
   assert.equal(plan.planned.length, 2);
   assert.equal(plan.planned[0].cell_id, decision.id);
-  assert.equal(plan.planned[1].at, 60 + 59, 'clamped inside the phase');
-  assert.equal(plan.planned[1].cell_id, h.run(`appState.scenario.cells.find(c => c.name === 'Communication cell').id`));
+  // at 70 is outside a 60-minute phase from its start, but inside it from the exercise start: converted.
+  const reporter = plan.planned.find(item => item.title === 'Reporter calls');
+  assert.equal(reporter.at, 10, 'an exercise minute inside the phase is converted to the phase start');
+  assert.equal(reporter.exercise_minute, 70);
+  assert.equal(reporter.cell_id, h.run(`appState.scenario.cells.find(c => c.name === 'Communication cell').id`));
+  // Outside the phase either way: refused with the range, the plan unchanged.
+  await assert.rejects(execute(h, 'planPhaseInjects', { id: main[1].id, injects: [{ at: 150, channel: 'email_internal', title: 'Too late' }] }), /outside phase .*0 to 59/);
+  assert.equal(h.run(`sbBlock(appState.scenario.storyboard, '${main[1].id}').beats.length`), 2);
   await assert.rejects(execute(h, 'planPhaseInjects', { id: 'missing', injects: [] }), /Unknown item ID/);
   const context = h.json('AgentContext.build()');
   assert.equal(context.frame.play_duration_minutes, 180);
