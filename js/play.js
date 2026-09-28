@@ -208,7 +208,7 @@ function renderPlayView() {
   const counts = { total: written.length, sent: written.filter((i) => i.status === 'sent').length, ready: written.filter((i) => i.status === 'ready').length, draft: written.filter((i) => i.status === 'draft').length, planned: items.length - written.length };
   const visible = playSort(playFilter(items, ui, now), ui.sort);
   const phases = project.storyboard ? sbMainBlocks(project.storyboard) : [];
-  return `<section class="tab-page play-page" data-play-root>
+  return `<section class="tab-page play-page ${ui.logOpen ? 'has-log' : ''}" data-play-root>
     ${renderPlayGenerate(counts)}
     ${renderPlayBar(project, play, ui, items, now, counts, phases)}
     <div class="play-main">
@@ -254,6 +254,7 @@ function renderPlayBar(project, play, ui, items, now, counts, phases) {
   return `<div class="play-bar ${play.running ? 'is-running' : ''}" data-play-bar>
     <div class="play-bar-top">
       <span class="play-bar-title">${sbUiIcon('play', 13)} ${tt('Exercise control', 'Pilotage de l’exercice', 'Übungssteuerung')}${play.started_at ? ` · ${tt('started at', 'démarré à', 'gestartet um')} ${escapeHtml(playWallClock(play.started_at))}` : ''}</span>
+      <button class="play-log-toggle ${ui.logOpen ? 'active' : ''}" data-play="log" aria-expanded="${ui.logOpen ? 'true' : 'false'}">${sbUiIcon('history', 13)} ${tt('Exercise log', 'Journal', 'Protokoll')} <b>${play.log.length}</b></button>
       <button class="play-reset" data-play="reset-all" ${started || play.log.length || counts.sent ? '' : 'disabled'} title="${escapeAttribute(tt('Clock back to H+0:00, sent injects back to Validated, log cleared', 'Horloge à H+0:00, injects envoyés repassés en Validé, journal effacé', 'Uhr auf H+0:00, gesendete Injects wieder Freigegeben, Protokoll gelöscht'))}">${sbUiIcon('refresh', 13)} ${tt('Reset play', 'Réinitialiser le jeu', 'Spiel zurücksetzen')}</button>
     </div>
     <div class="play-bar-main">
@@ -367,12 +368,14 @@ function renderPlayChrono(project, items, ui, now, phases) {
 }
 
 function renderPlayLog(project, play, ui) {
+  if (!ui.logOpen) return '';
   const icons = { start: 'play', resume: 'play', pause: 'pause', clock: 'clock', speed: 'clock', phase: 'layers', status: 'edit', sent: 'check', note: 'message', reset: 'refresh' };
   const entries = [...play.log].reverse();
-  return `<aside class="card play-log">
+  return `<aside class="play-log" aria-label="${escapeAttribute(tt('Exercise log', 'Journal de l’exercice', 'Übungsprotokoll'))}">
     <div class="play-log-head">
       <h3>${sbUiIcon('history', 16)} ${tt('Exercise log', 'Journal de l’exercice', 'Übungsprotokoll')}</h3>
       <button class="btn btn-secondary btn-sm" data-play="save-log" ${play.log.length ? '' : 'disabled'}>${sbUiIcon('download', 13)} ${tt('Save log', 'Enregistrer le journal', 'Protokoll speichern')}</button>
+      <button class="assistant-close" data-play="log" aria-label="${escapeAttribute(tt('Close the log', 'Fermer le journal', 'Protokoll schließen'))}">${sbUiIcon('close', 18)}</button>
     </div>
     <form class="play-note" data-play-note-form>
       <input type="text" data-play-note maxlength="2000" value="${escapeAttribute(ui.note || '')}" placeholder="${escapeAttribute(tt('Add a note: decision, question, incident… (Enter)', 'Ajouter une note : décision, question, incident… (Entrée)', 'Notiz hinzufügen: Entscheidung, Frage, Vorfall… (Enter)'))}">
@@ -467,6 +470,7 @@ function bindPlayEvents() {
       }
       case 'reset-all': playResetAll(); return;
       case 'add': playAddInject(); return;
+      case 'log': ui.logOpen = !ui.logOpen; App.render(); return;
       case 'save-log': playSaveLog(); return;
     }
     saveLocal(false);

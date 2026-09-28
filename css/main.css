@@ -4257,7 +4257,7 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 }
 
 /* Play: control bar top row, log panel, on-the-fly injects */
-.play-bar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 18px 0; }
+.play-bar-top { display: flex; align-items: center; gap: 10px; padding: 8px 18px 0; }
 .play-bar-title { display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #bdb0dc; }
 .play-reset { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid #ff8fa3; background: transparent; color: #ffb3c0; font-size: 0.76rem; font-weight: 700; }
 .play-reset:hover:not(:disabled) { background: #e0405a; border-color: #e0405a; color: #fff; }
@@ -4265,10 +4265,14 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .play-bar .play-add { background: #fff; color: var(--dark); border-color: #fff; }
 .play-bar .play-add:hover { background: var(--indigo-tint); color: var(--indigo); }
 .play-added { flex-shrink: 0; padding: 1px 6px; background: #fff6e8; color: #8a5a05; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
-.play-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
-.play-log { position: sticky; top: calc(var(--header-h) + 250px); display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - var(--header-h) - 270px); min-height: 260px; }
-.play-log-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.play-log-head h3 { display: flex; align-items: center; gap: 7px; margin: 0; }
+.play-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+/* The exercise log opens in a side pane over the page, from the control bar. */
+.play-log { position: fixed; top: var(--header-h); right: 0; bottom: 0; z-index: 95; width: min(400px, 100vw); display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: #fff; border-left: 1px solid var(--line); border-top: 3px solid var(--indigo); box-shadow: var(--shadow-lg); }
+.play-log-head { display: flex; align-items: center; gap: 8px; }
+.play-log-head h3 { display: flex; align-items: center; gap: 7px; margin: 0; flex: 1; }
+.play-log-toggle { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 4px 10px; border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; font-size: 0.76rem; font-weight: 700; }
+.play-log-toggle b { min-width: 20px; padding: 0 5px; background: var(--green); color: #183127; font-size: 0.7rem; text-align: center; }
+.play-log-toggle:hover, .play-log-toggle.active { background: #fff; color: var(--dark); border-color: #fff; }
 .play-note { display: flex; gap: 6px; }
 .play-note input { min-height: 36px; padding: 6px 9px; font-size: 0.82rem; }
 .play-log-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
@@ -4284,7 +4288,7 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .play-log-list .is-note .play-log-icon { color: #b7791f; }
 .play-log-list .is-pause .play-log-icon, .play-log-list .is-reset .play-log-icon { color: var(--danger); }
 .play-log-empty { display: block !important; color: var(--muted); padding: 14px 0 !important; }
-@media (max-width: 1280px) {
-  .play-main { grid-template-columns: 1fr; }
-  .play-log { position: static; max-height: 420px; }
-}
+
+/* Docked log pane: on wide screens the page makes room for it instead of being covered. */
+@media (min-width: 1100px) { .play-page.has-log { padding-right: 404px; } }
+.toast-stack { z-index: 160; }

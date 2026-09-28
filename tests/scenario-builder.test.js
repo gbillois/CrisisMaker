@@ -531,6 +531,9 @@ test('play: clock, numbering, timing, statuses both ways with the log, on-the-fl
   const items = h.json(`playItems().map((item) => ({ key: item.key, time: item.time, timing: playTiming(item, 66) }))`);
   assert.ok(items.some((item) => item.timing === 'is-late') && items.some((item) => item.timing === 'is-due'));
   // View: generate block, permanent bar with reset, chronogram by phase with the NOW line, log panel.
+  const closed = h.run('renderPlayView()');
+  assert.ok(closed.includes('data-play="log"') && !closed.includes('data-play-note'), 'log hidden in a pane by default');
+  h.run('playUI().logOpen = true');
   const view = h.run('renderPlayView()');
   for (const marker of ['Generate all stimuli', 'data-play-bar', 'data-play="toggle"', 'data-play="reset-all"', 'data-play="add"', 'data-play-quick="now"', 'data-play-filter="cell"', 'data-play-now', 'play-phase-group', 'data-play-set="sent"', 'data-action="open-stimulus-modal"', 'Exercise log', 'data-play="save-log"', 'data-play-note']) assert.ok(view.includes(marker), marker);
   // Statuses go both ways, each change is logged, a re-send is counted.

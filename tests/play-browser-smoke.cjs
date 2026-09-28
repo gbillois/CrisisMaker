@@ -17,6 +17,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.ok(await page.isVisible('.play-generate [data-action="export-all"]'));
   assert.ok(await page.isVisible('[data-play-bar] [data-play="toggle"]'));
   assert.equal(await page.locator('.play-phase-group').count(), await page.evaluate(() => sbMainBlocks(sbStoryboard()).length));
+  // The log is hidden in a pane, opened from the control bar.
+  assert.equal(await page.locator('.play-log').count(), 0);
+  await page.click('[data-play="log"]');
   assert.ok(await page.isVisible('.play-log'));
 
   // Start at ×30: the clock runs, the log records the start.
