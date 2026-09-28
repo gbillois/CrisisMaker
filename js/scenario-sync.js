@@ -336,6 +336,14 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
     if (!allowed.has(key) || SB_MEDIA_FIELD.test(key) || ['__proto__', 'constructor', 'prototype'].includes(key)) continue;
     clean[key] = scrub(value);
   }
+  // A model that wrote the content under other usual names (body for an SMS text, timestamp for
+  // time…): mapped onto the template's own fields that are still empty.
+  const aliases = { text: ['body', 'message', 'content', 'post', 'script'], body: ['text', 'message', 'content'], subject: ['title', 'headline'], title: ['subject', 'headline'], headline: ['title', 'subject'], time: ['timestamp'], date: ['timestamp'], from_name: ['sender', 'from'], sender: ['from_name', 'from'] };
+  for (const [key, names] of Object.entries(aliases)) {
+    if (!allowed.has(key) || clean[key] !== undefined) continue;
+    const name = names.find((candidate) => typeof generated[candidate] === 'string' && generated[candidate].trim() && !allowed.has(candidate));
+    if (name) clean[key] = scrub(generated[name]);
+  }
   if (!Object.keys(clean).length) throw new AgentValidationError('The AI returned no field of this template.');
   saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Storyline: adapted to scenario change' : 'Storyline: AI generation');
   Object.assign(stimulus.generated_text, clean);

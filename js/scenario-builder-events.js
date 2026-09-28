@@ -34,7 +34,9 @@ function sbFitZoom() {
   if (!scroller || !scroller.clientWidth) return false;
   const ui = sbUI();
   const storyboard = sbStoryboard();
-  const available = scroller.clientWidth - sbHeaderWidth() - 36;
+  // Room after the end for the last ruler label (H+3:00) and a main event card near the end.
+  const events = storyboard.blocks.some((block) => (block.events || []).some((event) => block.start_minutes + event.offset_minutes > storyboard.duration_minutes * 0.85));
+  const available = scroller.clientWidth - sbHeaderWidth() - (events ? SB_KEY_CARD_WIDTH + 16 : 60);
   const next = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, Math.floor(100 * available / Math.max(60, storyboard.duration_minutes)) / 100));
   const changed = Math.abs(next - ui.zoom) > 0.01;
   ui.zoom = next;

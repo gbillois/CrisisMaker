@@ -970,7 +970,8 @@ function dsFitZoom() {
   const state = tabUI('detailed');
   if (!scroller || !scroller.clientWidth) return false;
   const duration = Math.max(60, appState.scenario.storyboard.duration_minutes);
-  const next = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, Math.floor(100 * (scroller.clientWidth - sbHeaderWidth() - 30) / duration) / 100));
+  // Room for a whole card after the last minute: an inject near the end is not cut at the right edge.
+  const next = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, Math.floor(100 * (scroller.clientWidth - sbHeaderWidth() - DS_CARD_WIDTH - 16) / duration) / 100));
   const changed = Math.abs(next - state.zoom) > 0.01;
   state.zoom = next;
   return changed;

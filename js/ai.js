@@ -1398,7 +1398,7 @@ Return this structure:
               break;
             case 'email_authority':
               result = {
-                systemPrompt: `Write an official CERT-FR alert. Context: ${common.scenarioSummary}. Alert type: critical vulnerability actively exploited. Severity: ${stimulus.fields.severity || 'high'}. Instructions: institutional, precise, technical tone, structure as summary / affected systems / recommendations / indicators of compromise, write in ${common.language}. Reply only with JSON {"reference":"...","subject":"...","body":"..."}.`,
+                systemPrompt: `Write an official message from an authority during a cyber crisis (national cybersecurity agency or CERT, data protection authority, financial or sector regulator, police or justice). Sender: ${common.actorName}, ${common.actorTitle}. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Time: ${common.timestamp}. Instructions: institutional, precise tone matching the sender's remit (alert, request for information, notification follow-up, reminder of legal obligations and deadlines), with an official reference, write in ${common.language}. Reply only with JSON {"reference":"...","subject":"...","body":"..."}.`,
                 userPrompt: 'Write the official alert.'
               };
               break;
@@ -1425,7 +1425,7 @@ Return this structure:
             }
             default:
               result = {
-                systemPrompt: `Help create a realistic cyber-crisis stimulus. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Reply only with JSON consistent with channel ${stimulus.channel}.`,
+                systemPrompt: `Write a realistic ${CHANNEL_META[stimulus.channel]?.label || stimulus.channel} sent during a cyber crisis. Sender: ${common.actorName}, ${common.actorTitle}. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Time: ${common.timestamp}. Instructions: the tone, length and form of this channel, concrete facts and asks, never mention this is an exercise, write in ${common.language}.`,
                 userPrompt: fieldName ? `Generate a credible value for ${fieldName}.` : 'Generate the full content.'
               };
           }
@@ -1435,6 +1435,12 @@ Return this structure:
             result.systemPrompt += `\n\nExercise design (use it to shape the content, never quote it or mention an exercise):\n${design.join('\n')}\n- Make this message serve the learning objectives that concern its recipient.\n- Stay consistent with the incident timeline: only state facts this sender could plausibly know at ${common.timestamp}, in the order they happen.`;
           }
           if (guidedSuffix) result.systemPrompt += guidedSuffix;
+          // The template's own fields, last: the answer must fill them, whatever the model or channel.
+          const template = typeof getTemplateDefinition === 'function' ? getTemplateDefinition(stimulus) : null;
+          const writable = (template?.fields || []).filter((item) => ['text', 'textarea', 'select', 'number'].includes(item.type) && !/(^|_)(photo|logo_image|avatar_url|audio|video)|_data$|_color$/.test(item.key));
+          if (writable.length) {
+            result.systemPrompt += `\n\nOUTPUT FORMAT: reply only with one JSON object whose keys are these template fields, each filled with content consistent with the scenario (other keys are ignored): ${writable.map((item) => `"${item.key}" (${item.label}${item.options ? `, one of ${item.options.join('|')}` : ''}${item.type === 'number' ? ', a number' : ''})`).join(', ')}. Long text fields such as "body" are HTML paragraphs (<p>).`;
+          }
           return result;
         }
       };
