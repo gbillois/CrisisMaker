@@ -6,7 +6,7 @@ const PLAY_SPEEDS = [1, 2, 5, 10, 30];
 const PLAY_SOON_MINUTES = 5;
 const PLAY_LATE_MINUTES = 2;
 const PLAY_LOG_MAX = 2000;
-const PLAY_LOG_TYPES = ['start', 'pause', 'resume', 'clock', 'speed', 'phase', 'status', 'sent', 'note', 'reset'];
+const PLAY_LOG_TYPES = ['start', 'pause', 'resume', 'clock', 'speed', 'phase', 'status', 'sent', 'note', 'reset', 'end'];
 
 /* The exercise log: what happened, at which exercise time and wall-clock time. */
 function playLog(type, text, project = appState.scenario) {
@@ -16,7 +16,7 @@ function playLog(type, text, project = appState.scenario) {
 }
 
 function playLogTypeLabel(type) {
-  return { start: tt('Start', 'Démarrage', 'Start'), pause: tt('Pause', 'Pause', 'Pause'), resume: tt('Resume', 'Reprise', 'Fortsetzung'), clock: tt('Clock', 'Horloge', 'Uhr'), speed: tt('Speed', 'Vitesse', 'Tempo'), phase: tt('Phase', 'Phase', 'Phase'), status: tt('Status', 'Statut', 'Status'), sent: tt('Sent', 'Envoyé', 'Gesendet'), note: tt('Note', 'Note', 'Notiz'), reset: tt('Reset', 'Réinitialisation', 'Zurücksetzen') }[type] || type;
+  return { start: tt('Start', 'Démarrage', 'Start'), pause: tt('Pause', 'Pause', 'Pause'), resume: tt('Resume', 'Reprise', 'Fortsetzung'), clock: tt('Clock', 'Horloge', 'Uhr'), speed: tt('Speed', 'Vitesse', 'Tempo'), phase: tt('Phase', 'Phase', 'Phase'), status: tt('Status', 'Statut', 'Status'), sent: tt('Sent', 'Envoyé', 'Gesendet'), note: tt('Note', 'Note', 'Notiz'), reset: tt('Reset', 'Réinitialisation', 'Zurücksetzen'), end: tt('End', 'Fin', 'Ende') }[type] || type;
 }
 
 function playWallClock(iso) {
@@ -45,11 +45,11 @@ function playResetAll() {
   const play = playState(project);
   const sent = (project.stimuli || []).filter((item) => item.status === 'sent');
   if (!window.confirm(tt(`Reset the play? The clock returns to H+0:00, the ${sent.length} sent inject(s) go back to Validated and the exercise log is cleared.`, `Réinitialiser le jeu ? L’horloge revient à H+0:00, les ${sent.length} inject(s) envoyé(s) repassent en Validé et le journal de l’exercice est effacé.`, `Spiel zurücksetzen? Die Uhr geht auf H+0:00, die ${sent.length} gesendeten Injects werden wieder Freigegeben und das Protokoll wird gelöscht.`))) return;
-  if (!window.confirm(tt(`Last confirmation: this cannot be undone${play.log.length ? ` and the ${play.log.length} log entries will be lost (use Save log first if you need them)` : ''}. Reset now?`, `Dernière confirmation : c’est irréversible${play.log.length ? ` et les ${play.log.length} entrées du journal seront perdues (utilisez d’abord Save log si besoin)` : ''}. Réinitialiser maintenant ?`, `Letzte Bestätigung: Das kann nicht rückgängig gemacht werden${play.log.length ? ` und die ${play.log.length} Protokolleinträge gehen verloren (vorher Save log nutzen)` : ''}. Jetzt zurücksetzen?`))) return;
+  if (!window.confirm(tt(`Last confirmation: this cannot be undone${play.log.length ? ` and the ${play.log.length} log entries will be lost (use Save log first if you need them)` : ''}. Reset now?`, `Dernière confirmation : c’est irréversible${play.log.length ? ` et les ${play.log.length} entrées du journal seront perdues (utilisez d’abord Enregistrer le journal si besoin)` : ''}. Réinitialiser maintenant ?`, `Letzte Bestätigung: Das kann nicht rückgängig gemacht werden${play.log.length ? ` und die ${play.log.length} Protokolleinträge gehen verloren (vorher Protokoll speichern nutzen)` : ''}. Jetzt zurücksetzen?`))) return;
   for (const stimulus of sent) { stimulus.status = 'ready'; delete stimulus.sent_at; delete stimulus.sent_at_min; }
   for (const stimulus of project.stimuli || []) delete stimulus.sent_count;
-  Object.assign(play, { running: false, offset_min: 0, run_since: null, started_at: '', last_phase: '', log: [] });
-  playUI().notified = new Set();
+  Object.assign(play, { running: false, offset_min: 0, run_since: null, started_at: '', last_phase: '', ended: false, numbers: null, log: [] });
+  Object.assign(playUI(), { notified: new Set(), alertedAt: null });
   saveLocal(false);
   pushToast(tt('Play reset: ready for a new run.', 'Jeu réinitialisé : prêt pour une nouvelle session.', 'Spiel zurückgesetzt: bereit für einen neuen Durchlauf.'), 'success');
   App.render();
@@ -67,6 +67,10 @@ function playState(project = appState.scenario) {
     speed: PLAY_SPEEDS.includes(input.speed) ? input.speed : 1,
     started_at: typeof input.started_at === 'string' ? input.started_at : '',
     last_phase: typeof input.last_phase === 'string' ? input.last_phase : '',
+    ended: input.ended === true,
+    // Play numbers frozen when the run started (stimulus id → number); null before.
+    numbers: input.numbers && typeof input.numbers === 'object' && !Array.isArray(input.numbers)
+      ? Object.fromEntries(Object.entries(input.numbers).filter(([, value]) => Number.isInteger(value) && value > 0)) : null,
     log: (Array.isArray(input.log) ? input.log : []).filter((entry) => entry && typeof entry.text === 'string').slice(-PLAY_LOG_MAX)
       .map((entry) => ({ t: Number.isFinite(entry.t) ? entry.t : 0, at: typeof entry.at === 'string' ? entry.at : '', type: PLAY_LOG_TYPES.includes(entry.type) ? entry.type : 'note', text: String(entry.text).slice(0, 2000) }))
   };
@@ -109,6 +113,16 @@ function playNumbers(project = appState.scenario) {
   return ExerciseModel.numbers(project);
 }
 
+/* Freezes the numbers once the run has started, and keeps those of injects added since. */
+function playFreezeNumbers(project = appState.scenario) {
+  const play = playState(project);
+  play.numbers = { ...(play.numbers || {}), ...Object.fromEntries(ExerciseModel.numbers(project)) };
+}
+
+function playStarted(play = playState()) {
+  return play.running || play.offset_min > 0 || !!play.started_at;
+}
+
 function playNumberLabel(number, total) {
   return ExerciseModel.numberLabel(number, total);
 }
@@ -145,6 +159,15 @@ function playQuickFilters() {
     ['todo', tt('To validate', 'À valider', 'Freizugeben')],
     ['sent', tt('Sent', 'Envoyés', 'Gesendet')]
   ];
+}
+
+function playQuickCount(items, ui, key, now) {
+  return items.filter((item) => (ui.planned || item.status !== 'planned') && playMatchesQuick(item, key, now)).length;
+}
+
+/* The phase in progress; none once the exercise time is over (the bar says so). */
+function playPhaseAt(project, now, duration = playDuration(project)) {
+  return project.storyboard && now < duration ? sbMainBlockAt(project.storyboard, now) || null : null;
 }
 
 function playMatchesQuick(item, quick, now) {
@@ -234,13 +257,13 @@ function renderPlayGenerate(counts) {
 
 function renderPlayBar(project, play, ui, items, now, counts, phases) {
   const duration = playDuration(project);
-  const phase = project.storyboard ? sbMainBlockAt(project.storyboard, Math.min(now, duration - 0.01)) : null;
+  const phase = playPhaseAt(project, now, duration);
   const next = items.find((item) => item.stimulus && item.status !== 'sent' && item.time > now);
   const late = items.filter((item) => playTiming(item, now) === 'is-late').length;
   const due = items.filter((item) => playTiming(item, now) === 'is-due').length;
   const progress = Math.min(100, Math.round(100 * now / duration));
   const clock = project.scenario.start_date ? sbClockTime(now, project.scenario.start_date) : '';
-  const quickCount = (key) => items.filter((item) => (ui.planned || item.status !== 'planned') && playMatchesQuick(item, key, now)).length;
+  const quickCount = (key) => playQuickCount(items, ui, key, now);
   const senders = [...new Set(items.map((item) => item.sender).filter(Boolean))].sort();
   const channels = [...new Set(items.map((item) => item.channel))].sort();
   const started = play.running || play.offset_min > 0;
@@ -360,7 +383,7 @@ function renderPlayChrono(project, items, ui, now, phases) {
 
 function renderPlayLog(project, play, ui) {
   if (!ui.logOpen) return '';
-  const icons = { start: 'play', resume: 'play', pause: 'pause', clock: 'clock', speed: 'clock', phase: 'layers', status: 'edit', sent: 'check', note: 'message', reset: 'refresh' };
+  const icons = { start: 'play', resume: 'play', pause: 'pause', clock: 'clock', speed: 'clock', phase: 'layers', status: 'edit', sent: 'check', note: 'message', reset: 'refresh', end: 'check' };
   const entries = [...play.log].reverse();
   return `<aside class="play-log" aria-label="${escapeAttribute(tt('Exercise log', 'Journal de l’exercice', 'Übungsprotokoll'))}">
     <div class="play-log-head">
@@ -385,9 +408,10 @@ function playSetStatus(stimulus, status) {
   const project = appState.scenario;
   if (stimulus.status === status) return;
   const previous = stimulus.status;
-  const number = playNumbers(project).get(stimulus.id);
+  const numbers = playNumbers(project);
+  const number = numbers.get(stimulus.id);
   const title = sbStimulusLabel(stimulus);
-  const label = `${playNumberLabel(number, (project.stimuli || []).length)} ${title.length > 80 ? `${title.slice(0, 79)}…` : title}`;
+  const label = `${playNumberLabel(number, ExerciseModel.numberTop(numbers))} ${title.length > 80 ? `${title.slice(0, 79)}…` : title}`;
   const cell = ExerciseModel.cell(project, stimulus);
   if (status === 'sent') {
     const delay = Math.round(playNow(project) - stimulus.timestamp_offset_minutes);
@@ -406,26 +430,45 @@ function playSetStatus(stimulus, status) {
   saveLocal(false);
 }
 
-/* A new inject created during the run, at the current exercise time; the editor opens on it. */
+/* A new inject created during the run, at the current exercise time; the editor opens on it.
+   Once the run has started it takes the next free number, the others keep theirs. It starts
+   blank (no demo content from the channel template) so it stands out. */
 function playAddInject() {
   const project = appState.scenario;
   const ui = playUI();
   const time = Math.ceil(playNow(project));
   const cell = sbCell(project, ui.cell) || null;
+  const started = playStarted(playState(project));
+  if (started) playFreezeNumbers(project);
   const stimulus = makeStimulus('email_internal', project.actors[0]?.id || '', time);
   stimulus.status = 'draft';
   stimulus.added_in_play = true;
   stimulus.generation_mode = 'manual';
+  playBlankFields(stimulus);
   if (cell) stimulus.cell_id = cell.id;
   project.stimuli.push(stimulus);
   if (typeof setDefaultVideoForStimulus === 'function') setDefaultVideoForStimulus(stimulus);
   sortStimuli();
-  const number = playNumbers(project).get(stimulus.id);
-  playLog('status', `${tt('Inject added during play', 'Inject ajouté en cours de jeu', 'Inject während des Spiels hinzugefügt')}: ${playNumberLabel(number, project.stimuli.length)} ${tt('at', 'à', 'um')} ${sbFormatOffset(time)}${cell ? ` → ${cell.name}` : ''}`, project);
+  if (started) playFreezeNumbers(project);
+  const numbers = playNumbers(project);
+  const number = numbers.get(stimulus.id);
+  playLog('status', `${tt('Inject added during play', 'Inject ajouté en cours de jeu', 'Inject während des Spiels hinzugefügt')}: ${playNumberLabel(number, ExerciseModel.numberTop(numbers))} ${tt('at', 'à', 'um')} ${sbFormatOffset(time)}${cell ? ` → ${cell.name}` : ''}`, project);
   saveLocal(false);
   appState.selectedStimulusId = stimulus.id;
   appState.stimulusModalId = stimulus.id;
   App.render();
+}
+
+/* Empty text fields and a neutral title, instead of the template's demo content. */
+function playBlankFields(stimulus) {
+  const fields = stimulus.fields || {};
+  for (const field of getTemplateDefinition(stimulus)?.fields || []) {
+    if (!(field.key in fields) || field.key === 'date') continue;
+    if (field.type === 'text' || field.type === 'textarea') fields[field.key] = '';
+    else if (field.type === 'checkbox') fields[field.key] = false;
+  }
+  const titleKey = ['subject', 'headline', 'title', 'thread_title', 'text'].find((key) => key in fields);
+  if (titleKey) fields[titleKey] = tt('[New inject]', '[Nouvel inject]', '[Neuer Inject]');
 }
 
 function playToggle() {
@@ -433,12 +476,30 @@ function playToggle() {
   if (play.running) { play.offset_min = playNow(); play.running = false; play.run_since = null; playLog('pause', tt('Exercise paused', 'Exercice en pause', 'Übung pausiert')); }
   else {
     const first = !play.started_at && play.offset_min === 0;
+    playFreezeNumbers();
     play.running = true; play.run_since = Date.now();
     if (!play.started_at) play.started_at = new Date().toISOString();
     playLog(first ? 'start' : 'resume', first ? tt('Exercise started', 'Exercice démarré', 'Übung gestartet') : tt('Exercise resumed', 'Exercice repris', 'Übung fortgesetzt'));
   }
   saveLocal(false);
   App.render();
+}
+
+/* Moves the exercise clock; the log records the actual change (−5 at H+0:03 moves 3 min),
+   nothing when the clock did not move (−5 at H+0:00). */
+function playShiftClock(value) {
+  const play = playState();
+  const now = playNow();
+  play.offset_min = Math.max(0, now + value);
+  if (play.running) play.run_since = Date.now();
+  const delta = Math.round((play.offset_min - now) * 10) / 10;
+  if (delta) playLog('clock', `${tt('Clock adjusted', 'Horloge recalée', 'Uhr angepasst')} ${delta > 0 ? '+' : '−'}${Math.abs(delta)} min → ${sbFormatOffset(Math.floor(play.offset_min))}`);
+}
+
+/* An editor, the settings drawer, the welcome screen or another dialog covers the Play tab. */
+function playOverlayOpen() {
+  return !!(appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen || appState.chronogramImport
+    || document.querySelector('[aria-modal="true"]:not([aria-hidden="true"]):not([inert])'));
 }
 
 function bindPlayEvents() {
@@ -448,17 +509,9 @@ function bindPlayEvents() {
   if (!root) return;
   const ui = playUI();
   root.querySelectorAll('[data-play]').forEach((button) => button.addEventListener('click', () => {
-    const play = playState();
     switch (button.dataset.play) {
       case 'toggle': playToggle(); return;
-      case 'shift': {
-        const now = playNow();
-        const value = Number(button.dataset.playValue || 0);
-        play.offset_min = Math.max(0, now + value);
-        if (play.running) play.run_since = Date.now();
-        playLog('clock', `${tt('Clock adjusted', 'Horloge recalée', 'Uhr angepasst')} ${value > 0 ? '+' : '−'}${Math.abs(value)} min → ${sbFormatOffset(Math.floor(play.offset_min))}`);
-        break;
-      }
+      case 'shift': playShiftClock(Number(button.dataset.playValue || 0)); break;
       case 'reset-all': playResetAll(); return;
       case 'add': playAddInject(); return;
       case 'log': ui.logOpen = !ui.logOpen; App.render(); return;
@@ -512,8 +565,8 @@ function bindPlayEvents() {
   if (!window._playKeysInstalled) {
     window._playKeysInstalled = true;
     window.addEventListener('keydown', (event) => {
-      if (appState.route !== 'play' || event.code !== 'Space' || appState.stimulusModalId) return;
-      if (event.target.closest?.('input, textarea, select, button, [contenteditable]')) return;
+      if (appState.route !== 'play' || event.code !== 'Space' || playOverlayOpen()) return;
+      if (event.target.closest?.('input, textarea, select, button, [contenteditable]') || event.target.isContentEditable) return;
       event.preventDefault();
       playToggle();
     });
@@ -522,26 +575,47 @@ function bindPlayEvents() {
   if (playState().running) window._playTimer = setInterval(() => playTick(false), 1000);
 }
 
-/* Updates the clock, phase, counters and row states in place, without a full render. */
+/* Re-renders the tab, keeping the focus and caret in the note or search field. */
+function playRenderKeepingFocus() {
+  const active = document.activeElement;
+  const selector = ['[data-play-note]', '[data-play-filter="q"]'].find((candidate) => active?.matches?.(candidate));
+  const range = selector ? [active.selectionStart, active.selectionEnd] : null;
+  App.render();
+  const input = selector ? document.querySelector(selector) : null;
+  if (!input) return;
+  input.focus();
+  try { input.setSelectionRange(...range); } catch (_) { /* no caret on this input */ }
+}
+
+/* Updates the clock, phase, counters, quick filters and row states in place, without a full render. */
 function playTick(initial) {
   if (appState.route !== 'play') { clearInterval(window._playTimer); return; }
   const project = appState.scenario;
   const ui = playUI();
+  const play = playState(project);
   const now = playNow(project);
   const duration = playDuration(project);
+  // The exercise time is over: once, the clock pauses and the log says so.
+  if (now >= duration && !play.ended) {
+    play.ended = true;
+    if (play.running) { play.offset_min = now; play.running = false; play.run_since = null; clearInterval(window._playTimer); }
+    playLog('end', tt('Exercise time is over', 'Le temps de l’exercice est écoulé', 'Die Übungszeit ist abgelaufen'), project);
+    saveLocal(false);
+    App.render();
+    return;
+  }
   const set = (selector, value) => { const element = document.querySelector(selector); if (element && element.textContent !== value) element.textContent = value; };
   set('[data-play-clock]', playClock(now));
   set('[data-play-now-time]', sbFormatOffset(Math.floor(now)));
   const clock = project.scenario.start_date ? sbClockTime(now, project.scenario.start_date) : '';
   set('[data-play-simulated]', clock ? `${tt('Simulated', 'Simulé', 'Simuliert')} ${clock}` : sbFormatOffset(Math.floor(now)));
-  const phase = project.storyboard ? sbMainBlockAt(project.storyboard, Math.min(now, duration - 0.01)) : null;
+  const phase = playPhaseAt(project, now, duration);
   set('[data-play-phase]', phase?.title || (now >= duration ? tt('Exercise complete', 'Exercice terminé', 'Übung beendet') : '—'));
-  const play = playState(project);
   if (play.running && phase && play.last_phase !== phase.id) {
     play.last_phase = phase.id;
     playLog('phase', `${tt('Phase started', 'Début de phase', 'Phase begonnen')}: ${phase.title}`, project);
     saveLocal(false);
-    if (!initial) { App.render(); return; }
+    if (!initial) { playRenderKeepingFocus(); return; }
   }
   set('[data-play-phase-left]', phase ? `${tt('ends in', 'se termine dans', 'endet in')} ${playCountdown(sbBlockEnd(phase) - now)}` : '');
   const progress = Math.min(100, Math.round(100 * now / duration));
@@ -551,6 +625,17 @@ function playTick(initial) {
   const items = playItems(project);
   const next = items.find((item) => item.stimulus && item.status !== 'sent' && item.time > now);
   set('[data-play-next]', next ? `${next.numberLabel} ${tt('in', 'dans', 'in')} ${playCountdown(next.time - now)}` : tt('None', 'Aucun', 'Keiner'));
+  // A time-based quick filter follows the clock: re-render only when its injects change,
+  // and not under an editor, a dialog or an open list.
+  if (!initial && ['now', 'late', 'next'].includes(ui.quick) && !playOverlayOpen() && document.activeElement?.tagName !== 'SELECT') {
+    const keys = (list) => list.sort().join('|');
+    const shown = keys([...document.querySelectorAll('[data-play-key]')].map((row) => row.dataset.playKey));
+    if (shown !== keys(playFilter(items, ui, now).map((item) => item.key))) { playRenderKeepingFocus(); return; }
+  }
+  document.querySelectorAll('[data-play-quick]').forEach((button) => {
+    const count = button.querySelector('b'), value = String(playQuickCount(items, ui, button.dataset.playQuick, now));
+    if (count && count.textContent !== value) count.textContent = value;
+  });
   let due = 0, late = 0;
   const byKey = new Map(items.map((item) => [item.key, item]));
   document.querySelectorAll('[data-play-key]').forEach((row) => {
@@ -561,16 +646,27 @@ function playTick(initial) {
     row.classList.toggle('is-late', timing === 'is-late');
     row.classList.toggle('is-soon', timing === 'is-soon');
   });
+  // One alert per inject when it becomes due while the clock runs, also when it goes straight
+  // to late (fast speed, background tab, clock moved forward). A clock jump brings several at
+  // once: one toast for them all. Injects already late at the last tick are not announced.
+  if (!Number.isFinite(ui.alertedAt)) ui.alertedAt = now;
+  const fresh = [];
   for (const item of items) {
     const timing = playTiming(item, now);
     if (timing === 'is-due') due++;
     if (timing === 'is-late') late++;
-    // One alert per inject when it becomes due while the clock runs.
-    // Also when it goes straight to late (fast speed, background tab, clock moved forward).
-    if (!initial && playState(project).running && (timing === 'is-due' || timing === 'is-late') && !ui.notified.has(item.key)) {
+    if (!initial && play.running && (timing === 'is-due' || timing === 'is-late') && !ui.notified.has(item.key)) {
       ui.notified.add(item.key);
-      pushToast(`${item.numberLabel} ${tt('to send now', 'à envoyer maintenant', 'jetzt senden')}: ${item.title}${item.cell ? ` → ${item.cell.name}` : ''}`, 'info');
+      if (item.time > ui.alertedAt - PLAY_LATE_MINUTES) fresh.push(item);
     }
+  }
+  if (!initial && play.running) ui.alertedAt = now;
+  if (fresh.length === 1) {
+    const [item] = fresh;
+    pushToast(`${item.numberLabel} ${tt('to send now', 'à envoyer maintenant', 'jetzt senden')}: ${item.title}${item.cell ? ` → ${item.cell.name}` : ''}`, 'info');
+  } else if (fresh.length) {
+    const numbers = fresh.slice(0, 8).map((item) => item.numberLabel).join(', ') + (fresh.length > 8 ? ' …' : '');
+    pushToast(`${fresh.length} ${tt('injects to send now', 'injects à envoyer maintenant', 'Injects jetzt senden')}: ${numbers}`, 'info');
   }
   set('[data-play-due]', String(due));
   set('[data-play-late]', String(late));
@@ -586,7 +682,7 @@ function playTick(initial) {
       if (target) target.parentElement.insertBefore(line, target);
       else rows.at(-1)?.parentElement.appendChild(line);
     }
-    if (ui.follow && playState(project).running && (moved || initial)) {
+    if (ui.follow && play.running && (moved || initial)) {
       const bar = document.querySelector('[data-play-bar]');
       const offset = (bar?.getBoundingClientRect().bottom || 0) + 80;
       const top = line.getBoundingClientRect().top;

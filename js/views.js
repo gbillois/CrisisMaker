@@ -405,7 +405,7 @@
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
-                      <span>${tt('<strong>Run the exercise</strong> — in Play, generate the numbered stimuli, start the clock and send each inject on time; the exercise log records everything and can be saved.', '<strong>Animez l’exercice</strong> — dans Play, générez les stimuli numérotés, lancez l’horloge et envoyez chaque inject à temps ; le journal de l’exercice consigne tout et peut être enregistré.', '<strong>Übung durchführen</strong> — in Play die nummerierten Stimuli erzeugen, die Uhr starten und jeden Inject pünktlich senden; das Übungsprotokoll hält alles fest und kann gespeichert werden.')}</span>
+                      <span>${tt('<strong>Run the exercise</strong> — in Play, start the clock and send each numbered inject on time; the exercise log records everything and can be saved.', '<strong>Animez l’exercice</strong> — dans Play, lancez l’horloge et envoyez chaque inject numéroté à temps ; le journal de l’exercice consigne tout et peut être enregistré.', '<strong>Übung durchführen</strong> — in Play die Uhr starten und jeden nummerierten Inject pünktlich senden; das Übungsprotokoll hält alles fest und kann gespeichert werden.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">5</div>
@@ -450,7 +450,7 @@
           },
           play: {
             title: 'Play',
-            subtitle: tt('Run the exercise live: generate the stimuli, start the clock and send each inject on time.', 'Animez l\'exercice en direct : générez les stimuli, lancez l\'horloge et envoyez chaque inject à temps.', 'Übung live durchführen: Stimuli erzeugen, Uhr starten und jeden Inject pünktlich senden.')
+            subtitle: tt('Run the exercise live: start the clock, send each inject on time and keep the exercise log.', 'Animez l\'exercice en direct : lancez l\'horloge, envoyez chaque inject à temps et tenez le journal de l\'exercice.', 'Übung live durchführen: Uhr starten, jeden Inject pünktlich senden und das Übungsprotokoll führen.')
           },
           summary: {
             title: 'Check & Challenge',

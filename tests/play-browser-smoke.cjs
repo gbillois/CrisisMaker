@@ -36,6 +36,16 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
   // Pause, then send #01, bring it back to draft, send it again: all logged.
   await page.click('[data-play="toggle"]');
+
+  // Space does nothing under the settings drawer, and starts or pauses on the tab.
+  await page.evaluate(() => { appState.settingsDrawerOpen = true; App.render(); document.activeElement?.blur(); });
+  await page.keyboard.press('Space');
+  assert.equal(await page.evaluate(() => playState().running), false, 'Space under the settings drawer');
+  await page.evaluate(() => { appState.settingsDrawerOpen = false; App.render(); document.activeElement?.blur(); });
+  await page.keyboard.press('Space');
+  assert.equal(await page.evaluate(() => playState().running), true);
+  await page.keyboard.press('Space');
+  assert.equal(await page.evaluate(() => playState().running), false);
   const first = await page.evaluate(() => getSortedStimuli()[0].id);
   await page.click(`[data-play-set="sent"][data-stimulus-id="${first}"]`);
   await page.click(`[data-play-set="draft"][data-stimulus-id="${first}"]`);
@@ -48,15 +58,46 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await page.press('[data-play-note]', 'Enter');
   assert.ok((await page.locator('.play-log-list').innerText()).includes('press briefing'));
   const before = await page.evaluate(() => appState.scenario.stimuli.length);
+  const numbersBefore = await page.evaluate(() => [...playNumbers().entries()]);
   await page.click('[data-play="add"]');
   assert.equal(await page.evaluate(() => appState.scenario.stimuli.length), before + 1);
   assert.ok(await page.evaluate(() => !!appState.stimulusModalId));
   await page.click('[data-action="close-stimulus-modal"]');
   assert.ok(await page.isVisible('.play-added'));
+  // The run has started: the new inject takes the next number, the others keep theirs; it starts blank.
+  const numbersAfter = new Map(await page.evaluate(() => [...playNumbers().entries()]));
+  for (const [id, number] of numbersBefore) assert.equal(numbersAfter.get(id), number, `number of ${id} kept`);
+  const addedRow = page.locator('.play-row', { has: page.locator('.play-added') });
+  assert.equal(await addedRow.locator('.play-num').innerText(), `#${String(before + 1).padStart(2, '0')}`);
+  assert.ok((await addedRow.locator('.play-title strong').innerText()).includes('[New inject]'));
 
   // Filters: "Sent" shows only sent injects.
   await page.click('[data-play-quick="sent"]');
   assert.equal(await page.locator('.play-row').count(), 1);
+  await page.click('[data-play-quick="all"]');
+
+  // Time-based quick filters and their counts follow the running clock, without taking
+  // the focus from the note; a clock jump brings one alert for all its injects.
+  await page.click('[data-play-quick="now"]');
+  const nowRows = await page.locator('.play-row').count();
+  await page.click('[data-play="toggle"]');
+  await page.fill('[data-play-note]', 'typing');
+  await page.evaluate(() => { appState.toasts = []; renderToasts(); const play = playState(); play.offset_min = 62; play.run_since = Date.now();
+    // Same phase as already logged: only the quick filter refresh can update the rows.
+    play.last_phase = sbMainBlockAt(sbStoryboard(), 62).id; });
+  await page.waitForFunction((count) => {
+    const expected = playFilter(playItems(), playUI(), playNow());
+    const rows = document.querySelectorAll('[data-play-key]').length;
+    return rows > count && Math.abs(rows - expected.length) <= 1 && document.querySelector('[data-play-quick="now"] b').textContent === String(rows);
+  }, nowRows, { timeout: 5000 });
+  assert.ok(await page.evaluate(() => document.activeElement?.matches('[data-play-note]') && document.activeElement.value === 'typing'), 'the note keeps the focus');
+  await page.waitForSelector('#toast-root .toast:has-text("to send now")', { timeout: 5000 });
+  await page.waitForTimeout(1200);
+  const alerts = await page.locator('#toast-root .toast', { hasText: 'to send now' }).allInnerTexts();
+  assert.equal(alerts.length, 1, alerts.join(' | '));
+  assert.match(alerts[0], /^\d+ injects to send now: #/);
+  await page.click('[data-play="toggle"]');
+  await page.fill('[data-play-note]', '');
   await page.click('[data-play-quick="all"]');
 
   // Save log downloads a CSV.
@@ -81,6 +122,17 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await page.reload();
   assert.equal(await page.evaluate((id) => getStimulus(id).status, first), 'sent');
   assert.equal(await page.evaluate(() => playState().log.length), 1);
+
+  // The end: the clock pauses once, the bar says the exercise is complete, the log says so once.
+  if (await page.isVisible('.launch-hero-close')) await page.click('.launch-hero-close');
+  await page.click('.nav-icon-btn[data-route="play"]');
+  await page.evaluate(() => { playState().offset_min = playDuration() - 0.2; });
+  await page.click('[data-play="toggle"]');
+  await page.waitForFunction(() => !playState().running && playState().ended, null, { timeout: 5000 });
+  assert.equal(await page.locator('[data-play-phase]').innerText(), 'Exercise complete');
+  await page.waitForTimeout(1200);
+  assert.equal(await page.evaluate(() => playState().running), false);
+  assert.equal(await page.evaluate(() => playState().log.filter((entry) => entry.text === 'Exercise time is over').length), 1);
   assert.deepEqual(errors, []);
   await browser.close();
   console.log('Play browser smoke passed.');

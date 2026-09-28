@@ -567,6 +567,55 @@ test('play: clock, numbering, timing, statuses both ways with the log, on-the-fl
   assert.equal(h.run(`getStimulus('${id}').status`), 'sent', 'declining the second confirmation keeps everything');
 });
 
+test('play: numbers freeze during the run, blank added injects, batched alerts, real clock shifts, the end pauses once', () => {
+  const h = harness();
+  h.context.clearInterval = () => {};
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'play';`);
+  const before = h.json(`[...playNumbers().entries()]`);
+  const total = before.length;
+  // Clock shifts: nothing logged at H+0:00, the actual change otherwise.
+  h.run(`playShiftClock(-5)`);
+  assert.equal(h.run('playState().log.length'), 0, '−5 at H+0:00 is not logged');
+  h.run(`playState().offset_min = 3; playShiftClock(-5)`);
+  assert.ok(h.run('playState().log.at(-1).text').includes('−3 min → H+0'), h.run('playState().log.at(-1).text'));
+  // Started: an inject added at H+0:20 takes the next number, the others keep theirs everywhere.
+  h.run(`playToggle(); Object.assign(playState(), { running: false, run_since: null, offset_min: 20 }); playAddInject()`);
+  const added = h.json(`appState.scenario.stimuli.find((item) => item.added_in_play)`);
+  const after = new Map(h.json(`[...playNumbers().entries()]`));
+  for (const [id, number] of before) assert.equal(after.get(id), number, 'numbers stay stable');
+  assert.equal(after.get(added.id), total + 1);
+  assert.equal(h.run(`ExerciseModel.of(appState.scenario).byStimulus.get('${added.id}').numberLabel`), `#${String(total + 1).padStart(2, '0')}`);
+  assert.ok(h.run(`ExportEngine.filenameForStimulus(getStimulus('${added.id}'))`).startsWith(`${String(total + 1).padStart(2, '0')}_H+00-20_`));
+  assert.ok(h.run('playState().log.at(-1).text').includes(`#${total + 1}`));
+  // Blank, not the template's demo content.
+  assert.equal(added.fields.subject, '[New inject]');
+  assert.equal(added.fields.body, '');
+  assert.ok(!JSON.stringify(added.fields).includes('Ransomware'));
+  // Frozen numbers survive a reload; Reset play unfreezes them.
+  assert.equal(h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario)))`).play.numbers[added.id], total + 1);
+  h.run(`window.confirm = () => true; playResetAll()`);
+  assert.equal(h.run('playState().numbers'), null);
+  assert.ok(h.run(`playNumbers().get('${added.id}')`) < total + 1, 'back to play order after a reset');
+  // A clock jump: one toast for every inject it brought, none for those already late.
+  h.run(`globalThis.toasts = []; pushToast = (message) => toasts.push(message);
+    Object.assign(playState(), { running: true, run_since: Date.now(), offset_min: 70 }); Object.assign(playUI(), { alertedAt: 60 });
+    playTick(false); playTick(false)`); // the first tick logs the phase start
+  const toasts = h.json('toasts');
+  const fresh = h.json(`playItems().filter((item) => ['is-due', 'is-late'].includes(playTiming(item, 70)) && item.time > 58).length`);
+  assert.ok(fresh > 1, `several injects between H+0:58 and H+1:10 (${fresh})`);
+  assert.equal(toasts.length, 1);
+  assert.ok(toasts[0].startsWith(`${fresh} injects to send now: #`), toasts[0]);
+  assert.equal(h.run(`playItems().filter((item) => ['is-due', 'is-late'].includes(playTiming(item, 70))).every((item) => playUI().notified.has(item.key))`), true);
+  // The end: complete, paused once, one log entry.
+  h.run(`playState().offset_min = playDuration() + 0.5; playState().run_since = Date.now(); playTick(false)`);
+  assert.equal(h.run('playState().running'), false);
+  assert.equal(h.run('playState().log.at(-1).text'), 'Exercise time is over');
+  h.run(`playToggle(); playTick(false)`);
+  assert.equal(h.run('playState().running'), true, 'resuming after the end is allowed');
+  assert.equal(h.run(`playState().log.filter((entry) => entry.type === 'end').length`), 1);
+  assert.ok(h.run('renderPlayView()').includes('Exercise complete'));
+});
+
 test('check & challenge: one readiness verdict, the checker merged into Summary, the exercise file in Context', () => {
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'checker'`);
