@@ -586,11 +586,7 @@
 
       /* The main-storyline phase an inject belongs to: its linked phase, else the phase at its time. */
       function libraryPhaseOf(stimulus) {
-        const storyboard = appState.scenario.storyboard;
-        if (!storyboard) return null;
-        const linked = stimulus.scenario_link?.block_id ? sbBlock(storyboard, stimulus.scenario_link.block_id) : null;
-        if (linked && sbTrack(storyboard, linked.track_id)?.kind === 'main') return linked;
-        return sbMainBlockAt(storyboard, stimulus.timestamp_offset_minutes) || null;
+        return ExerciseModel.phaseOfStimulus(appState.scenario, stimulus);
       }
 
       function renderLibraryView() {

@@ -104,16 +104,13 @@ function playCountdown(minutes) {
   return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/* Play numbers: #01 to #NN in time order, shared with the ZIP export. */
+/* Play numbers: #01 to #NN in play order, from the exercise model (shared with the ZIP export). */
 function playNumbers(project = appState.scenario) {
-  const numbers = new Map();
-  (project === appState.scenario ? getSortedStimuli() : [...(project.stimuli || [])].sort((a, b) => a.timestamp_offset_minutes - b.timestamp_offset_minutes))
-    .forEach((stimulus, index) => numbers.set(stimulus.id, index + 1));
-  return numbers;
+  return ExerciseModel.numbers(project);
 }
 
 function playNumberLabel(number, total) {
-  return `#${String(number).padStart(Math.max(2, String(total).length), '0')}`;
+  return ExerciseModel.numberLabel(number, total);
 }
 
 function playStatusLabel(status) {
@@ -122,22 +119,11 @@ function playStatusLabel(status) {
 
 /* Every inject of the exercise, written or only planned, with its phase and play status. */
 function playItems(project = appState.scenario) {
-  const storyboard = project.storyboard;
-  const numbers = playNumbers(project);
-  const total = numbers.size;
-  const items = sbExerciseItems(project).map((item) => {
-    const stimulus = item.stimulus;
-    const phase = storyboard ? sbMainBlockAt(storyboard, item.time) : null;
-    const cell = sbCell(project, stimulus?.cell_id || item.cell_id);
-    const status = stimulus ? (['draft', 'ready', 'sent'].includes(stimulus.status) ? stimulus.status : 'draft') : 'planned';
-    return {
-      key: item.key, stimulus, beat: item.beat, time: item.time, phase, cell,
-      channel: stimulus?.channel || item.channel,
-      title: item.title, sender: item.sender, intent: item.intent, status,
-      number: stimulus ? numbers.get(stimulus.id) : null,
-      numberLabel: stimulus ? playNumberLabel(numbers.get(stimulus.id), total) : ''
-    };
-  });
+  const items = ExerciseModel.of(project).injects.map((inject) => ({
+    key: inject.key, stimulus: inject.stimulus, beat: inject.beat, time: inject.time, phase: inject.phase, cell: inject.cell,
+    channel: inject.channel, title: inject.title, sender: inject.sender, intent: inject.intent, status: inject.run,
+    number: inject.number, numberLabel: inject.numberLabel
+  }));
   return items.sort((a, b) => a.time - b.time || (a.number || 999) - (b.number || 999));
 }
 

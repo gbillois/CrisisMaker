@@ -438,9 +438,9 @@
         },
         /* Play order number and time, so the files sort in the order the pilot sends them. */
         playPrefix(stimulus) {
-          const stimuli = getSortedStimuli();
-          const width = Math.max(2, String(stimuli.length).length);
-          const number = String(stimuli.findIndex((item) => item.id === stimulus.id) + 1).padStart(width, '0');
+          const numbers = ExerciseModel.numbers(appState.scenario);
+          const width = Math.max(2, String(numbers.size).length);
+          const number = String(numbers.get(stimulus.id) || 0).padStart(width, '0');
           const minutes = stimulus.timestamp_offset_minutes;
           return `${number}_H+${String(Math.floor(minutes / 60)).padStart(2, '0')}-${String(minutes % 60).padStart(2, '0')}`;
         },
@@ -453,10 +453,11 @@
           const project = appState.scenario;
           const quote = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
           const header = ['#', 'Time', 'Simulated time', 'Phase', 'Recipient cell', 'Channel', 'Sender', 'Title', 'Status', 'File'];
+          const numbers = ExerciseModel.numbers(project);
           const rows = stimuli.map((stimulus, index) => {
-            const phase = project.storyboard ? sbMainBlockAt(project.storyboard, stimulus.timestamp_offset_minutes) : null;
-            const cell = sbCell(project, stimulus.cell_id);
-            return [index + 1, sbFormatOffset(stimulus.timestamp_offset_minutes), project.scenario.start_date ? sbClockTime(stimulus.timestamp_offset_minutes, project.scenario.start_date) : '',
+            const phase = ExerciseModel.phaseOfStimulus(project, stimulus);
+            const cell = ExerciseModel.cell(project, stimulus);
+            return [numbers.get(stimulus.id) || index + 1, sbFormatOffset(stimulus.timestamp_offset_minutes), project.scenario.start_date ? sbClockTime(stimulus.timestamp_offset_minutes, project.scenario.start_date) : '',
               phase?.title || '', cell?.name || '', channelLabel(stimulus.channel), getActor(stimulus.actor_id)?.name || '', sbStimulusLabel(stimulus),
               typeof playStatusLabel === 'function' ? playStatusLabel(stimulus.status) : stimulus.status, this.filenameForStimulus(stimulus, this.isVideoStimulus(stimulus) ? 'webm' : 'png')];
           });

@@ -205,6 +205,27 @@ Under the hood:
   the current storyline, or adapted to the organisation with AI. Your own storylines
   can be saved as templates and exchanged as `.crisisscenario.json` files.
 
+### Exercise model (the pivot)
+
+`js/exercise-model.js` (`ExerciseModel`) is the single place every tab reads the
+exercise from, over the project data as it is saved (no separate copy):
+
+- **Entities**: the exercise and its context; **phases** (main storyline blocks, with
+  what happens, hidden story, notes); **planned injects** (per phase and cell: time,
+  role, channel, title, intent); **cells**; **roles** and the **actors** who play them;
+  **injects** (the written stimuli, linked to their planned inject); the **run** (Play).
+- **Shared rules**: an inject's phase is its linked phase, else the phase at its time;
+  written injects are numbered #01..#NN in play order (Play, ZIP names, chronogram);
+  two statuses never mixed, `run` (planned, draft, validated, sent) and `sync` (in
+  sync, outdated, time changed, orphan, locked, manual edit, unlinked); the sender is
+  the actor who signs a written inject, else the role of the planned one.
+- **Dependencies** (what **Update** reflects, in order): phase text → inject plan
+  (`plan_hash`) → injects (`source_hash`, time); role → actor; actor → the injects it
+  sends (`actor_hash`); cell → the injects it receives (`cell_hash`).
+
+Play, Injects, Check & Challenge, the export, the Checker and the agent's consistency
+check use it, so they agree on every inject.
+
 The storyboard is saved with the project (`storyboard`, `storyboard_versions`, `cells`,
 `exercise`);
 `scenario.phases` is derived from the main storyline so the Agent and Check & Challenge keep

@@ -682,3 +682,55 @@ test('update: a changed phase is re-planned, then its injects follow in cascade;
   assert.deepEqual(h.json('sbComputeImpacts(appState.scenario).map(i => i.kind)'), []);
   assert.ok(h.run('renderDetailedView()').includes('data-sb-modal="sync"'), 'Update on Detailed storyline');
 });
+
+test('exercise model: one pivot, the same phase, number, cell, sender and statuses in every tab', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const model = h.json(`(() => { const m = ExerciseModel.of(appState.scenario); return { phases: m.phases.length, injects: m.injects.length, written: m.written.length, planned: m.planned.length, total: m.total, stimuli: appState.scenario.stimuli.length }; })()`);
+  assert.equal(model.written, model.stimuli);
+  assert.equal(model.total, model.stimuli);
+  assert.equal(model.injects, model.written + model.planned);
+  assert.ok(model.phases >= 3);
+  assert.ok(h.run('ExerciseModel.DEPENDENCIES.length') >= 5 && h.run(`ExerciseModel.DEPENDENCIES.some(d => d.tracked_by === 'block.plan_hash')`));
+
+  // A written inject linked to phase 1 but timed inside phase 2: every view says phase 1.
+  const probe = h.json(`(() => {
+    const project = appState.scenario;
+    const [p1, p2] = sbMainBlocks(project.storyboard);
+    const stimulus = getSortedStimuli().find(s => s.scenario_link?.block_id === p1.id);
+    stimulus.timestamp_offset_minutes = p2.start_minutes + 1;
+    const inject = ExerciseModel.of(project).byStimulus.get(stimulus.id);
+    const play = playItems(project).find(item => item.stimulus?.id === stimulus.id);
+    const csv = ExportEngine.chronogramCsv(getSortedStimuli());
+    const line = csv.split('\\r\\n').find(row => row.includes(sbStimulusLabel(stimulus).replace(/"/g, '""')));
+    const serialized = checkerSerializeScenario().serialized;
+    return { p1: p1.title, model: inject.phase.title, library: libraryPhaseOf(stimulus).title, play: play.phase.title, csv: line.includes('"' + p1.title + '"'),
+      checker: serialized.split('\\n').some(row => row.includes(p1.title) && row.includes(sbStimulusLabel(stimulus).slice(0, 20))),
+      number: inject.number, playNumber: play.number, prefix: ExportEngine.playPrefix(stimulus).split('_')[0], label: inject.numberLabel,
+      run: inject.run, sync: inject.sync, sender: inject.sender, actor: getActor(stimulus.actor_id).name, cell: inject.cell_id === stimulus.cell_id };
+  })()`);
+  assert.equal(probe.model, probe.p1);
+  assert.equal(probe.library, probe.p1);
+  assert.equal(probe.play, probe.p1);
+  assert.ok(probe.csv, 'chronogram CSV uses the same phase');
+  assert.ok(probe.checker, 'the Checker uses the storyline phases');
+  assert.equal(probe.playNumber, probe.number);
+  assert.equal(Number(probe.prefix), probe.number, 'ZIP file names use the same number');
+  assert.match(probe.label, /^#\d{2,}$/);
+  assert.ok(['draft', 'ready', 'sent'].includes(probe.run));
+  assert.ok(['synced', 'retime', 'outdated', 'manual', 'locked', 'unlinked', 'orphan'].includes(probe.sync));
+  assert.equal(probe.sender, probe.actor, 'a written inject shows the actor who signs it');
+  assert.ok(probe.cell);
+
+  // Planned injects: no number, run status "planned", the role as sender.
+  const planned = h.json(`(() => { const p = ExerciseModel.of(appState.scenario).planned[0]; return p ? { number: p.number, run: p.run, sync: p.sync, sender: p.sender, role: p.role } : null; })()`);
+  if (planned) {
+    assert.equal(planned.number, null);
+    assert.equal(planned.run, 'planned');
+    assert.equal(planned.sync, 'planned');
+    assert.equal(planned.sender, planned.role);
+  }
+  // The agent consistency check catches an inject outside every phase.
+  h.run(`getSortedStimuli()[0].timestamp_offset_minutes = sbStoryboard().duration_minutes + 500;`);
+  assert.ok(h.json(`agentConsistencyCheck ? agentConsistencyCheck().issues : []`).some(issue => /outside every phase/.test(issue)));
+});

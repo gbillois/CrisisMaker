@@ -124,8 +124,9 @@ function agentConsistencyCheck() {
   if (unwritten) issues.push(`${unwritten} planned inject(s) of the storyline are not written yet.`);
   if (!s.actors.length) issues.push('No actors.');
   if (!s.stimuli.length && !beats.length) issues.push('No inject planned or written yet.');
-  if (storyboard) getSortedStimuli().filter(item => !sbMainBlockAt(storyboard, item.timestamp_offset_minutes)).forEach(item => issues.push(`${item.id}: outside every phase of the main storyline.`));
-  const phases = s.scenario.phases || [];
+  // Same rule as every tab (exercise model): a strict window, so injects outside every phase are caught.
+  if (storyboard && sbMainBlocks(storyboard).length) getSortedStimuli().filter(item => !ExerciseModel.phaseAt(s, item.timestamp_offset_minutes, { strict: true })).forEach(item => issues.push(`${item.id}: outside every phase of the main storyline.`));
+  const phases = storyboard && sbMainBlocks(storyboard).length ? [] : (s.scenario.phases || []);
   const seen = new Map();
   getSortedStimuli().forEach((item, i, list) => {
     if (!getActor(item.actor_id)) issues.push(`${item.id}: missing actor.`);

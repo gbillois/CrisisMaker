@@ -793,7 +793,10 @@ Response format (strict JSON):
         const phaseCount = Math.max(2, Math.min(5, Math.ceil(maxOffset / 120)));
         const phaseSize = maxOffset > 0 ? maxOffset / phaseCount : 60;
 
-        const getPhase = (mins) => {
+        const getPhase = (mins, stimulus) => {
+          // The storyline phases first, with the same rule as every tab (exercise model).
+          const phase = sc.storyboard && typeof ExerciseModel !== 'undefined' ? ExerciseModel.phaseOfStimulus(sc, stimulus) : null;
+          if (phase) return phase.title;
           const planned = (sc.scenario?.phases || []).find(p => mins >= p.start_minutes && mins < p.end_minutes);
           if (planned) return planned.name;
           if (maxOffset === 0) return 'Phase 1';
@@ -812,7 +815,7 @@ Response format (strict JSON):
           const h = Math.floor(mins / 60);
           const m = mins % 60;
           const timestamp = `H+${h}${m ? ':' + String(m).padStart(2, '0') : ''}`;
-          const phase = getPhase(mins);
+          const phase = getPhase(mins, s);
           const actor = actorMap[s.actor_id];
           const sender = actor
             ? `${actor.name} (${roleLabel(actor.role)})`

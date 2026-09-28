@@ -542,7 +542,9 @@ function renderSummaryView() {
 function renderSummaryOverview(project, items, phases, duration) {
   const rows = [...project.cells];
   if (items.some((item) => !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
-  const inPhase = (item, block) => item.time >= block.start_minutes && item.time < sbBlockEnd(block);
+  // The phase of each inject comes from the exercise model: its linked phase, else the phase at its time.
+  const phaseOf = new Map(ExerciseModel.of(project).injects.map((inject) => [inject.key, inject.phase_id]));
+  const inPhase = (item, block) => phaseOf.get(item.key) === block.id;
   const max = Math.max(1, ...rows.flatMap((row) => phases.map((block) => items.filter((item) => (row.id === 'none' ? !sbCell(project, item.cell_id) : item.cell_id === row.id) && inPhase(item, block)).length)));
   const buckets = Math.max(1, Math.ceil(duration / 30));
   return `<div class="su-band">${phases.map((block) => `<span style="flex:${block.duration_minutes};--clip-color:${sbBlockColor(block, project.storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}">${escapeHtml(block.title)}</span>`).join('') || '<span class="sb-empty">No phase</span>'}</div>
