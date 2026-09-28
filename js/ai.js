@@ -106,6 +106,11 @@
         };
       }
 
+      /* HTTP 400 "… does not support thinking": the model has no reasoning switch. */
+      function ollamaRejectsThink(error) {
+        return /think/i.test(String(error?.message || '')) && (!error?.status || error.status === 400);
+      }
+
       function ollamaProxyOptions(url, init) {
         return {
           method: 'POST',
@@ -394,7 +399,7 @@
             const processLine = (line) => {
               if (!line.trim()) return;
               const event = JSON.parse(line);
-              if (event.error) throw new Error(event.error);
+              if (event.error) throw new Error(typeof event.error === 'string' ? event.error : event.error.message || JSON.stringify(event.error));
               const delta = extractDelta(event);
               if (delta) {
                 fullText += delta;
@@ -508,13 +513,35 @@
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
                 ...(!isOllamaCloud() ? { format: 'json' } : {}),
                 options: { num_predict: maxTokens, num_ctx: ollamaContextSize(systemPrompt, userPrompt, maxTokens) },
-                stream: true
+                stream: true,
+                think: false
               })
             };
-            const response = await requestStream(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
-              isOllamaCloud() ? ollamaProxyOptions(url, init) : init,
+            const send = (requestInit) => requestStream(isOllamaCloud() ? AI_PROVIDER_PROXY : url,
+              isOllamaCloud() ? ollamaProxyOptions(url, requestInit) : requestInit,
               { operation: 'Stream Ollama response', provider: 'ollama', model: ai_model });
-            const fullText = await readNDJSON(response, (event) => event.message?.content || null);
+            // As in generateOnce: answer directly; a model without the switch is called without it.
+            let thinking = '', doneReason = '';
+            const read = (response) => readNDJSON(response, (event) => {
+              if (event.message?.thinking) { thinking += event.message.thinking; touch(); }
+              if (event.done) doneReason = event.done_reason || '';
+              return event.message?.content || null;
+            });
+            let fullText;
+            try { fullText = await read(await send(init)); }
+            catch (error) {
+              if (controller.signal.aborted || !ollamaRejectsThink(error)) throw error;
+              const body = JSON.parse(init.body); delete body.think;
+              fullText = await read(await send({ ...init, body: JSON.stringify(body) }));
+            }
+            if (!fullText.trim() && thinking.includes('{')) fullText = firstJsonObject(thinking.slice(thinking.lastIndexOf('{"'))) || '';
+            if (!fullText.trim()) {
+              throw CrisisError.create(thinking
+                ? 'The Ollama model only returned its reasoning, no answer. Retry, or choose another model in Settings.'
+                : 'Empty Ollama response: the model answered nothing. Retry, or choose another model in Settings.',
+                { operation: 'Stream Ollama response', provider: 'ollama', model: ai_model, code: doneReason || 'empty' });
+            }
+            assertCompleteReply(doneReason, 'ollama', ai_model);
             return parseLLMJson(fullText);
           }
 
@@ -692,9 +719,17 @@
               }
               return CrisisError.responseJson(response, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
             };
-            let data = await call();
-            // A reasoning model (gpt-oss, qwen3, deepseek-r1…) can spend its whole budget
-            // thinking and answer nothing: once more without reasoning and with more room.
+            // Reasoning models (GLM, qwen3, deepseek-r1…) think first by default: on a JSON task
+            // that can use the whole budget and the time limit, and leave the answer empty.
+            // Asked to answer directly; a model that has no such switch is called without it.
+            let data;
+            try { data = await call({ think: false }); }
+            catch (error) {
+              if (options.signal?.aborted || !ollamaRejectsThink(error)) throw error;
+              data = await call();
+            }
+            if (data?.error) throw CrisisError.create(`Ollama: ${data.error}`, { operation: 'Call Ollama', provider: 'ollama', model: ai_model });
+            // Still nothing (the model reasoned anyway, or ran out of room): once more with more room.
             if (!data.message?.content && (data.message?.thinking || data.done_reason === 'length')) {
               try { data = await call({ think: false }, Math.min(32768, maxTokens * 2)); }
               catch (error) { if (options.signal?.aborted) throw error; }

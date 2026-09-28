@@ -340,23 +340,45 @@ test('failures say why: the provider reason (secrets and links removed), timeout
   assert.deepEqual(asked, [8000, 4096]);
 });
 
-test('Ollama: a reasoning model that answers nothing is asked again without reasoning, else a clear message', async () => {
+test('Ollama: reasoning models (GLM, qwen3…) are asked to answer directly, in both call paths', async () => {
   const h = harness();
-  h.run(`appState.scenario.settings.ai_provider = 'ollama'; appState.scenario.settings.ai_model = 'qwen3'; appState.scenario.settings.ollama_endpoint = 'http://localhost:11434';`);
+  h.run(`appState.scenario.settings.ai_provider = 'ollama'; appState.scenario.settings.ai_model = 'glm-4.6'; appState.scenario.settings.ollama_endpoint = 'http://localhost:11434';`);
   const bodies = [];
-  const reply = (data) => ({ ok: true, status: 200, clone() { return this; }, text: async () => JSON.stringify(data), json: async () => data });
+  const reply = (data, status = 200) => ({ ok: status < 400, status, statusText: status < 400 ? 'OK' : 'Bad Request', headers: { get: () => 'application/json' }, clone() { return this; }, text: async () => JSON.stringify(data), json: async () => data });
+  const final = '{"type":"final","summary":"ok","issues":[],"changes":[]}';
+  // A reasoning model: no thinking phase asked, one call.
+  h.context.fetch = async (url, init) => { const body = JSON.parse(init.body); bodies.push(body); return reply({ message: { content: final }, done_reason: 'stop' }); };
+  assert.equal((await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`)).summary, 'ok');
+  assert.equal(bodies.length, 1);
+  assert.equal(bodies[0].think, false);
+  // A model without the switch: called again without it.
+  bodies.length = 0;
   h.context.fetch = async (url, init) => {
     const body = JSON.parse(init.body); bodies.push(body);
-    return body.think === false
-      ? reply({ message: { content: '{"type":"final","summary":"ok","issues":[],"changes":[]}' }, done_reason: 'stop' })
-      : reply({ message: { content: '', thinking: 'Let me think for a long time…' }, done_reason: 'length' });
+    return 'think' in body ? reply({ error: '"llama3.2" does not support thinking' }, 400) : reply({ message: { content: final }, done_reason: 'stop' });
   };
-  const result = await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`);
-  assert.equal(result.summary, 'ok');
+  assert.equal((await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`)).summary, 'ok');
   assert.equal(bodies.length, 2);
-  assert.equal(bodies[1].think, false);
-  assert.ok(bodies[1].options.num_predict > bodies[0].options.num_predict);
-  // Still nothing: the message says to pick a model without reasoning.
-  h.context.fetch = async () => reply({ message: { content: '', thinking: 'Only thoughts' }, done_reason: 'stop' });
+  assert.ok(!('think' in bodies[1]));
+  // Thinks anyway and runs out of room: once more with more room, then a clear message.
+  bodies.length = 0;
+  h.context.fetch = async (url, init) => { bodies.push(JSON.parse(init.body)); return reply({ message: { content: '', thinking: 'Only thoughts' }, done_reason: 'length' }); };
   await assert.rejects(h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`), (error) => /only returned its reasoning/.test(error.message));
+  assert.equal(bodies.length, 2);
+  assert.ok(bodies[1].options.num_predict > bodies[0].options.num_predict);
+  // An error in the body is reported as is, not as an empty answer.
+  h.context.fetch = async () => reply({ error: 'model "glm-5" not found' });
+  await assert.rejects(h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 5000, { strictJSON: true })`), (error) => /not found/.test(error.message));
+  // Streaming (Check & Challenge): no thinking phase asked; an answer left in the reasoning is used.
+  h.context.TextDecoder = TextDecoder;
+  bodies.length = 0;
+  const stream = (lines) => {
+    const chunks = lines.map((line) => new TextEncoder().encode(`${JSON.stringify(line)}\n`));
+    return { ok: true, status: 200, headers: { get: () => 'application/x-ndjson' }, body: { getReader: () => ({ read: async () => (chunks.length ? { done: false, value: chunks.shift() } : { done: true }), cancel() {} }) } };
+  };
+  h.context.fetch = async (url, init) => { bodies.push(JSON.parse(init.body)); return stream([{ message: { content: '', thinking: 'Reasoning… {"summary":"from thoughts"}' } }, { done: true, done_reason: 'stop', message: { content: '' } }]); };
+  assert.equal((await h.run(`AITextGenerator.generateStreaming('checker_analysis', 'system', 'user', null, 4000)`)).summary, 'from thoughts');
+  assert.equal(bodies[0].think, false);
+  h.context.fetch = async () => stream([{ message: { content: '' } }, { done: true, done_reason: 'stop', message: { content: '' } }]);
+  await assert.rejects(h.run(`AITextGenerator.generateStreaming('checker_analysis', 'system', 'user', null, 4000)`), (error) => /Empty Ollama response/.test(error.message));
 });

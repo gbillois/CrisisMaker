@@ -439,7 +439,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   assert.ok(!inject.includes('data-tab-action="ds-plan"') && !inject.includes('ds-cell-chip is-add'), 'no "Plan with AI", no "+ Cell"');
   h.run(`tabUI('summary').review = { score: null, summary: '', issues: sbExerciseChecks(appState.scenario) }; tabUI('summary').time = 120`);
   const summary = h.run('renderSummaryView()');
-  for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'data-su-scrub', 'data-su-columns', 'data-su-rehearse', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
+  for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'cc-launch', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
   h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'; appState.scenario.cells[0].name = '<img src=y onerror=alert(1)>'; sbUI().selected = [sbStoryboard().blocks[0].id]`);
   for (const view of ['renderStorylineView()', 'renderCellsView()', 'renderDetailedView()', 'renderSummaryView()']) assert.ok(!/<img src=[xy]/.test(h.run(view)), view);
 });

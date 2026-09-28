@@ -921,15 +921,28 @@ async function callAI(systemPrompt, userPrompt){
     const d = await r.json();
     return d.choices[0].message.content;
   } else if (provider === 'ollama') {
-    const r = await fetchOllamaApi(baseUrl + '/api/chat', {
+    // Reasoning models (GLM, qwen3, deepseek-r1…) are asked to answer directly; a model
+    // without that switch (HTTP 400 "does not support thinking") is called without it.
+    const call = (think) => fetchOllamaApi(baseUrl + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(key ? { 'Authorization': 'Bearer ' + key } : {}) },
-      body: JSON.stringify({ model, ...(baseUrl !== 'https://ollama.com' ? { format: 'json' } : {}), stream: false, options: { num_predict: 8000 },
+      body: JSON.stringify({ model, ...(baseUrl !== 'https://ollama.com' ? { format: 'json' } : {}), stream: false, options: { num_predict: 8000, num_ctx: 32768 },
+        ...(think === false ? { think: false } : {}),
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
     });
+    let r = await call(false);
+    if (r.status === 400) {
+      const text = await r.clone().text();
+      if (/think/i.test(text)) r = await call();
+    }
     if (!r.ok) throw new Error('Ollama ' + r.status + ' : ' + (await r.text()).slice(0, 300));
     const d = await r.json();
-    return d.message.content;
+    if (d.error) throw new Error('Ollama: ' + d.error);
+    const content = d.message?.content || '';
+    if (content.trim()) return content;
+    const thinking = d.message?.thinking || '';
+    if (thinking.includes('{')) return thinking.slice(thinking.indexOf('{'), thinking.lastIndexOf('}') + 1);
+    throw new Error(uiText('Réponse Ollama vide : réessayez ou choisissez un autre modèle.', 'Empty Ollama response: retry, or choose another model.', 'Leere Ollama-Antwort: erneut versuchen oder ein anderes Modell wählen.'));
   }
 }
 

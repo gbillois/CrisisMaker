@@ -3,7 +3,6 @@
    opens at the bottom of the screen. */
 const DS_CARD_WIDTH = 168;
 const DS_ROW_HEIGHT = 46;
-const SU_SPEEDS = [30, 60, 180, 600];
 const CE_ACTOR_GROUPS = [
   ['attacker', 'Attackers'], ['journalist', 'Press & media'], ['authority', 'Authorities & regulators'],
   ['client_b2b', 'Business customers'], ['client_b2c', 'Consumers'], ['partner', 'Partners & suppliers'],
@@ -16,7 +15,7 @@ function tabUI(name) {
   if (!ui.tabs[name]) {
     ui.tabs[name] = {
       detailed: { cell: 'all', selected: null, zoom: null, needsFit: true, scrollLeft: 0, scrollTop: 0, playhead: 0, focusTime: null },
-      summary: { time: 0, speed: 60, playing: false, preview: null, review: null },
+      summary: { review: null },
       storyline: { editorOpen: true }
     }[name] || {};
   }
@@ -560,7 +559,7 @@ function renderInjectEditor(project, item) {
 // ═══ Summary ═════════════════════════════════════════════════════════════════
 /* Check & Challenge: is the exercise ready to play? One readiness verdict from three signals
    (automatic checks, the AI challenge, the ready-to-play checklist), then the load per cell
-   and phase, the live checks, the AI challenge, the checklist and a cell-by-cell rehearsal. */
+   and phase, the live checks, the AI challenge and the checklist. */
 function ccChecklistProgress() {
   if (typeof checkerGetChecklistCategories !== 'function') return { done: 0, total: 0 };
   const checklist = appState.checkerState.checklist || {};
@@ -633,7 +632,6 @@ function renderSummaryView() {
     const items = sbExerciseItems(project);
     const phases = sbMainBlocks(storyboard);
     const duration = Math.max(storyboard.duration_minutes, ...items.map((item) => item.time));
-    state.time = Math.min(Math.max(0, state.time), duration);
     const generated = items.filter((item) => item.stimulus).length;
     const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
     const rules = ccRuleIssues(project);
@@ -652,8 +650,8 @@ function renderSummaryView() {
       readiness.list.total && readiness.list.done < readiness.list.total ? `tick the ready-to-play checklist (${readiness.list.done}/${readiness.list.total})` : ''
     ].filter(Boolean);
     const hint = steps.length ? `Next: ${steps.join(', then ')}.` : 'The checks, the AI challenge and the checklist agree.';
-    const gauge = (label, value, hint) => `<div class="cc-gauge ${value === null ? 'is-empty' : value >= 80 ? 'is-good' : value >= 60 ? 'is-mid' : 'is-low'}">
-      <span class="cc-gauge-label">${escapeHtml(label)}</span>
+    const gauge = (label, value, hint, action = '') => `<div class="cc-gauge ${value === null ? 'is-empty' : value >= 80 ? 'is-good' : value >= 60 ? 'is-mid' : 'is-low'}">
+      <span class="cc-gauge-label">${escapeHtml(label)}${action}</span>
       <strong>${value === null ? '—' : `${value}<small>/100</small>`}</strong>
       <span class="cc-gauge-bar"><i style="width:${value || 0}%"></i></span>
       <span class="cc-gauge-hint">${escapeHtml(hint)}</span>
@@ -662,6 +660,9 @@ function renderSummaryView() {
     const aiIssues = (state.review?.issues || []).filter((issue) => issue.source === 'ai');
     const review = { score: null, summary: state.review?.summary || '', issues: [...rules, ...aiIssues] };
     const running = cs.analysisLoading || !!SbAI.busy;
+    const canChallenge = isLLMAvailable() && !running && (source === 'file' || generated || storyboard.blocks.length);
+    // Launch the AI challenge from its gauge: the results show in the "Challenge with AI" card below.
+    const launch = `<button class="btn btn-primary btn-xs cc-launch" data-action="checker-analyze" ${canChallenge ? '' : 'disabled'} title="${escapeAttribute(isLLMAvailable() ? (running ? 'The challenge is running' : 'Challenge the exercise with AI') : 'Configure an AI connection in Settings first')}">${sbUiIcon(running ? 'clock' : 'sparkles', 12)} ${running ? 'Running…' : 'Launch'}</button>`;
     state.liveIssues = review.issues;
     return `<section class="tab-page su-page" data-sb-scope>
       ${renderSbStatusBar()}
@@ -674,7 +675,7 @@ function renderSummaryView() {
         </div>
         <div class="cc-gauges">
           ${gauge('Automatic checks', readiness.structure, `${rules.filter((issue) => issue.severity === 'error').length} error(s), ${rules.filter((issue) => issue.severity === 'warning').length} warning(s)`)}
-          ${gauge('AI challenge', readiness.ai, readiness.ai === null ? 'Not run yet' : 'Last challenge of the current scenario')}
+          ${gauge('AI challenge', readiness.ai, readiness.ai === null ? 'Not run yet' : 'Last challenge of the current scenario', launch)}
           ${gauge('Ready-to-play checklist', readiness.checklist, `${readiness.list.done} / ${readiness.list.total} items checked`)}
         </div>
         <div class="su-kpis cc-kpis">
@@ -703,29 +704,13 @@ function renderSummaryView() {
             ${fileLoaded ? '' : `<button class="btn btn-ghost btn-xs" data-route="scenario">Load a file in Context ${sbUiIcon('chevronRight', 12)}</button>`}
           </div>
           ${cs.analysisResult || cs.analysisLoading || cs.analysisError ? '' : `<div class="cc-run">
-            <button class="btn btn-primary" data-action="checker-analyze" ${isLLMAvailable() && !running && (source === 'file' || generated || storyboard.blocks.length) ? '' : 'disabled'}>${sbUiIcon('sparkles', 15)} Challenge with AI</button>
+            <button class="btn btn-primary" data-action="checker-analyze" ${canChallenge ? '' : 'disabled'}>${sbUiIcon('sparkles', 15)} Challenge with AI</button>
             ${isLLMAvailable() ? '' : '<p class="agent-warning">Configure an AI connection in Settings to challenge the exercise.</p>'}
           </div>`}
           ${typeof renderCheckerResults === 'function' ? renderCheckerResults() : ''}
         </article>
       </div>
       ${typeof renderCheckerChecklist === 'function' ? renderCheckerChecklist() : ''}
-      <details class="card su-play" data-su-play data-su-rehearse ${state.rehearseOpen ? 'open' : ''}>
-        <summary class="section-header">
-          <div><h3>Rehearse cell by cell</h3><p class="subtle">Replay the exercise in accelerated time and watch the injects reach each cell. To run it for real, use Play.</p></div>
-          ${sbUiIcon('down', 16)}
-        </summary>
-        <div class="su-controls">
-          <button class="btn btn-primary btn-sm" data-tab-action="su-toggle">${state.playing ? `${sbUiIcon('stop', 13)} Pause` : `${sbUiIcon('play', 13)} Play`}</button>
-          <button class="btn btn-secondary btn-sm" data-tab-action="su-restart" title="Back to the start">${sbUiIcon('undo', 13)}</button>
-          <select data-su-speed aria-label="Speed">${SU_SPEEDS.map((speed) => sbOption(speed, `×${speed}`, state.speed)).join('')}</select>
-          <span class="su-time" data-su-time>${sbFormatOffset(state.time)}</span>
-        </div>
-        <input type="range" class="su-scrub" min="0" max="${duration}" step="1" value="${Math.round(state.time)}" data-su-scrub aria-label="Exercise time">
-        <div class="su-phase-now" data-su-phase>${escapeHtml(sbMainBlockAt(storyboard, state.time)?.title || '')}</div>
-        <div class="su-columns" data-su-columns>${renderSummaryColumns(project, items)}</div>
-        <div class="su-preview" data-su-preview>${renderSummaryPreview(project, items)}</div>
-      </details>
     </section>`;
   });
 }
@@ -754,29 +739,6 @@ function renderSummaryOverview(project, items, phases, duration) {
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;
-}
-
-function renderSummaryColumns(project, items) {
-  const state = tabUI('summary');
-  const rows = [...project.cells];
-  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
-  if (!rows.length) return '<p class="sb-empty">No cell yet.</p>';
-  return rows.map((row) => {
-    const own = items.filter((item) => (row.id === 'none' ? !sbHasRecipient(project, item.cell_id) : sbReaches(item.cell_id, row.id)) && item.time <= state.time).reverse();
-    return `<div class="su-col" style="--cell-color:${row.color}">
-      <div class="su-col-head"><span class="cell-dot"></span>${escapeHtml(row.name)}<b>${own.length}</b></div>
-      <ol>${own.slice(0, 30).map((item) => `<li class="${state.time - item.time < 3 ? 'is-new' : ''} ${state.preview === item.key ? 'is-selected' : ''}" data-su-item="${escapeAttribute(item.key)}" style="--beat-color:${sbChannelColor(item.channel)}"><span>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}</span><strong>${escapeHtml(item.title)}</strong></li>`).join('') || '<li class="is-waiting">Waiting…</li>'}</ol>
-    </div>`;
-  }).join('');
-}
-
-function renderSummaryPreview(project, items) {
-  const state = tabUI('summary');
-  const item = items.find((entry) => entry.key === state.preview);
-  if (!item) return '';
-  const cell = sbCell(project, item.cell_id);
-  return `<div class="su-preview-head"><strong>${escapeHtml(item.title)}</strong><span>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))} · from ${escapeHtml(item.sender || '-')} · to ${escapeHtml(cell?.name || 'unassigned')}</span><button class="btn btn-ghost btn-xs" data-tab-action="su-goto" data-tab-value="${escapeAttribute(item.key)}">Edit →</button></div>
-    ${item.stimulus ? `<div class="su-preview-render">${renderStimulusPreview(item.stimulus, `su-preview-${item.stimulus.id}`)}</div>` : `<p class="sb-help">Planned, not written yet: ${escapeHtml(item.intent || '')}</p>`}`;
 }
 
 function renderSummaryReview(project, review = tabUI('summary').review) {
@@ -809,49 +771,6 @@ const SU_ISSUE_LABELS = {
   phase_empty: 'Phases without inject', no_cell: 'Injects without recipient cell', no_sender: 'Injects without sender', orphan: 'Injects no longer matching the storyline',
   after_end: 'Injects after the end', other: 'Other'
 };
-
-const SuPlayer = {
-  timer: null,
-  last: 0,
-  start() {
-    const state = tabUI('summary');
-    state.playing = true;
-    this.last = Date.now();
-    // The injects do not change during playback: listed once, not 4 times a second.
-    this.items = sbExerciseItems(appState.scenario);
-    clearInterval(this.timer);
-    this.timer = setInterval(() => this.tick(), 250);
-  },
-  stop() {
-    tabUI('summary').playing = false;
-    clearInterval(this.timer);
-    this.timer = null;
-  },
-  tick() {
-    const state = tabUI('summary');
-    if (appState.route !== 'summary') { this.stop(); return; }
-    const now = Date.now();
-    const project = appState.scenario;
-    const items = this.items || sbExerciseItems(project);
-    const duration = Math.max(project.storyboard.duration_minutes, ...items.map((item) => item.time));
-    state.time = Math.min(duration, state.time + state.speed * (now - this.last) / 60000);
-    this.last = now;
-    if (state.time >= duration) { this.stop(); App.render(); return; }
-    suRefreshPlayback(project, items);
-  }
-};
-
-function suRefreshPlayback(project, items = sbExerciseItems(project)) {
-  const state = tabUI('summary');
-  const time = document.querySelector('[data-su-time]');
-  if (time) time.textContent = sbFormatOffset(state.time);
-  const scrub = document.querySelector('[data-su-scrub]');
-  if (scrub && document.activeElement !== scrub) scrub.value = String(Math.round(state.time));
-  const phase = document.querySelector('[data-su-phase]');
-  if (phase) phase.textContent = sbMainBlockAt(project.storyboard, state.time)?.title || '';
-  const columns = document.querySelector('[data-su-columns]');
-  if (columns) sbWithRenderMemo(() => { columns.innerHTML = renderSummaryColumns(project, items); });
-}
 
 // ═══ Context tab helpers ══════════════════════════════════════════════
 function renderContextGlance(project) {
@@ -1065,7 +984,7 @@ async function tabHandleAction(event) {
   const storyboard = project.storyboard;
   const detailed = tabUI('detailed');
   const summary = tabUI('summary');
-  const readOnlyAllowed = ['sl-event-focus', 'ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
+  const readOnlyAllowed = ['sl-event-focus', 'ds-cell', 'ds-phase', 'ds-deselect', 'su-issue', 'open-detailed'];
   if (sbReadOnly() && !readOnlyAllowed.includes(action)) return;
   try {
     switch (action) {
@@ -1176,35 +1095,9 @@ async function tabHandleAction(event) {
         pushToast(manual ? 'Inject adapted, keeping your edits.' : 'Inject rewritten.', 'success');
         break;
       }
-      case 'su-toggle':
-        if (summary.playing) SuPlayer.stop();
-        else {
-          const items = sbExerciseItems(project);
-          const duration = Math.max(storyboard.duration_minutes, ...items.map((item) => item.time));
-          if (summary.time >= duration) summary.time = 0;
-          SuPlayer.start();
-        }
-        break;
-      case 'su-restart':
-        SuPlayer.stop();
-        summary.time = 0;
-        summary.preview = null;
-        break;
-      case 'su-goto': {
-        const item = tabItemByKey(project, value);
-        if (!item) break;
-        SuPlayer.stop();
-        appState.route = 'detailed';
-        detailed.cell = sbCell(project, item.cell_id) ? item.cell_id : 'all';
-        detailed.selected = item.key;
-        detailed.playhead = item.time;
-        detailed.focusTime = item.time;
-        break;
-      }
       case 'su-issue': {
         const issue = (summary.liveIssues || summary.review?.issues)?.[Number(value)];
         if (!issue) break;
-        SuPlayer.stop();
         appState.route = 'detailed';
         detailed.cell = sbCell(project, issue.cell_id) ? issue.cell_id : 'all';
         detailed.selected = issue.item_key || null;
@@ -1379,22 +1272,6 @@ function tabBindInputs(root) {
     renderAfterPointer();
   }));
 
-  // Summary playback controls.
-  root.querySelectorAll('[data-su-rehearse]').forEach((details) => details.addEventListener('toggle', () => { summary.rehearseOpen = details.open; }));
-  root.querySelectorAll('[data-su-speed]').forEach((select) => select.addEventListener('change', () => { summary.speed = Number(select.value) || 60; }));
-  root.querySelectorAll('[data-su-scrub]').forEach((input) => input.addEventListener('input', () => {
-    summary.time = Number(input.value) || 0;
-    suRefreshPlayback(project);
-  }));
-  root.querySelectorAll('[data-su-play]').forEach((container) => container.addEventListener('click', (event) => {
-    const entry = event.target.closest('[data-su-item]');
-    if (!entry) return;
-    summary.preview = entry.dataset.suItem;
-    const preview = container.querySelector('[data-su-preview]');
-    if (preview) sbWithRenderMemo(() => { preview.innerHTML = renderSummaryPreview(project, sbExerciseItems(project)); });
-    container.querySelectorAll('[data-su-item]').forEach((node) => node.classList.toggle('is-selected', node.dataset.suItem === summary.preview));
-    preview?.querySelector('[data-tab-action]')?.addEventListener('click', tabHandleAction);
-  }));
 }
 
 function dsBindTimeline(root) {
@@ -1512,10 +1389,7 @@ function dsBindTimeline(root) {
 let dsLastPress = { key: '', at: 0 };
 
 function bindScenarioTabsEvents() {
-  if (!['scenario', 'storyline', 'cells', 'detailed', 'summary'].includes(appState.route)) {
-    if (SuPlayer.timer) SuPlayer.stop();
-    return;
-  }
+  if (!['scenario', 'storyline', 'cells', 'detailed', 'summary'].includes(appState.route)) return;
   document.querySelectorAll('[data-sb-scope]').forEach((root) => { tabBindInputs(root); bindEditorSplitter(root); });
   if (appState.route === 'detailed') {
     const root = document.querySelector('.ds-workspace');

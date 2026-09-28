@@ -174,18 +174,13 @@ function answerFor(system, user) {
   assert.ok(stimuli.every(s => s.cell === firstCell && s.linked), 'only the selected cell was generated');
   await page.click('[data-sb-action="close-modal"]');
 
-  // 5. Check & Challenge: readiness, live checks, one AI challenge, folded rehearsal.
+  // 5. Check & Challenge: readiness, live checks, one AI challenge launched from its gauge.
   assert.equal(await page.evaluate(() => document.querySelector('.nav-icon-btn[data-route="checker"]')), null, 'no separate Checker tab');
   await page.click('.nav-icon-btn[data-route="summary"]');
   assert.ok((await page.locator('.page-title, h2').first().innerText()).includes('Check & Challenge'));
   assert.ok(await page.isVisible('.cc-readiness') && await page.isVisible('.su-issue-group'), 'readiness and live checks without running anything');
-  assert.equal(await page.isVisible('[data-su-columns]'), false, 'rehearsal folded');
-  await page.click('[data-su-rehearse] > summary');
-  await page.click('[data-tab-action="su-toggle"]');
-  await page.waitForFunction(() => tabUI('summary').time > 0);
-  await page.click('[data-tab-action="su-toggle"]');
-  assert.equal(await page.evaluate(() => tabUI('summary').playing), false);
-  assert.equal(await page.evaluate(() => tabUI('summary').rehearseOpen), true);
+  assert.equal(await page.locator('[data-su-rehearse]').count(), 0, 'no rehearsal block');
+  assert.ok(await page.isVisible('.cc-gauge .cc-launch'), 'Launch button in the AI challenge gauge');
   // The five-axis analysis streams; the timing review goes through the mocked chat endpoint.
   await page.evaluate(() => {
     const original = AITextGenerator.generateStreaming;
@@ -193,7 +188,7 @@ function answerFor(system, user) {
       ? { summary: 'Solid storyline, thin external pressure.', maturity: 'advanced_draft', priority_actions: ['Add a media inject in phase 2'], axes: [1, 2, 3, 4, 5].map(id => ({ id, title: `Axis ${id}`, verdict: id === 3 ? 'insufficient' : 'satisfactory', positive: ['Good'], negative: id === 3 ? ['No press'] : [], recommendations: ['Keep'] })) }
       : original.call(AITextGenerator, kind, ...rest);
   });
-  await page.click('.cc-run [data-action="checker-analyze"]');
+  await page.click('.cc-gauge .cc-launch');
   await page.waitForFunction(() => tabUI('summary').review?.issues.some(issue => issue.source === 'ai') && appState.checkerState.analysisResult);
   await page.waitForFunction(() => !appState.checkerState.analysisLoading && !SbAI.busy);
   assert.ok(await page.isVisible('.su-issue-group'));
