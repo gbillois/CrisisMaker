@@ -149,6 +149,10 @@
           scenario.storyboard = sbBuildExampleStoryboard(scenario);
           const objectiveList = sbObjectivesList(scenario);
           scenario.storyboard.blocks.forEach((block, index) => { block.objectives = [objectiveList[[0, 1, 0, 4, 4, 3, 3, 2][index] ?? 0]]; });
+          scenario.cells = [];
+          scenario.exercise = { players_count: 12, cells_count: '' };
+          sbFlattenWorkstreams(scenario);
+          scenario.exercise.cells_count = scenario.cells.length;
           scenario.scenario.phases = sbDerivePhases(scenario.storyboard);
           sbSealLinks(scenario);
         }
@@ -178,6 +182,8 @@
           stimuli: [],
           storyboard: storyboardModelLoaded() ? sbEmptyStoryboard() : undefined,
           storyboard_versions: [],
+          cells: [],
+          exercise: { players_count: '', cells_count: '' },
           debrief: makeEmptyDebrief({ ...base, client: { ...base.client, name: '' } }),
           video_debrief: normalizeVideoDebrief(null, settingsOverrides.inject_language || settingsOverrides.language || 'en'),
           settings: { ...base.settings, ...settingsOverrides }
@@ -269,8 +275,11 @@
           ),
           custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : [],
           storyboard: storyboardModelLoaded() ? normalizeStoryboard(input.storyboard, input.scenario?.phases) : input.storyboard,
-          storyboard_versions: storyboardModelLoaded() ? sbNormalizeVersions(input.storyboard_versions) : []
+          storyboard_versions: storyboardModelLoaded() ? sbNormalizeVersions(input.storyboard_versions) : [],
+          cells: storyboardModelLoaded() ? sbNormalizeCells(input.cells) : [],
+          exercise: storyboardModelLoaded() ? sbNormalizeExercise(input.exercise) : { players_count: '', cells_count: '' }
         };
+        if (storyboardModelLoaded()) sbFlattenWorkstreams(merged);
         // The storyboard owns the timed phases; keep the legacy field derived from it.
         if (storyboardModelLoaded() && (merged.storyboard.blocks.length || !Array.isArray(input.scenario?.phases))) merged.scenario.phases = sbDerivePhases(merged.storyboard);
         if (!input.scenario || !('objectives' in input.scenario)) delete merged.scenario.objectives;
@@ -355,7 +364,8 @@
           manual_overrides: stimulus.manual_overrides || {},
           watermark: stimulus.watermark || null,
           history: stimulus.history || [],
-          ...(stimulus.scenario_link && typeof sbNormalizeLink === 'function' ? { scenario_link: sbNormalizeLink(stimulus.scenario_link) } : {})
+          ...(stimulus.scenario_link && typeof sbNormalizeLink === 'function' ? { scenario_link: sbNormalizeLink(stimulus.scenario_link) } : {}),
+          ...(typeof stimulus.cell_id === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(stimulus.cell_id) ? { cell_id: stimulus.cell_id } : {})
         };
       }
 

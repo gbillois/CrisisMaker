@@ -34,20 +34,6 @@ function sbFitZoom() {
   return changed;
 }
 
-/* Selecting a block brings the inspector back if it was hidden. */
-function sbRevealInspector() {
-  sbPanels().right = true;
-}
-
-function sbTogglePanel(side, value = null) {
-  const panels = sbPanels();
-  if (side === 'left') panels.left = panels.left === (value || 'blocks') ? null : (value || 'blocks');
-  else if (side === 'right') panels.right = !panels.right;
-  else panels.monitor = panels.monitor === 'full' ? 'compact' : 'full';
-  sbSavePanels();
-  App.render();
-}
-
 function sbEnsureTrackFor(storyboard, type) {
   const preset = SB_BLOCK_TYPES[type] || SB_BLOCK_TYPES.custom;
   let track = sbTrackByKey(storyboard, preset.track);
@@ -75,7 +61,6 @@ function sbAddBlock(type, trackId = null, start = null) {
   ui.selected = [block.id];
   ui.inspector = 'brief';
   ui.scrollTo = block.id;
-  sbRevealInspector();
   sbCommitRender(`Add ${SB_BLOCK_TYPES[type]?.label || 'block'}`);
   return block;
 }
@@ -143,6 +128,7 @@ function sbReplaceStoryboard(storyboard, label) {
   StoryboardHistory.flush();
   storyboard.rev = (project.storyboard?.rev || 0) + 1;
   project.storyboard = storyboard;
+  sbFlattenWorkstreams(project);
   StoryboardHistory.ensure(project, label);
   sbAfterStoryboardChange(project, { save: true });
 }
@@ -154,7 +140,7 @@ async function sbHandleAction(event) {
   const project = appState.scenario;
   const storyboard = sbStoryboard();
   const block = sbSelectedBlock();
-  const allowedWhileBusy = ['toggle-left', 'toggle-right', 'toggle-monitor', 'stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template'];
+  const allowedWhileBusy = ['stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template'];
   if (sbReadOnly() && !allowedWhileBusy.includes(action)) return;
   try {
     switch (action) {
@@ -200,15 +186,6 @@ async function sbHandleAction(event) {
         appState.route = 'scenario';
         App.render();
         break;
-      case 'toggle-left':
-        sbTogglePanel('left', element.dataset.sbValue);
-        break;
-      case 'toggle-right':
-        sbTogglePanel('right');
-        break;
-      case 'toggle-monitor':
-        sbTogglePanel('monitor');
-        break;
       case 'set-inspector':
         ui.inspector = element.dataset.sbValue;
         App.render();
@@ -216,15 +193,13 @@ async function sbHandleAction(event) {
       case 'select-block':
         ui.selected = [element.dataset.sbBlock];
         ui.scrollTo = element.dataset.sbBlock;
-        sbRevealInspector();
-        App.render();
+              App.render();
         break;
       case 'select-blocks':
         ui.selected = element.dataset.sbBlocks.split(',').filter((id) => sbBlock(storyboard, id));
         ui.scrollTo = ui.selected[0];
         ui.modal = null;
-        sbRevealInspector();
-        App.render();
+              App.render();
         break;
       case 'deselect':
         ui.selected = [];
@@ -390,7 +365,7 @@ async function sbHandleAction(event) {
         ui.selected = [];
         ui.playhead = 0;
         if (mode === 'replace') ui.zoom = null;
-        appState.route = 'builder';
+        appState.route = 'storyline';
         pushToast(`"${template.name}" ${mode === 'insert' ? 'inserted' : 'loaded'}. Refine blocks, then generate injects.`, 'success');
         App.render();
         break;
@@ -409,7 +384,7 @@ async function sbHandleAction(event) {
           ui.modal = null;
           ui.selected = [];
           ui.zoom = null;
-          appState.route = 'builder';
+          appState.route = 'storyline';
           pushToast(`"${template.name}" adapted to your organisation.`, 'success');
         } catch (error) {
           pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
@@ -524,7 +499,7 @@ async function sbHandleAction(event) {
           ui.modal = null;
           ui.selected = [];
           ui.zoom = null;
-          appState.route = 'builder';
+          appState.route = 'storyline';
           pushToast('Skeleton generated. Deepen blocks layer by layer, then generate injects.', 'success');
         } catch (error) {
           pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
@@ -559,7 +534,8 @@ async function sbHandleAction(event) {
         break;
       case 'start-generation': {
         const ids = ui.generate.scope === 'selection' ? ui.selected.filter((id) => sbBlock(storyboard, id)) : null;
-        const result = await SbPipeline.run({ blockIds: ids && ids.length ? ids : null, plan: ui.generate.plan, cast: ui.generate.cast, write: ui.generate.write });
+        const cellIds = ui.generate.scope === 'cell' && sbCell(project, ui.generate.cellId) ? [ui.generate.cellId] : null;
+        const result = await SbPipeline.run({ blockIds: ids && ids.length ? ids : null, cellIds, plan: ui.generate.plan && !cellIds, cast: ui.generate.cast, write: ui.generate.write });
         ui.impacts = null;
         if (SbPipeline.status === 'complete') pushToast(`${result.created} inject(s) created, ${result.written} written with AI.`, 'success');
         App.render();
@@ -845,7 +821,7 @@ function sbStartClipPointer(event, clip) {
   const handle = event.target.closest('[data-sb-resize]');
   const additive = event.shiftKey || event.metaKey || event.ctrlKey;
   if (additive) ui.selected = ui.selected.includes(id) ? ui.selected.filter((item) => item !== id) : [...ui.selected, id];
-  else if (!ui.selected.includes(id)) { ui.selected = [id]; sbRevealInspector(); }
+  else if (!ui.selected.includes(id)) ui.selected = [id];
   if (sbReadOnly() || additive) { App.render(); return; }
   event.preventDefault();
   const ppm = ui.zoom;
@@ -977,8 +953,7 @@ function sbBindTimeline(root) {
     clip.addEventListener('pointerdown', (event) => sbStartClipPointer(event, clip));
     clip.addEventListener('dblclick', () => {
       ui.selected = [clip.dataset.sbClip];
-      sbRevealInspector();
-      ui.inspector = 'brief';
+          ui.inspector = 'brief';
       ui.focus = { key: 'sbField', value: 'title', start: null, end: null };
       App.render();
       sbRestoreFocus();
@@ -1033,7 +1008,7 @@ function sbBindTimeline(root) {
 
 // ── Keyboard ─────────────────────────────────────────────────────────────────
 function sbOnKeyDown(event) {
-  if (appState.route !== 'builder' || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen) return;
+  if (appState.route !== 'storyline' || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen) return;
   const ui = sbUI();
   const target = event.target;
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName || '') || target?.isContentEditable;
@@ -1045,11 +1020,6 @@ function sbOnKeyDown(event) {
     return;
   }
   if (typing || ui.modal) return;
-  if (!mod && !event.altKey) {
-    if (event.key === '[') { event.preventDefault(); sbTogglePanel('left', sbPanels().left || 'blocks'); return; }
-    if (event.key === ']') { event.preventDefault(); sbTogglePanel('right'); return; }
-    if (key === 'm') { event.preventDefault(); sbTogglePanel('monitor'); return; }
-  }
   if (mod && (key === 'z' || key === 'y')) {
     event.preventDefault();
     if (sbReadOnly()) return;
@@ -1079,11 +1049,11 @@ function bindScenarioBuilderEvents() {
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (appState.route === 'builder' && sbCompact() !== compact) { compact = sbCompact(); App.render(); }
+        if (['storyline', 'detailed'].includes(appState.route) && sbCompact() !== compact) { compact = sbCompact(); App.render(); }
       }, 200);
     });
   }
-  if (!['builder', 'scenario'].includes(appState.route)) return;
+  if (!SB_LIVE_ROUTES.includes(appState.route)) return;
   const roots = [...document.querySelectorAll('[data-sb-scope]')];
   if (!roots.length) return;
   const ui = sbUI();
@@ -1095,7 +1065,7 @@ function bindScenarioBuilderEvents() {
       root.querySelectorAll('.sb-inspector input, .sb-inspector textarea, .sb-inspector select, .sb-bin input, .sb-bin select, .sb-bin textarea, [data-sb-duration], .sb-track-name, .sb-framing input, .sb-framing textarea').forEach((element) => { element.disabled = true; });
     }
   }
-  if (appState.route === 'builder' && ui.needsFit) {
+  if (appState.route === 'storyline' && ui.needsFit) {
     ui.needsFit = false;
     if (sbFitZoom()) { App.render(); return; }
   }

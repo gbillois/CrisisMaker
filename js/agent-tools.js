@@ -63,7 +63,7 @@ function agentActor(actor) {
   return agentPick(actor, ['id', 'name', 'role', 'organization', 'title', 'language']);
 }
 function agentStimulus(stimulus, full = false) {
-  const result = agentPick(stimulus, ['id', 'name', 'channel', 'template_id', 'actor_id', 'timestamp_offset_minutes', 'status', 'generation_mode', 'generation_prompt']);
+  const result = agentPick(stimulus, ['id', 'name', 'channel', 'template_id', 'actor_id', 'timestamp_offset_minutes', 'status', 'generation_mode', 'generation_prompt', 'cell_id']);
   result.fields = Object.fromEntries(Object.entries(stimulus.fields || {}).filter(([key]) => !/photo|avatar_url|audio|video|_data/.test(key)).map(([key, value]) => [key, full ? value : agentExcerpt(value, 180)]));
   if (full) result.editableFields = (getTemplateDefinition(stimulus).fields || []).filter(f => !/upload/.test(f.type)).map(f => agentPick(f, ['key', 'type', 'options']));
   return result;
@@ -85,8 +85,9 @@ function agentStoryboardSummary() {
   if (!storyboard?.blocks?.length) return { blocks: [], note: 'No Scenario Builder storyboard yet.' };
   return {
     duration_minutes: storyboard.duration_minutes,
-    blocks: sbSortedBlocks(storyboard).slice(0, 24).map(block => ({ id: block.id, title: agentExcerpt(block.title, 120), track: sbTrack(storyboard, block.track_id)?.name || '', start: block.start_minutes, end: sbBlockEnd(block), injects: block.stimuli_target, planned: block.beats.length })),
-    note: 'Main storyline and workstream blocks from the Scenario Builder. Use getStoryboard for briefs and planned injects.'
+    blocks: sbSortedBlocks(storyboard).slice(0, 24).map(block => ({ id: block.id, title: agentExcerpt(block.title, 120), start: block.start_minutes, end: sbBlockEnd(block), injects: block.stimuli_target, planned: block.beats.length })),
+    cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, players: cell.players.length })),
+    note: 'Phases of the main storyline, and the player cells that receive injects. Use getStoryboard for briefs and planned injects per cell.'
   };
 }
 function agentConsistencyCheck() {
@@ -186,14 +187,14 @@ function createAgentToolRegistry() {
     appState.scenario.scenario.phases = sbDerivePhases(appState.scenario.storyboard);
     return args;
   }, 'broad');
-  add('getStoryboard', 'Read the Scenario Builder storyboard: blocks (main storyline and workstreams) with briefs, narratives and planned injects.', {}, [], () => {
+  add('getStoryboard', 'Read the main storyline: phases with briefs, narratives and planned injects, each addressed to a player cell.', {}, [], () => {
     const storyboard = appState.scenario.storyboard;
     return {
       duration_minutes: storyboard.duration_minutes,
       synopsis: agentExcerpt(storyboard.meta.synopsis, 2000),
-      tracks: storyboard.tracks.map(track => agentPick(track, ['id', 'name', 'kind'])),
+      cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, description: agentExcerpt(cell.description, 300), players: cell.players.map(player => agentPick(player, ['name', 'role'])) })),
       cast: storyboard.cast.map(cast => ({ ...agentPick(cast, ['id', 'label', 'role', 'organization']), actor_id: cast.actor_id || null })),
-      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, track_id: block.track_id, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: sbBeatAbsolute(block, beat), channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })) }))
+      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })) }))
     };
   });
   add('updateStoryboardBlock', 'Patch one Scenario Builder block (title, brief, narrative, timing, inject count, notes). Locked blocks are refused.', { ...id, patch: S.object({ title: S.text(200), brief: S.text(4000), narrative: S.text(8000), notes: S.text(4000), start_minutes: S.minutes, duration_minutes: { type: 'integer', minimum: 5, maximum: 525600 }, stimuli_target: { type: 'integer', minimum: 0, maximum: 24 } }) }, ['id', 'patch'], args => {

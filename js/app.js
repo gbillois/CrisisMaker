@@ -1,6 +1,6 @@
       const initialScenario = loadInitialScenario();
       const appState = {
-        route: 'scenario',
+        route: 'project',
         selectedStimulusId: null,
         stimulusModalId: null,
         slideshowIndex: 0,
@@ -111,11 +111,14 @@
               CHANNEL_META[tpl.template_id] = { label: tpl.name || tpl.label || tpl.template_id, color: tpl.color || '#8B5CF6', category: tpl.category || 'Custom' };
             }
           });
+          if (appState.route === 'builder') appState.route = 'storyline';
+          if (appState.route === 'stimuli') appState.route = 'detailed';
           root.innerHTML = renderAppShell();
           bindGlobalEvents();
           bindCheckerEvents();
           bindAgentEvents();
           bindScenarioBuilderEvents();
+          bindScenarioTabsEvents();
           bindStimuliSplitters();
           bindStimulusModalSplitter();
           mountDebriefEditor();
@@ -276,6 +279,13 @@
               appState.connectionTest = { status: 'idle', message: '', checkedAt: null, provider: '' };
             }
             persistProviderSettings(appState.scenario.settings);
+            // Plain text fields of Scenario & context: no re-render, so the click that blurred them still lands.
+            if (appState.route === 'scenario' && /^(name$|client\.|scenario\.)/.test(input.dataset.bind) && (input.tagName === 'TEXTAREA' || input.type === 'text')) {
+              clearTimeout(window._scenarioBindSaveTimer);
+              window._scenarioBindSaveTimer = setTimeout(() => saveLocal(false), 350);
+              if (input.dataset.bind === 'name') document.querySelectorAll('.nav-project-name').forEach((element) => { element.textContent = input.value; });
+              return;
+            }
             const refreshModels = ['settings.ai_provider', 'settings.ai_api_key', 'settings.ollama_mode', 'settings.ollama_endpoint'].includes(input.dataset.bind);
             if (refreshModels) resetAIModelCatalog();
             App.render();
@@ -597,7 +607,7 @@
               break;
             }
             case 'nav-scenario': appState.route = 'scenario'; App.render(); break;
-            case 'nav-stimuli': appState.route = 'stimuli'; App.render(); break;
+            case 'nav-stimuli': appState.route = 'detailed'; App.render(); break;
             case 'nav-library': appState.route = 'library'; App.render(); break;
             case 'nav-debrief': appState.route = 'debrief'; App.render(); break;
             case 'new-scenario': {
@@ -924,14 +934,14 @@
             case 'export-msg': await ExportEngine.exportRawEmail(getStimulus(event.currentTarget.dataset.stimulusId)); break;
             case 'preview-prev': appState.slideshowIndex = Math.max(0, appState.slideshowIndex - 1); App.render(); break;
             case 'preview-next': appState.slideshowIndex = Math.min(getSortedStimuli().length - 1, appState.slideshowIndex + 1); App.render(); break;
-            case 'goto-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.route = 'stimuli'; App.render(); break;
+            case 'goto-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.stimulusModalId = event.currentTarget.dataset.stimulusId; App.render(); break;
             case 'preview-select': appState.slideshowIndex = Number(event.currentTarget.dataset.index); App.render(); break;
             case 'cycle-status': {
               const s = getStimulus(event.currentTarget.dataset.stimulusId);
               if (s) { const cycle = ['draft', 'ready', 'sent']; s.status = cycle[(cycle.indexOf(s.status) + 1) % cycle.length]; await autoSave(); App.render(); }
               break;
             }
-            case 'edit-in-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.route = 'stimuli'; App.render(); break;
+            case 'edit-in-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.stimulusModalId = event.currentTarget.dataset.stimulusId; App.render(); break;
             case 'show-history': {
               appState.historyModalStimulusId = event.currentTarget.dataset.stimulusId;
               App.render();

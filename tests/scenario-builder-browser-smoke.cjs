@@ -1,4 +1,4 @@
-// Optional browser smoke test for the Scenario Builder; mocked AI, no API key or credits.
+// Optional browser smoke test for the scenario tabs; mocked AI, no API key or credits.
 // PLAYWRIGHT_MODULE=/absolute/path/to/playwright node tests/scenario-builder-browser-smoke.cjs [app-url]
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -11,26 +11,27 @@ function answerFor(system, user) {
       title: 'Hospital ransomware drill', summary: 'A ransomware affiliate encrypts the hospital group.', threat: 'Affiliate via VPN',
       objectives: ['Protect patient safety', 'Notify authorities on time'],
       cast: [{ key: 'ciso', label: 'CISO', role: 'internal' }, { key: 'press', label: 'Health reporter', role: 'journalist' }],
-      tracks: ['main', 'communication'],
       blocks: [
         { key: 'b1', type: 'trigger', title: 'Night alerts', track: 'main', start: 0, duration: 60, stimuli: 2, brief: 'EDR alerts.', objectives: [0] },
         { key: 'b2', type: 'containment', title: 'Isolate or not', track: 'main', start: 60, duration: 60, stimuli: 2, brief: 'Isolation dilemma.' },
-        { key: 'b3', type: 'exit', title: 'Exit', track: 'main', start: 120, duration: 60, stimuli: 1, brief: 'Close.' },
-        { key: 'b4', type: 'communication', title: 'Media storm', track: 'communication', start: 30, duration: 90, stimuli: 2, brief: 'Press calls.', objectives: [1] }
+        { key: 'b3', type: 'exit', title: 'Exit', track: 'main', start: 120, duration: 60, stimuli: 1, brief: 'Close.', objectives: [1] }
       ]
     };
   }
   if (payload.task.startsWith('Deepen')) {
     const cast = payload.context.storyboard.cast;
-    return { blocks: payload.target.map(target => ({ id: target.id, narrative: 'Players only see partial information.', beats: target.want === 'narrative' ? undefined : Array.from({ length: target.injects - target.existing_beats }, (_, i) => ({ at: i * 10, channel: i % 2 ? 'sms_notification' : 'email_internal', cast: cast[i % cast.length].id, title: `Inject ${i + 1}`, intent: 'Forces a decision.' })) })) };
+    const cells = payload.context.cells || [];
+    return { blocks: payload.target.map(target => ({ id: target.id, narrative: 'Players only see partial information.', beats: target.want === 'narrative' ? undefined : Array.from({ length: target.injects - target.existing_beats }, (_, i) => ({ at: i * 10, channel: i % 2 ? 'sms_notification' : 'email_internal', cast: cast[i % cast.length].id, cell: cells[i % Math.max(1, cells.length)]?.id, title: `Inject ${i + 1}`, intent: 'Forces a decision.' })) })) };
   }
+  if (payload.task.startsWith('Plan ')) return { beats: Array.from({ length: payload.target.count }, (_, i) => ({ at: 5 + i * 5, channel: 'email_internal', cast: 'cfo', title: `Cell inject ${i + 1}`, intent: 'Cell pressure.' })), cast: [{ key: 'cfo', label: 'CFO', role: 'internal' }] };
   if (payload.task.startsWith('Give realistic')) return { actors: payload.roles.map(role => ({ cast: role.cast, name: `${role.label} person`, title: role.label, organization: 'Hospital group', role: role.role, language: 'en' })) };
+  if (payload.task.startsWith('Review the whole')) return { score: 77, summary: 'Rhythm is uneven between cells.', issues: [{ severity: 'warning', at: 60, message: 'The decision cell waits too long.', suggestion: 'Add an early escalation.' }] };
   return { score: 80, summary: 'Coherent.', issues: [] };
 }
 
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
-  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', dialog => dialog.accept());
   await page.route('https://api.openai.com/v1/chat/completions', async route => {
@@ -42,34 +43,54 @@ function answerFor(system, user) {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.click('.launch-hero-close');
-  assert.ok(await page.isVisible('.sb-context'), 'Scenario context is the landing tab');
+
+  // 0. Project is the first tab, top left.
+  assert.equal(await page.evaluate(() => appState.route), 'project');
+  assert.equal(await page.evaluate(() => document.querySelector('.nav-topbar-left .nav-icon-btn')?.dataset.route), 'project');
+  const navX = await page.evaluate(() => document.querySelector('.nav-topbar-left').getBoundingClientRect().left);
+  assert.ok(navX < 40, `nav starts top left (${navX})`);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.evaluate(() => { appState.scenario = emptyScenario({ ...appState.scenario.settings, ai_provider: 'openai', ai_api_key: 'sk-test', ai_model: 'gpt-test' }); App.render(); });
 
-  // Library in Scenario context: preview and use a built-in scenario, which opens the Phase Builder; then undo it.
+  // 1. Scenario & context: five questions, then the library.
+  await page.click('.nav-icon-btn[data-route="scenario"]');
+  await page.fill('[data-bind="client.name"]', 'Northwind Hospitals');
+  await page.fill('[data-sc-duration]', '3');
+  await page.dispatchEvent('[data-sc-duration]', 'change');
+  await page.fill('[data-sc-cells]', '3');
+  await page.dispatchEvent('[data-sc-cells]', 'change');
+  await page.fill('[data-sc-players]', '14');
+  await page.dispatchEvent('[data-sc-players]', 'change');
+  assert.deepEqual(await page.evaluate(() => ({ client: appState.scenario.client.name, duration: appState.scenario.storyboard.duration_minutes, cells: appState.scenario.cells.length, players: Number(appState.scenario.exercise.players_count) })), { client: 'Northwind Hospitals', duration: 180, cells: 3, players: 14 });
+
   await page.click('.sb-context [data-sb-action="preview-template"][data-sb-template="ransomware-double-extortion"]');
   await page.click('.sb-modal-foot [data-sb-action="use-template"][data-sb-mode="replace"]');
-  assert.equal(await page.evaluate(() => appState.route), 'builder');
+  assert.equal(await page.evaluate(() => appState.route), 'storyline');
+  assert.equal(await page.evaluate(() => sbStoryboard().tracks.length), 1);
   assert.ok(await page.evaluate(() => sbStoryboard().blocks.length) >= 8);
   await page.keyboard.press('Control+z');
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
 
-  // AI skeleton from Scenario context, then deepening and generation in the Phase Builder.
+  // AI draft of the main storyline from Scenario & context.
   await page.click('.nav-icon-btn[data-route="scenario"]');
   await page.fill('[data-sb-ui="skeleton.brief"]', 'Three-hour hospital ransomware exercise');
-  await page.fill('[data-sb-ui="skeleton.duration"]', '180');
   await page.click('[data-sb-action="generate-skeleton"]');
-  await page.waitForFunction(() => sbStoryboard().blocks.length === 4 && appState.route === 'builder');
+  await page.waitForFunction(() => sbStoryboard().blocks.length === 3 && appState.route === 'storyline');
+
+  // 2. Main storyline: single line, phase editor at the bottom.
+  assert.equal(await page.isVisible('.sb-inspector'), false);
+  const id = await page.evaluate(() => sbStoryboard().blocks.find(block => block.type === 'containment').id);
+  await page.click(`[data-sb-clip="${id}"]`);
+  const editor = await page.$('.sl-editor .bottom-editor-head');
+  const timeline = await page.$('.sl-timeline');
+  assert.ok((await editor.boundingBox()).y > (await timeline.boundingBox()).y, 'phase editor below the timeline');
+  await page.fill('.sl-editor [data-sb-field="brief"]', 'The CEO must choose between isolation and patient care.');
+  await page.click('.sl-editor [data-sb-field="title"]');
+  assert.equal(await page.evaluate(id => sbBlock(sbStoryboard(), id).brief, id), 'The CEO must choose between isolation and patient care.');
   await page.click('[data-sb-action="deepen-all"]');
   await page.waitForFunction(() => sbStoryboard().blocks.every(block => block.narrative));
-  await page.click('[data-sb-modal="generate"]');
-  await page.click('[data-sb-action="start-generation"]');
-  await page.waitForFunction(() => SbPipeline.status === 'complete', null, { timeout: 30000 });
-  assert.equal(await page.evaluate(() => appState.scenario.stimuli.length), 7);
-  assert.equal(await page.evaluate(() => appState.scenario.stimuli.every(s => s.scenario_link && s.status === 'ready')), true);
-  await page.click('[data-sb-action="close-modal"]');
 
-  // Drag the containment clip 30 minutes later, then synchronise.
-  const id = await page.evaluate(() => sbStoryboard().blocks.find(block => block.type === 'containment').id);
+  // Drag the containment phase 30 minutes later.
   const clip = await page.$(`[data-sb-clip="${id}"]`);
   const box = await clip.boundingBox();
   const ppm = await page.evaluate(() => sbUI().zoom);
@@ -77,34 +98,54 @@ function answerFor(system, user) {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 30 * ppm, box.y + 12, { steps: 6 });
   await page.mouse.up();
-  const moved = await page.evaluate(id => sbBlock(sbStoryboard(), id).start_minutes, id);
-  assert.ok(moved > 60, `block moved (${moved})`);
-  assert.ok(await page.evaluate(() => sbComputeImpacts(appState.scenario).some(impact => impact.kind === 'retime')));
-  await page.click('[data-sb-modal="sync"]');
-  await page.click('[data-sb-action="apply-sync"]');
-  await page.waitForFunction(() => !SbPipeline.active);
-  assert.equal(await page.evaluate(() => sbComputeImpacts(appState.scenario).length), 0);
+  assert.ok(await page.evaluate(id => sbBlock(sbStoryboard(), id).start_minutes, id) > 60);
+
+  // 3. Cells & actors: add a player.
+  await page.click('.nav-icon-btn[data-route="cells"]');
+  const firstCell = await page.evaluate(() => appState.scenario.cells[0].id);
+  await page.click(`[data-tab-action="add-player"][data-tab-value="${firstCell}"]`);
+  const playerInput = `[data-ce-player^="${firstCell}."][data-ce-player$=".name"]`;
+  await page.fill(playerInput, 'Dr Ana Ruiz');
+  await page.dispatchEvent(playerInput, 'change');
+  assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
+
+  // 4. Detailed storyline: pick a cell, plan with AI, add an inject, generate the cell.
+  await page.click('.nav-icon-btn[data-route="detailed"]');
+  assert.ok(await page.isVisible('.ds-phase-row'));
+  await page.click(`[data-tab-action="ds-cell"][data-tab-value="${firstCell}"]`);
+  await page.evaluate(() => { tabUI('detailed').playhead = 10; App.render(); });
+  await page.click('[data-tab-action="ds-plan"]');
+  await page.waitForFunction(cell => sbStoryboard().blocks.flatMap(block => block.beats).filter(beat => beat.cell_id === cell && beat.title.startsWith('Cell inject')).length === 3, firstCell);
+  const before = await page.evaluate(() => sbExerciseItems(appState.scenario).length);
+  await page.click('[data-tab-action="ds-add"]');
+  assert.equal(await page.evaluate(() => sbExerciseItems(appState.scenario).length), before + 1);
+  assert.ok(await page.isVisible('.ds-editor [data-ds-time]'));
+  await page.click('[data-tab-action="ds-generate"]');
+  await page.click('[data-sb-action="start-generation"]');
+  await page.waitForFunction(() => SbPipeline.status === 'complete', null, { timeout: 30000 });
+  const stimuli = await page.evaluate(() => appState.scenario.stimuli.map(s => ({ cell: s.cell_id, linked: !!s.scenario_link })));
+  assert.ok(stimuli.length >= 4);
+  assert.ok(stimuli.every(s => s.cell === firstCell && s.linked), 'only the selected cell was generated');
   await page.click('[data-sb-action="close-modal"]');
 
-  // 13-inch laptop: compact layout, collapsible side panels and monitor.
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.waitForTimeout(400);
-  assert.ok(await page.isVisible('.sb-workspace.is-compact'));
-  const before = await page.evaluate(() => ({ ...sbPanels() }));
-  await page.keyboard.press('[');
-  await page.keyboard.press(']');
-  await page.keyboard.press('m');
-  const after = await page.evaluate(() => ({ ...sbPanels() }));
-  assert.notEqual(after.left, before.left); assert.notEqual(after.right, before.right); assert.notEqual(after.monitor, before.monitor);
-  assert.equal(await page.isVisible('.sb-bin'), !!after.left);
-  assert.equal(await page.isVisible('.sb-inspector'), after.right);
+  // 5. Summary: play, rules and AI review, go to an issue.
+  await page.click('.nav-icon-btn[data-route="summary"]');
+  await page.click('[data-tab-action="su-toggle"]');
+  await page.waitForFunction(() => tabUI('summary').time > 0);
+  await page.click('[data-tab-action="su-toggle"]');
+  assert.equal(await page.evaluate(() => tabUI('summary').playing), false);
+  await page.click('[data-tab-action="su-ai"]');
+  await page.waitForFunction(() => tabUI('summary').review?.issues.some(issue => issue.source === 'ai'));
+  assert.ok(await page.isVisible('.su-issue-group'));
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 
   // Persistence across reload.
   await page.evaluate(() => saveLocal(false));
   await page.reload();
-  assert.equal(await page.evaluate(() => appState.scenario.storyboard.blocks.length), 4);
-  assert.equal(await page.evaluate(() => appState.scenario.stimuli.filter(s => s.scenario_link).length), 7);
+  assert.equal(await page.evaluate(() => appState.scenario.storyboard.blocks.length), 3);
+  assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
+  assert.ok(await page.evaluate(() => appState.scenario.stimuli.every(s => s.cell_id)));
   assert.deepEqual(errors, []);
   await browser.close();
-  console.log('Scenario Builder browser smoke passed.');
+  console.log('Scenario tabs browser smoke passed.');
 })().catch(error => { console.error(error); process.exit(1); });

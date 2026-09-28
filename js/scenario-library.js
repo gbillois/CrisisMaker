@@ -86,6 +86,8 @@ function sbApplyTemplate(template, mode = 'replace') {
   if (!project.name?.trim() && title) project.name = title;
   const type = Object.entries(SB_SCENARIO_TYPES).find(([key]) => String(template.id || '').startsWith(key))?.[1];
   if (type && !project.stimuli.length) project.scenario.type = type;
+  sbFlattenWorkstreams(project);
+  project.exercise = { ...(project.exercise || {}), cells_count: project.cells.length };
   return project.storyboard;
 }
 
