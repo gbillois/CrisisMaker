@@ -81,6 +81,8 @@ function agentExerciseFrame() {
     primary_language: project.client.language || '', inject_language: project.settings.inject_language || '',
     cells_count: project.exercise?.cells_count ?? '', players_count: project.exercise?.players_count ?? '',
     designer_context: agentExcerpt(storyboard?.meta?.brief || '', 6000),
+    learning_objectives: { all_players: agentExcerpt(project.scenario.learning_objectives || '', 3000), by_cell: (project.cells || []).filter(cell => cell.objectives).map(cell => ({ cell_id: cell.id, cell: cell.name, objectives: agentExcerpt(cell.objectives, 1500) })) },
+    attack_path: agentExcerpt(project.scenario.attack_path || '', 6000),
     library_scenario: storyboard?.meta?.template_id && storyboard.meta.template_id !== 'agent' ? storyboard.meta.template_id : null
   };
 }
@@ -206,7 +208,7 @@ function createAgentToolRegistry() {
     return {
       duration_minutes: storyboard.duration_minutes,
       synopsis: agentExcerpt(storyboard.meta.synopsis, 2000),
-      cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, description: agentExcerpt(cell.description, 300), players: cell.players.map(player => agentPick(player, ['name', 'role'])) })),
+      cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, description: agentExcerpt(cell.description, 300), objectives: agentExcerpt(cell.objectives || '', 1500), players: cell.players.map(player => agentPick(player, ['name', 'role'])) })),
       cast: storyboard.cast.map(cast => ({ ...agentPick(cast, ['id', 'label', 'role', 'organization']), actor_id: cast.actor_id || null })),
       blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })) }))
     };
@@ -222,10 +224,12 @@ function createAgentToolRegistry() {
   }, 'write');
   // ── Exercise frame, storyline, cells, cast and per-cell inject plan ──────────
   add('getExerciseFrame', 'Read the exercise frame set in the Context tab: play duration, simulated start/end dates, timezone, languages, number of cells and players, and the designer context (objectives and ideas).', {}, [], agentExerciseFrame);
-  add('setExerciseFrame', 'Patch the exercise frame. duration_minutes is the real play time; start_date/end_date are the simulated in-story clock (ISO local date-time).', {
-    duration_minutes: { type: 'integer', minimum: 30, maximum: SB_MAX_DURATION }, start_date: S.text(30), end_date: S.text(30), timezone: { ...S.text(), enum: TIMEZONES }, players_count: { type: 'integer', minimum: 0, maximum: 10000 }, cells_count: { type: 'integer', minimum: 0, maximum: 30 }
+  add('setExerciseFrame', 'Patch the exercise frame. duration_minutes is the real play time; start_date/end_date are the simulated in-story clock (ISO local date-time). learning_objectives are for all players; attack_path lists the technical steps of the attack in order.', {
+    duration_minutes: { type: 'integer', minimum: 30, maximum: SB_MAX_DURATION }, start_date: S.text(30), end_date: S.text(30), timezone: { ...S.text(), enum: TIMEZONES }, players_count: { type: 'integer', minimum: 0, maximum: 10000 }, cells_count: { type: 'integer', minimum: 0, maximum: 30 }, learning_objectives: S.text(3000), attack_path: S.text(6000)
   }, [], args => {
     const project = appState.scenario;
+    if (args.learning_objectives !== undefined) project.scenario.learning_objectives = sbText(args.learning_objectives, 3000);
+    if (args.attack_path !== undefined) project.scenario.attack_path = sbText(args.attack_path, 6000);
     for (const key of ['start_date', 'end_date']) {
       if (args[key] === undefined) continue;
       if (args[key] && !Number.isFinite(Date.parse(args[key]))) throw new AgentValidationError(`Invalid ${key}.`);
@@ -276,8 +280,8 @@ function createAgentToolRegistry() {
     sbAfterStoryboardChange(project, { save: false });
     return agentStoryboardSummary();
   }, 'broad');
-  add('upsertCells', 'Create or update player cells (groups of participants who receive injects) and, when known, their players. Supply id to update an existing cell; players replaces that cell\'s player list.', {
-    cells: S.array(S.object({ id: S.id, name: S.text(160), description: S.text(1000), players: S.array(S.object({ name: S.text(200), role: S.text(200) }, ['role']), 200) }, ['name']), 20)
+  add('upsertCells', 'Create or update player cells (groups of participants who receive injects), their learning objectives and, when known, their players. Supply id to update an existing cell; players replaces that cell\'s player list.', {
+    cells: S.array(S.object({ id: S.id, name: S.text(160), description: S.text(1000), objectives: S.text(2000), players: S.array(S.object({ name: S.text(200), role: S.text(200) }, ['role']), 200) }, ['name']), 20)
   }, ['cells'], args => {
     const project = appState.scenario;
     if (!Array.isArray(project.cells)) project.cells = [];
@@ -291,6 +295,7 @@ function createAgentToolRegistry() {
       }
       cell.name = sbText(input.name, 160) || cell.name;
       if (input.description !== undefined) cell.description = sbText(input.description, 1000);
+      if (input.objectives !== undefined) cell.objectives = sbText(input.objectives, 2000);
       if (input.players) cell.players = input.players.map(player => sbNormalizePlayer({ id: uid('player'), ...player }));
       return { id: cell.id, name: cell.name, players: cell.players.length };
     });

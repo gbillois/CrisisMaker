@@ -95,7 +95,11 @@ The menu follows the design workflow, from left to right:
    selects a scenario and opens Context. Every built-in scenario plays in 3 hours.
 2. **Context**: the exercise frame (client, sector, logo; play duration, simulated
    start and end dates, timezone, number of crisis cells and players; primary and
-   inject languages), then **Scenario generation**: your objectives and ideas, then
+   inject languages), then **Scenario generation**: your context, objectives and ideas;
+   the **learning objectives by player category** (all players, then each cell); and
+   the **attack path**, the technical steps the attacker follows, in order. These feed
+   every AI operation: the agent, the storyline AI, the writing of each stimulus
+   (the recipient cell's objectives and the attack path) and the debrief. Then
    either **Load basic scenario from library** (the loaded library scenario as it is;
    greyed when none is loaded) or **Generate with AI**. It starts the builder agent
    with all of the above and adapts the loaded library scenario: the agent asks you a

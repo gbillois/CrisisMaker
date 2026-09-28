@@ -463,3 +463,35 @@ test('library: every built-in scenario and the demo play in 3 hours', () => {
   assert.equal(h.run('appState.scenario.storyboard.duration_minutes'), 180);
   assert.ok(h.run('Math.max(...appState.scenario.stimuli.map((item) => item.timestamp_offset_minutes))') < 180);
 });
+
+test('context: learning objectives per player category and the attack path feed every AI operation', async () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  assert.ok(h.run('appState.scenario.scenario.attack_path').includes('Initial access'), 'demo has an attack path');
+  assert.equal(h.run(`emptyScenario().scenario.attack_path`), '', 'a new project starts blank');
+  assert.equal(h.run(`emptyScenario().scenario.learning_objectives`), '');
+  const cell = h.json(`appState.scenario.cells.find((item) => item.key === 'legal')`);
+  assert.ok(cell.objectives.includes('NIS2'));
+  // Context tab markup.
+  const context = h.run('renderScenarioView()');
+  for (const marker of ['Learning objectives by player category', 'data-bind="scenario.learning_objectives"', `data-cx-cell-objectives="${cell.id}"`, 'Attack path', 'data-bind="scenario.attack_path"']) assert.ok(context.includes(marker), marker);
+  // Shared prompt lines: the recipient cell first, then the attack path.
+  const lines = h.json(`sbDesignContextLines(appState.scenario, { cellId: '${cell.id}' })`);
+  assert.ok(lines[0].startsWith('- Learning objectives of the recipient (Legal'));
+  assert.ok(lines.some((line) => line.startsWith('- Attack path')));
+  assert.ok(!lines.some((line) => line.includes('Communication cell')), 'only the recipient cell objectives for one inject');
+  // Every stimulus prompt, whatever its channel.
+  const stimulus = h.run(`(() => { const s = appState.scenario.stimuli.find((item) => item.channel === 'email_authority'); s.cell_id = '${cell.id}'; return PromptBuilder.forStimulus(s, getActor(s.actor_id), appState.scenario).systemPrompt; })()`);
+  assert.ok(stimulus.includes('Exercise design') && stimulus.includes('NIS2') && stimulus.includes('Kerberoasting'));
+  // Storyline AI context and the agent frame.
+  const ai = h.json('sbAIContext(appState.scenario)');
+  assert.ok(ai.exercise.attack_path.includes('Exfiltration') && ai.exercise.learning_objectives.includes('crisis management'));
+  assert.ok(ai.storyboard.cells.some((item) => item.objectives.includes('NIS2')));
+  const frame = h.json('agentExerciseFrame()');
+  assert.ok(frame.attack_path.includes('Lateral movement'));
+  assert.ok(frame.learning_objectives.by_cell.some((item) => item.cell_id === cell.id));
+  // Cell objectives survive a save and reload.
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario)))`);
+  assert.ok(reloaded.cells.find((item) => item.id === cell.id).objectives.includes('NIS2'));
+  assert.ok(reloaded.scenario.attack_path.includes('Impact'));
+});

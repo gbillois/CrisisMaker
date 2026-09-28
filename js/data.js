@@ -144,6 +144,15 @@
           'Communicate to staff, partners and media without premature disclosure',
           'Prioritise the recovery of critical production from trusted backups'
         ].join('\n');
+        scenario.scenario.learning_objectives = 'Apply the crisis management procedure, take documented decisions under uncertainty and keep every cell aligned.';
+        scenario.scenario.attack_path = [
+          '1. Initial access: PharmLeaks logs in to the VPN with a stolen contractor credential (no MFA), three weeks before D-day',
+          '2. Discovery and privilege escalation: Active Directory enumeration, Kerberoasting of a service account, then domain administrator',
+          '3. Lateral movement: RDP and PsExec to file servers, MES servers and the backup console',
+          '4. Defense evasion: EDR disabled on key servers, backup jobs sabotaged and immutable copies deleted',
+          '5. Exfiltration: 2.4 TB of patient and clinical-trial data sent to cloud storage over two weeks',
+          '6. Impact: Sunday 08:00, ransomware pushed by group policy to MES, ERP and identity systems; ransom note and leak-site countdown'
+        ].join('\n');
         scenario.storyboard_versions = [];
         if (storyboardModelLoaded()) {
           scenario.storyboard = sbBuildExampleStoryboard(scenario);
@@ -153,6 +162,13 @@
           scenario.exercise = { players_count: 12, cells_count: '' };
           sbFlattenWorkstreams(scenario);
           scenario.exercise.cells_count = scenario.cells.length;
+          const cellObjectives = {
+            operational: 'Qualify the incident quickly, decide on isolation of the manufacturing sites and keep a shared situation picture.',
+            communication: 'Hold consistent internal, partner and media messages without premature disclosure of the data theft.',
+            legal: 'Meet NIS2 and GDPR notification deadlines and document every legal decision.',
+            business: 'Run degraded production and prioritise the recovery of critical lines from trusted backups.'
+          };
+          scenario.cells.forEach((cell) => { if (cellObjectives[cell.key]) cell.objectives = cellObjectives[cell.key]; });
           scenario.scenario.phases = sbDerivePhases(scenario.storyboard);
           sbSealLinks(scenario);
         }
@@ -177,7 +193,7 @@
           id: uid('scenario'),
           name: '',
           client: { name: '', sector: base.client.sector, language: settingsOverrides.language || 'en', logo_url: '' },
-          scenario: { ...baseScenario, type: base.scenario.type, summary: '', detailed_context: '', start_date: '', timezone: base.scenario.timezone, phases: [] },
+          scenario: { ...baseScenario, type: base.scenario.type, summary: '', detailed_context: '', learning_objectives: '', attack_path: '', start_date: '', end_date: '', timezone: base.scenario.timezone, phases: [] },
           actors: [],
           stimuli: [],
           storyboard: storyboardModelLoaded() ? sbEmptyStoryboard() : undefined,

@@ -845,6 +845,7 @@ SCENARIO:
 - Crisis type: ${scenario.scenario?.type || ''}
 - Summary: ${scenario.scenario?.summary || ''}
 - Detailed context: ${scenario.scenario?.detailed_context || ''}
+- Attack path (the technical steps the attacker really followed): ${scenario.scenario?.attack_path || 'Not provided'}
 
 INJECTS SHOWN DURING THE EXERCISE — SUPPORTING CONTEXT ONLY, NEVER TURN THEM DIRECTLY INTO EVENTS:
 ${JSON.stringify(supportingInjectContext)}
@@ -1012,6 +1013,11 @@ Return this structure:
                 systemPrompt: `Help create a realistic cyber-crisis stimulus. Context: ${common.scenarioSummary}. Event: ${eventDescription}. Reply only with JSON consistent with channel ${stimulus.channel}.`,
                 userPrompt: fieldName ? `Generate a credible value for ${fieldName}.` : 'Generate the full content.'
               };
+          }
+          // Learning objectives and attack path from the Context tab shape every inject.
+          const design = typeof sbDesignContextLines === 'function' ? sbDesignContextLines(scenario, { cellId: stimulus.cell_id }) : [];
+          if (design.length) {
+            result.systemPrompt += `\n\nExercise design (use it to shape the content, never quote it or mention an exercise):\n${design.join('\n')}\n- Make this message serve the learning objectives of its recipient.\n- Stay consistent with the attack path: only state technical facts this sender could plausibly know at ${common.timestamp}, in the order the attacker performs them.`;
           }
           if (guidedSuffix) result.systemPrompt += guidedSuffix;
           return result;

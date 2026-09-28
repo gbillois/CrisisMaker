@@ -769,9 +769,31 @@ function sbNormalizeCell(input = {}) {
     key: sbSafeId(input.key) || 'custom',
     name: sbText(input.name, 160) || preset?.name || 'New cell',
     description: sbText(input.description, 1000),
+    // Learning objectives of this category of players, set in the Context tab.
+    objectives: sbText(input.objectives, 2000),
     color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : (preset?.color || '#6d687e'),
     players: (Array.isArray(input.players) ? input.players : []).slice(0, 200).map(sbNormalizePlayer)
   };
+}
+
+/* Pedagogical and technical design inputs from the Context tab, as prompt lines for every
+   AI operation: learning objectives per category of players, and the attack path.
+   With cellId, the objectives of that cell come first (an inject addressed to it). */
+function sbDesignContextLines(project, options = {}) {
+  const scenario = project?.scenario || {};
+  const cells = Array.isArray(project?.cells) ? project.cells : [];
+  const general = sbText(scenario.learning_objectives, 3000);
+  const perCell = cells.filter((cell) => cell.objectives).map((cell) => ({ id: cell.id, name: cell.name, objectives: sbText(cell.objectives, 2000) }));
+  const attack = sbText(scenario.attack_path, 6000);
+  const lines = [];
+  const target = options.cellId ? perCell.find((cell) => cell.id === options.cellId) : null;
+  if (target) lines.push(`- Learning objectives of the recipient (${target.name}): ${target.objectives}`);
+  if (!options.cellId || options.all) {
+    if (general) lines.push(`- Learning objectives for all players: ${general}`);
+    perCell.filter((cell) => cell !== target).forEach((cell) => lines.push(`- Learning objectives of the ${cell.name}: ${cell.objectives}`));
+  } else if (general) lines.push(`- Learning objectives for all players: ${general}`);
+  if (attack) lines.push(`- Attack path (technical steps the attacker follows, in order): ${attack}`);
+  return lines;
 }
 
 function sbNormalizeCells(value) {

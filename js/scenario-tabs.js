@@ -578,7 +578,19 @@ function renderContextBrief(project) {
     ${template
       ? `<p class="cx-template">${sbUiIcon('book', 14)} Library scenario loaded: <strong>${escapeHtml(template.name)}</strong>. Generate with AI to adapt it to your context, or load it as it is. <button class="btn btn-ghost btn-xs" data-route="project">Change in Project</button></p>`
       : `<p class="cx-template is-empty">${sbUiIcon('book', 14)} No library scenario loaded. The AI builds the scenario from your context, or <button class="btn btn-ghost btn-xs" data-route="project">load one from the Project library</button></p>`}
-    <textarea class="cx-brief-text" data-sb-meta="brief" rows="7" placeholder="e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.">${escapeHtml(storyboard.meta.brief)}</textarea>
+    <label class="field cx-field">Context, objectives and ideas<textarea class="cx-brief-text" data-sb-meta="brief" rows="5" placeholder="e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.">${escapeHtml(storyboard.meta.brief)}</textarea></label>
+    <div class="cx-design">
+      <div class="cx-design-col">
+        <div class="cx-design-head"><strong>Learning objectives by player category</strong><span class="helper">What each category of players must practise or learn. The AI makes every cell face situations that test its own objectives.</span></div>
+        <label class="field cx-objective">All players<textarea data-bind="scenario.learning_objectives" rows="2" placeholder="e.g. Apply the crisis management procedure; keep a shared situation picture">${escapeHtml(project.scenario.learning_objectives || '')}</textarea></label>
+        ${project.cells.length ? project.cells.map((cell) => `<label class="field cx-objective"><span class="cx-cell-name"><i style="background:${escapeAttribute(cell.color)}"></i>${escapeHtml(cell.name)}</span><textarea data-cx-cell-objectives="${escapeAttribute(cell.id)}" rows="2" placeholder="${escapeAttribute(`Objectives of the ${cell.name}`)}">${escapeHtml(cell.objectives || '')}</textarea></label>`).join('')
+          : '<p class="helper">Set the number of crisis cells above to describe the objectives of each category of players.</p>'}
+      </div>
+      <div class="cx-design-col">
+        <div class="cx-design-head"><strong>Attack path</strong><span class="helper">The technical steps the attacker follows to reach its goals, in order. Phases, alerts and technical injects follow it.</span></div>
+        <textarea class="cx-attack" data-bind="scenario.attack_path" rows="12" placeholder="One step per line, in order. e.g.&#10;1. Initial access: phishing email with a malicious attachment to an accounts payable clerk&#10;2. Execution and persistence: a loader installs a remote access beacon&#10;3. Privilege escalation: Kerberoasting of a service account&#10;4. Lateral movement: RDP to file servers and the backup console&#10;5. Exfiltration: 400 GB of HR and finance data to cloud storage&#10;6. Impact: hypervisors encrypted, backups deleted, ransom note">${escapeHtml(project.scenario.attack_path || '')}</textarea>
+      </div>
+    </div>
     <div class="cx-generate">
       <label class="cx-mode">AI autonomy<select data-cx-mode ${busy ? 'disabled' : ''}>
         <option value="agent" ${state.mode === 'agent' ? 'selected' : ''}>Ask me before big changes</option>
@@ -907,6 +919,13 @@ function tabBindInputs(root) {
     project.client.logo_url = '';
     saveLocal(false);
     App.render();
+  }));
+  root.querySelectorAll('[data-cx-cell-objectives]').forEach((input) => input.addEventListener('input', () => {
+    const cell = sbCell(project, input.dataset.cxCellObjectives);
+    if (!cell) return;
+    cell.objectives = sbText(input.value, 2000);
+    clearTimeout(window._cxObjectivesSaveTimer);
+    window._cxObjectivesSaveTimer = setTimeout(() => saveLocal(false), 400);
   }));
   root.querySelectorAll('[data-cx-mode]').forEach((select) => select.addEventListener('change', () => { tabUI('context').mode = select.value === 'auto' ? 'auto' : 'agent'; }));
   root.querySelectorAll('[data-cx-load-basic]').forEach((button) => button.addEventListener('click', () => {
