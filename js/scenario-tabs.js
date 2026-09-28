@@ -126,6 +126,7 @@ function renderStorylineView() {
           <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="Redo (Ctrl+Shift+Z)">${sbUiIcon('redo')}</button>
           <button class="sb-tool sb-tool-label" data-sb-action="open-modal" data-sb-modal="versions" title="Versions">${sbUiIcon('history')}<span>Versions</span></button>
         </div>
+        ${storyboard.blocks.length ? renderSbTimelineTools() : ''}
         <div class="sb-tb-group">
           <label class="sl-add">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="Add a phase"><option value="">Add phase…</option>${stages.map(([key, type]) => `<option value="${key}">${escapeHtml(type.label)}</option>`).join('')}</select></label>
         </div>
@@ -165,8 +166,8 @@ function renderPhaseEditor(storyboard, block) {
       <span class="sb-clip-icon">${sbIcon((SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).icon, 16)}</span>
       <input class="be-title" data-sb-field="title" value="${escapeAttribute(block.title)}" aria-label="Phase title" ${readOnly}>
       <select data-sb-field="type" aria-label="Phase type" ${readOnly}>${slPhaseTypes(block.type).map(([key, value]) => sbOption(key, value.label, block.type)).join('')}</select>
-      <label class="be-inline">Start · ${sbFormatOffset(block.start_minutes)}<input type="number" min="0" step="5" data-sb-field="start_minutes" value="${block.start_minutes}" ${readOnly}></label>
-      <label class="be-inline">Duration (min)<input type="number" min="5" step="5" data-sb-field="duration_minutes" value="${block.duration_minutes}" ${readOnly}></label>
+      <label class="be-inline">Start · ${sbFormatOffset(block.start_minutes)}<input type="number" min="0" step="${sbSnapStep()}" data-sb-field="start_minutes" value="${block.start_minutes}" ${readOnly}></label>
+      <label class="be-inline">Duration (min)<input type="number" min="5" step="${sbSnapStep()}" data-sb-field="duration_minutes" value="${block.duration_minutes}" ${readOnly}></label>
       <span class="be-actions">
         <button class="sb-icon-btn ${block.locked ? 'is-on' : ''}" data-sb-action="toggle-lock" title="${block.locked ? 'Unlock' : 'Lock'}" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon(block.locked ? 'lock' : 'unlock', 15)}</button>
         <button class="sb-icon-btn" data-sb-action="duplicate-block" title="Duplicate" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon('copy', 15)}</button>

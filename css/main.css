@@ -3438,6 +3438,13 @@ button.sb-now:hover { background: rgba(255, 255, 255, 0.12); }
 .sb-workspace .sb-inline-label select, .sb-workspace .sb-inline-label input { width: auto; min-height: 28px; padding: 3px 6px; font-size: 0.78rem; }
 .sb-workspace .sb-inline-label input { width: 72px; }
 .sb-inline-label span { font-weight: 500; color: var(--muted); }
+.sb-workspace .sb-snap-step { width: auto; min-height: 30px; padding: 3px 6px; border: none; background: transparent; font-size: 0.8rem; font-weight: 700; color: var(--primary-strong); }
+/* Main storyline: every tool on one line with the title. */
+.sl-workspace > .sb-toolbar { gap: 8px; }
+.sl-workspace > .sb-toolbar .sb-tb-title { min-width: 150px; flex: 1 1 150px; }
+.sb-workspace .sl-add select { max-width: 132px; }
+.sb-tb-hint { font-size: 0.72rem; font-weight: 500; color: var(--muted); padding: 0 6px 0 2px; white-space: nowrap; }
+.sb-workspace .sb-tb-zoom .sb-zoom { width: 90px; }
 .sb-timeline-scroll { flex: 1; min-height: 0; overflow: auto; position: relative; background: #fcfbfd; overscroll-behavior: contain; }
 .sb-canvas { position: relative; min-height: 100%; }
 .sb-ruler-row { position: sticky; top: 0; z-index: 6; display: flex; height: 38px; background: #f7f6fa; border-bottom: 1px solid var(--sb-line); }

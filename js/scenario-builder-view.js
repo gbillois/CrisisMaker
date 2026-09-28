@@ -238,25 +238,30 @@ function sbScoreRing(score) {
 }
 
 // ── Timeline ─────────────────────────────────────────────────────────────────
+/* The timeline tools of the Main storyline (zoom, magnet, ripple), shown in its top toolbar.
+   The exercise duration is set in Context. */
+function renderSbTimelineTools() {
+  const ui = sbUI();
+  const magnet = ui.magnet !== false;
+  return `<div class="sb-tb-group sb-tb-zoom">
+      <button class="sb-tool" data-sb-action="zoom-out" title="Zoom out (-)">${sbUiIcon('minus')}</button>
+      <input class="sb-zoom" type="range" min="${SB_ZOOM_MIN}" max="${SB_ZOOM_MAX}" step="0.1" value="${ui.zoom}" data-sb-zoom aria-label="Zoom">
+      <button class="sb-tool" data-sb-action="zoom-in" title="Zoom in (+)">${sbUiIcon('plus')}</button>
+      <button class="sb-tool" data-sb-action="zoom-fit" title="Fit the whole exercise">${sbUiIcon('fit')}</button>
+    </div>
+    <div class="sb-tb-group sb-tb-snap">
+      <button class="sb-tool ${magnet ? 'is-on' : ''}" data-sb-action="toggle-magnet" aria-pressed="${magnet}" title="${magnet ? 'Magnet on: phases snap to the step and to the edges of the other phases. Click to move them freely.' : 'Magnet off: phases move freely by the minute. Click to snap them to the step.'}">${sbUiIcon('magnet', 15)}</button>
+      <select class="sb-snap-step" data-sb-ui-select="snap" aria-label="Magnet step" title="Step of the magnet: moves, resizes and arrow keys go by this step" ${magnet ? '' : 'disabled'}>${[1, 5, 15, 30].map((value) => sbOption(value, `${value} min`, ui.snap)).join('')}</select>
+      <span class="sb-tb-hint sb-hide-compact">${magnet ? `Moves by ${ui.snap} min` : 'Free moves'}</span>
+      <button class="sb-tool sb-tool-label ${ui.ripple ? 'is-on' : ''}" data-sb-action="toggle-ripple" aria-pressed="${ui.ripple}" title="Ripple: moving or resizing a phase shifts the following ones">${sbUiIcon('ripple', 14)}<span>Ripple</span></button>
+    </div>`;
+}
+
 function renderSbTimeline(storyboard) {
   const ui = sbUI();
   const ppm = ui.zoom;
   const width = Math.ceil((storyboard.duration_minutes + 60) * ppm);
-  const readOnly = sbReadOnly() ? 'disabled' : '';
   return `<section class="sb-timeline-panel" aria-label="Timeline">
-    <div class="sb-timeline-toolbar">
-      <div class="sb-tb-group">
-        <button class="sb-tool" data-sb-action="zoom-out" title="Zoom out (-)">${sbUiIcon('minus')}</button>
-        <input class="sb-zoom" type="range" min="${SB_ZOOM_MIN}" max="${SB_ZOOM_MAX}" step="0.1" value="${ppm}" data-sb-zoom aria-label="Zoom">
-        <button class="sb-tool" data-sb-action="zoom-in" title="Zoom in (+)">${sbUiIcon('plus')}</button>
-        <button class="sb-tool" data-sb-action="zoom-fit" title="Fit the whole exercise">${sbUiIcon('fit')}</button>
-      </div>
-      <div class="sb-tb-group">
-        <label class="sb-inline-label" title="Snap blocks to a time grid">${sbUiIcon('magnet', 14)}<select data-sb-ui-select="snap">${[1, 5, 15, 30].map((value) => sbOption(value, `${value} min`, ui.snap)).join('')}</select></label>
-        <button class="sb-tool sb-tool-label ${ui.ripple ? 'is-on' : ''}" data-sb-action="toggle-ripple" aria-pressed="${ui.ripple}" title="Ripple: moving or resizing a block shifts the following ones">${sbUiIcon('ripple', 14)}<span>Ripple</span></button>
-        <label class="sb-inline-label" title="Exercise duration in minutes"><span class="sb-hide-compact">Duration</span><input type="number" min="30" max="${SB_MAX_DURATION}" step="15" value="${storyboard.duration_minutes}" data-sb-duration ${readOnly}><span>min</span></label>
-      </div>
-    </div>
     <div class="sb-timeline-scroll" id="sb-timeline-scroll">
       <div class="sb-canvas" style="width:${sbHeaderWidth() + width}px;--ppm:${ppm};--hour:${(60 * ppm).toFixed(2)}px;--quarter:${(15 * ppm).toFixed(2)}px;--header:${sbHeaderWidth()}px">
         <div class="sb-ruler-row">

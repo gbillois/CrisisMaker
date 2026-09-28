@@ -8,8 +8,16 @@ function sbCommitRender(label) {
   App.render();
 }
 
+/* The magnet: on, times snap to the step grid (and to the edges of the other phases);
+   off, they move freely by the minute. */
+function sbMagnetOn() {
+  return sbUI().magnet !== false;
+}
+function sbSnapStep() {
+  return sbMagnetOn() ? Number(sbUI().snap) || 1 : 1;
+}
 function sbSnap(minutes) {
-  const step = Number(sbUI().snap) || 1;
+  const step = sbSnapStep();
   return Math.round(minutes / step) * step;
 }
 
@@ -254,6 +262,7 @@ async function sbHandleAction(event) {
       case 'zoom-out': sbSetZoom(ui.zoom / 1.25); App.render(); break;
       case 'zoom-fit': sbFitZoom(); App.render(); break;
       case 'toggle-ripple': ui.ripple = !ui.ripple; App.render(); break;
+      case 'toggle-magnet': ui.magnet = !sbMagnetOn(); App.render(); break;
       case 'delete-track': {
         const track = sbTrack(storyboard, element.dataset.sbTrack);
         if (!track || track.kind === 'main') break;
@@ -645,13 +654,6 @@ function sbBindInputs(root) {
     });
   });
 
-  root.querySelectorAll('[data-sb-duration]').forEach((input) => {
-    input.addEventListener('change', () => {
-      storyboard.duration_minutes = Math.max(sbStoryboardEnd(storyboard), sbInt(input.value, storyboard.duration_minutes, 30, SB_MAX_DURATION));
-      sbCommitRender('Change duration');
-    });
-  });
-
   root.querySelectorAll('[data-sb-zoom]').forEach((input) => {
     input.addEventListener('input', () => {
       const canvas = document.querySelector('.sb-canvas');
@@ -693,6 +695,7 @@ function sbEdgeCandidates(storyboard, excluded) {
 }
 
 function sbSnapWithEdges(value, edges, ppm) {
+  if (!sbMagnetOn()) return sbSnap(value);
   const tolerance = 8 / ppm;
   let best = null;
   for (const edge of edges) {
@@ -941,7 +944,7 @@ function sbOnKeyDown(event) {
   if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); sbDeleteSelected(); return; }
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
-    const step = event.shiftKey ? 1 : (Number(ui.snap) || 5);
+    const step = event.shiftKey ? 1 : sbSnapStep();
     sbNudgeSelected(event.key === 'ArrowLeft' ? -step : step);
   }
 }
@@ -968,7 +971,7 @@ function bindScenarioBuilderEvents() {
     sbBindInputs(root);
     if (root.classList.contains('sb-workspace')) sbBindTimeline(root);
     if (sbReadOnly()) {
-      root.querySelectorAll('.sb-inspector input, .sb-inspector textarea, .sb-inspector select, .sb-bin input, .sb-bin select, .sb-bin textarea, [data-sb-duration], .sb-track-name, .sb-framing input, .sb-framing textarea').forEach((element) => { element.disabled = true; });
+      root.querySelectorAll('.sb-inspector input, .sb-inspector textarea, .sb-inspector select, .sb-bin input, .sb-bin select, .sb-bin textarea, .sb-track-name, .sb-framing input, .sb-framing textarea').forEach((element) => { element.disabled = true; });
     }
   }
   if (appState.route === 'storyline' && ui.needsFit) {
