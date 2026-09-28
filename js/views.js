@@ -319,7 +319,7 @@
                   <div class="launch-tips">
                     <div class="launch-tip">
                       <div class="launch-tip-num">1</div>
-                      <span><strong>Build the storyboard</strong> — in the Scenario Builder, load a scenario from the library or generate a skeleton, refine each block, then generate actors and injects.</span>
+                      <span><strong>Build the storyboard</strong>: in the Scenario Builder, load a scenario from the library or generate a skeleton, refine each block, then generate actors and injects.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">2</div>
