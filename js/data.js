@@ -195,6 +195,7 @@
           exercise: { players_count: '', cells_count: '' },
           debrief: makeEmptyDebrief({ ...base, client: { ...base.client, name: '' } }),
           video_debrief: normalizeVideoDebrief(null, settingsOverrides.inject_language || settingsOverrides.language || 'en'),
+          evaluation: typeof normalizeEvaluation === 'function' ? normalizeEvaluation(null) : { sheets: {} },
           settings: { ...base.settings, ...settingsOverrides }
         };
       }
@@ -294,6 +295,7 @@
             input.settings?.inject_language || input.client?.language || input.settings?.language || base.settings.inject_language
           ),
           custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : [],
+          evaluation: typeof normalizeEvaluation === 'function' ? normalizeEvaluation(input.evaluation) : (input.evaluation || { sheets: {} }),
           storyboard: storyboardModelLoaded() ? normalizeStoryboard(input.storyboard, input.scenario?.phases) : input.storyboard,
           storyboard_versions: storyboardModelLoaded() ? sbNormalizeVersions(input.storyboard_versions) : [],
           cells: storyboardModelLoaded() ? sbNormalizeCells(input.cells) : [],

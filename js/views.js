@@ -193,6 +193,7 @@
                   ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
                   ${renderNavIconButton('library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'))}
                   ${renderNavIconButton('play', svgBroadcast(), 'Play')}
+                  ${renderNavIconButton('evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung'))}
                   ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                   ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
                   ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
@@ -254,6 +255,7 @@
       function svgPen() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'; }
       function svgGrid() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>'; }
       function svgDebrief() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"></path><path d="M4 16h5l3-4 3 2 5-7"></path><circle cx="9" cy="16" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="15" cy="14" r="1"></circle><circle cx="20" cy="7" r="1"></circle></svg>'; }
+      function svgEvaluation() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M9 3v2h6V3"></path><path d="m9 11 1.5 1.5L13 10"></path><path d="M9 16h6"></path></svg>'; }
       function svgVideo() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="14" rx="2"></rect><path d="m17 10 4-2v8l-4-2z"></path><path d="m9 9 4 3-4 3z"></path></svg>'; }
       function svgShieldCheck() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>'; }
       function svgGear() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'; }
@@ -420,8 +422,12 @@
             title: 'Detailed storyline',
             subtitle: tt('Write the injects and generate their content.', 'Rédigez les injects et générez leur contenu.', 'Injects schreiben und Inhalte generieren.')
           },
+          evaluation: {
+            title: tt('Evaluation', 'Évaluation', 'Bewertung'),
+            subtitle: tt('One evaluation sheet per cell, to adjust and download for the evaluators.', 'Une grille d’évaluation par cellule, à ajuster et télécharger pour les évaluateurs.', 'Ein Bewertungsbogen pro Zelle, anpassbar und für die Bewertenden herunterladbar.')
+          },
           library: {
-            title: tt('Injects', 'Injects', 'Injects'),
+            title: tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'),
             subtitle: tt('Every inject of the scenario, phase by phase.', 'Tous les injects du scénario, phase par phase.', 'Alle Injects des Szenarios, Phase für Phase.')
           },
           agent: {
@@ -451,6 +457,7 @@
         if (appState.route === 'detailed') return renderDetailedView();
         if (appState.route === 'summary') return renderSummaryView();
         if (appState.route === 'play') return renderPlayView();
+        if (appState.route === 'evaluation') return renderEvaluationView();
         if (appState.route === 'library') return renderLibraryView();
         if (appState.route === 'debrief') return renderDebriefView();
         if (appState.route === 'video-debrief') return renderVideoDebriefView();

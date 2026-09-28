@@ -138,6 +138,7 @@
           bindScenarioBuilderEvents();
           bindScenarioTabsEvents();
           bindPlayEvents();
+          bindEvaluationEvents();
           bindStimulusModalSplitter();
           bindStimulusLinks();
           mountDebriefEditor();

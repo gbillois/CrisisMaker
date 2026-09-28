@@ -901,3 +901,27 @@ test('inject editor: the phase it belongs to and the cells that receive it', () 
   const manual = h.run(`(() => { const s = makeStimulus('email_internal', appState.scenario.actors[0].id, 5); appState.scenario.stimuli.push(s); return s.id; })()`);
   assert.ok(h.run(`renderStimulusLinks(appState.scenario, getStimulus('${manual}'))`).includes(`data-rcpt="stim:${manual}"`));
 });
+
+test('evaluation: one sheet per cell, default criteria by type, editable, saved, exported to Excel', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const cells = h.json('appState.scenario.cells.map((cell) => ({ id: cell.id, key: cell.key, name: cell.name }))');
+  const legal = cells.find((cell) => cell.key === 'legal');
+  const sheet = h.json(`evSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
+  assert.equal(sheet.isDefault, true);
+  assert.ok(sheet.criteria.some((item) => item.text.includes('Regulatory obligations')) && sheet.criteria.some((item) => item.category === 'Mobilisation'));
+  const view = h.run(`(() => { appState.route = 'evaluation'; return renderEvaluationView(); })()`);
+  for (const cell of cells) assert.ok(view.includes(escapeForTest(cell.name)), cell.name);
+  assert.ok(view.includes('data-ev-action="download-all"') && view.includes('data-ev-field='));
+  // Edited: the sheet is kept with the project and survives a reload.
+  h.run(`(() => { const sheet = evEditableSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}')); sheet.criteria.push({ id: 'crit_custom', category: 'Sector', text: 'Notify the health regulator', observe: 'Within 24 h' }); })()`);
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).evaluation.sheets['${legal.id}'].criteria.map((item) => item.text)`);
+  assert.ok(reloaded.includes('Notify the health regulator'));
+  // Excel rows: criteria, then every inject the cell receives with the reaction expected.
+  const rows = h.json(`evSheetRows(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
+  assert.ok(rows.some((row) => row[1] === 'Notify the health regulator'));
+  const received = h.json(`evReceivedInjects(appState.scenario, sbCell(appState.scenario, '${legal.id}')).length`);
+  const start = rows.findIndex((row) => row[0] === 'Injects received');
+  assert.ok(received > 0 && rows.slice(start + 2).filter((row) => /^H\+/.test(row[0] || '')).length === received);
+});
+function escapeForTest(text) { return String(text).replace(/&/g, '&amp;'); }
