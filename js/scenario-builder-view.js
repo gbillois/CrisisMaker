@@ -71,7 +71,7 @@ function sbOption(value, label, current) {
 }
 
 function sbChannelColor(channel) {
-  return CHANNEL_META[channel]?.color || '#5d7384';
+  return CHANNEL_META[channel]?.color || '#6d687e';
 }
 
 function sbSvg(path, size = 16) {

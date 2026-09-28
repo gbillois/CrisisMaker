@@ -158,36 +158,46 @@
         return `
           <div class="app-shell">
             ${appState.launchScreenOpen ? renderLaunchScreen() : ''}
-            <nav class="nav-topbar">
-              <div class="nav-topbar-left">
-                ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
-                ${renderNavIconButton('scenario', svgTarget(), 'Scenario & context')}
-                ${renderNavIconButton('storyline', svgStoryboard(), 'Main storyline')}
-                ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
-                ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
-                ${renderNavIconButton('summary', svgPlayCircle(), 'Summary')}
-                ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
-                ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
-                ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
-                ${renderNavIconButton('agent', svgTarget(), 'Agent')}
-                ${renderNavIconButton('checker', svgShieldCheck(), tt('Checker', 'Checker', 'Prüfer'))}
+            <header class="app-header">
+              <div class="brand-bar">
+                <a class="brand-lockup" href="https://www.wavestone.com/" target="_blank" rel="noopener noreferrer" title="Wavestone">
+                  ${wavestoneLogo()}
+                  <span class="brand-divider" aria-hidden="true"></span>
+                  <span class="brand-product">Crisis<b>Maker</b></span>
+                </a>
+                <div class="brand-project">
+                  <span class="brand-project-label">${tt('Current exercise', 'Exercice en cours', 'Aktuelle Übung')}</span>
+                  <span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker', 'CrisisMaker-Projekt'))}</span>
+                </div>
+                <div class="brand-actions">
+                  <span id="save-indicator" class="save-indicator"></span>
+                  <button class="nav-gear-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil', 'Startseite')}">
+                    ${svgHome()}
+                  </button>
+                  <button class="nav-gear-btn" data-action="save-local" title="${tt('Save', 'Sauvegarder', 'Speichern')}">
+                    ${svgSave()}
+                  </button>
+                  <button class="nav-gear-btn ${appState.settingsDrawerOpen ? 'active' : ''}" data-action="toggle-settings-drawer" title="${tt('Settings', 'Paramètres', 'Einstellungen')}">
+                    ${svgGear()}
+                  </button>
+                </div>
               </div>
-              <div class="nav-topbar-center">
-                <div class="nav-brand-block"><span class="nav-brand-eyebrow">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span><span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker', 'CrisisMaker-Projekt'))}</span></div>
-              </div>
-              <div class="nav-topbar-right">
-                <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
-                <button class="nav-gear-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil', 'Startseite')}">
-                  ${svgHome()}
-                </button>
-                <button class="nav-gear-btn" data-action="save-local" title="${tt('Save', 'Sauvegarder', 'Speichern')}">
-                  ${svgSave()}
-                </button>
-                <button class="nav-gear-btn ${appState.settingsDrawerOpen ? 'active' : ''}" data-action="toggle-settings-drawer" title="${tt('Settings', 'Paramètres', 'Einstellungen')}">
-                  ${svgGear()}
-                </button>
-              </div>
-            </nav>
+              <nav class="nav-topbar" aria-label="${tt('Workspace', 'Espace de travail', 'Arbeitsbereich')}">
+                <div class="nav-topbar-left">
+                  ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
+                  ${renderNavIconButton('scenario', svgTarget(), 'Scenario & context')}
+                  ${renderNavIconButton('storyline', svgStoryboard(), 'Main storyline')}
+                  ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
+                  ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
+                  ${renderNavIconButton('summary', svgPlayCircle(), 'Summary')}
+                  ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
+                  ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
+                  ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
+                  ${renderNavIconButton('agent', svgTarget(), 'Agent')}
+                  ${renderNavIconButton('checker', svgShieldCheck(), tt('Checker', 'Checker', 'Prüfer'))}
+                </div>
+              </nav>
+            </header>
 
             <div class="settings-drawer ${appState.settingsDrawerOpen ? 'open' : ''}" role="dialog" aria-modal="true" aria-label="${tt('Settings', 'Paramètres', 'Einstellungen')}" aria-hidden="${appState.settingsDrawerOpen ? 'false' : 'true'}" ${appState.settingsDrawerOpen ? '' : 'inert'}>
               <div class="settings-drawer-header">
@@ -202,6 +212,7 @@
             <main class="content ${appState.route === 'video-debrief' ? 'content-video-debrief' : ''} ${['storyline', 'detailed', 'builder', 'stimuli'].includes(appState.route) ? 'content-builder' : ''}">
               ${vc ? `<section class="topbar">
                 <div class="page-title">
+                  <span class="page-eyebrow">${tt('Crisis exercise studio', 'Studio d\'exercices de crise', 'Krisenübungs-Studio')}</span>
                   <h2>${vc.title}</h2>
                   <p>${vc.subtitle}</p>
                 </div>
@@ -229,6 +240,13 @@
         </button>`;
       }
 
+      // Official Wavestone wordmark, taken from the header of wavestone.com. It inherits
+      // its color from CSS (currentColor), so the same mark works on light and dark bands.
+      const WAVESTONE_LOGO_PATH = 'M208.544 37.996c-2.614.042-5.105-.49-7.534-1.36-2.931-1.05-5.357-2.774-7.088-5.32-1.249-1.838-2.093-3.872-2.111-6.104-.014-1.71.018-3.46.373-5.122.425-1.99 1.465-3.741 2.916-5.289 2.532-2.704 5.636-4.248 9.315-4.774 1.234-.176 2.49-.563 3.703-.466 2.274.18 4.548.532 6.772 1.023 2.147.473 4.016 1.599 5.708 2.977 1.405 1.143 2.419 2.57 3.26 4.138 1.018 1.904 1.359 3.99 1.391 6.06.028 1.895-.401 3.788-1.175 5.602-.833 1.951-2.206 3.468-3.742 4.836-.901.801-2.022 1.46-3.161 1.9-1.745.673-3.568 1.17-5.395 1.599-1.043.245-2.153.207-3.235.297l.003.003Zm-.057-3.191c.898-.11 1.795-.2 2.689-.339 1.887-.297 3.487-1.257 4.658-2.615 1.905-2.207 2.621-4.956 2.692-7.789.036-1.385-.372-2.788-.656-4.17-.738-3.567-2.951-5.844-6.538-6.807-2.273-.612-4.487-.443-6.757.348-3.243 1.127-4.835 3.527-5.648 6.49-.596 2.177-.585 4.46-.213 6.713.327 1.965 1.121 3.73 2.473 5.23 1.93 2.144 4.452 2.897 7.3 2.935v.004ZM159.506 15.91c-2.696-1.74-5.573-2.642-8.56-3.064-2.618-.37-5.243-.217-7.669 1.116-1.401.77-2.096 2.88-.216 3.931 1.365.763 2.88 1.31 4.381 1.786 1.926.611 3.955.933 5.856 1.61 1.863.663 3.768 1.405 5.385 2.49 1.788 1.195 2.842 3.019 2.962 5.26.096 1.818-.362 3.438-1.497 4.864-1.266 1.596-2.994 2.543-4.934 3.154a19.396 19.396 0 0 1-8.407.743c-2.168-.287-4.346-.76-6.407-1.454-2.057-.695-3.976-1.77-6.084-2.736l2.065-2.922c1.834.853 3.54 1.754 5.328 2.455 2.682 1.05 5.488 1.548 8.397 1.275 1.504-.142 3.018-.397 4.214-1.33 2.313-1.803 1.359-3.285-.607-4.414-2.426-1.396-5.271-1.82-7.988-2.512a28.462 28.462 0 0 1-3.643-1.184c-1.359-.55-2.672-1.199-3.764-2.215-2.129-1.979-2.657-4.352-1.948-7.063.699-2.664 2.65-4.18 5.112-5.13 3.182-1.23 6.509-1.596 9.879-1.036 2.2.366 4.364.957 6.528 1.513 1.45.373 1.61.656 1.61 2.131v2.732h.007Zm113.459-1.99v8.004h15.357v3.32h-15.329v8.075h17.006v3.71H266.52V10.25h23.111v3.671h-16.669.003ZM129.656 37.022H106.35v-26.77h23.111v3.665H112.66v8.014h15.488v3.299h-15.495v8.079h17.003v3.713Zm128.958.608c-7.896-5.955-15.722-11.855-23.714-17.886V37.01h-3.693V9.585c8.003 6.035 15.896 11.99 23.888 18.018V10.169h3.519V37.63Zm-226.567.27L16.41 10.204h1.1c2.011 0 4.022.062 6.027-.028.89-.041 1.44.26 1.82.947 1.014 1.837 1.99 3.696 3.008 5.53.727 1.305 1.518 2.577 2.245 3.882.703 1.258 1.352 2.54 2.044 3.8.202.366.471.694.77 1.122.9-1.582 1.713-3.077 2.596-4.535a135.44 135.44 0 0 1 3.239-5.105c1.199-1.793 2.387-3.596 3.724-5.289 1.72-2.183 3.566-4.273 5.396-6.373A62.574 62.574 0 0 1 51.689.65c.333-.324.883-.584 1.348-.608 1.44-.08 2.887-.027 4.593-.027C46.041 10.8 37.486 23.316 32.043 37.9h.004Zm31.429-5.586c-4.3 0-8.525.007-12.753-.01-.522 0-.766.183-.997.636-.65 1.264-1.366 2.494-2.09 3.723-.106.183-.375.38-.574.384-1.444.03-2.884.017-4.523.017 5.161-9.21 10.252-18.287 15.406-27.482 5.14 9.174 10.21 18.228 15.392 27.485h-2.951c-1.004 0-2.019-.076-3.012.021-.961.093-1.504-.231-1.908-1.067-.603-1.244-1.306-2.442-1.99-3.703v-.004ZM56.76 20.19c-1.685 3.06-3.256 5.917-4.838 8.787h9.688l-4.846-8.787h-.004Zm44.035-9.983-15.431 27.53c-5.18-9.24-10.28-18.342-15.42-27.513h7.254c3.047 5.51 6.101 11.023 9.198 16.619.383-.608.763-1.147 1.075-1.724.677-1.247 1.287-2.532 1.98-3.768.695-1.25 1.479-2.456 2.188-3.7a343.308 343.308 0 0 0 2.976-5.344c.327-.597.571-1.24.908-1.83.086-.149.387-.256.59-.26 1.5-.02 2.997-.01 4.685-.01h-.003Zm79.939 26.801h-6.513V13.865h-10.032V10.2h26.489v3.72h-9.94v23.088h-.004Zm-165.172.716L0 10.266h8.354c.798 1.361 1.618 2.712 2.39 4.083.71 1.26 1.36 2.55 2.051 3.817.696 1.268 1.412 2.528 2.122 3.79.99 1.754 1.99 3.502 2.976 5.257.514.915 1.032 1.83 1.504 2.766.128.253.241.65.128.854-1.2 2.162-2.448 4.3-3.682 6.445-.072.121-.15.235-.288.442l.007.004Z';
+      function wavestoneLogo(className = 'wavestone-logo') {
+        return `<svg class="${className}" viewBox="0 0 290 38" role="img" aria-label="Wavestone" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="${WAVESTONE_LOGO_PATH}"/></svg>`;
+      }
+
       function svgUsers() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21a7 7 0 0 1 14 0"></path><path d="M16 4a4 4 0 0 1 0 8"></path><path d="M22 21a7 7 0 0 0-5-6.7"></path></svg>'; }
       function svgPlayCircle() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m10 8 6 4-6 4z"></path></svg>'; }
       function svgStoryboard() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path><path d="M6 13h5"></path><path d="M9 16h8"></path><path d="M14 13h4"></path><path d="M7 4v5"></path><path d="M12 4v5"></path><path d="M17 4v5"></path></svg>'; }
@@ -251,7 +269,11 @@
 
               <div class="launch-hero">
                 <button class="launch-hero-close" data-action="close-launch-screen" title="${tt('Close', 'Fermer', 'Schließen')}">✕</button>
-                <span class="hero-kicker">${tt('CrisisMaker by Wavestone', 'CrisisMaker by Wavestone', 'CrisisMaker by Wavestone')}</span>
+                <div class="launch-brand">
+                  ${wavestoneLogo('wavestone-logo wavestone-logo-light')}
+                  <span class="brand-divider" aria-hidden="true"></span>
+                  <span class="hero-kicker">CrisisMaker</span>
+                </div>
                 <h1 class="launch-hero-title">${tt('Design, run, and debrief crisis exercises.', 'Concevez, animez et débriefez vos exercices de crise.', 'Entwerfen, leiten und debriefen Sie Krisenübungen.')}</h1>
                 <p class="launch-hero-desc">${tt('A complete studio to prepare realistic scenarios, create crisis injects, audit timelines, and produce polished interactive or video debriefs.', 'Un studio complet pour préparer des scénarios réalistes, créer des injects, auditer des chronogrammes et produire des débriefs interactifs ou vidéo soignés.', 'Ein vollständiges Studio zur Vorbereitung realistischer Szenarien, Erstellung von Krisen-Injects, Prüfung von Zeitplänen und Produktion interaktiver oder videobasierter Debriefs.')}</p>
                 <div class="launch-hero-stats">

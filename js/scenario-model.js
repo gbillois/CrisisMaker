@@ -7,9 +7,9 @@ const SB_MAX_BLOCKS = 80;
 const SB_MAX_BEATS = 24;
 
 const SB_TRACK_PRESETS = [
-  { key: 'main', name: 'Main storyline', kind: 'main', color: '#0f6d8f' },
+  { key: 'main', name: 'Main storyline', kind: 'main', color: '#451dc7' },
   { key: 'technical', name: 'Technical response', kind: 'workstream', color: '#2563eb' },
-  { key: 'governance', name: 'Crisis cell & decisions', kind: 'workstream', color: '#0b2f4a' },
+  { key: 'governance', name: 'Crisis cell & decisions', kind: 'workstream', color: '#211248' },
   { key: 'communication', name: 'Communication', kind: 'workstream', color: '#7c3aed' },
   { key: 'legal', name: 'Legal & regulatory', kind: 'workstream', color: '#0f766e' },
   { key: 'business', name: 'Business & continuity', kind: 'workstream', color: '#d48c00' },
@@ -25,13 +25,13 @@ const SB_BLOCK_TYPES = {
   recovery: { label: 'Recovery & rebuild', group: 'stage', color: '#1aa574', track: 'main', duration: 45, stimuli: 3, icon: 'refresh', hint: 'Restore, rebuild and restart services in a trusted way.' },
   exit: { label: 'Crisis exit & lessons learned', group: 'stage', color: '#30c38f', track: 'main', duration: 30, stimuli: 2, icon: 'flag', hint: 'Close the crisis, communicate, capture lessons learned.' },
   twist: { label: 'Twist / escalation', group: 'stage', color: '#f43f5e', track: 'main', duration: 30, stimuli: 2, icon: 'spark', hint: 'An aggravating event that raises the pressure or changes the situation.' },
-  crisis_cell: { label: 'Crisis cell & governance', group: 'workstream', color: '#0b2f4a', track: 'governance', duration: 60, stimuli: 2, icon: 'users', hint: 'Activation, roles, decision cadence, executive arbitration.' },
+  crisis_cell: { label: 'Crisis cell & governance', group: 'workstream', color: '#211248', track: 'governance', duration: 60, stimuli: 2, icon: 'users', hint: 'Activation, roles, decision cadence, executive arbitration.' },
   communication: { label: 'Communication', group: 'workstream', color: '#7c3aed', track: 'communication', duration: 90, stimuli: 4, icon: 'megaphone', hint: 'Internal messages, media, social networks, public statements.' },
   legal: { label: 'Legal & regulatory', group: 'workstream', color: '#0f766e', track: 'legal', duration: 60, stimuli: 2, icon: 'scale', hint: 'Notifications (GDPR, NIS2, sector), complaint, insurers, contracts.' },
   hr: { label: 'HR & people', group: 'workstream', color: '#e11d48', track: 'people', duration: 60, stimuli: 2, icon: 'heart', hint: 'Staff information, workload, unions, wellbeing, insider aspects.' },
   logistics: { label: 'Logistics', group: 'workstream', color: '#b45309', track: 'people', duration: 60, stimuli: 2, icon: 'box', hint: 'Premises, equipment, crisis room, suppliers, physical operations.' },
   customers: { label: 'Customers & partners', group: 'workstream', color: '#0a66c2', track: 'business', duration: 60, stimuli: 3, icon: 'handshake', hint: 'Clients, partners and suppliers asking questions or applying pressure.' },
-  custom: { label: 'Custom block', group: 'custom', color: '#5d7384', track: 'main', duration: 30, stimuli: 2, icon: 'square', hint: 'Anything specific to your exercise.' }
+  custom: { label: 'Custom block', group: 'custom', color: '#6d687e', track: 'main', duration: 30, stimuli: 2, icon: 'square', hint: 'Anything specific to your exercise.' }
 };
 
 const SB_ICON_PATHS = {
@@ -259,7 +259,7 @@ function normalizeStoryboard(input, legacyPhases = []) {
       key: sbSafeId(track?.key) || 'custom',
       name: sbText(track?.name, 120) || preset?.name || 'Track',
       kind: track?.kind === 'main' ? 'main' : 'workstream',
-      color: /^#[0-9a-f]{6}$/i.test(track?.color || '') ? track.color : (preset?.color || '#5d7384'),
+      color: /^#[0-9a-f]{6}$/i.test(track?.color || '') ? track.color : (preset?.color || '#6d687e'),
       collapsed: track?.collapsed === true
     };
   }).filter((track) => !seenTracks.has(track.id) && seenTracks.add(track.id));
@@ -741,8 +741,8 @@ function sbBuildExampleStoryboard(project) {
 
 // ── Cells: groups of players who receive injects ─────────────────────────────
 const SB_CELL_PRESETS = [
-  { key: 'decision', name: 'Decision cell', description: 'Executive committee: arbitration, strategy and external commitments.', color: '#0b2f4a' },
-  { key: 'operational', name: 'Operational crisis cell', description: 'Coordinates the response, business impacts and logistics.', color: '#0f6d8f' },
+  { key: 'decision', name: 'Decision cell', description: 'Executive committee: arbitration, strategy and external commitments.', color: '#211248' },
+  { key: 'operational', name: 'Operational crisis cell', description: 'Coordinates the response, business impacts and logistics.', color: '#451dc7' },
   { key: 'communication', name: 'Communication cell', description: 'Internal and external communication, media and social networks.', color: '#7c3aed' },
   { key: 'it', name: 'IT & technical cell', description: 'Investigation, containment and recovery of information systems.', color: '#2563eb' },
   { key: 'legal', name: 'Legal & compliance cell', description: 'Regulatory notifications, legal exposure and insurers.', color: '#0f766e' },
@@ -767,7 +767,7 @@ function sbNormalizeCell(input = {}) {
     key: sbSafeId(input.key) || 'custom',
     name: sbText(input.name, 160) || preset?.name || 'New cell',
     description: sbText(input.description, 1000),
-    color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : (preset?.color || '#5d7384'),
+    color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : (preset?.color || '#6d687e'),
     players: (Array.isArray(input.players) ? input.players : []).slice(0, 200).map(sbNormalizePlayer)
   };
 }

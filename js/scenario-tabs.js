@@ -246,10 +246,10 @@ function renderDetailedView() {
 
 function dsRows(project, items) {
   const state = tabUI('detailed');
-  if (state.cell === 'none') return [{ id: 'none', name: 'Unassigned', color: '#5d7384' }];
+  if (state.cell === 'none') return [{ id: 'none', name: 'Unassigned', color: '#6d687e' }];
   if (state.cell !== 'all') return project.cells.filter((cell) => cell.id === state.cell);
   const rows = [...project.cells];
-  if (items.some((item) => !item.cell_id || !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#5d7384' });
+  if (items.some((item) => !item.cell_id || !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
   return rows;
 }
 
@@ -412,7 +412,7 @@ function renderSummaryView() {
 
 function renderSummaryOverview(project, items, phases, duration) {
   const rows = [...project.cells];
-  if (items.some((item) => !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#5d7384' });
+  if (items.some((item) => !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
   const inPhase = (item, block) => item.time >= block.start_minutes && item.time < sbBlockEnd(block);
   const max = Math.max(1, ...rows.flatMap((row) => phases.map((block) => items.filter((item) => (row.id === 'none' ? !sbCell(project, item.cell_id) : item.cell_id === row.id) && inPhase(item, block)).length)));
   const buckets = Math.max(1, Math.ceil(duration / 30));
@@ -436,7 +436,7 @@ function renderSummaryOverview(project, items, phases, duration) {
 function renderSummaryColumns(project, items) {
   const state = tabUI('summary');
   const rows = [...project.cells];
-  if (items.some((item) => !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#5d7384' });
+  if (items.some((item) => !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
   if (!rows.length) return '<p class="sb-empty">No cell yet.</p>';
   return rows.map((row) => {
     const own = items.filter((item) => (row.id === 'none' ? !sbCell(project, item.cell_id) : item.cell_id === row.id) && item.time <= state.time).reverse();

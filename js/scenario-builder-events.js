@@ -317,7 +317,7 @@ async function sbHandleAction(event) {
       case 'add-track': {
         const used = new Set(storyboard.tracks.map((track) => track.key));
         const preset = SB_TRACK_PRESETS.find((item) => item.kind !== 'main' && !used.has(item.key));
-        storyboard.tracks.push({ id: uid('track'), key: preset?.key || 'custom', name: preset?.name || 'New workstream', kind: 'workstream', color: preset?.color || '#5d7384', collapsed: false });
+        storyboard.tracks.push({ id: uid('track'), key: preset?.key || 'custom', name: preset?.name || 'New workstream', kind: 'workstream', color: preset?.color || '#6d687e', collapsed: false });
         sbCommitRender('Add track');
         break;
       }
