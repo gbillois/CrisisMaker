@@ -164,9 +164,9 @@
                   ${svgHome()}
                   <span>${tt('Home', 'Accueil', 'Startseite')}</span>
                 </button>
-                ${renderNavIconButton('builder', svgStoryboard(), 'Scenario Builder')}
+                ${renderNavIconButton('scenario', svgTarget(), 'Scenario context')}
+                ${renderNavIconButton('builder', svgStoryboard(), 'Phase Builder')}
                 ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
-                ${renderNavIconButton('scenario', svgTarget(), tt('Scenario', 'Scénario', 'Szenario'))}
                 ${renderNavIconButton('stimuli', svgPen(), tt('Timeline', 'Timeline', 'Zeitplan'))}
                 ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
                 ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
@@ -273,8 +273,8 @@
                   <div class="launch-features">
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgStoryboard()}</div>
-                      <strong>Scenario Builder</strong>
-                      <p>Storyboard the crisis on a multi-track timeline, start from the scenario library, refine it layer by layer with AI, then generate and keep actors and injects in sync.</p>
+                      <strong>Phase Builder</strong>
+                      <p>Storyboard the crisis phases on a multi-track timeline, refine them layer by layer with AI, then generate and keep actors and injects in sync.</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgFolder()}</div>
@@ -283,7 +283,7 @@
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgTarget()}</div>
-                      <strong>${tt('Scenario', 'Scénario', 'Szenario')}</strong>
+                      <strong>Scenario context</strong>
                       <p>${tt('Define the client organisation, crisis type, timeline and actors who will receive injects during the exercise.', 'Définissez l\'organisation cliente, le type de crise, la chronologie et les acteurs qui recevront les injects.', 'Definieren Sie die Kundenorganisation, den Krisentyp, den Zeitplan und die Akteure, die während der Übung Injects erhalten.')}</p>
                     </div>
                     <div class="launch-feature-card">
@@ -319,7 +319,7 @@
                   <div class="launch-tips">
                     <div class="launch-tip">
                       <div class="launch-tip-num">1</div>
-                      <span><strong>Build the storyboard</strong>: in the Scenario Builder, load a scenario from the library or generate a skeleton, refine each block, then generate actors and injects.</span>
+                      <span><strong>Frame and build the scenario</strong>: in Scenario context, start from the library or an AI skeleton; then refine each phase in the Phase Builder and generate actors and injects.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">2</div>
@@ -366,8 +366,8 @@
             subtitle: tt('Create, open, save and export your crisis exercise project.', 'Créez, ouvrez, sauvegardez et exportez votre projet d\'exercice de crise.', 'Erstellen, öffnen, speichern und exportieren Sie Ihr Krisenübungsprojekt.')
           },
           scenario: {
-            title: tt('Crisis scenario', 'Scénario de crise', 'Krisen-Szenario'),
-            subtitle: tt('Define the client, context, and actors involved in the exercise.', 'Définissez le client, le contexte et les acteurs impliqués dans l\'exercice.', 'Definieren Sie den Auftraggeber, den Kontext und die an der Übung beteiligten Akteure.')
+            title: 'Scenario context',
+            subtitle: 'Frame the exercise: start from the library or AI, then set client, threat, objectives and actors.'
           },
           stimuli: {
             title: tt('Timeline', 'Timeline', 'Zeitplan'),
@@ -584,7 +584,7 @@
         const status = sbStimulusStatus(appState.scenario, stimulus);
         if (!status) return '';
         const block = status.block ? ` · ${status.block.title}` : '';
-        return ` <span class="sb-status is-${status.key}" title="${escapeAttribute(`Scenario Builder${block}`)}">${escapeHtml(status.label)}</span>`;
+        return ` <span class="sb-status is-${status.key}" title="${escapeAttribute(`Phase Builder${block}`)}">${escapeHtml(status.label)}</span>`;
       }
 
       function renderLibraryCard(stimulus) {
@@ -879,8 +879,8 @@
         );
         return `
           <section class="grid">
+            ${renderScenarioContextStart()}
             ${renderLLMConfigBlock('scenario', scenarioPlaceholder)}
-            ${renderExercisePlan()}
             <article class="card">
               <div class="section-header"><h3>${tt('Client', 'Client', 'Auftraggeber')}</h3></div>
               <div class="field-grid cols-2">

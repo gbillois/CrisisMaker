@@ -42,23 +42,23 @@ function answerFor(system, user) {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.click('.launch-hero-close');
-  assert.ok(await page.isVisible('.sb-workspace'), 'Scenario Builder is the landing tab');
+  assert.ok(await page.isVisible('.sb-context'), 'Scenario context is the landing tab');
   await page.evaluate(() => { appState.scenario = emptyScenario({ ...appState.scenario.settings, ai_provider: 'openai', ai_api_key: 'sk-test', ai_model: 'gpt-test' }); App.render(); });
 
-  // Library: preview and use a built-in scenario, then undo it.
-  await page.click('[data-sb-action="set-bin"][data-sb-value="library"]');
-  await page.click('[data-sb-action="preview-template"][data-sb-template="ransomware-double-extortion"]');
+  // Library in Scenario context: preview and use a built-in scenario, which opens the Phase Builder; then undo it.
+  await page.click('.sb-context [data-sb-action="preview-template"][data-sb-template="ransomware-double-extortion"]');
   await page.click('.sb-modal-foot [data-sb-action="use-template"][data-sb-mode="replace"]');
+  assert.equal(await page.evaluate(() => appState.route), 'builder');
   assert.ok(await page.evaluate(() => sbStoryboard().blocks.length) >= 8);
   await page.keyboard.press('Control+z');
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
 
-  // AI skeleton, deepening and generation.
-  await page.click('[data-sb-modal="skeleton"]');
+  // AI skeleton from Scenario context, then deepening and generation in the Phase Builder.
+  await page.click('.nav-icon-btn[data-route="scenario"]');
   await page.fill('[data-sb-ui="skeleton.brief"]', 'Three-hour hospital ransomware exercise');
   await page.fill('[data-sb-ui="skeleton.duration"]', '180');
   await page.click('[data-sb-action="generate-skeleton"]');
-  await page.waitForFunction(() => sbStoryboard().blocks.length === 4);
+  await page.waitForFunction(() => sbStoryboard().blocks.length === 4 && appState.route === 'builder');
   await page.click('[data-sb-action="deepen-all"]');
   await page.waitForFunction(() => sbStoryboard().blocks.every(block => block.narrative));
   await page.click('[data-sb-modal="generate"]');
@@ -84,6 +84,20 @@ function answerFor(system, user) {
   await page.click('[data-sb-action="apply-sync"]');
   await page.waitForFunction(() => !SbPipeline.active);
   assert.equal(await page.evaluate(() => sbComputeImpacts(appState.scenario).length), 0);
+  await page.click('[data-sb-action="close-modal"]');
+
+  // 13-inch laptop: compact layout, collapsible side panels and monitor.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(400);
+  assert.ok(await page.isVisible('.sb-workspace.is-compact'));
+  const before = await page.evaluate(() => ({ ...sbPanels() }));
+  await page.keyboard.press('[');
+  await page.keyboard.press(']');
+  await page.keyboard.press('m');
+  const after = await page.evaluate(() => ({ ...sbPanels() }));
+  assert.notEqual(after.left, before.left); assert.notEqual(after.right, before.right); assert.notEqual(after.monitor, before.monitor);
+  assert.equal(await page.isVisible('.sb-bin'), !!after.left);
+  assert.equal(await page.isVisible('.sb-inspector'), after.right);
 
   // Persistence across reload.
   await page.evaluate(() => saveLocal(false));

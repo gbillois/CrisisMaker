@@ -1,6 +1,6 @@
       const initialScenario = loadInitialScenario();
       const appState = {
-        route: 'builder',
+        route: 'scenario',
         selectedStimulusId: null,
         stimulusModalId: null,
         slideshowIndex: 0,
@@ -607,7 +607,7 @@
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = null;
-              appState.route = 'builder';
+              appState.route = 'scenario';
               appState.launchScreenOpen = false;
               saveLocal(false);
               App.render();
@@ -622,7 +622,7 @@
               appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
               appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
               appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
-              appState.route = 'builder';
+              appState.route = 'scenario';
               appState.launchScreenOpen = false;
               saveLocal(false);
               App.render();

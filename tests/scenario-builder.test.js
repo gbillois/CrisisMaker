@@ -305,10 +305,17 @@ test('view: builder renders every panel and modal without a DOM', () => {
     h.run(`sbUI().inspector = '${tab}'`);
     assert.ok(h.run('renderScenarioBuilderView()').includes('sb-inspector-head'), tab);
   }
-  for (const bin of ['blocks', 'library', 'cast']) {
-    h.run(`sbUI().bin = '${bin}'`);
-    assert.ok(h.run('renderScenarioBuilderView()').length > 1000, bin);
+  for (const left of ['blocks', 'cast', null]) {
+    h.run(`sbPanels().left = ${JSON.stringify(left)}`);
+    const markup = h.run('renderScenarioBuilderView()');
+    assert.equal(markup.includes('class="sb-bin"'), left !== null, String(left));
+    assert.ok(!markup.includes('sb-template-card'), 'library lives in Scenario context');
   }
+  h.run(`sbPanels().right = false; sbPanels().monitor = 'compact'`);
+  const collapsed = h.run('renderScenarioBuilderView()');
+  assert.ok(!collapsed.includes('sb-inspector-head') && collapsed.includes('sb-monitor-strip') && collapsed.includes('sb-rail-right'));
+  const context = h.run('renderScenarioView()');
+  for (const marker of ['Scenario library', 'Generate with AI', 'Exercise framing', 'sb-template-card', 'data-sb-meta="synopsis"', 'data-actor-bind']) assert.ok(context.includes(marker), marker);
   h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'`);
   assert.ok(!h.run('renderScenarioBuilderView()').includes('<img src=x'));
 });
