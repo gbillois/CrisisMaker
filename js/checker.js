@@ -4,6 +4,15 @@
       // Phase 2: LLM analysis + results display
       // Phase 3: Checklist + export
 
+      // Flat line icons for axis verdicts, colored by the verdict.
+      function checkerVerdictIcons() {
+        return {
+          satisfactory: `<span class="verdict-icon is-good">${sbUiIcon('checkCircle', 15)}</span>`,
+          acceptable: `<span class="verdict-icon is-mid">${sbUiIcon('alert', 15)}</span>`,
+          insufficient: `<span class="verdict-icon is-low">${sbUiIcon('xCircle', 15)}</span>`
+        };
+      }
+
       // ─── Column detection patterns (FR + EN + DE) ────────────────────────────────
       const CHECKER_COLUMN_PATTERNS = {
         timestamp:   [/^h\+/i, /horodatage/i, /heure/i, /time/i, /timestamp/i, /horaire/i, /^t\+/i, /^t$/i, /^h$/i, /zeitstempel/i, /uhrzeit/i, /^z\+/i],
@@ -270,7 +279,7 @@ Response format (strict JSON):
           : !!cs.parsedData;
 
         return `
-          <section class="grid" style="max-width:960px; margin: 0 auto;">
+          <section class="grid">
             ${renderCheckerModeSelector()}
             ${mode === 'scenario'
               ? renderCheckerScenarioSummary()
@@ -427,7 +436,7 @@ Response format (strict JSON):
             <div class="section-header" style="margin-bottom:16px;">
               <h3>${escapeHtml(cs.file.name)} <span class="subtle" style="font-weight:normal; font-size:0.85rem;">(${pd.rows.length} ${tt('rows', 'lignes', 'Zeilen')})</span></h3>
               <div class="actions">
-                <button class="btn btn-secondary" data-action="checker-clear-file">${tt('Clear', 'Effacer', 'Löschen')} ✕</button>
+                <button class="btn btn-secondary" data-action="checker-clear-file">${sbUiIcon('close', 14)} ${tt('Clear', 'Effacer', 'Löschen')}</button>
               </div>
             </div>
             ${renderCheckerSheetSelector()}
@@ -520,12 +529,12 @@ Response format (strict JSON):
                       <option value="-1" ${isMissing ? 'selected' : ''}>${notDetected}</option>
                       ${pd.headers.map((h, i) => `<option value="${i}" ${val === i ? 'selected' : ''}>${tt('Column', 'Colonne', 'Spalte')} ${checkerColLetter(i)} — "${escapeHtml(h)}"</option>`).join('')}
                     </select>
-                    ${isMissing && !isLoading ? '<span class="checker-mapping-warn" title="' + escapeAttribute(tt('Not detected', 'Non détecté', 'Nicht erkannt')) + '">⚠</span>' : ''}
+                    ${isMissing && !isLoading ? '<span class="checker-mapping-warn" title="' + escapeAttribute(tt('Not detected', 'Non détecté', 'Nicht erkannt')) + '">' + sbUiIcon('alert', 13) + '</span>' : ''}
                   </div>
                 `;
               }).join('')}
             </div>
-            ${hasMissing && !isLoading ? `<p class="checker-mapping-note">${tt('⚠ Missing columns will be flagged in the analysis.', '⚠ Les colonnes manquantes seront signalées dans l\'analyse.', '⚠ Fehlende Spalten werden in der Analyse markiert.')}</p>` : ''}
+            ${hasMissing && !isLoading ? `<p class="checker-mapping-note">${sbUiIcon('alert', 13)} ${tt('Missing columns will be flagged in the analysis.', 'Les colonnes manquantes seront signalées dans l\'analyse.', 'Fehlende Spalten werden in der Analyse markiert.')}</p>` : ''}
             ${!isLoading ? `<p class="checker-mapping-hint">${tt('You can adjust the mapping manually using the dropdowns above.', 'Vous pouvez ajuster la correspondance manuellement via les menus ci-dessus.', 'Sie können die Zuordnung manuell über die Dropdown-Menüs oben anpassen.')}</p>` : ''}
           </div>
         `;
@@ -1350,12 +1359,12 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
                     <span id="checker-stream-indicator-text">${tt('Receiving LLM response', 'Réception de la réponse LLM', 'LLM-Antwort wird empfangen')} — ${streamedChars.toLocaleString()} ${tt('chars', 'car.', 'Zeichen')}</span>
                   </div>` : ''}
                   <div class="subtle" style="font-size:0.85rem;">
-                    ⏱ ${tt('This may take 30–60 seconds', 'Cela peut prendre 30 à 60 secondes', 'Dies kann 30–60 Sekunden dauern')}
+                    ${sbUiIcon('clock', 14)} ${tt('This may take 30–60 seconds', 'Cela peut prendre 30 à 60 secondes', 'Dies kann 30–60 Sekunden dauern')}
                   </div>
                 </div>
                 ${showStream ? `
                 <div class="checker-progress-right">
-                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct', 'LLM-Livestream')}</div>
+                  <div class="llm-stream-header">${sbUiIcon('message', 14)} ${tt('LLM Live Stream', 'Flux LLM en direct', 'LLM-Livestream')}</div>
                   <div class="llm-stream-panel" id="checker-llm-stream-panel">
                     <div id="checker-llm-stream-content">${renderCheckerLLMLogs(cs.llmLogs || [])}</div>
                   </div>
@@ -1447,11 +1456,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         if (!axes || !axes.length) return '';
 
         const activeIdx = appState.checkerState.activeAxisTab;
-        const verdictIcons = {
-          satisfactory: '✅',
-          acceptable: '⚠️',
-          insufficient: '❌'
-        };
+        const verdictIcons = checkerVerdictIcons();
 
         return `
           <div class="checker-axes">
@@ -1459,7 +1464,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
               ${axes.map((axis, i) => `
                 <button class="checker-axis-tab ${i === activeIdx ? 'active' : ''} checker-axis-${axis.verdict || 'acceptable'}"
                         data-action="checker-select-axis" data-axis-index="${i}">
-                  ${verdictIcons[axis.verdict] || '⚠️'} ${escapeHtml(getAxisLabel(axis, i))}
+                  ${verdictIcons[axis.verdict] || verdictIcons.acceptable} ${escapeHtml(getAxisLabel(axis, i))}
                 </button>
               `).join('')}
             </div>
@@ -1470,27 +1475,27 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
 
       function renderCheckerAxisDetail(axis) {
         if (!axis) return '';
-        const verdictIcons = { satisfactory: '✅', acceptable: '⚠️', insufficient: '❌' };
+        const verdictIcons = checkerVerdictIcons();
         return `
           <div class="checker-axis-detail">
             <h4>${escapeHtml(axis.title || '')} ${verdictIcons[axis.verdict] || ''}</h4>
 
             ${(axis.positive && axis.positive.length) ? `
               <div class="checker-findings-group">
-                ${axis.positive.map(f => `<div class="checker-finding checker-finding-positive"><span class="checker-finding-icon">✓</span> ${escapeHtml(f)}</div>`).join('')}
+                ${axis.positive.map(f => `<div class="checker-finding checker-finding-positive"><span class="checker-finding-icon">${sbUiIcon('check', 13)}</span> ${escapeHtml(f)}</div>`).join('')}
               </div>
             ` : ''}
 
             ${(axis.negative && axis.negative.length) ? `
               <div class="checker-findings-group">
-                ${axis.negative.map(f => `<div class="checker-finding checker-finding-negative"><span class="checker-finding-icon">✗</span> ${escapeHtml(f)}</div>`).join('')}
+                ${axis.negative.map(f => `<div class="checker-finding checker-finding-negative"><span class="checker-finding-icon">${sbUiIcon('close', 13)}</span> ${escapeHtml(f)}</div>`).join('')}
               </div>
             ` : ''}
 
             ${(axis.recommendations && axis.recommendations.length) ? `
               <div class="checker-findings-group">
                 <h5>${tt('Recommendations', 'Recommandations', 'Empfehlungen')}</h5>
-                ${axis.recommendations.map(r => `<div class="checker-finding checker-recommendation"><span class="checker-finding-icon">→</span> ${escapeHtml(r)}</div>`).join('')}
+                ${axis.recommendations.map(r => `<div class="checker-finding checker-recommendation"><span class="checker-finding-icon">${sbUiIcon('chevronRight', 13)}</span> ${escapeHtml(r)}</div>`).join('')}
               </div>
             ` : ''}
           </div>
@@ -1679,7 +1684,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
           <article class="card checker-checklist">
             <div class="section-header" style="margin-bottom:16px;">
               <h3>${tt('Ready to Play Checklist', 'Checklist « Prêt à jouer »', 'Spielbereit-Checkliste')}</h3>
-              ${allDone ? `<span class="checker-maturity-badge maturity-green">${tt('Ready to Play', 'Prêt à jouer', 'Spielbereit')} ✅</span>` : ''}
+              ${allDone ? `<span class="checker-maturity-badge maturity-green">${sbUiIcon('checkCircle', 13)} ${tt('Ready to Play', 'Prêt à jouer', 'Spielbereit')}</span>` : ''}
             </div>
 
             ${categories.map(cat => renderCheckerChecklistCategory(cat, checked, customItems)).join('')}
@@ -1709,7 +1714,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
                   <input type="checkbox" ${checked[key] ? 'checked' : ''}
                          data-action="checker-toggle-check" data-check-key="${key}">
                   <span>${escapeHtml(item)}</span>
-                  ${isCustom ? `<button class="checker-remove-custom" data-action="checker-remove-custom-item" data-cat-key="${category.key}" data-custom-index="${i - category.items.length}" title="${escapeAttribute(tt('Remove', 'Supprimer', 'Entfernen'))}">✕</button>` : ''}
+                  ${isCustom ? `<button class="checker-remove-custom" data-action="checker-remove-custom-item" data-cat-key="${category.key}" data-custom-index="${i - category.items.length}" title="${escapeAttribute(tt('Remove', 'Supprimer', 'Entfernen'))}">${sbUiIcon('close', 13)}</button>` : ''}
                 </label>
               `;
             }).join('')}

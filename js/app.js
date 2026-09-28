@@ -607,6 +607,12 @@
               break;
             }
             case 'nav-scenario': appState.route = 'scenario'; App.render(); break;
+            case 'project-scroll-library': {
+              const library = document.getElementById('project-library');
+              library?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              library?.querySelector('[data-sb-filter="library"]')?.focus({ preventScroll: true });
+              break;
+            }
             case 'nav-stimuli': appState.route = 'detailed'; App.render(); break;
             case 'nav-library': appState.route = 'library'; App.render(); break;
             case 'nav-debrief': appState.route = 'debrief'; App.render(); break;

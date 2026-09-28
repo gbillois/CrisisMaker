@@ -28,7 +28,7 @@
             <div class="modal-box chronogram-modal" >
               <div class="modal-header">
                 <h3>${tt('AI Import - Chronogram', 'Import IA - Chronogramme', 'KI-Import - Chronogramm')}</h3>
-                <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
+                <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="Close">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="chronogram-modal-body">
                 <div class="chronogram-info-grid">
@@ -38,7 +38,7 @@
                 </div>
 
                 ${hasExisting ? `<div class="chronogram-warning-banner">
-                  ⚠️ ${tt(
+                  ${sbUiIcon('alert', 14)} ${tt(
                     'This project already has stimuli and/or actors. Existing imported content will be replaced, new content will be added.',
                     'Ce projet contient déjà des stimuli et/ou des acteurs. Le contenu importé existant sera remplacé, le nouveau contenu sera ajouté.',
                     'Dieses Projekt enthält bereits Stimuli und/oder Akteure. Vorhandene importierte Inhalte werden ersetzt, neue Inhalte werden hinzugefügt.'
@@ -83,7 +83,7 @@
                 </div>
 
                 <div class="chronogram-estimate subtle">
-                  ⏱ ${tt('Estimate: ~3-5 API calls, ~30 seconds', 'Estimation : ~3-5 appels API, ~30 secondes', 'Schätzung: ~3-5 API-Aufrufe, ~30 Sekunden')}
+                  ${sbUiIcon('clock', 14)} ${tt('Estimate: ~3-5 API calls, ~30 seconds', 'Estimation : ~3-5 appels API, ~30 secondes', 'Schätzung: ~3-5 API-Aufrufe, ~30 Sekunden')}
                 </div>
               </div>
               <div class="chronogram-modal-footer">
@@ -162,10 +162,10 @@
                   <div class="chronogram-steps-list">
                     ${steps.map((label, i) => {
                       const stepNum = i + 1;
-                      let icon = '○';
+                      let icon = sbUiIcon('circle', 15);
                       let cls = 'pending';
-                      if (stepNum < p.step) { icon = '✅'; cls = 'done'; }
-                      else if (stepNum === p.step) { icon = '🔄'; cls = 'active'; }
+                      if (stepNum < p.step) { icon = sbUiIcon('checkCircle', 15); cls = 'done'; }
+                      else if (stepNum === p.step) { icon = sbUiIcon('refresh', 15); cls = 'active'; }
                       const streamIndicator = (stepNum === p.step && isStreamingNow)
                         ? `<div class="chronogram-stream-indicator" id="chronogram-stream-indicator">
                             <span class="chronogram-stream-dot"></span>
@@ -186,7 +186,7 @@
 
                 ${showStream ? `
                 <div class="chronogram-progress-right">
-                  <div class="llm-stream-header">💬 ${tt('LLM Live Stream', 'Flux LLM en direct', 'LLM-Livestream')}</div>
+                  <div class="llm-stream-header">${sbUiIcon('message', 14)} ${tt('LLM Live Stream', 'Flux LLM en direct', 'LLM-Livestream')}</div>
                   <div class="llm-stream-panel" id="llm-stream-panel">
                     <div id="llm-stream-content">${renderLLMLogs(state.llmLogs || [])}</div>
                   </div>
@@ -223,7 +223,7 @@
                 <h3>${state.error
                   ? tt('AI Import failed', 'Import IA échoué', 'KI-Import fehlgeschlagen')
                   : tt('AI Import complete', 'Import IA terminé', 'KI-Import abgeschlossen')}</h3>
-                <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
+                <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="Close">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="chronogram-modal-body">
                 ${state.error ? `<div class="chronogram-error-banner">${escapeHtml(state.error)}</div>` : ''}
@@ -254,7 +254,7 @@
 
                 ${warnings.length > 0 ? `
                 <div class="chronogram-result-section">
-                  <h4>⚠ ${tt('Warnings', 'Points d\'attention', 'Warnungen')} (${warnings.length})</h4>
+                  <h4>${sbUiIcon('alert', 14)} ${tt('Warnings', 'Points d\'attention', 'Warnungen')} (${warnings.length})</h4>
                   <ul class="chronogram-warnings-list">
                     ${warnings.map(w => `<li>${escapeHtml(w.message)}</li>`).join('')}
                   </ul>
@@ -289,7 +289,7 @@
               <div class="modal-box chronogram-modal" >
                 <div class="modal-header">
                   <h3>${tt('Validation complete', 'Validation terminée', 'Validierung abgeschlossen')}</h3>
-                  <button class="btn btn-secondary" data-action="chronogram-cancel">✕</button>
+                  <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="Close">${sbUiIcon('close', 16)}</button>
                 </div>
                 <div class="chronogram-modal-body">
                   <p>${tt(

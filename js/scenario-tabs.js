@@ -59,7 +59,7 @@ function renderStorylineView() {
         <div class="sb-tb-group">
           <label class="sl-add">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="Add a phase"><option value="">Add phase…</option>${stages.map(([key, type]) => `<option value="${key}">${escapeHtml(type.label)}</option>`).join('')}</select></label>
           <button class="sb-tool sb-tool-label" data-sb-action="deepen-all" ${ai && storyboard.blocks.length && !readOnly ? '' : 'disabled'} title="Write the details of every phase with AI">${sbUiIcon('layers')}<span>Detail with AI</span></button>
-          <button class="sb-tool sb-tool-label" data-route="scenario" title="Start again from the library or an AI draft">${sbUiIcon('wand')}<span>Start from…</span></button>
+          <button class="sb-tool sb-tool-label" data-route="scenario" title="Start again from an AI draft. The scenario library is in the Project tab.">${sbUiIcon('wand')}<span>Start from…</span></button>
         </div>
       </header>
       ${renderSbStatusBar()}

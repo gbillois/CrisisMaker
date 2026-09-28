@@ -117,24 +117,24 @@
         };
         const samples = [
           makeStimulus('email_internal',    actors[0].id, 0),
-          makeStimulus('sms_notification',  actors[0].id, 30),
-          makeStimulus('email_external',    actors[4].id, 60),
-          makeStimulus('email_external',    actors[5].id, 90),
-          makeStimulus('post_reddit',       actors[6].id, 110),
-          makeStimulus('article_press',     actors[2].id, 130, 'lemonde'),
-          makeStimulus('post_twitter',      actors[6].id, 140),
-          makeStimulus('email_authority',   actors[3].id, 160),
-          makeStimulus('email_internal',    actors[7].id, 175),
-          makeStimulus('article_press',     actors[2].id, 195, 'nyt'),
-          makeStimulus('breaking_news_tv',  actors[2].id, 210, 'cnn'),
-          makeStimulus('internal_memo',     actors[1].id, 240),
-          makeStimulus('email_internal',    actors[7].id, 255),
-          makeStimulus('press_release',     actors[1].id, 270),
-          makeStimulus('post_linkedin',     actors[6].id, 290),
-          makeStimulus('email_internal',    actors[7].id, 310),
-          makeStimulus('article_press',     actors[2].id, 320, 'faz'),
-          makeStimulus('sms_notification',  actors[5].id, 340),
-          makeStimulus('email_internal',    actors[0].id, 355)
+          makeStimulus('sms_notification',  actors[0].id, 15),
+          makeStimulus('email_external',    actors[4].id, 30),
+          makeStimulus('email_external',    actors[5].id, 45),
+          makeStimulus('post_reddit',       actors[6].id, 55),
+          makeStimulus('article_press',     actors[2].id, 65, 'lemonde'),
+          makeStimulus('post_twitter',      actors[6].id, 70),
+          makeStimulus('email_authority',   actors[3].id, 80),
+          makeStimulus('email_internal',    actors[7].id, 88),
+          makeStimulus('article_press',     actors[2].id, 98, 'nyt'),
+          makeStimulus('breaking_news_tv',  actors[2].id, 105, 'cnn'),
+          makeStimulus('internal_memo',     actors[1].id, 120),
+          makeStimulus('email_internal',    actors[7].id, 128),
+          makeStimulus('press_release',     actors[1].id, 135),
+          makeStimulus('post_linkedin',     actors[6].id, 145),
+          makeStimulus('email_internal',    actors[7].id, 155),
+          makeStimulus('article_press',     actors[2].id, 160, 'faz'),
+          makeStimulus('sms_notification',  actors[5].id, 170),
+          makeStimulus('email_internal',    actors[0].id, 178)
         ];
         scenario.stimuli = samples;
         scenario.scenario.objectives = [

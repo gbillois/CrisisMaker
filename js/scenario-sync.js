@@ -636,7 +636,7 @@ function sbSendToAgent(block) {
   appState.route = 'agent';
 }
 
-const SB_LIVE_ROUTES = ['scenario', 'storyline', 'cells', 'detailed', 'summary'];
+const SB_LIVE_ROUTES = ['project', 'scenario', 'storyline', 'cells', 'detailed', 'summary'];
 function sbNotify() {
   if (typeof App !== 'undefined' && SB_LIVE_ROUTES.includes(appState.route)) App.render();
 }

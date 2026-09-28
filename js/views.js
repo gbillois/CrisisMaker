@@ -1,6 +1,6 @@
       function getLLMErrorMessage(errorCode) {
         const messages = {
-          auth:      tt('Invalid API key. Check it in settings (⚙).', 'Clé API invalide. Vérifiez-la dans les paramètres (⚙).', 'Ungültiger API-Schlüssel. Überprüfen Sie ihn in den Einstellungen (⚙).'),
+          auth:      tt('Invalid API key. Check it in Settings.', 'Clé API invalide. Vérifiez-la dans les Paramètres.', 'Ungültiger API-Schlüssel. Überprüfen Sie ihn in den Einstellungen.'),
           quota:     tt('API quota exceeded. Retry later or change model.', 'Quota API dépassé. Réessayez plus tard ou changez de modèle.', 'API-Kontingent überschritten. Versuchen Sie es später erneut oder wechseln Sie das Modell.'),
           network:   tt('Connection error. Check your internet connection and retry.', 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.', 'Verbindungsfehler. Überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.'),
           malformed: tt('Generation failed. Try rephrasing your description.', 'La génération a échoué. Essayez de reformuler votre description.', 'Generierung fehlgeschlagen. Versuchen Sie, Ihre Beschreibung umzuformulieren.'),
@@ -31,13 +31,13 @@
 
         const generateLabel = loading
           ? `<span class="ai-spinner"></span>${options.loadingLabel || tt('Generating…', 'Génération en cours…', 'Wird generiert…')}`
-          : (options.generateLabel || tt('Generate ✨', 'Générer ✨', 'Generieren ✨'));
+          : `${sbUiIcon('sparkles', 14)} ${options.generateLabel || tt('Generate', 'Générer', 'Generieren')}`;
         const disabledAttr = (!available || loading) ? 'disabled' : '';
         const noKeyTooltip = !available
           ? escapeAttribute(tt(
-              'Configure your API key in settings (⚙) to use this feature.',
-              'Configurez votre clé API dans les paramètres (⚙) pour utiliser cette fonctionnalité.',
-              'Konfigurieren Sie Ihren API-Schlüssel in den Einstellungen (⚙), um diese Funktion zu nutzen.'
+              'Configure your API key in Settings to use this feature.',
+              'Configurez votre clé API dans les Paramètres pour utiliser cette fonctionnalité.',
+              'Konfigurieren Sie Ihren API-Schlüssel in den Einstellungen, um diese Funktion zu nutzen.'
             ))
           : '';
 
@@ -62,7 +62,7 @@
 
         const successBannerHtml = (zone !== 'actors' && state.lastFilledCount > 0 && !loading && !state.error)
           ? `<div class="llm-success-banner">
-              <span>✅ ${successMessage}</span>
+              <span>${sbUiIcon('checkCircle', 14)} ${successMessage}</span>
               <button data-action="llm-dismiss-banner" data-zone="${zone}">${tt('OK', 'OK', 'OK')}</button>
              </div>`
           : '';
@@ -70,9 +70,9 @@
         return `
           <div class="llm-config-block${collapsed ? ' collapsed' : ''}" id="llm-block-${zone}">
             <div class="llm-config-header">
-              <span class="llm-config-title">🤖 ${title}</span>
+              <span class="llm-config-title">${sbUiIcon('bot', 16)} ${title}</span>
               <button class="btn-llm-collapse" data-action="llm-collapse" data-zone="${zone}">
-                ${collapsed ? '▶ ' + tt('Expand', 'Développer', 'Erweitern') : '▼ ' + tt('Reduce', 'Réduire', 'Reduzieren')}
+                ${collapsed ? sbUiIcon('chevronRight', 13) + ' ' + tt('Expand', 'Développer', 'Erweitern') : sbUiIcon('down', 13) + ' ' + tt('Reduce', 'Réduire', 'Reduzieren')}
               </button>
             </div>
             <div class="llm-config-body">
@@ -171,6 +171,7 @@
                 </div>
                 <div class="brand-actions">
                   <span id="save-indicator" class="save-indicator"></span>
+                  <button class="ai-status ${isLLMAvailable() ? 'is-live' : 'is-off'}" data-action="toggle-settings-drawer" title="${tt('AI connection settings', 'Paramètres de connexion IA', 'KI-Verbindungseinstellungen')}">${isLLMAvailable() ? tt('AI connected', 'IA connectée', 'KI verbunden') : tt('AI disconnected', 'IA déconnectée', 'KI getrennt')}</button>
                   <button class="nav-gear-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil', 'Startseite')}">
                     ${svgHome()}
                   </button>
@@ -202,7 +203,7 @@
             <div class="settings-drawer ${appState.settingsDrawerOpen ? 'open' : ''}" role="dialog" aria-modal="true" aria-label="${tt('Settings', 'Paramètres', 'Einstellungen')}" aria-hidden="${appState.settingsDrawerOpen ? 'false' : 'true'}" ${appState.settingsDrawerOpen ? '' : 'inert'}>
               <div class="settings-drawer-header">
                 <h3>${tt('Settings', 'Paramètres', 'Einstellungen')}</h3>
-                <button class="btn btn-secondary" data-action="toggle-settings-drawer">✕</button>
+                <button class="btn btn-secondary" data-action="toggle-settings-drawer" aria-label="Close">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="settings-drawer-body">
                 ${renderSettingsView()}
@@ -212,15 +213,8 @@
             <main class="content ${appState.route === 'video-debrief' ? 'content-video-debrief' : ''} ${['storyline', 'detailed', 'builder', 'stimuli'].includes(appState.route) ? 'content-builder' : ''}">
               ${vc ? `<section class="topbar">
                 <div class="page-title">
-                  <span class="page-eyebrow">${tt('Crisis exercise studio', 'Studio d\'exercices de crise', 'Krisenübungs-Studio')}</span>
                   <h2>${vc.title}</h2>
                   <p>${vc.subtitle}</p>
-                </div>
-                <div class="status-pills">
-                  <span class="pill pill-project">${escapeHtml(appState.scenario.name || tt('Untitled', 'Sans titre', 'Ohne Titel'))}</span>
-                  <span class="pill">${appState.scenario.actors.length} ${tt('actors', 'acteurs', 'Akteure')}</span>
-                  <span class="pill">${appState.scenario.stimuli.length} ${tt('stimuli', 'stimuli', 'Stimuli')}</span>
-                  <span class="pill ${isLLMAvailable() ? 'pill-ai-live' : 'pill-ai-off'}">${isLLMAvailable() ? tt('AI - Live', 'IA - Active', 'KI - Aktiv') : tt('AI - Disconnected', 'IA - Déconnectée', 'KI - Getrennt')}</span>
                 </div>
               </section>` : ''}
               ${renderCurrentView()}
@@ -268,7 +262,7 @@
             <div class="launch-screen" onclick="event.stopPropagation()">
 
               <div class="launch-hero">
-                <button class="launch-hero-close" data-action="close-launch-screen" title="${tt('Close', 'Fermer', 'Schließen')}">✕</button>
+                <button class="launch-hero-close" data-action="close-launch-screen" title="${tt('Close', 'Fermer', 'Schließen')}">${sbUiIcon('close', 16)}</button>
                 <div class="launch-brand">
                   ${wavestoneLogo('wavestone-logo wavestone-logo-light')}
                   <span class="brand-divider" aria-hidden="true"></span>
@@ -373,7 +367,7 @@
                       <span>${tt('<strong>Build the debrief</strong> — reconstruct the hidden story as an interactive timeline or turn it into a documentary-style video.', '<strong>Construisez le débrief</strong> — reconstruisez l’histoire cachée dans une timeline interactive ou transformez-la en vidéo documentaire.', '<strong>Erstellen Sie das Debrief</strong> — rekonstruieren Sie die verborgene Geschichte als interaktiven Zeitplan oder verwandeln Sie sie in ein Dokumentarvideo.')}</span>
                     </div>
                     <div class="launch-tip">
-                      <div class="launch-tip-num">★</div>
+                      <div class="launch-tip-num">${sbUiIcon('star', 13)}</div>
                       <span>${tt('<strong>Audit an existing timeline</strong> — open the Crisis Checker tab to import a chronogram file or analyze your current scenario with AI: get a quality score, heatmaps, and an actionable checklist.', '<strong>Auditez une timeline existante</strong> — ouvrez l\'onglet Crisis Checker pour importer un chronogramme ou analyser votre scénario actuel avec l\'IA : obtenez un score qualité, des heatmaps et une checklist actionnable.', '<strong>Prüfen Sie einen vorhandenen Zeitplan</strong> — öffnen Sie den Krisen-Prüfer-Tab, um eine Chronogramm-Datei zu importieren oder Ihr aktuelles Szenario mit KI zu analysieren: erhalten Sie einen Qualitätsscore, Heatmaps und eine umsetzbare Checkliste.')}</span>
                     </div>
                   </div>
@@ -398,43 +392,43 @@
         const map = {
           project: {
             title: tt('Project', 'Projet', 'Projekt'),
-            subtitle: tt('Create, open, save and export your crisis exercise project.', 'Créez, ouvrez, sauvegardez et exportez votre projet d\'exercice de crise.', 'Erstellen, öffnen, speichern und exportieren Sie Ihr Krisenübungsprojekt.')
+            subtitle: tt('Project summary, data and scenario library.', 'Synthèse, données et bibliothèque de scénarios.', 'Projektübersicht, Daten und Szenario-Bibliothek.')
           },
           scenario: {
             title: 'Scenario & context',
-            subtitle: 'Answer five questions, describe the exercise to the AI or pick a scenario from the library.'
+            subtitle: tt('Frame the exercise and draft the main storyline.', 'Cadrez l\'exercice et esquissez la storyline principale.', 'Übung einordnen und Haupt-Storyline entwerfen.')
           },
           cells: {
             title: 'Cells & actors',
-            subtitle: 'The cells who play the exercise, their players, and the simulated actors who send injects.'
+            subtitle: tt('Player cells and the simulated actors who send injects.', 'Cellules de joueurs et acteurs simulés qui envoient les injects.', 'Spielerzellen und simulierte Akteure, die Injects senden.')
           },
           summary: {
             title: 'Summary',
-            subtitle: 'See the whole exercise, play it in accelerated time and check it for issues.'
+            subtitle: tt('Review the whole exercise and play it in accelerated time.', 'Revoyez l\'exercice complet et jouez-le en accéléré.', 'Gesamte Übung prüfen und im Zeitraffer abspielen.')
           },
           stimuli: {
             title: 'Detailed storyline',
-            subtitle: tt('Create realistic injects and generate their content with AI.', 'Créez des injects réalistes et générez leur contenu avec l\'IA.', 'Erstellen Sie realistische Injects und generieren Sie deren Inhalt mit KI.')
+            subtitle: tt('Write the injects and generate their content.', 'Rédigez les injects et générez leur contenu.', 'Injects schreiben und Inhalte generieren.')
           },
           library: {
             title: tt('Injects', 'Injects', 'Injects'),
-            subtitle: tt('Browse, filter, and manage all injects in your project.', 'Parcourez, filtrez et gérez tous les injects de votre projet.', 'Durchsuchen, filtern und verwalten Sie alle Injects in Ihrem Projekt.')
+            subtitle: tt('Browse, filter and export all injects.', 'Parcourez, filtrez et exportez tous les injects.', 'Alle Injects durchsuchen, filtern und exportieren.')
           },
           agent: {
             title: 'Agent',
-            subtitle: tt('Build and challenge your exercise with controlled AI tools.', 'Construisez et challengez votre exercice avec des outils IA contrôlés.', 'Ihre Übung mit kontrollierten KI-Werkzeugen erstellen und hinterfragen.')
+            subtitle: tt('Build and challenge the exercise with controlled AI tools.', 'Construisez et challengez l\'exercice avec des outils IA contrôlés.', 'Übung mit kontrollierten KI-Werkzeugen erstellen und hinterfragen.')
           },
           checker: {
             title: tt('Crisis Checker', 'Crisis Checker', 'Krisen-Prüfer'),
-            subtitle: tt('Import a crisis exercise chronogram and analyze it automatically.', 'Importez un chronogramme d\'exercice de crise et analysez-le automatiquement.', 'Importieren Sie ein Krisenübungs-Chronogramm und analysieren Sie es automatisch.')
+            subtitle: tt('Analyze a crisis timeline and check it is ready to play.', 'Analysez un chronogramme et vérifiez qu\'il est prêt à jouer.', 'Krisen-Zeitplan analysieren und Spielbereitschaft prüfen.')
           },
           debrief: {
             title: tt('Crisis Debrief', 'Debrief de crise', 'Krisen-Debrief'),
-            subtitle: tt('Reconstruct the hidden scenario story and reveal what truly happened.', "Reconstruisez l'histoire cachée du scénario et révélez ce qui s'est réellement passé.", 'Rekonstruieren Sie die verborgene Szenario-Handlung und zeigen Sie, was wirklich geschah.') + ' This page generates an autonomous HTML file that you can download and display during the debrief to tell the story visually.'
+            subtitle: tt('Build an interactive timeline that reveals what really happened.', 'Construisez une timeline interactive qui révèle ce qui s\'est vraiment passé.', 'Interaktive Zeitleiste erstellen, die zeigt, was wirklich geschah.')
           },
           'video-debrief': {
             title: tt('Video Debrief', 'Video Debrief', 'Video-Debrief'),
-            subtitle: tt('Turn the crisis story into an editable documentary-style video.', 'Transformez le récit de crise en une vidéo documentaire éditable.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo.') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">Exemple of video generated</a>. (It requires a local version of CrisisMaker and Python3 on the computer)'
+            subtitle: tt('Turn the crisis story into a documentary video (local version with Python 3).', 'Transformez le récit de crise en vidéo documentaire (version locale avec Python 3).', 'Krisengeschichte als Dokumentarvideo (lokale Version mit Python 3).') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">' + tt('See an example', 'Voir un exemple', 'Beispiel ansehen') + '</a>'
           }
         };
         return map[appState.route] || null;
@@ -472,88 +466,114 @@
       }
 
       function renderProjectView() {
-        const s = appState.scenario;
-        const llmAvailable = isLLMAvailable();
-        const hasStimuliOrConfig = s.stimuli.length > 0 || s.client.name || s.scenario.summary;
-        const lastSavedStr = s.updated_at
-          ? new Date(s.updated_at).toLocaleString()
+        const project = appState.scenario;
+        StoryboardHistory.ensure(project);
+        if (!Array.isArray(project.cells)) project.cells = [];
+        if (!project.exercise) project.exercise = { players_count: '', cells_count: '' };
+        return sbWithRenderMemo(() => {
+          sbCaptureFocus();
+          return `
+          <section class="tab-page pj-page">
+            ${renderProjectSummary(project)}
+            ${renderProjectData()}
+            ${renderProjectLibrary(project)}
+          </section>`;
+        });
+      }
+
+      // Block 1: who the exercise is for and how big it is.
+      function renderProjectSummary(project) {
+        const storyboard = sbStoryboard();
+        const items = sbExerciseItems(project);
+        const phases = sbMainBlocks(storyboard);
+        const duration = Math.max(storyboard.duration_minutes, ...items.map((item) => item.time));
+        const written = items.filter((item) => item.stimulus).length;
+        const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
+        const configured = project.stimuli.length || project.client.name || project.scenario.summary || storyboard.blocks.length;
+        const lastSaved = project.updated_at
+          ? new Date(project.updated_at).toLocaleString()
           : tt('Not saved yet', 'Pas encore sauvegardé', 'Noch nicht gespeichert');
-
+        const facts = [
+          [tt('Client', 'Client', 'Auftraggeber'), project.client.name],
+          [tt('Sector', 'Secteur', 'Sektor'), project.client.sector],
+          [tt('Scenario', 'Scénario', 'Szenario'), project.scenario.type],
+          [tt('Start', 'Début', 'Start'), project.scenario.start_date ? formatLocalDateTime(project.scenario.start_date) : '']
+        ];
+        const metric = (value, label, foot = '') => `<div class="pj-metric"><span class="pj-metric-label">${escapeHtml(label)}</span><strong class="pj-metric-value">${value}</strong>${foot ? `<span class="pj-metric-foot">${escapeHtml(foot)}</span>` : ''}</div>`;
         return `
-          <section class="grid" style="max-width:800px;">
-            <article class="card">
-              <div class="section-header" style="margin-bottom:10px;">
-                <span style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);">${tt('Current crisis project', 'Projet de crise actuel', 'Aktuelles Krisenübungsprojekt')}</span>
-                <h3 style="margin:4px 0 0;">${escapeHtml(s.name || tt('Untitled project', 'Projet sans titre', 'Projekt ohne Titel'))}</h3>
+          <article class="card card-accent pj-summary">
+            <div class="pj-summary-head">
+              <div class="pj-summary-title">
+                <span class="page-eyebrow">${tt('Project summary', 'Synthèse du projet', 'Projektübersicht')}</span>
+                <h3>${escapeHtml(project.name || tt('Untitled project', 'Projet sans titre', 'Projekt ohne Titel'))}</h3>
+                <dl class="pj-facts">${facts.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value || '—')}</dd></div>`).join('')}</dl>
               </div>
-              ${hasStimuliOrConfig ? `
-                <div class="field-grid cols-3" style="font-size:0.9rem; color:var(--muted); margin-bottom:10px;">
-                  <div><strong>${tt('Client', 'Client', 'Auftraggeber')}:</strong> ${escapeHtml(s.client.name || '—')}</div>
-                  <div><strong>${tt('Sector', 'Secteur', 'Sektor')}:</strong> ${escapeHtml(s.client.sector || '—')}</div>
-                  <div><strong>${tt('Scenario', 'Scénario', 'Szenario')}:</strong> ${escapeHtml(s.scenario.type || '—')}</div>
-                  <div><strong>${tt('Actors', 'Acteurs', 'Akteure')}:</strong> ${s.actors.length}</div>
-                  <div><strong>${tt('Stimuli', 'Stimuli', 'Stimuli')}:</strong> ${s.stimuli.length}</div>
-                  <div><strong>${tt('Start', 'Début', 'Start')}:</strong> ${escapeHtml(s.scenario.start_date ? formatLocalDateTime(s.scenario.start_date) : '—')}</div>
-                </div>
-              ` : `
-                <div style="margin:8px 0 14px;">
-                  <p class="subtle" style="margin:0 0 12px;">${tt('No scenario configured yet. Define the client, crisis context and actors to get started.', 'Aucun scénario configuré. Définissez le client, le contexte de crise et les acteurs pour commencer.', 'Noch kein Szenario konfiguriert. Definieren Sie den Auftraggeber, den Krisenkontext und die Akteure, um loszulegen.')}</p>
-                  <button class="btn btn-primary" data-action="nav-scenario">${tt('Configure the scenario', 'Configurer le scénario', 'Szenario konfigurieren')} →</button>
-                </div>
-              `}
-              <div style="font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); padding-top:8px; margin-top:4px;">
-                ${tt('Last saved locally:', 'Dernière sauvegarde locale :', 'Zuletzt lokal gespeichert:')} <strong>${escapeHtml(lastSavedStr)}</strong>
-              </div>
-            </article>
+              <div class="pj-saved">${sbUiIcon('save', 14)}<span>${tt('Last saved locally', 'Dernière sauvegarde locale', 'Zuletzt lokal gespeichert')}<strong>${escapeHtml(lastSaved)}</strong></span></div>
+            </div>
+            <div class="pj-metrics">
+              ${metric(escapeHtml(sbFormatDuration(duration)), tt('Duration', 'Durée', 'Dauer'))}
+              ${metric(phases.length, tt('Phases', 'Phases', 'Phasen'))}
+              ${metric(`${written}<small>/${items.length}</small>`, tt('Injects written', 'Injects rédigés', 'Geschriebene Injects'), tt('written / planned', 'rédigés / prévus', 'geschrieben / geplant'))}
+              ${metric(project.cells.length, tt('Cells', 'Cellules', 'Zellen'))}
+              ${metric(players || escapeHtml(project.exercise.players_count || 0), tt('Players', 'Joueurs', 'Spieler'))}
+              ${metric(project.actors.length, tt('Actors', 'Acteurs', 'Akteure'))}
+            </div>
+            ${configured ? '' : `<div class="pj-empty">
+              <p class="subtle">${tt('No scenario configured yet. Start from the library below, or define the client, crisis context and actors.', 'Aucun scénario configuré. Partez de la bibliothèque ci-dessous, ou définissez le client, le contexte de crise et les acteurs.', 'Noch kein Szenario konfiguriert. Starten Sie mit der Bibliothek unten oder definieren Sie Auftraggeber, Krisenkontext und Akteure.')}</p>
+              <button class="btn btn-primary btn-sm" data-action="nav-scenario">${tt('Configure the scenario', 'Configurer le scénario', 'Szenario konfigurieren')} ${sbUiIcon('chevronRight', 14)}</button>
+            </div>`}
+          </article>`;
+      }
 
-            <div class="welcome-block">
-              <h3 class="welcome-block-title">${tt('Project', 'Projet', 'Projekt')}</h3>
-              <div class="grid cols-4" style="gap:16px;">
-                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="new-scenario">
-                  <div style="font-size:1.5rem; margin-bottom:8px;">➕</div>
-                  <strong>${tt('New', 'Nouveau', 'Neu')}</strong>
-                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Start from scratch', 'Partir de zéro', 'Von vorne beginnen')}</p>
-                </article>
-                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="load-json">
-                  <div style="font-size:1.5rem; margin-bottom:8px;">📂</div>
-                  <strong>${tt('Open', 'Ouvrir', 'Öffnen')}</strong>
-                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">.json / .crisismaker.json / .zip</p>
-                </article>
-                <article class="card ${!llmAvailable ? 'card-disabled' : ''}" style="text-align:center; cursor:${llmAvailable ? 'pointer' : 'not-allowed'}; padding:20px 16px;" ${llmAvailable ? 'data-action="import-chronogram-ia"' : `title="${escapeAttribute(tt('Configure an API key in settings to use this feature', 'Configurez une clé API dans les paramètres pour utiliser cette fonctionnalité', 'Konfigurieren Sie einen API-Schlüssel in den Einstellungen, um diese Funktion zu nutzen'))}"`}>
-                  <div style="font-size:1.5rem; margin-bottom:8px;">📊</div>
-                  <strong>${tt('Import existing timeline', 'Importer une chronologie', 'Vorhandenen Zeitplan importieren')}</strong>
-                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('AI-powered Excel import', 'Import Excel par IA', 'KI-gestützter Excel-Import')}</p>
-                </article>
-                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="load-example">
-                  <div style="font-size:1.5rem; margin-bottom:8px;">🎯</div>
-                  <strong>${tt('Example', 'Exemple', 'Beispiel')}</strong>
-                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Load a sample scenario', 'Charger un scénario exemple', 'Beispielszenario laden')}</p>
-                </article>
+      // Block 2: every way to bring a project in, and every way to take it out.
+      function renderProjectData() {
+        const llmAvailable = isLLMAvailable();
+        const exporting = !!appState.ui?.actionLoading?.['export-all'];
+        const button = (action, icon, label, hint, extra = '') => `<button class="btn btn-secondary pj-action" data-action="${action}" ${extra}>${sbUiIcon(icon, 18)}<span><strong>${label}</strong><small>${hint}</small></span></button>`;
+        const noKey = escapeAttribute(tt('Configure an AI connection in Settings to import an Excel timeline', 'Configurez une connexion IA dans les Paramètres pour importer une chronologie Excel', 'Konfigurieren Sie eine KI-Verbindung in den Einstellungen, um einen Excel-Zeitplan zu importieren'));
+        return `
+          <article class="card pj-data">
+            <div class="section-header">
+              <div><h3>${tt('Project data', 'Données du projet', 'Projektdaten')}</h3><p class="subtle">${tt('Start or open a project, then save and export it. Everything stays in your browser until you export.', 'Démarrez ou ouvrez un projet, puis sauvegardez-le et exportez-le. Tout reste dans votre navigateur jusqu\'à l\'export.', 'Starten oder öffnen Sie ein Projekt, dann speichern und exportieren Sie es. Alles bleibt bis zum Export in Ihrem Browser.')}</p></div>
+            </div>
+            <div class="pj-row">
+              <span class="pj-row-label">${tt('Start', 'Démarrer', 'Starten')}</span>
+              <div class="pj-actions">
+                ${button('new-scenario', 'filePlus', tt('New', 'Nouveau', 'Neu'), tt('Blank project', 'Projet vierge', 'Leeres Projekt'))}
+                ${button('project-scroll-library', 'book', tt('Create from library', 'Créer depuis la bibliothèque', 'Aus Bibliothek erstellen'), tt('Ready-made scenario', 'Scénario prêt à l\'emploi', 'Fertiges Szenario'))}
+                ${button('load-json', 'folderOpen', tt('Open', 'Ouvrir', 'Öffnen'), '.json · .zip')}
+                ${button('import-chronogram-ia', 'sheet', tt('Import Excel', 'Importer Excel', 'Excel importieren'), tt('AI-assisted timeline import', 'Import de chronologie assisté par IA', 'KI-gestützter Zeitplan-Import'), llmAvailable ? '' : `disabled title="${noKey}"`)}
+                ${button('load-example', 'demo', tt('Load a demo', 'Charger une démo', 'Demo laden'), tt('StonaWave ransomware', 'Rançongiciel StonaWave', 'StonaWave-Ransomware'))}
               </div>
             </div>
-
-            <div class="welcome-block" style="margin-top:8px;">
-              <h3 class="welcome-block-title">${tt('Save & Export', 'Sauvegarder & Exporter', 'Speichern & Exportieren')}</h3>
-              <div class="grid cols-3" style="gap:16px;">
-                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="save-local">
-                  <div style="font-size:1.5rem; margin-bottom:8px;">💾</div>
-                  <strong>${tt('Save locally', 'Sauvegarder localement', 'Lokal speichern')}</strong>
-                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Browser storage + file', 'Stockage navigateur + fichier', 'Browser-Speicher + Datei')}</p>
-                </article>
-                <article class="card" style="text-align:center; cursor:pointer; padding:20px 16px;" data-action="save-json">
-                  <div style="font-size:1.5rem; margin-bottom:8px;">⇩</div>
-                  <strong>${tt('Export text content', 'Exporter le contenu texte', 'Textinhalt exportieren')}</strong>
-                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .json', 'Télécharger en .json', 'Herunterladen als .json')}</p>
-                </article>
-                <article class="card" style="text-align:center; cursor:${appState.ui?.actionLoading?.['export-all'] ? 'wait' : 'pointer'}; padding:20px 16px; ${appState.ui?.actionLoading?.['export-all'] ? 'opacity:0.6; pointer-events:none;' : ''}" data-action="export-all">
-                  <div style="font-size:1.5rem; margin-bottom:8px;">${appState.ui?.actionLoading?.['export-all'] ? '⏳' : '🗜️'}</div>
-                  <strong>${exportAllProgressLabel(tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</strong>
-                  <p class="subtle" style="font-size:0.85rem; margin-top:4px;">${tt('Download as .zip', 'Télécharger en .zip', 'Herunterladen als .zip')}</p>
-                </article>
+            <div class="pj-row">
+              <span class="pj-row-label">${tt('Save & export', 'Sauvegarder & exporter', 'Speichern & exportieren')}</span>
+              <div class="pj-actions">
+                ${button('save-local', 'save', tt('Save locally', 'Sauvegarder localement', 'Lokal speichern'), tt('Browser storage', 'Stockage du navigateur', 'Browser-Speicher'))}
+                ${button('save-json', 'braces', tt('Export text content', 'Exporter le contenu texte', 'Textinhalt exportieren'), 'JSON')}
+                ${button('export-all', exporting ? 'clock' : 'archive', exportAllProgressLabel(tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…')), tt('Styled images · .zip', 'Images stylées · .zip', 'Gestaltete Bilder · .zip'), exporting ? 'disabled' : '')}
               </div>
             </div>
-          </section>
-        `;
+          </article>`;
+      }
+
+      // Block 3: the scenario library, with template import and export.
+      function renderProjectLibrary(project) {
+        const storyboard = sbStoryboard();
+        return `
+          <article class="card sb-context pj-library" id="project-library" data-sb-scope>
+            <div class="section-header">
+              <div><h3>${tt('Scenario library', 'Bibliothèque de scénarios', 'Szenario-Bibliothek')}</h3><p class="subtle">${tt('Ready-made scenarios with their phases, cells and injects. Using one opens the Main storyline.', 'Des scénarios prêts à l\'emploi avec leurs phases, cellules et injects. En utiliser un ouvre la Main storyline.', 'Fertige Szenarien mit Phasen, Zellen und Injects. Die Verwendung öffnet die Main storyline.')}</p></div>
+              <div class="actions">
+                <button class="btn btn-secondary btn-sm" data-sb-action="export-current" ${storyboard.blocks.length ? '' : `disabled title="${escapeAttribute(tt('The current storyline is empty', 'La storyline actuelle est vide', 'Die aktuelle Storyline ist leer'))}"`}>${sbUiIcon('download', 14)} ${tt('Export current', 'Exporter l\'actuel', 'Aktuelles exportieren')}</button>
+                <button class="btn btn-secondary btn-sm" data-sb-action="import-template">${sbUiIcon('upload', 14)} ${tt('Import a template file', 'Importer un fichier modèle', 'Vorlagendatei importieren')}</button>
+                ${storyboard.blocks.length ? `<button class="btn btn-ghost btn-sm" data-route="storyline">${tt('Current storyline', 'Storyline actuelle', 'Aktuelle Storyline')} · ${sbMainBlocks(storyboard).length} ${tt('phases', 'phases', 'Phasen')} ${sbUiIcon('chevronRight', 14)}</button>` : ''}
+              </div>
+            </div>
+            ${renderSbStatusBar()}
+            ${renderSbLibrary()}
+            ${sbUI().modal === 'preview' ? renderSbPreviewModal() : ''}
+          </article>`;
       }
 
       function renderLibraryView() {
@@ -613,7 +633,7 @@
                     <div class="custom-template-chip">
                       <span class="custom-template-dot" style="background:${escapeAttribute(tpl.color || '#8B5CF6')};"></span>
                       <span>${escapeHtml(tpl.name || tpl.label || tpl.template_id)}</span>
-                      <button class="btn-chip-delete" data-action="delete-custom-template" data-template-id="${escapeAttribute(tpl.template_id)}" title="${tt('Remove', 'Supprimer', 'Entfernen')}">✕</button>
+                      <button class="btn-chip-delete" data-action="delete-custom-template" data-template-id="${escapeAttribute(tpl.template_id)}" title="${tt('Remove', 'Supprimer', 'Entfernen')}">${sbUiIcon('close', 16)}</button>
                     </div>
                   `).join('')}
                 </div>
@@ -651,7 +671,7 @@
             </div>
             <div class="library-card-body">
               <div class="library-card-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}${renderStoryboardLinkBadge(stimulus)}</div>
-              <div class="library-card-desc library-card-title-btn" data-action="expand-library-card" data-stimulus-id="${stimulus.id}" title="${tt('Click to preview', 'Cliquer pour prévisualiser', 'Klicken zur Vorschau')}">${escapeHtml(titleText.slice(0, 60))}${titleText.length > 60 ? '…' : ''} ${isExpanded ? '▲' : '▼'}</div>
+              <div class="library-card-desc library-card-title-btn" data-action="expand-library-card" data-stimulus-id="${stimulus.id}" title="${tt('Click to preview', 'Cliquer pour prévisualiser', 'Klicken zur Vorschau')}">${escapeHtml(titleText.slice(0, 60))}${titleText.length > 60 ? '…' : ''} ${sbUiIcon(isExpanded ? 'up' : 'down', 12)}</div>
             </div>
             ${isExpanded ? `
             <div class="library-card-preview-expand">
@@ -660,11 +680,11 @@
             <div class="library-card-footer">
               <button class="pill pill-status" style="background:${statusColors[stimulus.status] || '#888'}; color:#fff; border:none; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${stimulus.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut', 'Klicken zum Status ändern')}">${escapeHtml(stimulus.status)}${versionCount > 0 ? ` · v${versionCount + 1}` : ''}</button>
               <div class="library-card-actions">
-                <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">✏️</button>
-                <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">⧉</button>
-                ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-xs" data-action="export-msg" data-stimulus-id="${stimulus.id}" title="${tt('Export .eml file', 'Exporter le fichier .eml', '.eml-Datei exportieren')}">✉️</button>` : ''}
-                <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG', 'PNG exportieren')}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['export-png'] ? '…' : '⤓'}</button>
-                <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true" title="${tt('Delete', 'Supprimer', 'Löschen')}">✕</button>
+                <button class="btn btn-xs" data-action="edit-in-stimuli" data-stimulus-id="${stimulus.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">${sbUiIcon('edit', 14)}</button>
+                <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">${sbUiIcon('copy', 14)}</button>
+                ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-xs" data-action="export-msg" data-stimulus-id="${stimulus.id}" title="${tt('Export .eml file', 'Exporter le fichier .eml', '.eml-Datei exportieren')}">${sbUiIcon('mail', 14)}</button>` : ''}
+                <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${stimulus.id}" title="${tt('Export PNG', 'Exporter PNG', 'PNG exportieren')}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['export-png'] ? sbUiIcon('clock', 14) : sbUiIcon('image', 14)}</button>
+                <button class="btn btn-xs btn-danger" data-action="delete-stimulus" data-stimulus-id="${stimulus.id}" data-confirm="true" title="${tt('Delete', 'Supprimer', 'Löschen')}">${sbUiIcon('trash', 14)}</button>
               </div>
             </div>
           </div>
@@ -714,7 +734,7 @@
               <div class="section-header"><h3>${tt('AI connection', 'Connexion IA', 'KI-Verbindung')}</h3></div>
               ${!isLLMAvailable() ? `<div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#78350F;">${tt('AI provider configuration is incomplete. AI generation features are disabled.', 'La configuration du fournisseur IA est incomplète. Les fonctionnalités de génération par IA sont désactivées.', 'Die Konfiguration des KI-Anbieters ist unvollständig. KI-Generierungsfunktionen sind deaktiviert.')}</div>` : ''}
               <div style="background:#FEF2F2;border:2px solid #DC2626;border-radius:8px;padding:14px 16px;margin-bottom:16px;color:#991B1B;">
-                <div style="font-weight:700;font-size:14px;margin-bottom:8px;">⚠️ ${tt('Confidentiality warning', 'Avertissement de confidentialité des données', 'Vertraulichkeitswarnung')}</div>
+                <div style="font-weight:700;font-size:14px;margin-bottom:8px;">${sbUiIcon('alert', 15)} ${tt('Confidentiality warning', 'Avertissement de confidentialité des données', 'Vertraulichkeitswarnung')}</div>
                 <div style="font-size:13px;line-height:1.5;margin-bottom:10px;">
                   ${tt(
                     'For confidentiality reasons, the use of AI and the provider used must be explicitly approved by the organization for which the exercise is being conducted.',
@@ -764,7 +784,7 @@
                   ${(!isOllama || isOllamaCloud) ? `<label class="field" style="grid-column: 1 / -1;">${isOllamaCloud ? tt('Ollama Cloud API key', 'Clé API Ollama Cloud', 'Ollama-Cloud-API-Schlüssel') : isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
                       <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
-                      <button class="btn btn-secondary" data-action="toggle-api-key">👁️</button>
+                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="Show or hide the key">${sbUiIcon('eye', 16)}</button>
                     </div>
                   </label>` : ''}
                 ` : ''}
@@ -784,7 +804,7 @@
                   <label class="field" style="grid-column: 1 / -1;">${tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
                       <input id="api-key-input" type="password" data-bind="settings.azure_api_key" value="${escapeAttribute(settings.azure_api_key || '')}" placeholder="Azure API key">
-                      <button class="btn btn-secondary" data-action="toggle-api-key">👁️</button>
+                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="Show or hide the key">${sbUiIcon('eye', 16)}</button>
                     </div>
                   </label>
                 ` : ''}
@@ -888,7 +908,7 @@
                 <label class="field">${tt('Azure Speech API key', 'Clé API Azure Speech', 'Azure Speech API-Schlüssel')}
                   <div style="display:flex; gap:10px;">
                     <input id="azure-speech-key-input" type="password" data-bind="settings.azure_speech_key" value="${escapeAttribute(settings.azure_speech_key || '')}" placeholder="${tt('Enter your Azure Speech key', 'Entrez votre clé Azure Speech', 'Geben Sie Ihren Azure Speech-Schlüssel ein')}">
-                    <button class="btn btn-secondary" data-action="toggle-azure-speech-key">👁️</button>
+                    <button class="btn btn-secondary" data-action="toggle-azure-speech-key" aria-label="Show or hide the key">${sbUiIcon('eye', 16)}</button>
                   </div>
                 </label>
                 <label class="field">${tt('Azure region', 'Région Azure', 'Azure-Region')}
@@ -925,15 +945,6 @@
                 ${renderSbSkeletonForm(storyboard)}
               </article>
             </div>
-            <article class="card sb-context" data-sb-scope>
-              <div class="section-header">
-                <div><h3>Scenario library</h3><p class="subtle">Ready-made scenarios with their phases, cells and injects. Using one opens the Main storyline.</p></div>
-                ${storyboard.blocks.length ? `<button class="btn btn-secondary btn-sm" data-route="storyline">Current storyline · ${sbMainBlocks(storyboard).length} phases →</button>` : ''}
-              </div>
-              ${renderSbStatusBar()}
-              ${renderSbLibrary()}
-              ${sbUI().modal === 'preview' ? renderSbPreviewModal() : ''}
-            </article>
             ${renderContextDetails(project)}
           </section>`;
         });
@@ -974,7 +985,7 @@
                   'Décrivez le lot souhaité au-dessus de la timeline et le LLM ajoutera directement plusieurs injects.',
                   'Beschreiben Sie den gewünschten Batch über dem Zeitplan und das LLM fügt mehrere Injects direkt hinzu.'
                 ),
-                generateLabel: tt('Generate batch ✨', 'Générer le lot ✨', 'Batch generieren ✨'),
+                generateLabel: tt('Generate batch', 'Générer le lot', 'Batch generieren'),
                 loadingLabel: tt('Generating batch…', 'Génération du lot…', 'Batch wird generiert…'),
                 successMessage: (count) => tt(`${count} inject(s) added to the timeline. Review and adjust them if needed.`, `${count} inject(s) ajouté(s) à la timeline. Vérifiez-les et ajustez-les si besoin.`, `${count} Inject(s) zum Zeitplan hinzugefügt. Überprüfen und anpassen falls nötig.`)
               })}
@@ -1018,11 +1029,11 @@
                           <td class="stimuli-table-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}</td>
                           <td class="stimuli-table-status"><span class="pill pill-status" style="background:${statusColors[s.status] || '#888'}; color:#fff; cursor:pointer;" data-action="cycle-status" data-stimulus-id="${s.id}" title="${tt('Click to change status', 'Cliquer pour changer le statut', 'Klicken zum Status ändern')}">${escapeHtml(s.status)}</span></td>
                           <td class="stimuli-table-actions">
-                            <button class="btn btn-xs" data-action="move-stimulus-up" data-stimulus-id="${s.id}" title="${tt('Move up', 'Monter', 'Nach oben')}"${sortedIdx === 0 ? ' disabled' : ''}>↑</button>
-                            <button class="btn btn-xs" data-action="move-stimulus-down" data-stimulus-id="${s.id}" title="${tt('Move down', 'Descendre', 'Nach unten')}"${sortedIdx === sortedStimuli.length - 1 ? ' disabled' : ''}>↓</button>
-                            <button class="btn btn-xs" data-action="open-stimulus-modal" data-stimulus-id="${s.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">✏️</button>
-                            <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${s.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">⧉</button>
-                            <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${s.id}" title="${tt('Export PNG', 'Exporter PNG', 'PNG exportieren')}">💾</button>
+                            <button class="btn btn-xs" data-action="move-stimulus-up" data-stimulus-id="${s.id}" title="${tt('Move up', 'Monter', 'Nach oben')}"${sortedIdx === 0 ? ' disabled' : ''}>${sbUiIcon('up', 14)}</button>
+                            <button class="btn btn-xs" data-action="move-stimulus-down" data-stimulus-id="${s.id}" title="${tt('Move down', 'Descendre', 'Nach unten')}"${sortedIdx === sortedStimuli.length - 1 ? ' disabled' : ''}>${sbUiIcon('down', 14)}</button>
+                            <button class="btn btn-xs" data-action="open-stimulus-modal" data-stimulus-id="${s.id}" title="${tt('Edit', 'Éditer', 'Bearbeiten')}">${sbUiIcon('edit', 14)}</button>
+                            <button class="btn btn-xs" data-action="duplicate-stimulus" data-stimulus-id="${s.id}" title="${tt('Duplicate', 'Dupliquer', 'Duplizieren')}">${sbUiIcon('copy', 14)}</button>
+                            <button class="btn btn-xs" data-action="export-png" data-stimulus-id="${s.id}" title="${tt('Export PNG', 'Exporter PNG', 'PNG exportieren')}">${sbUiIcon('download', 14)}</button>
                           </td>
                         </tr>
                       `;
@@ -1114,7 +1125,7 @@
                 <input type="file" accept="video/mp4,video/webm,video/ogg,video/*" data-stimulus-video="${stimulus.id}" style="display:none;">
               </label>
               ${video ? `
-                <span style="font-size:0.82rem; color:var(--text-muted, #6b7280);">📎 ${escapeHtml(video.fileName)}</span>
+                <span style="font-size:0.82rem; color:var(--text-muted, #6b7280);">${sbUiIcon('paperclip', 13)} ${escapeHtml(video.fileName)}</span>
                 <button class="btn btn-ghost" data-action="clear-video" data-stimulus-id="${stimulus.id}">${tt('Remove', 'Supprimer', 'Entfernen')}</button>
               ` : ''}
             </div>
@@ -1179,7 +1190,7 @@
                   ${tt('Choose audio file…', 'Choisir un fichier audio…', 'Audiodatei auswählen…')}
                   <input type="file" accept="audio/mp3,audio/wav,audio/ogg,audio/webm,audio/mpeg,audio/*" data-stimulus-audio="${stimulus.id}" style="display:none;">
                 </label>
-                ${hasAudio ? `<p style="margin:4px 0 0; font-size:0.82rem; color:var(--text-muted, #6b7280);">📎 ${escapeHtml(audioInfo.fileName)}</p>` : ''}
+                ${hasAudio ? `<p style="margin:4px 0 0; font-size:0.82rem; color:var(--text-muted, #6b7280);">${sbUiIcon('paperclip', 13)} ${escapeHtml(audioInfo.fileName)}</p>` : ''}
               </div>
             ` : `
               <!-- Create mode -->
@@ -1192,7 +1203,7 @@
                     <option value="browser" ${provider === 'browser' ? 'selected' : ''}>${tt('Browser (built-in)', 'Navigateur (intégré)', 'Browser (eingebaut)')}</option>
                     <option value="azure_speech" ${provider === 'azure_speech' ? 'selected' : ''}>Azure Speech (Neural)</option>
                   </select>
-                  ${provider === 'azure_speech' && !azureKey ? `<p style="margin:4px 0 0; font-size:0.78rem; color:#b91c1c;">⚠ ${tt('Azure Speech requires an API key. Configure it in Settings.', 'Azure Speech nécessite une clé API. Configurez-la dans les Paramètres.', 'Azure Speech erfordert einen API-Schlüssel. Konfigurieren Sie ihn in den Einstellungen.')}</p>` : ''}
+                  ${provider === 'azure_speech' && !azureKey ? `<p style="margin:4px 0 0; font-size:0.78rem; color:#b91c1c;">${sbUiIcon('alert', 13)} ${tt('Azure Speech requires an API key. Configure it in Settings.', 'Azure Speech nécessite une clé API. Configurez-la dans les Paramètres.', 'Azure Speech erfordert einen API-Schlüssel. Konfigurieren Sie ihn in den Einstellungen.')}</p>` : ''}
                 </label>
 
                 <!-- 1. Character -->
@@ -1226,7 +1237,7 @@
                   ${tt('3. Text to speak', '3. Texte à lire', '3. Sprechtext')}
                   <textarea data-stimulus-field="${stimulus.id}.text" style="min-height:120px;">${escapeHtml(stimulus.fields.text || '')}</textarea>
                   <div class="actions" style="margin-top:4px;">
-                    <button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="text" ${_textGenerating ? 'disabled' : ''}>${_textGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `✨ ${tt('Regenerate text', 'Régénérer le texte', 'Text neu generieren')}`}</button>
+                    <button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="text" ${_textGenerating ? 'disabled' : ''}>${_textGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `${sbUiIcon('sparkles', 14)} ${tt('Regenerate text', 'Régénérer le texte', 'Text neu generieren')}`}</button>
                   </div>
                 </label>
 
@@ -1239,8 +1250,8 @@
               <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
                 <label class="field" style="margin:0; min-width:160px;">
                   <select data-stimulus-field="${stimulus.id}.audio_watermark_type">
-                    <option value="beeps" ${wmType === 'beeps' ? 'selected' : ''}>🔔 ${tt('3 beeps', '3 bips', '3 Pieptöne')}</option>
-                    <option value="text" ${wmType === 'text' ? 'selected' : ''}>🗣 ${tt('Text (spoken)', 'Texte (lu)', 'Text (gesprochen)')}</option>
+                    <option value="beeps" ${wmType === 'beeps' ? 'selected' : ''}>${tt('3 beeps', '3 bips', '3 Pieptöne')}</option>
+                    <option value="text" ${wmType === 'text' ? 'selected' : ''}>${tt('Text (spoken)', 'Texte (lu)', 'Text (gesprochen)')}</option>
                   </select>
                 </label>
                 ${wmType === 'text' ? `
@@ -1254,10 +1265,10 @@
             <!-- Audio player (if audio is ready) -->
             ${hasAudio ? `
               <div style="margin-top:12px; padding:10px 14px; background:var(--bg-alt, #f1f5f9); border-radius:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <span style="font-size:0.82rem; color:var(--text-muted, #6b7280); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🎧 ${escapeHtml(audioInfo.fileName || tt('Audio ready', 'Audio prêt', 'Audio bereit'))}</span>
-                <button class="btn btn-xs btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">▶ ${tt('Play', 'Écouter', 'Abspielen')}</button>
-                <button class="btn btn-xs btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
-                <button class="btn btn-xs btn-secondary" data-action="rewind-audio" data-stimulus-id="${stimulus.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
+                <span style="font-size:0.82rem; color:var(--text-muted, #6b7280); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${sbUiIcon('headphones', 13)} ${escapeHtml(audioInfo.fileName || tt('Audio ready', 'Audio prêt', 'Audio bereit'))}</span>
+                <button class="btn btn-xs btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">${sbUiIcon('play', 12)} ${tt('Play', 'Écouter', 'Abspielen')}</button>
+                <button class="btn btn-xs btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">${sbUiIcon('pause', 12)} ${tt('Pause', 'Pause', 'Pause')}</button>
+                <button class="btn btn-xs btn-secondary" data-action="rewind-audio" data-stimulus-id="${stimulus.id}">${sbUiIcon('rewind', 12)} ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
                 <button class="btn btn-xs btn-success" data-action="export-audio" data-stimulus-id="${stimulus.id}">${tt('Export', 'Exporter', 'Exportieren')}</button>
                 <button class="btn btn-ghost btn-xs" data-action="clear-audio" data-stimulus-id="${stimulus.id}">${tt('Remove', 'Supprimer', 'Entfernen')}</button>
               </div>
@@ -1345,7 +1356,7 @@
                   <button class="btn btn-secondary mobile-preview-toggle" data-action="toggle-mobile-preview">${appState.ui?.mobilePreviewVisible ? tt('Editor', 'Éditeur', 'Editor') : tt('Preview', 'Aperçu', 'Vorschau')}</button>
                   ${(stimulus.history?.length > 0) ? `<button class="btn btn-secondary" data-action="show-history" data-stimulus-id="${stimulus.id}">${tt('History', 'Historique', 'Verlauf')} (${stimulus.history.length})</button>` : ''}
                   <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer', 'Duplizieren')}</button>
-                  <button class="btn btn-secondary" data-action="close-stimulus-modal">✕</button>
+                  <button class="btn btn-secondary" data-action="close-stimulus-modal" aria-label="Close">${sbUiIcon('close', 16)}</button>
                 </div>
               </div>
               <div class="modal-body-stimulus${appState.ui?.mobilePreviewVisible ? ' mobile-preview-active' : ''}" data-stimulus-modal-body style="--stimulus-modal-editor-width:${editorWidth}%; --stimulus-modal-preview-width:${100 - editorWidth}%;">
@@ -1362,9 +1373,9 @@
                         <button class="btn btn-primary" data-action="generate-tts" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['generate-tts'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['generate-tts'] ? `<span class="ai-spinner"></span>${tt('Generating…', 'Génération…', 'Wird generiert…')}` : tt('Generate audio', 'Générer l\'audio', 'Audio generieren')}</button>
                       ` : ''}
                       ${appState.audioFiles?.[stimulus.id] ? `
-                        <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
-                        <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
-                        <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${stimulus.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
+                        <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${stimulus.id}">${sbUiIcon('play', 12)} ${tt('Play', 'Lecture', 'Abspielen')}</button>
+                        <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${stimulus.id}">${sbUiIcon('pause', 12)} ${tt('Pause', 'Pause', 'Pause')}</button>
+                        <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${stimulus.id}">${sbUiIcon('rewind', 12)} ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
                         <button class="btn btn-success" data-action="export-audio" data-stimulus-id="${stimulus.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')}</button>
                       ` : ''}
                     ` : ''}
@@ -1387,7 +1398,7 @@
         const bind = `data-stimulus-field="${stimulus.id}.${spec.key}"`;
         const _gf = appState.ui?.generatingField;
         const _fieldGenerating = _gf && _gf.stimulusId === stimulus.id && (_gf.fieldName === spec.key || _gf.fieldName === null);
-        const genBtn = `<div class="actions" style="margin-top:4px;"><button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}" ${_fieldGenerating ? 'disabled' : ''}>${_fieldGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `✨ ${tt('Regenerate', 'Régénérer', 'Neu generieren')}`}</button></div>`;
+        const genBtn = `<div class="actions" style="margin-top:4px;"><button class="btn btn-ghost" style="font-size:0.82rem; padding:6px 10px;" data-action="generate-field" data-stimulus-id="${stimulus.id}" data-field-name="${spec.key}" ${_fieldGenerating ? 'disabled' : ''}>${_fieldGenerating ? `<span class="ai-spinner-primary"></span>${tt('Generating…', 'Génération en cours…', 'Wird generiert…')}` : `${sbUiIcon('sparkles', 14)} ${tt('Regenerate', 'Régénérer', 'Neu generieren')}`}</button></div>`;
         if (spec.type === 'textarea') {
           const content = Array.isArray(value) ? JSON.stringify(value) : String(value ?? '');
           return `
@@ -1401,7 +1412,7 @@
           // For TTS provider, show a hint when azure is selected but no key configured
           const isProviderField = spec.key === 'tts_provider';
           const azureHint = isProviderField && String(value) === 'azure_speech' && !appState.scenario.settings.azure_speech_key
-            ? `<p style="margin:4px 0 0; font-size:0.78rem; color:#b91c1c;">⚠ ${tt('Azure Speech requires an API key. Configure it in Settings.', 'Azure Speech nécessite une clé API. Configurez-la dans les Paramètres.', 'Azure Speech erfordert einen API-Schlüssel. Konfigurieren Sie ihn in den Einstellungen.')}</p>`
+            ? `<p style="margin:4px 0 0; font-size:0.78rem; color:#b91c1c;">${sbUiIcon('alert', 13)} ${tt('Azure Speech requires an API key. Configure it in Settings.', 'Azure Speech nécessite une clé API. Configurez-la dans les Paramètres.', 'Azure Speech erfordert einen API-Schlüssel. Konfigurieren Sie ihn in den Einstellungen.')}</p>`
             : '';
           const providerLabels = isProviderField ? { browser: tt('Browser (built-in)', 'Navigateur (intégré)', 'Browser (eingebaut)'), azure_speech: 'Azure Speech (Neural)' } : {};
           return `
@@ -1515,9 +1526,9 @@
                     <button class="btn btn-primary" data-action="generate-tts" data-stimulus-id="${current.id}" ${appState.ui?.actionLoading?.['generate-tts'] ? 'disabled' : ''}>${appState.ui?.actionLoading?.['generate-tts'] ? `<span class="ai-spinner"></span>${tt('Generating…', 'Génération…', 'Wird generiert…')}` : tt('Generate audio', 'Générer l\'audio', 'Audio generieren')}</button>
                   ` : ''}
                   ${appState.audioFiles?.[current.id] ? `
-                    <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${current.id}">▶ ${tt('Play', 'Lecture', 'Abspielen')}</button>
-                    <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${current.id}">⏸ ${tt('Pause', 'Pause', 'Pause')}</button>
-                    <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${current.id}">⏮ ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
+                    <button class="btn btn-secondary" data-action="play-audio" data-stimulus-id="${current.id}">${sbUiIcon('play', 12)} ${tt('Play', 'Lecture', 'Abspielen')}</button>
+                    <button class="btn btn-secondary" data-action="stop-audio" data-stimulus-id="${current.id}">${sbUiIcon('pause', 12)} ${tt('Pause', 'Pause', 'Pause')}</button>
+                    <button class="btn btn-secondary" data-action="rewind-audio" data-stimulus-id="${current.id}">${sbUiIcon('rewind', 12)} ${tt('Rewind', 'Rembobiner', 'Zurückspulen')}</button>
                     <button class="btn btn-success" data-action="export-audio" data-stimulus-id="${current.id}">${tt('Export audio', 'Exporter l\'audio', 'Audio exportieren')}</button>
                   ` : ''}
                 ` : ''}
@@ -1601,7 +1612,7 @@
             <div class="modal-box">
               <div class="modal-header">
                 <h3>${tt('Version history', 'Historique des versions', 'Versionsverlauf')} — ${escapeHtml(channelLabel(stimulus.channel))}</h3>
-                <button class="btn btn-secondary" data-action="close-history">✕</button>
+                <button class="btn btn-secondary" data-action="close-history" aria-label="Close">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="modal-body">
                 ${history.length === 0

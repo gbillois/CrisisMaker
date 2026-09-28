@@ -63,7 +63,9 @@ function answerFor(system, user) {
   await page.dispatchEvent('[data-sc-players]', 'change');
   assert.deepEqual(await page.evaluate(() => ({ client: appState.scenario.client.name, duration: appState.scenario.storyboard.duration_minutes, cells: appState.scenario.cells.length, players: Number(appState.scenario.exercise.players_count) })), { client: 'Northwind Hospitals', duration: 180, cells: 3, players: 14 });
 
-  await page.click('.sb-context [data-sb-action="preview-template"][data-sb-template="ransomware-double-extortion"]');
+  // The scenario library lives on the Project tab.
+  await page.click('.nav-icon-btn[data-route="project"]');
+  await page.click('.pj-library [data-sb-action="preview-template"][data-sb-template="ransomware-double-extortion"]');
   await page.click('.sb-modal-foot [data-sb-action="use-template"][data-sb-mode="replace"]');
   assert.equal(await page.evaluate(() => appState.route), 'storyline');
   assert.equal(await page.evaluate(() => sbStoryboard().tracks.length), 1);

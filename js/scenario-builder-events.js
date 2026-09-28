@@ -140,7 +140,7 @@ async function sbHandleAction(event) {
   const project = appState.scenario;
   const storyboard = sbStoryboard();
   const block = sbSelectedBlock();
-  const allowedWhileBusy = ['stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template'];
+  const allowedWhileBusy = ['stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template', 'export-current'];
   if (sbReadOnly() && !allowedWhileBusy.includes(action)) return;
   try {
     switch (action) {
@@ -183,7 +183,7 @@ async function sbHandleAction(event) {
         break;
       case 'open-library':
         ui.modal = null;
-        appState.route = 'scenario';
+        appState.route = 'project';
         App.render();
         break;
       case 'set-inspector':
@@ -395,6 +395,13 @@ async function sbHandleAction(event) {
       case 'export-template': {
         const template = sbFindTemplate(element.dataset.sbTemplate);
         if (template) sbExportTemplate(template);
+        break;
+      }
+      case 'export-current': {
+        const template = sbStoryboardToTemplate(project.storyboard, project, sbText(project.name || 'My scenario', 160));
+        if (!template.blocks.length) { pushToast('The current storyline is empty: nothing to export.', 'error'); break; }
+        sbExportTemplate(template);
+        pushToast(`"${template.name}" exported as a template file.`, 'success');
         break;
       }
       case 'delete-template':

@@ -75,7 +75,7 @@ function sbChannelColor(channel) {
 }
 
 function sbSvg(path, size = 16) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+  return `<svg class="ui-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
 }
 const SB_UI_ICONS = {
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
@@ -104,7 +104,34 @@ const SB_UI_ICONS = {
   download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   upload: '<path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 3h14"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
-  star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9z"/>'
+  star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9z"/>',
+  filePlus: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 12v6"/><path d="M9 15h6"/>',
+  folderOpen: '<path d="M3 19V5a2 2 0 0 1 2-2h4l2 3h7a2 2 0 0 1 2 2v2"/><path d="M3 19l2.5-8H22l-2.5 8z"/>',
+  sheet: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/>',
+  book: '<path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>',
+  demo: '<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
+  braces: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
+  archive: '<rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
+  sparkles: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 3v4"/><path d="M17 5h4"/>',
+  bot: '<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 4v4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v2"/><path d="M15 13v2"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  xCircle: '<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+  paperclip: '<path d="m21 12-8.6 8.6a5 5 0 0 1-7-7l8.5-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.3l8-8"/>',
+  headphones: '<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3z"/><path d="M3 19a2 2 0 0 0 2 2h1v-6H3z"/>',
+  pause: '<path d="M8 5v14"/><path d="M16 5v14"/>',
+  rewind: '<path d="m19 20-10-8 10-8z"/><path d="M5 19V5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  chevronRight: '<path d="m9 18 6-6-6-6"/>'
 };
 function sbUiIcon(name, size = 16) {
   return sbSvg(SB_UI_ICONS[name] || '', size);
@@ -123,7 +150,7 @@ function renderSbStatusBar() {
     const progress = SbPipeline.active && SbPipeline.total ? Math.round(100 * SbPipeline.step / SbPipeline.total) : null;
     return `<div class="sb-statusbar is-busy" role="status"><span class="ai-spinner"></span><span>${escapeHtml(busy)}…</span>${progress !== null ? `<span class="sb-progress"><i style="width:${progress}%"></i></span>` : '<span class="sb-progress is-indeterminate"><i></i></span>'}<button class="btn btn-secondary btn-xs" data-sb-action="${SbPipeline.active ? 'stop-pipeline' : 'stop-ai'}">${sbUiIcon('stop', 12)} Stop</button></div>`;
   }
-  if (SbAI.lastError) return `<div class="sb-statusbar is-error" role="alert"><span>⚠ ${escapeHtml(SbAI.lastError)}</span><button class="btn btn-secondary btn-xs" data-sb-action="dismiss-error">Dismiss</button></div>`;
+  if (SbAI.lastError) return `<div class="sb-statusbar is-error" role="alert"><span>${sbUiIcon('alert', 14)} ${escapeHtml(SbAI.lastError)}</span><button class="btn btn-secondary btn-xs" data-sb-action="dismiss-error">Dismiss</button></div>`;
   return '';
 }
 
@@ -145,7 +172,6 @@ function renderSbLibrary() {
       <label class="sb-mini-field">Save the current storyboard as a template
         <span class="sb-inline"><input type="text" data-sb-ui="templateName" value="${escapeAttribute(ui.templateName)}" placeholder="Template name"><button class="btn btn-secondary btn-xs" data-sb-action="save-template">Save</button></span>
       </label>
-      <button class="btn btn-ghost btn-xs" data-sb-action="import-template">${sbUiIcon('upload', 12)} Import a template file</button>
     </div>`;
 }
 
@@ -358,14 +384,14 @@ function renderSbSkeletonForm(storyboard) {
   const ai = isLLMAvailable();
   return `<p class="sb-help">The AI drafts the main storyline: its phases, timing, injects per phase, roles and objectives. You then refine it in Main storyline.</p>
     <label class="sb-mini-field">Brief
-      <textarea data-sb-ui="skeleton.brief" rows="5" placeholder="e.g. 4-hour ransomware exercise for the executive crisis cell of a regional hospital group, testing isolation, patient safety, communication and regulatory decisions">${escapeHtml(brief)}</textarea>
+      <textarea data-sb-ui="skeleton.brief" rows="5" placeholder="e.g. 3-hour ransomware exercise for the executive crisis cell of a regional hospital group, testing isolation, patient safety, communication and regulatory decisions">${escapeHtml(brief)}</textarea>
     </label>
     <div class="sb-field-grid sb-field-grid-2">
       <label class="sb-mini-field">Duration (min)<input type="number" min="30" step="15" data-sb-ui="skeleton.duration" value="${skeleton.duration || storyboard.duration_minutes}"></label>
       <label class="sb-mini-field">Target injects (optional)<input type="number" min="0" step="1" data-sb-ui="skeleton.injects" value="${escapeAttribute(skeleton.injects)}"></label>
     </div>
     ${storyboard.blocks.length ? `<p class="agent-warning">Replaces the current storyboard. A version is saved first and can be restored${linked ? `; ${linked} linked inject(s) will be flagged in Sync` : ''}.</p>` : ''}
-    ${!ai ? '<p class="agent-warning">Configure an AI connection in Settings to draft with AI, or start from the library below.</p>' : ''}
+    ${!ai ? '<p class="agent-warning">Configure an AI connection in Settings to draft with AI, or start from the scenario library in the Project tab.</p>' : ''}
     <div class="sb-ai-row"><button class="btn btn-primary btn-sm" data-sb-action="generate-skeleton" ${ai && !sbBusy() ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Draft the storyline</button></div>`;
 }
 
@@ -470,7 +496,7 @@ function renderSbGenerateModal(storyboard) {
         <label class="${options.write && ai ? 'on' : ''}"><input type="checkbox" data-sb-generate="write" ${options.write && ai ? 'checked' : ''} ${ai ? '' : 'disabled'}><span><b>4 · Write</b>Write each inject with AI in ${escapeHtml(sbLanguageName(project))}, with the storyboard as context</span></label>
       </div>
       ${!ai ? '<p class="agent-warning">AI is not configured: injects already planned will be created as drafts, without content.</p>' : ''}
-      ${SbPipeline.log.length ? `<ol class="agent-log sb-log">${SbPipeline.log.map((entry) => `<li class="agent-log-${entry.kind === 'error' ? 'error' : entry.kind === 'warning' ? 'warning' : 'success'}"><span>${entry.kind === 'success' ? '✓' : entry.kind === 'info' ? '→' : '⚠'} ${escapeHtml(entry.message)}</span></li>`).join('')}</ol>` : ''}
+      ${SbPipeline.log.length ? `<ol class="agent-log sb-log">${SbPipeline.log.map((entry) => `<li class="agent-log-${entry.kind === 'error' ? 'error' : entry.kind === 'warning' ? 'warning' : 'success'}"><span>${sbUiIcon(entry.kind === 'success' ? 'check' : entry.kind === 'info' ? 'chevronRight' : 'alert', 13)} ${escapeHtml(entry.message)}</span></li>`).join('')}</ol>` : ''}
     </div>`;
   const footer = `${SbPipeline.checkpoint && SbPipeline.checkpoint.projectId === project.id && !running ? `<button class="btn btn-ghost btn-sm" data-sb-action="undo-generation" title="Restore actors, injects and storyboard from before ${escapeAttribute(SbPipeline.checkpoint.label)}">${sbUiIcon('undo', 13)} Undo ${escapeHtml(SbPipeline.checkpoint.label)}</button>` : ''}
     ${running ? `<button class="btn btn-secondary btn-sm" data-sb-action="stop-pipeline">${sbUiIcon('stop', 13)} Stop</button>` : `<button class="btn btn-primary btn-sm" data-sb-action="start-generation" ${sbReadOnly() || !scope.length ? 'disabled' : ''}>${sbUiIcon('play', 13)} Start</button>`}`;

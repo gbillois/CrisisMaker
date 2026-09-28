@@ -409,8 +409,12 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
   const context = h.run('renderScenarioView()');
-  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'Scenario library', 'sb-template-card', 'data-sb-meta="synopsis"', 'skeleton.brief']) assert.ok(context.includes(marker), marker);
-  assert.ok(context.indexOf('data-sc-cells') < context.indexOf('skeleton.brief') && context.indexOf('skeleton.brief') < context.indexOf('Scenario library'), 'questions, then AI, then library');
+  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-sb-meta="synopsis"', 'skeleton.brief']) assert.ok(context.includes(marker), marker);
+  assert.ok(context.indexOf('data-sc-cells') < context.indexOf('skeleton.brief'), 'questions, then AI');
+  assert.ok(!context.includes('sb-template-card'), 'the library moved to the Project tab');
+  const projectView = h.run('renderProjectView()');
+  for (const marker of ['pj-summary', 'pj-data', 'data-action="new-scenario"', 'data-action="project-scroll-library"', 'data-action="load-json"', 'data-action="import-chronogram-ia"', 'data-action="load-example"', 'data-action="save-local"', 'data-action="save-json"', 'data-action="export-all"', 'Scenario library', 'sb-template-card', 'data-sb-action="export-current"', 'data-sb-action="import-template"']) assert.ok(projectView.includes(marker), marker);
+  assert.ok(projectView.indexOf('pj-summary') < projectView.indexOf('pj-data') && projectView.indexOf('pj-data') < projectView.indexOf('Scenario library'), 'summary, then data, then library');
   assert.ok(!context.includes('data-sb-skeleton-track'), 'no workstream choice any more');
   const storyline = h.run('renderStorylineView()');
   for (const marker of ['sb-toolbar', 'sb-timeline-panel', 'data-sb-clip', 'data-sl-add', 'bottom-editor']) assert.ok(storyline.includes(marker), marker);
@@ -423,7 +427,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
     assert.ok(h.run('renderStorylineView()').includes('sb-modal'), modal);
   }
   h.run(`sbUI().modal = 'preview'; sbUI().previewId = 'ransomware-double-extortion'`);
-  assert.ok(h.run('renderScenarioView()').includes('Use this scenario'));
+  assert.ok(h.run('renderProjectView()').includes('Use this scenario'));
   h.run(`sbUI().modal = null; appState.scenario.cells[0].players.push(sbNormalizePlayer({ name: 'Ann Lee', role: 'CEO' }))`);
   const cells = h.run('renderCellsView()');
   for (const marker of ['data-ce-cell', 'data-ce-player', 'data-actor-bind', 'Attackers', 'Press', 'Authorities']) assert.ok(cells.includes(marker), marker);
@@ -437,4 +441,18 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   for (const marker of ['su-kpis', 'su-heat', 'data-su-scrub', 'data-su-columns', 'data-tab-action="su-ai"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
   h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'; appState.scenario.cells[0].name = '<img src=y onerror=alert(1)>'; sbUI().selected = [sbStoryboard().blocks[0].id]`);
   for (const view of ['renderStorylineView()', 'renderCellsView()', 'renderDetailedView()', 'renderSummaryView()']) assert.ok(!/<img src=[xy]/.test(h.run(view)), view);
+});
+test('library: every built-in scenario and the demo play in 3 hours', () => {
+  const h = harness();
+  const report = h.run(`SCENARIO_LIBRARY.map((template) => ({
+    id: template.id,
+    duration: template.duration_minutes,
+    end: Math.max(...template.blocks.map((block) => block.start + block.duration)),
+    beatsInside: template.blocks.every((block) => (block.beats || []).every((beat) => beat.at >= 0 && beat.at < block.duration))
+  }))`);
+  assert.ok(report.length >= 8);
+  for (const item of report) assert.deepEqual([item.duration, item.end, item.beatsInside], [180, 180, true], item.id);
+  h.run(`appState.scenario = defaultScenario()`);
+  assert.equal(h.run('appState.scenario.storyboard.duration_minutes'), 180);
+  assert.ok(h.run('Math.max(...appState.scenario.stimuli.map((item) => item.timestamp_offset_minutes))') < 180);
 });
