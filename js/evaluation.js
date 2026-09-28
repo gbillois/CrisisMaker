@@ -84,12 +84,38 @@ function evUid() {
 
 function evDefaultCriteria(cell) {
   return [...EV_COMMON_CRITERIA, ...(EV_CELL_CRITERIA[cell?.key] || [])]
-    .map(([category, text, observe]) => ({ id: evUid(), category, text, observe }));
+    // Stable ids: the first mark given on a default sheet saves it with the same ids.
+    .map(([category, text, observe], index) => ({ id: `crit_default_${index + 1}`, category, text, observe, rating: '', notes: '' }));
 }
 
+const EV_CODES = EV_RATINGS.map(([code]) => code);
+const evText = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
+const evRating = (value) => (EV_CODES.includes(value) ? value : '');
+
+/* A criterion: what to rate, then the evaluator's mark (P/S/M/U/N/A) and observations. */
 function evNormalizeCriterion(input = {}) {
-  const text = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
-  return { id: typeof input.id === 'string' && input.id ? input.id.slice(0, 60) : evUid(), category: text(input.category, 120), text: text(input.text, 600), observe: text(input.observe, 1000) };
+  return {
+    id: typeof input.id === 'string' && input.id ? input.id.slice(0, 60) : evUid(),
+    category: evText(input.category, 120), text: evText(input.text, 600), observe: evText(input.observe, 1000),
+    rating: evRating(input.rating), notes: evText(input.notes, 2000)
+  };
+}
+
+/* The evaluator's marks on one inject received: reaction observed, when, and the rating. */
+function evNormalizeMark(input = {}) {
+  return { rating: evRating(input.rating), observed: evText(input.observed, 2000), time: evText(input.time, 40) };
+}
+
+function evNormalizeSheet(sheet) {
+  const injects = {};
+  if (sheet.injects && typeof sheet.injects === 'object') {
+    for (const [key, mark] of Object.entries(sheet.injects).slice(0, 500)) if (mark && typeof mark === 'object') injects[key.slice(0, 120)] = evNormalizeMark(mark);
+  }
+  return {
+    criteria: sheet.criteria.slice(0, 80).map(evNormalizeCriterion), injects,
+    evaluator: evText(sheet.evaluator, 200), strengths: evText(sheet.strengths, 4000), improvements: evText(sheet.improvements, 4000),
+    adapted_at: evText(sheet.adapted_at, 40)
+  };
 }
 
 function normalizeEvaluation(input) {
@@ -97,7 +123,7 @@ function normalizeEvaluation(input) {
   const source = input && typeof input === 'object' && input.sheets && typeof input.sheets === 'object' ? input.sheets : {};
   for (const [cellId, sheet] of Object.entries(source)) {
     if (!sheet || typeof sheet !== 'object' || !Array.isArray(sheet.criteria)) continue;
-    sheets[cellId] = { criteria: sheet.criteria.slice(0, 80).map(evNormalizeCriterion) };
+    sheets[cellId] = evNormalizeSheet(sheet);
   }
   return { sheets };
 }
@@ -109,12 +135,12 @@ function evState(project = appState.scenario) {
 
 /* The sheet of a cell: saved once edited; until then, the defaults of its type. */
 function evSheet(project, cell) {
-  return evState(project).sheets[cell.id] || { criteria: evDefaultCriteria(cell), isDefault: true };
+  return evState(project).sheets[cell.id] || { ...evNormalizeSheet({ criteria: evDefaultCriteria(cell) }), isDefault: true };
 }
 
 function evEditableSheet(project, cell) {
   const state = evState(project);
-  if (!state.sheets[cell.id]) state.sheets[cell.id] = { criteria: evDefaultCriteria(cell) };
+  if (!state.sheets[cell.id]) state.sheets[cell.id] = evNormalizeSheet({ criteria: evDefaultCriteria(cell) });
   return state.sheets[cell.id];
 }
 
@@ -123,55 +149,145 @@ function evReceivedInjects(project, cell) {
   return ExerciseModel.of(project).injects.filter((inject) => sbReaches(inject.cell_id, cell.id));
 }
 
+/* Marks follow the planned inject once it is written: keyed by the plan, else the inject. */
+function evInjectKey(inject) {
+  return String(inject.beat?.id || inject.stimulus?.id || inject.key || '').slice(0, 120);
+}
+
+function evMark(sheet, inject) {
+  return sheet.injects?.[evInjectKey(inject)] || evNormalizeMark();
+}
+
+/* Marks given on a sheet: counts per rating over the criteria and the injects. */
+function evTally(project, cell) {
+  const sheet = evSheet(project, cell);
+  const injects = evReceivedInjects(project, cell);
+  const ratings = [...sheet.criteria.map((criterion) => criterion.rating), ...injects.map((inject) => evMark(sheet, inject).rating)];
+  const counts = Object.fromEntries(EV_CODES.map((code) => [code, 0]));
+  ratings.forEach((rating) => { if (rating) counts[rating]++; });
+  return { counts, rated: ratings.filter(Boolean).length, total: ratings.length };
+}
+
+
 // ── View ────────────────────────────────────────────────────────────────────
+function evUI() {
+  appState.ui.evaluation = appState.ui.evaluation || { cell: '' };
+  return appState.ui.evaluation;
+}
+
+function evRatingSelect(field, value, disabled, label) {
+  return `<select class="ev-rating is-${escapeAttribute((value || 'none').replace('/', ''))}" data-ev-field="${field}" aria-label="${escapeAttribute(label)}" ${disabled}>
+    <option value="">-</option>${EV_RATINGS.map(([code, text]) => `<option value="${code}" ${code === value ? 'selected' : ''} title="${escapeAttribute(text)}">${code}</option>`).join('')}
+  </select>`;
+}
+
 function renderEvaluationView() {
   const project = appState.scenario;
   const cells = project.cells || [];
-  const readOnly = typeof sbReadOnly === 'function' && sbReadOnly() ? 'disabled' : '';
+  const editLocked = EvAI.busy ? 'disabled' : '';
   if (!cells.length) {
     return `<section class="tab-page ev-page"><div class="tab-empty"><p>No player cell yet: create the cells of the exercise first, each one gets its evaluation sheet.</p><button class="btn btn-primary btn-sm" data-route="cells">Cells &amp; actors</button></div></section>`;
   }
+  const ui = evUI();
+  const cell = cells.find((entry) => entry.id === ui.cell) || cells[0];
+  ui.cell = cell.id;
   const busy = !!appState.ui?.actionLoading?.['ev-download-all'];
+  const aiReady = typeof isLLMAvailable === 'function' && isLLMAvailable();
   return `<section class="tab-page ev-page">
     <article class="card ev-intro">
       <div class="ev-intro-text">
         <h3>${sbUiIcon('checkCircle', 18)} Evaluation sheets</h3>
-        <p class="subtle">One sheet per cell for its evaluator: the criteria to rate and every inject the cell receives, with the reaction expected. Adjust the criteria below, then download the sheets as Excel files.</p>
-        <div class="ev-scale">${EV_RATINGS.map(([code, label]) => `<span><b>${code}</b> ${label}</span>`).join('')}</div>
+        <p class="subtle">One sheet per cell for its evaluator: rate each criterion and each inject received, note what you observe, then sum up strengths and areas for improvement. Marks are saved with the project and included in the Excel files.</p>
+        <div class="ev-scale">${EV_RATINGS.map(([code, label]) => `<span><b class="is-${code.replace('/', '')}">${code}</b> ${label}</span>`).join('')}</div>
       </div>
-      <button class="btn btn-primary" data-ev-action="download-all" ${busy ? 'disabled' : ''}>${sbUiIcon(busy ? 'clock' : 'download', 16)} Download all sheets (.zip)</button>
+      <div class="ev-intro-actions">
+        <button class="btn btn-secondary" data-ev-action="ai-update" ${aiReady && !EvAI.busy ? '' : 'disabled'} title="${escapeAttribute(aiReady ? 'Adapt the criteria of every sheet to this scenario' : 'Configure an AI connection in Settings first')}">${sbUiIcon(EvAI.busy ? 'clock' : 'sparkles', 16)} ${EvAI.busy ? escapeHtml(EvAI.progress || 'Updating…') : 'Update with AI'}</button>
+        ${EvAI.busy ? '<button class="btn btn-ghost btn-sm" data-ev-action="ai-stop">Stop</button>' : ''}
+        <button class="btn btn-primary" data-ev-action="download-all" ${busy ? 'disabled' : ''}>${sbUiIcon(busy ? 'clock' : 'download', 16)} Download all sheets (.zip)</button>
+      </div>
+      ${EvAI.error ? `<p class="agent-warning ev-ai-error">${escapeHtml(EvAI.error)}</p>` : ''}
     </article>
-    ${cells.map((cell) => renderEvaluationSheet(project, cell, readOnly)).join('')}
+    <nav class="ev-cells" aria-label="Cells">${cells.map((entry) => {
+      const tally = evTally(project, entry);
+      return `<button class="${entry.id === cell.id ? 'active' : ''}" data-ev-action="select" data-ev-cell="${escapeAttribute(entry.id)}" style="--cell-color:${escapeAttribute(entry.color)}"><span class="cell-dot"></span>${escapeHtml(entry.name)}<small>${tally.rated}/${tally.total}</small></button>`;
+    }).join('')}</nav>
+    ${renderEvaluationSheet(project, cell, editLocked)}
   </section>`;
 }
 
 function renderEvaluationSheet(project, cell, readOnly) {
   const sheet = evSheet(project, cell);
   const injects = evReceivedInjects(project, cell);
+  const tally = evTally(project, cell);
   const cellId = escapeAttribute(cell.id);
+  const field = (...parts) => [cellId, ...parts.map((part) => escapeAttribute(part))].join('|');
   return `<article class="card ev-sheet" style="--cell-color:${escapeAttribute(cell.color)}">
     <header class="ev-sheet-head">
       <div><h3><span class="cell-dot"></span>${escapeHtml(cell.name)}</h3><p class="subtle">${escapeHtml(cell.description || '')}</p></div>
-      <span class="ev-sheet-meta">${sheet.criteria.length} criteria · ${injects.length} injects received${sheet.isDefault ? ' · default criteria' : ''}</span>
+      <span class="ev-tally">${EV_CODES.filter((code) => code !== 'N/A').map((code) => `<b class="is-${code}" title="${escapeAttribute(EV_RATINGS.find(([c]) => c === code)[1])}">${code} ${tally.counts[code]}</b>`).join('')}<span>${tally.rated}/${tally.total} rated</span></span>
       <span class="ev-sheet-actions">
-        <button class="btn btn-ghost btn-xs" data-ev-action="reset" data-ev-cell="${cellId}" ${readOnly || sheet.isDefault ? 'disabled' : ''} title="Back to the default criteria of this type of cell">Reset</button>
+        <button class="btn btn-ghost btn-xs" data-ev-action="reset" data-ev-cell="${cellId}" ${readOnly || sheet.isDefault ? 'disabled' : ''} title="Back to the default criteria of this type of cell, marks cleared">Reset</button>
         <button class="btn btn-secondary btn-sm" data-ev-action="download" data-ev-cell="${cellId}">${sbUiIcon('download', 14)} Download (.xlsx)</button>
       </span>
     </header>
-    <table class="ev-table">
-      <thead><tr><th>Category</th><th>Criterion</th><th>What to observe</th><th></th></tr></thead>
+    <label class="field ev-evaluator">Evaluator<input type="text" data-ev-field="${field('sheet', 'evaluator')}" value="${escapeAttribute(sheet.evaluator || '')}" placeholder="Name of the evaluator" ${readOnly}></label>
+    <h4 class="ev-section">Criteria${sheet.adapted_at ? ' <small>adapted to the scenario with AI</small>' : sheet.isDefault ? ' <small>default criteria for this type of cell</small>' : ''}</h4>
+    <table class="ev-table ev-criteria">
+      <thead><tr><th>Category</th><th>Criterion and what to observe</th><th>Rating</th><th>Observations and evidence</th><th></th></tr></thead>
       <tbody>${sheet.criteria.map((criterion) => `<tr>
-        <td><input type="text" data-ev-field="${cellId}.${escapeAttribute(criterion.id)}.category" value="${escapeAttribute(criterion.category)}" aria-label="Category" ${readOnly}></td>
-        <td><textarea rows="2" data-ev-field="${cellId}.${escapeAttribute(criterion.id)}.text" aria-label="Criterion" ${readOnly}>${escapeHtml(criterion.text)}</textarea></td>
-        <td><textarea rows="2" data-ev-field="${cellId}.${escapeAttribute(criterion.id)}.observe" aria-label="What to observe" ${readOnly}>${escapeHtml(criterion.observe)}</textarea></td>
+        <td><input type="text" data-ev-field="${field('crit', criterion.id, 'category')}" value="${escapeAttribute(criterion.category)}" aria-label="Category" ${readOnly}></td>
+        <td class="ev-criterion"><textarea rows="2" data-ev-field="${field('crit', criterion.id, 'text')}" aria-label="Criterion" ${readOnly}>${escapeHtml(criterion.text)}</textarea><textarea rows="2" class="ev-observe" data-ev-field="${field('crit', criterion.id, 'observe')}" aria-label="What to observe" placeholder="What to observe" ${readOnly}>${escapeHtml(criterion.observe)}</textarea></td>
+        <td>${evRatingSelect(field('crit', criterion.id, 'rating'), criterion.rating, readOnly, 'Rating')}</td>
+        <td><textarea rows="3" data-ev-field="${field('crit', criterion.id, 'notes')}" aria-label="Observations" placeholder="What the cell did, with times" ${readOnly}>${escapeHtml(criterion.notes || '')}</textarea></td>
         <td><button class="sb-icon-btn is-danger" data-ev-action="delete" data-ev-cell="${cellId}" data-ev-criterion="${escapeAttribute(criterion.id)}" title="Remove" ${readOnly}>${sbUiIcon('trash', 13)}</button></td>
       </tr>`).join('')}</tbody>
     </table>
-    <button class="btn btn-ghost btn-xs" data-ev-action="add" data-ev-cell="${cellId}" ${readOnly}>${sbUiIcon('plus', 12)} Criterion</button>
-    <details class="ev-injects"><summary>Injects received (${injects.length}): added to the sheet with the reaction expected</summary>
-      ${injects.length ? `<ol>${injects.map((inject) => `<li><b>${escapeHtml(sbFormatOffset(inject.time))}</b> ${escapeHtml(inject.title || '')}${inject.intent ? `<span class="subtle"> · ${escapeHtml(inject.intent)}</span>` : ''}</li>`).join('')}</ol>` : '<p class="subtle">No inject reaches this cell yet.</p>'}
-    </details>
+    <button class="btn btn-ghost btn-xs ev-add" data-ev-action="add" data-ev-cell="${cellId}" ${readOnly}>${sbUiIcon('plus', 12)} Criterion</button>
+    <h4 class="ev-section">Injects received <small>${injects.length}</small></h4>
+    ${injects.length ? `<table class="ev-table ev-injects">
+      <thead><tr><th>Time</th><th>Inject and reaction expected</th><th>Rating</th><th>Reaction observed</th><th>Time of reaction</th></tr></thead>
+      <tbody>${injects.map((inject) => {
+        const mark = evMark(sheet, inject);
+        const key = evInjectKey(inject);
+        return `<tr>
+          <td class="ev-time"><b>${escapeHtml(sbFormatOffset(inject.time))}</b>${inject.numberLabel ? `<small>${escapeHtml(inject.numberLabel)}</small>` : ''}</td>
+          <td class="ev-inject"><strong>${escapeHtml(inject.title || '')}</strong>${inject.intent ? `<span class="subtle">${escapeHtml(inject.intent)}</span>` : ''}</td>
+          <td>${evRatingSelect(field('inject', key, 'rating'), mark.rating, readOnly, 'Rating')}</td>
+          <td><textarea rows="2" data-ev-field="${field('inject', key, 'observed')}" aria-label="Reaction observed" ${readOnly}>${escapeHtml(mark.observed)}</textarea></td>
+          <td><input type="text" data-ev-field="${field('inject', key, 'time')}" value="${escapeAttribute(mark.time)}" placeholder="H+0:20" aria-label="Time of reaction" ${readOnly}></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : '<p class="subtle">No inject reaches this cell yet.</p>'}
+    <div class="ev-summary">
+      <label class="field">Strengths<textarea rows="4" data-ev-field="${field('sheet', 'strengths')}" placeholder="What worked well" ${readOnly}>${escapeHtml(sheet.strengths || '')}</textarea></label>
+      <label class="field">Areas for improvement<textarea rows="4" data-ev-field="${field('sheet', 'improvements')}" placeholder="What to improve, and how" ${readOnly}>${escapeHtml(sheet.improvements || '')}</textarea></label>
+    </div>
   </article>`;
+}
+
+const EV_LIMITS = { category: 120, text: 600, observe: 1000, notes: 2000, observed: 2000, time: 40, evaluator: 200, strengths: 4000, improvements: 4000 };
+
+/* One field of a sheet, from its data-ev-field "cellId|sheet|name", "cellId|crit|id|name"
+   or "cellId|inject|key|name". Returns true when the tally changed (a rating). */
+function evApplyField(project, path, value) {
+  const [cellId, scope, id, name] = path.split('|');
+  const cell = (project.cells || []).find((entry) => entry.id === cellId);
+  if (!cell) return false;
+  const sheet = evEditableSheet(project, cell);
+  if (scope === 'sheet' && ['evaluator', 'strengths', 'improvements'].includes(id)) { sheet[id] = String(value).slice(0, EV_LIMITS[id]); return false; }
+  if (scope === 'crit') {
+    const criterion = sheet.criteria.find((item) => item.id === id);
+    if (!criterion || !['category', 'text', 'observe', 'rating', 'notes'].includes(name)) return false;
+    criterion[name] = name === 'rating' ? evRating(value) : String(value).slice(0, EV_LIMITS[name]);
+    return name === 'rating';
+  }
+  if (scope === 'inject' && ['rating', 'observed', 'time'].includes(name)) {
+    sheet.injects = sheet.injects || {};
+    const mark = sheet.injects[id] || (sheet.injects[id] = evNormalizeMark());
+    mark[name] = name === 'rating' ? evRating(value) : String(value).slice(0, EV_LIMITS[name]);
+    return name === 'rating';
+  }
+  return false;
 }
 
 function bindEvaluationEvents() {
@@ -181,30 +297,32 @@ function bindEvaluationEvents() {
   if (!root) return;
   const cellOf = (id) => (project.cells || []).find((cell) => cell.id === id);
   let saveTimer = null;
-  root.querySelectorAll('[data-ev-field]').forEach((input) => input.addEventListener('input', () => {
-    const [cellId, criterionId, field] = input.dataset.evField.split('.');
-    const cell = cellOf(cellId);
-    if (!cell) return;
-    const criterion = evEditableSheet(project, cell).criteria.find((item) => item.id === criterionId);
-    if (!criterion || !['category', 'text', 'observe'].includes(field)) return;
-    criterion[field] = input.value.slice(0, field === 'observe' ? 1000 : field === 'text' ? 600 : 120);
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => saveLocal(false), 400);
-  }));
+  const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => saveLocal(false), 400); };
+  root.querySelectorAll('[data-ev-field]').forEach((input) => {
+    const event = input.tagName === 'SELECT' ? 'change' : 'input';
+    input.addEventListener(event, () => {
+      const ratingChanged = evApplyField(project, input.dataset.evField, input.value);
+      save();
+      if (ratingChanged) App.render();
+    });
+  });
   root.querySelectorAll('[data-ev-action]').forEach((button) => button.addEventListener('click', async () => {
-    const cell = cellOf(button.dataset.evCell);
     const action = button.dataset.evAction;
+    const cell = cellOf(button.dataset.evCell);
     if (action === 'download-all') { await evDownloadAll(project); return; }
+    if (action === 'ai-update') { await EvAI.updateAll(project); return; }
+    if (action === 'ai-stop') { EvAI.stop(); return; }
     if (!cell) return;
-    if (action === 'download') { evDownloadCell(project, cell); return; }
+    if (action === 'select') { evUI().cell = cell.id; App.render(); return; }
+    if (action === 'download') { await evDownloadCell(project, cell); return; }
     const state = evState(project);
-    if (action === 'add') evEditableSheet(project, cell).criteria.push({ id: evUid(), category: '', text: '', observe: '' });
+    if (action === 'add') evEditableSheet(project, cell).criteria.push(evNormalizeCriterion({}));
     if (action === 'delete') {
       const sheet = evEditableSheet(project, cell);
       sheet.criteria = sheet.criteria.filter((item) => item.id !== button.dataset.evCriterion);
     }
     if (action === 'reset') {
-      if (!window.confirm(`Reset the sheet of the ${cell.name} to the default criteria?`)) return;
+      if (!window.confirm(`Reset the sheet of the ${cell.name} to the default criteria? Its marks and notes are cleared.`)) return;
       delete state.sheets[cell.id];
     }
     saveLocal(false);
@@ -212,27 +330,119 @@ function bindEvaluationEvents() {
   }));
 }
 
+// ── Update with AI ─────────────────────────────────────────────────────────
+/* Adapts the criteria of each cell's sheet to the scenario: its learning objectives, phases,
+   main events and the injects the cell receives. One request per cell keeps each answer short. */
+const EvAI = {
+  busy: false, progress: '', error: '', controller: null,
+
+  stop() { this.controller?.abort(); },
+
+  context(project, cell) {
+    const storyboard = project.storyboard;
+    const phases = storyboard ? sbMainBlocks(storyboard) : [];
+    const language = project.settings?.inject_language || project.settings?.language || 'en';
+    return {
+      exercise: project.name || '',
+      organisation: { name: project.client?.name || '', sector: project.client?.sector || '' },
+      scenario: String(project.scenario?.summary || storyboard?.meta?.brief || '').slice(0, 2000),
+      learning_objectives: String(project.scenario?.learning_objectives || '').slice(0, 2000),
+      phases: phases.slice(0, 15).map((block) => ({
+        title: block.title, start: sbFormatOffset(block.start_minutes), what_happens: String(block.brief || '').slice(0, 400),
+        main_events: (block.events || []).slice(0, 8).map((event) => `${sbFormatOffset(block.start_minutes + (event.offset_minutes || 0))} ${String(event.text || '').slice(0, 200)}`)
+      })),
+      cell: { name: cell.name, type: cell.key || '', mission: cell.description || '', players: (cell.players || []).slice(0, 20).map((player) => [player.name, player.role || player.title].filter(Boolean).join(', ')) },
+      injects_received: evReceivedInjects(project, cell).slice(0, 60).map((inject) => `${sbFormatOffset(inject.time)} ${String(inject.title || '').slice(0, 120)}${inject.intent ? `: ${String(inject.intent).slice(0, 200)}` : ''}`),
+      current_criteria: evSheet(project, cell).criteria.map((criterion) => ({ category: criterion.category, text: criterion.text, observe: criterion.observe })),
+      language: { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[language] || 'English'
+    };
+  },
+
+  systemPrompt() {
+    return `You are a senior crisis exercise evaluator (HSEEP, ANSSI cyber crisis exercise guide). You adapt the evaluation sheet of one player cell to a specific exercise.
+Write 8 to 12 criteria the evaluator of this cell will rate on the P/S/M/U scale. Each criterion is an observable capability or decision, specific to THIS scenario: name the stakes, deadlines, main events and injects the cell faces (with their time when useful), and link them to the learning objectives. Keep the generic crisis management basics that still apply (mobilisation, situational awareness, logbook, coordination), rewritten for the scenario.
+"observe" lists concrete evidence to look for (who, what, by when). Keep each field short: category 1-3 words, text one sentence, observe one or two sentences.
+Write in the language requested. Reply only with a JSON object: {"criteria":[{"category":"","text":"","observe":""}]}`;
+  },
+
+  async updateCell(project, cell, signal) {
+    const user = JSON.stringify(this.context(project, cell));
+    const request = AITextGenerator.generate('evaluation', this.systemPrompt(), user, true, 4000, { signal, strictJSON: true, promptFilter: typeof agentRedact === 'function' ? agentRedact : undefined });
+    const result = await (typeof agentAwait === 'function' ? agentAwait(request, signal, typeof SB_AI_TIMEOUT !== 'undefined' ? SB_AI_TIMEOUT : 180000) : request);
+    const criteria = (Array.isArray(result?.criteria) ? result.criteria : [])
+      .filter((item) => item && typeof item === 'object' && typeof item.text === 'string' && item.text.trim())
+      .slice(0, 20)
+      .map((item) => evNormalizeCriterion({ category: String(item.category || ''), text: item.text.trim(), observe: String(item.observe || '') }));
+    if (!criteria.length) throw new Error(`The AI proposed no criterion for the ${cell.name}.`);
+    const sheet = evEditableSheet(project, cell);
+    // Marks given on a criterion kept by the AI (same text) stay.
+    const previous = new Map(sheet.criteria.map((criterion) => [criterion.text.trim().toLowerCase(), criterion]));
+    sheet.criteria = criteria.map((criterion) => {
+      const kept = previous.get(criterion.text.toLowerCase());
+      return kept ? { ...criterion, rating: kept.rating, notes: kept.notes } : criterion;
+    });
+    sheet.adapted_at = new Date().toISOString();
+  },
+
+  async updateAll(project) {
+    if (this.busy) return;
+    if (!isLLMAvailable()) { pushToast('Configure an AI connection in Settings first.', 'error'); return; }
+    const cells = project.cells || [];
+    const rated = cells.some((cell) => evSheet(project, cell).criteria.some((criterion) => criterion.rating || criterion.notes));
+    if (rated && !window.confirm('Adapt every sheet to the scenario with AI? Criteria are rewritten: marks on a criterion that changes are cleared (marks on injects stay).')) return;
+    this.busy = true; this.error = ''; this.controller = new AbortController();
+    const signal = this.controller.signal;
+    const failed = [];
+    try {
+      for (const [index, cell] of cells.entries()) {
+        if (signal.aborted || appState.scenario !== project) break;
+        this.progress = `Adapting ${index + 1}/${cells.length}: ${cell.name}…`;
+        App.render();
+        try { await this.updateCell(project, cell, signal); saveLocal(false); }
+        catch (error) {
+          if (error?.name === 'AbortError' || signal.aborted) break;
+          failed.push(`${cell.name}: ${typeof sbErrorMessage === 'function' ? sbErrorMessage(error) : error.message}`);
+        }
+      }
+      if (signal.aborted) pushToast('Update stopped. The sheets already adapted are kept.', 'info');
+      else if (failed.length) { this.error = `Not adapted: ${failed.join(' | ')}`.slice(0, 900); pushToast(`${cells.length - failed.length}/${cells.length} sheet(s) adapted.`, failed.length === cells.length ? 'error' : 'info'); }
+      else pushToast(`${cells.length} evaluation sheet(s) adapted to the scenario.`, 'success');
+    } finally {
+      this.busy = false; this.progress = ''; this.controller = null;
+      App.render();
+    }
+  }
+};
+
 // ── Excel ───────────────────────────────────────────────────────────────────
+const evRatingLabel = (code) => (code ? `${code}` : '');
+
 function evSheetRows(project, cell) {
   const sheet = evSheet(project, cell);
   const injects = evReceivedInjects(project, cell);
+  const tally = evTally(project, cell);
   const rows = [
     [`Evaluation sheet · ${cell.name}`],
-    [`Exercise: ${project.name || ''}`, '', `Date: ${project.scenario?.start_date ? String(project.scenario.start_date).slice(0, 10) : ''}`, '', 'Evaluator:'],
+    [`Exercise: ${project.name || ''}`, '', `Date: ${project.scenario?.start_date ? String(project.scenario.start_date).slice(0, 10) : ''}`, '', `Evaluator: ${sheet.evaluator || ''}`],
     [`Mission: ${cell.description || ''}`],
     project.scenario?.learning_objectives ? [`Learning objectives: ${project.scenario.learning_objectives}`] : null,
     [],
     [`Rating: ${EV_RATINGS.map(([code, label]) => `${code} = ${label}`).join(' · ')}`],
+    [`Marks: ${EV_CODES.map((code) => `${code} ${tally.counts[code]}`).join(' · ')} (${tally.rated}/${tally.total} rated)`],
     [],
     ['Category', 'Criterion', 'What to observe', 'Rating (P/S/M/U/N/A)', 'Observations and evidence'],
-    ...sheet.criteria.map((criterion) => [criterion.category, criterion.text, criterion.observe, '', '']),
+    ...sheet.criteria.map((criterion) => [criterion.category, criterion.text, criterion.observe, evRatingLabel(criterion.rating), criterion.notes || '']),
     [],
     ['Injects received'],
     ['Time', 'No.', 'Inject', 'Reaction or decision expected', 'Observed reaction', 'Time of reaction', 'Rating (P/S/M/U/N/A)'],
-    ...injects.map((inject) => [sbFormatOffset(inject.time), inject.numberLabel || '', inject.title || '', inject.intent || '', '', '', '']),
+    ...injects.map((inject) => {
+      const mark = evMark(sheet, inject);
+      return [sbFormatOffset(inject.time), inject.numberLabel || '', inject.title || '', inject.intent || '', mark.observed, mark.time, evRatingLabel(mark.rating)];
+    }),
     [],
-    ['Strengths'], [''], [''],
-    ['Areas for improvement'], [''], ['']
+    ['Strengths'], ...(sheet.strengths ? sheet.strengths.split('\n').map((line) => [line]) : [[''], ['']]),
+    [],
+    ['Areas for improvement'], ...(sheet.improvements ? sheet.improvements.split('\n').map((line) => [line]) : [[''], ['']])
   ];
   return rows.filter(Boolean);
 }
@@ -247,27 +457,71 @@ function evFileName(text) {
   return String(text || 'sheet').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'sheet';
 }
 
-function evWorkbook(project, cells) {
+/* The overview of every cell's marks, first sheet of the all-cells workbook. */
+function evOverviewSheet(project, cells) {
+  const rows = [
+    [`Evaluation overview · ${project.name || ''}`], [],
+    ['Cell', 'Evaluator', ...EV_CODES, 'Rated', 'Total'],
+    ...cells.map((cell) => { const tally = evTally(project, cell); return [cell.name, evSheet(project, cell).evaluator || '', ...EV_CODES.map((code) => tally.counts[code]), tally.rated, tally.total]; })
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 32 }, { wch: 24 }, ...EV_CODES.map(() => ({ wch: 7 })), { wch: 8 }, { wch: 8 }];
+  return ws;
+}
+
+function evWorkbook(project, cells, { overview = false } = {}) {
   const wb = XLSX.utils.book_new();
-  const used = new Set();
+  const used = new Set(['overview']);
+  if (overview) XLSX.utils.book_append_sheet(wb, evOverviewSheet(project, cells), 'Overview');
   cells.forEach((cell, index) => {
     let name = String(cell.name || `Cell ${index + 1}`).replace(/[\\/?*[\]:]/g, ' ').slice(0, 28).trim() || `Cell ${index + 1}`;
-    while (used.has(name.toLowerCase())) name = `${name.slice(0, 25)} ${index + 1}`;
+    if (used.has(name.toLowerCase())) name = `${name.slice(0, 24)} ${index + 1}`;
     used.add(name.toLowerCase());
     XLSX.utils.book_append_sheet(wb, evWorksheet(project, cell), name);
   });
   return wb;
 }
 
-function evRequireXlsx() {
-  if (typeof XLSX === 'undefined') throw new Error('The Excel library is not loaded yet. Try again in a moment.');
+/* The Excel and ZIP libraries load after the page (deferred): wait for them, or load them. */
+function evLoadScript(global, src) {
+  if (typeof window !== 'undefined' && window[global]) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => (window[global] ? resolve() : reject(new Error(`${global} did not load.`)));
+    script.onerror = () => reject(new Error(`Could not load ${src}. Check your connection and reload the page.`));
+    document.head.appendChild(script);
+  });
 }
 
-function evDownloadCell(project, cell) {
+async function evLibraries(zip = false) {
+  await evLoadScript('XLSX', 'js/lib/xlsx.full.min.js');
+  if (zip) await evLoadScript('JSZip', 'js/lib/jszip.min.js');
+}
+
+function evSave(blob, fileName) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  link.rel = 'noopener';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 10000);
+}
+
+const EV_XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+async function evDownloadCell(project, cell) {
   try {
-    evRequireXlsx();
-    XLSX.writeFile(evWorkbook(project, [cell]), `evaluation-${evFileName(cell.name)}.xlsx`);
-  } catch (error) { pushToast(error.message || String(error), 'error'); }
+    await evLibraries();
+    const data = XLSX.write(evWorkbook(project, [cell]), { bookType: 'xlsx', type: 'array' });
+    evSave(new Blob([data], { type: EV_XLSX_TYPE }), `evaluation-${evFileName(cell.name)}.xlsx`);
+    pushToast(`Evaluation sheet of the ${cell.name} downloaded.`, 'success');
+  } catch (error) {
+    if (typeof CrisisError !== 'undefined') CrisisError.toast(error, { operation: 'Download an evaluation sheet' });
+    else pushToast(error.message || String(error), 'error');
+  }
 }
 
 /* One ZIP: a workbook per cell for its evaluator, plus one workbook with every sheet. */
@@ -277,23 +531,17 @@ async function evDownloadAll(project) {
   appState.ui.actionLoading = { ...(appState.ui.actionLoading || {}), 'ev-download-all': true };
   App.render();
   try {
-    evRequireXlsx();
-    if (typeof JSZip === 'undefined') throw new Error('The ZIP library is not loaded yet. Try again in a moment.');
+    await evLibraries(true);
     const zip = new JSZip();
     const write = (wb) => XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     cells.forEach((cell, index) => zip.file(`${String(index + 1).padStart(2, '0')}-evaluation-${evFileName(cell.name)}.xlsx`, write(evWorkbook(project, [cell]))));
-    zip.file('00-evaluation-all-cells.xlsx', write(evWorkbook(project, cells)));
+    zip.file('00-evaluation-all-cells.xlsx', write(evWorkbook(project, cells, { overview: true })));
     const blob = await zip.generateAsync({ type: 'blob' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `evaluation-sheets-${evFileName(project.name || 'exercise')}.zip`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+    evSave(blob, `evaluation-sheets-${evFileName(project.name || 'exercise')}.zip`);
     pushToast(`${cells.length} evaluation sheet(s) downloaded.`, 'success');
   } catch (error) {
-    pushToast(error.message || String(error), 'error');
+    if (typeof CrisisError !== 'undefined') CrisisError.toast(error, { operation: 'Download the evaluation sheets' });
+    else pushToast(error.message || String(error), 'error');
   } finally {
     appState.ui.actionLoading = { ...(appState.ui.actionLoading || {}), 'ev-download-all': false };
     App.render();

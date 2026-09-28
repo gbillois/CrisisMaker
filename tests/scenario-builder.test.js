@@ -909,5 +909,47 @@ test('evaluation: one sheet per cell, default criteria by type, editable, saved,
   const received = h.json(`evReceivedInjects(appState.scenario, sbCell(appState.scenario, '${legal.id}')).length`);
   const start = rows.findIndex((row) => row[0] === 'Injects received');
   assert.ok(received > 0 && rows.slice(start + 2).filter((row) => /^H\+/.test(row[0] || '')).length === received);
+  // Marks: a rating and notes per criterion, a rating and the reaction per inject received.
+  const critId = h.run(`evSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}')).criteria[0].id`);
+  const injectKey = h.run(`evInjectKey(evReceivedInjects(appState.scenario, sbCell(appState.scenario, '${legal.id}'))[0])`);
+  assert.equal(h.run(`evApplyField(appState.scenario, '${legal.id}|crit|${critId}|rating', 'M')`), true);
+  h.run(`evApplyField(appState.scenario, '${legal.id}|crit|${critId}|notes', 'Late notification draft')`);
+  h.run(`evApplyField(appState.scenario, '${legal.id}|inject|${injectKey}|rating', 'P')`);
+  h.run(`evApplyField(appState.scenario, '${legal.id}|inject|${injectKey}|observed', 'Called the DPO at once')`);
+  h.run(`evApplyField(appState.scenario, '${legal.id}|crit|${critId}|rating', 'X')`);
+  assert.equal(h.run(`evSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}')).criteria[0].rating`), '', 'only P/S/M/U/N/A');
+  h.run(`evApplyField(appState.scenario, '${legal.id}|crit|${critId}|rating', 'M'); evApplyField(appState.scenario, '${legal.id}|sheet|strengths|x', 'ignored'); evApplyField(appState.scenario, '${legal.id}|sheet|strengths', 'Calm')`);
+  const saved = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).evaluation.sheets['${legal.id}']`);
+  assert.equal(saved.criteria[0].rating, 'M');
+  assert.equal(saved.criteria[0].notes, 'Late notification draft');
+  assert.equal(saved.injects[injectKey].rating, 'P');
+  assert.equal(saved.strengths, 'Calm');
+  const tally = h.json(`evTally(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
+  assert.equal(tally.counts.M, 1); assert.equal(tally.counts.P, 1); assert.equal(tally.rated, 2);
+  const marked = h.json(`evSheetRows(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
+  assert.ok(marked.some((row) => row[3] === 'M' && row[4] === 'Late notification draft'));
+  assert.ok(marked.some((row) => row[4] === 'Called the DPO at once' && row[6] === 'P'));
+  h.run(`evUI().cell = '${legal.id}'`);
+  const marksView = h.run('renderEvaluationView()');
+  assert.ok(marksView.includes('class="ev-rating is-M"') && marksView.includes('data-ev-action="ai-update"') && marksView.includes('Called the DPO at once'));
+});
+
+test('evaluation: Update with AI adapts every sheet to the scenario, keeping the marks of unchanged criteria', async () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'TEST', ai_model: 'gpt-test' }); window.confirm = () => true;`);
+  const cells = h.json('appState.scenario.cells.map((cell) => cell.id)');
+  const kept = h.run(`evSheet(appState.scenario, appState.scenario.cells[0]).criteria[0].text`);
+  const critId = h.run(`evSheet(appState.scenario, appState.scenario.cells[0]).criteria[0].id`);
+  h.run(`evApplyField(appState.scenario, '${cells[0]}|crit|${critId}|rating', 'S')`);
+  const calls = mockAI(h, [(payload) => ({ criteria: [{ category: 'Mobilisation', text: payload.current_criteria[0].text, observe: 'x' }, { category: 'Ransom', text: `Ransom stance for ${payload.cell.name}`, observe: 'Decision before the leak countdown' }] })]);
+  await h.run('EvAI.updateAll(appState.scenario)');
+  assert.equal(calls.length, cells.length, 'one request per cell');
+  assert.ok(calls[0].payload.learning_objectives !== undefined && calls[0].payload.phases.length && calls[0].payload.injects_received.length);
+  assert.ok(calls[0].payload.phases.some((phase) => phase.main_events.length), 'main events given with their time');
+  const sheet = h.json(`evSheet(appState.scenario, appState.scenario.cells[0])`);
+  assert.equal(sheet.criteria.length, 2);
+  assert.equal(sheet.criteria[0].text, kept);
+  assert.equal(sheet.criteria[0].rating, 'S', 'mark kept on an unchanged criterion');
+  assert.ok(sheet.adapted_at);
 });
 function escapeForTest(text) { return String(text).replace(/&/g, '&amp;'); }
