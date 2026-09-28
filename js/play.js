@@ -27,7 +27,7 @@ function playWallClock(iso) {
 /* CSV for Excel: one line per log entry, oldest first. */
 function playLogCsv(project = appState.scenario) {
   const play = playState(project);
-  const quote = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  const quote = csvCell;
   const rows = play.log.map((entry) => [sbFormatOffset(Math.floor(entry.t)), entry.at ? new Date(entry.at).toLocaleString() : '', project.scenario.start_date ? sbClockTime(entry.t, project.scenario.start_date) : '', playLogTypeLabel(entry.type), entry.text]);
   return '\ufeff' + [['Exercise time', 'Wall clock', 'Simulated time', 'Type', 'Event'], ...rows].map((row) => row.map(quote).join(';')).join('\r\n');
 }
@@ -559,7 +559,8 @@ function playTick(initial) {
     if (timing === 'is-due') due++;
     if (timing === 'is-late') late++;
     // One alert per inject when it becomes due while the clock runs.
-    if (!initial && playState(project).running && (timing === 'is-due') && !ui.notified.has(item.key)) {
+    // Also when it goes straight to late (fast speed, background tab, clock moved forward).
+    if (!initial && playState(project).running && (timing === 'is-due' || timing === 'is-late') && !ui.notified.has(item.key)) {
       ui.notified.add(item.key);
       pushToast(`${item.numberLabel} ${tt('to send now', 'à envoyer maintenant', 'jetzt senden')}: ${item.title}${item.cell ? ` → ${item.cell.name}` : ''}`, 'info');
     }

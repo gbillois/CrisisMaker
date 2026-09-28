@@ -56,6 +56,9 @@
           this.bindVideoDebriefBridge();
           this.startAutosave();
           this.render();
+          if (window.__crisisRestoreFailed) {
+            pushToast(tt('The project saved in this browser could not be restored. A copy was kept (key crisismaker_autosave_corrupt_…); the demo is shown meanwhile.', 'Le projet enregistré dans ce navigateur n\'a pas pu être restauré. Une copie a été conservée (clé crisismaker_autosave_corrupt_…) ; la démo est affichée en attendant.', 'Das in diesem Browser gespeicherte Projekt konnte nicht wiederhergestellt werden. Eine Kopie wurde behalten (Schlüssel crisismaker_autosave_corrupt_…); inzwischen wird die Demo angezeigt.'), 'error');
+          }
         },
         bindBeforeUnload() {
           window.addEventListener('beforeunload', () => {
@@ -312,7 +315,7 @@
             const [stimulusId, property] = input.dataset.stimulusBind.split('.');
             const stimulus = getStimulus(stimulusId);
             if (!stimulus) return;
-            if (property === 'timestamp_offset_minutes') stimulus.timestamp_offset_minutes = Number(input.value);
+            if (property === 'timestamp_offset_minutes') stimulus.timestamp_offset_minutes = Math.max(0, Math.round(Number(input.value) || 0));
             else if (property === 'channel') replaceStimulusTemplate(stimulus, input.value);
             else if (property === 'template_id') {
               if (stimulus.channel === 'breaking_news_tv') replaceTVVariant(stimulus, input.value);
@@ -364,13 +367,12 @@
             const [stimulusId, fieldName] = input.dataset.stimulusPhoto.split('.');
             const stimulus = getStimulus(stimulusId);
             if (!stimulus || !input.files?.[0]) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              stimulus.fields[fieldName] = e.target.result;
-              stimulus.manual_overrides[fieldName] = e.target.result;
+            // Resized before storing: a full-size photo alone can fill the browser storage.
+            downscaleImageFile(input.files[0]).then((dataUrl) => {
+              stimulus.fields[fieldName] = dataUrl;
+              stimulus.manual_overrides[fieldName] = dataUrl;
               App.render();
-            };
-            reader.readAsDataURL(input.files[0]);
+            }).catch((error) => pushToast(error?.message || String(error), 'error'));
           });
         });
 
@@ -958,7 +960,8 @@
             case 'preview-select': appState.slideshowIndex = Number(event.currentTarget.dataset.index); App.render(); break;
             case 'cycle-status': {
               const s = getStimulus(event.currentTarget.dataset.stimulusId);
-              if (s) { const cycle = ['draft', 'ready', 'sent']; s.status = cycle[(cycle.indexOf(s.status) + 1) % cycle.length]; await autoSave(); App.render(); }
+              // Same path as Play: sent time, re-send count and the exercise log stay right.
+              if (s) { const cycle = ['draft', 'ready', 'sent']; playSetStatus(s, cycle[(cycle.indexOf(s.status) + 1) % cycle.length]); await autoSave(); App.render(); }
               break;
             }
             case 'edit-in-stimuli': appState.selectedStimulusId = event.currentTarget.dataset.stimulusId; appState.stimulusModalId = event.currentTarget.dataset.stimulusId; App.render(); break;

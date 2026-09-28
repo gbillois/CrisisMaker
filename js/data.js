@@ -243,7 +243,10 @@
           try {
             scenario = mergeScenario(migrateScenario(JSON.parse(saved)));
           } catch (error) {
+            // Keep the unreadable copy before the next autosave overwrites it with the demo.
             console.warn('Unable to restore the saved scenario.', error);
+            try { localStorage.setItem(`crisismaker_autosave_corrupt_${Date.now()}`, saved); } catch (_) { /* storage full */ }
+            window.__crisisRestoreFailed = true;
           }
         }
         if (settings) {
@@ -276,14 +279,22 @@
 
       function mergeScenario(input) {
         const base = defaultScenario();
+        // Actors: safe ids (injects follow a renamed id) and a known role.
+        const actorIds = new Map();
+        const actors = Array.isArray(input.actors) ? input.actors.filter((actor) => actor && typeof actor === 'object').map((actor) => {
+          const id = safeToken(actor.id, uid('actor'));
+          if (id !== actor.id) actorIds.set(actor.id, id);
+          return { ...actor, id, role: safeToken(actor.role, 'internal'), name: String(actor.name ?? '') };
+        }) : [];
         const merged = {
           ...base,
           ...input,
           client: { ...base.client, ...(input.client || {}) },
           scenario: { ...base.scenario, ...(input.scenario || {}) },
           settings: { ...base.settings, ...(input.settings || {}) },
-          actors: Array.isArray(input.actors) ? input.actors : base.actors,
-          stimuli: Array.isArray(input.stimuli) ? input.stimuli.map(normalizeStimulus) : base.stimuli,
+          // A file without actors or injects gets empty lists, never the demo's.
+          actors,
+          stimuli: Array.isArray(input.stimuli) ? input.stimuli.filter((item) => item && typeof item === 'object').map((stimulus) => normalizeStimulus({ ...stimulus, actor_id: actorIds.get(stimulus.actor_id) ?? stimulus.actor_id }, actors[0]?.id || '')) : [],
           debrief: normalizeDebrief(input.debrief, { ...base, ...input }),
           video_debrief: normalizeVideoDebrief(
             input.video_debrief,
@@ -355,26 +366,33 @@
         return normalized;
       }
 
-      function normalizeStimulus(stimulus) {
-        const channel = stimulus.channel || 'email_internal';
+      /* Ids and keys end up in HTML attributes and CSS classes: a project file shared by
+         someone else must not be able to smuggle markup through them. */
+      const SAFE_TOKEN = /^[A-Za-z0-9_-]{1,120}$/;
+      function safeToken(value, fallback) {
+        return typeof value === 'string' && SAFE_TOKEN.test(value) ? value : fallback;
+      }
+
+      function normalizeStimulus(stimulus, fallbackActorId = appState?.scenario?.actors?.[0]?.id || '') {
+        const channel = safeToken(stimulus.channel, 'email_internal');
         const templateId = channel === 'article_press'
-          ? (stimulus.template_id || 'nyt')
+          ? safeToken(stimulus.template_id, 'nyt')
           : channel === 'breaking_news_tv'
             ? (TV_TEMPLATE_LIBRARY[stimulus.template_id] ? stimulus.template_id : 'bfm')
-            : (stimulus.template_id || (TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal).template_id);
+            : safeToken(stimulus.template_id, (TEMPLATE_LIBRARY[channel] || TEMPLATE_LIBRARY.email_internal).template_id);
         const library = getTemplateDefinition({ channel, template_id: templateId }) || TEMPLATE_LIBRARY.email_internal;
         const now = new Date().toISOString();
         return {
-          id: stimulus.id || uid('stimulus'),
+          id: safeToken(stimulus.id, uid('stimulus')),
           name: stimulus.name ?? '',
           timestamp_offset_minutes: Number(stimulus.timestamp_offset_minutes || 0),
           channel,
           template_id: templateId,
-          actor_id: stimulus.actor_id || appState?.scenario?.actors?.[0]?.id || '',
+          actor_id: safeToken(stimulus.actor_id, fallbackActorId),
           source_label: stimulus.source_label || '',
           generation_mode: stimulus.generation_mode || 'ai',
           generation_prompt: stimulus.generation_prompt || '',
-          status: stimulus.status || 'draft',
+          status: ['draft', 'ready', 'sent'].includes(stimulus.status) ? stimulus.status : 'draft',
           created_at: stimulus.created_at || now,
           updated_at: stimulus.updated_at || now,
           fields: { ...deepClone(library.defaults), ...(stimulus.fields || {}) },
@@ -388,6 +406,8 @@
           ...(typeof stimulus.sent_at === 'string' ? { sent_at: stimulus.sent_at } : {}),
           ...(Number.isFinite(stimulus.sent_at_min) ? { sent_at_min: stimulus.sent_at_min } : {}),
           ...(stimulus.added_in_play === true ? { added_in_play: true } : {}),
+          // Where an imported inject came from (chronogram import).
+          ...(stimulus.import_source && typeof stimulus.import_source === 'object' ? { import_source: { type: safeToken(stimulus.import_source.type, 'import'), source_row: Number.isFinite(stimulus.import_source.source_row) ? stimulus.import_source.source_row : null, is_implicit: stimulus.import_source.is_implicit === true, imported_at: typeof stimulus.import_source.imported_at === 'string' ? stimulus.import_source.imported_at : '', batch_id: safeToken(stimulus.import_source.batch_id, '') } } : {}),
           ...(Number.isInteger(stimulus.sent_count) && stimulus.sent_count > 0 ? { sent_count: stimulus.sent_count } : {})
         };
       }

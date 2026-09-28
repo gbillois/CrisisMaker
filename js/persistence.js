@@ -4,10 +4,15 @@
 
       const supportsFileSystemAccess = () => typeof window !== 'undefined' && 'showSaveFilePicker' in window;
 
-      function buildProjectFileData() {
+      function buildProjectFileData({ forFile = false } = {}) {
         if (typeof captureVideoDebriefProjectState === 'function') captureVideoDebriefProjectState();
         appState.scenario.video_debrief = loadVideoDebriefDraft(appState.scenario.video_debrief);
         const exportData = JSON.parse(JSON.stringify(appState.scenario));
+        // A file keeps the exercise clock paused where it is: reopened days later, it must not
+        // resume from the old start time (the browser autosave keeps it running).
+        if (forFile && exportData.play?.running && typeof playNow === 'function') {
+          exportData.play = { ...exportData.play, offset_min: Math.round(playNow(appState.scenario) * 100) / 100, running: false, run_since: null };
+        }
         exportData.debrief = normalizeDebrief(exportData.debrief, exportData);
         exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
         exportData.llm_prompts = extractLLMPrompts();
@@ -32,7 +37,7 @@
       async function writeToFile() {
         if (!_fileHandle) return false;
         try {
-          const exportData = buildProjectFileData();
+          const exportData = buildProjectFileData({ forFile: true });
           const writable = await _fileHandle.createWritable();
           await writable.write(JSON.stringify(exportData, null, 2));
           await writable.close();
@@ -56,9 +61,11 @@
               }
             }]
           });
-          _fileHandle = handle;
           const file = await handle.getFile();
-          return await parseProjectFile(file);
+          const data = await parseProjectFile(file);
+          // Save back to this file only when it is a JSON project (never over a ZIP).
+          _fileHandle = /\.zip$/i.test(file.name) ? null : handle;
+          return data;
         } catch (e) {
           if (e.name === 'AbortError') return null; // user cancelled
           throw e; // re-throw other errors so the caller can fall back
@@ -86,7 +93,41 @@
         }
       }
 
-      // Level 2: localStorage (always active)
+      /* A CSV cell for Excel: quoted, and neutralised when it would start a formula
+         (a title or note beginning with = + - @ would otherwise be evaluated). */
+      function csvCell(value) {
+        const text = String(value ?? '');
+        return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`;
+      }
+
+      /* Photos are stored in the project as data URLs: at most 1600 px, JPEG, so a few photos
+         cannot fill the browser storage. Small images (and SVG) are kept as they are. */
+      function downscaleImageFile(file, maxSide = 1600, quality = 0.85) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(reader.error || new Error('The image could not be read.'));
+          reader.onload = () => {
+            const original = String(reader.result || '');
+            if (file.size < 250000 || /svg|gif/.test(file.type)) { resolve(original); return; }
+            const img = new Image();
+            img.onerror = () => resolve(original);
+            img.onload = () => {
+              const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+              canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+              const resized = canvas.toDataURL('image/jpeg', quality);
+              resolve(resized.length < original.length ? resized : original);
+            };
+            img.src = original;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Level 2: localStorage (always active). Returns true when the project was saved.
+      let _lastQuotaToast = 0;
       function saveLocal(showToast = true) {
         try {
           appState.scenario.updated_at = new Date().toISOString();
@@ -96,28 +137,37 @@
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
           persistProviderSettings(appState.scenario.settings);
           if (showToast) pushToast(tt('Scenario saved locally.', 'Scénario enregistré localement.', 'Szenario lokal gespeichert.'), 'success');
+          return true;
         } catch (error) {
           if (error.name === 'QuotaExceededError') {
-            pushToast(tt('Browser storage full. Export your project as JSON.', 'Stockage navigateur plein. Exportez votre projet en JSON.', 'Browserspeicher voll. Exportieren Sie Ihr Projekt als JSON.'), 'error');
+            // Once every 5 minutes, not at every autosave.
+            if (showToast || Date.now() - _lastQuotaToast > 300000) {
+              _lastQuotaToast = Date.now();
+              pushToast(tt('Browser storage full: this project is NOT saved in the browser. Save it to a file (JSON) and remove large photos or videos.', 'Stockage navigateur plein : ce projet n\'est PAS enregistré dans le navigateur. Enregistrez-le dans un fichier (JSON) et retirez les grandes photos ou vidéos.', 'Browserspeicher voll: Dieses Projekt ist NICHT im Browser gespeichert. Als Datei (JSON) speichern und große Fotos oder Videos entfernen.'), 'error');
+            }
           } else {
             pushToast(tt(`Local save failed: ${error.message}`, `Échec de la sauvegarde locale : ${error.message}`, `Lokales Speichern fehlgeschlagen: ${error.message}`), 'error');
           }
+          return false;
         }
       }
 
       // Auto-save: calls both localStorage and File System API
       async function autoSave() {
         appState.scenario.updated_at = new Date().toISOString();
-        saveLocal(false);
-        if (_fileHandle) await writeToFile();
-        updateSaveIndicator();
+        const savedLocally = saveLocal(false);
+        const savedFile = _fileHandle ? await writeToFile() : false;
+        updateSaveIndicator(savedLocally || savedFile);
       }
 
-      function updateSaveIndicator() {
+      function updateSaveIndicator(saved = true) {
         const el = document.getElementById('save-indicator');
         if (!el) return;
         const now = new Date();
-        const msg = _fileHandle
+        el.classList.toggle('is-error', !saved);
+        const msg = !saved
+          ? tt('Not saved: storage full', 'Non enregistré : stockage plein', 'Nicht gespeichert: Speicher voll')
+          : _fileHandle
           ? tt(`Saved (file + browser)`, `Sauvegardé (fichier + navigateur)`, `Gespeichert (Datei + Browser)`)
           : tt(`Saved (browser)`, `Sauvegardé (navigateur)`, `Gespeichert (Browser)`);
         el.textContent = msg;
@@ -393,6 +443,7 @@
           sandbox.style.left = '-99999px';
           sandbox.style.top = '0';
           document.body.appendChild(sandbox);
+          const failures = [];
           try {
             for (let i = 0; i < stimuli.length; i++) {
               const stimulus = stimuli[i];
@@ -412,20 +463,23 @@
                   zip.file(this.filenameForStimulus(stimulus), dataUrl.split(',')[1], { base64: true });
                 }
               } catch (error) {
-                throw CrisisError.wrap(error, {
-                  operation: 'Render stimulus for ZIP export',
-                  detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}`
-                });
+                // One inject that cannot be rendered (a video under file://, a broken image) is
+                // listed in export_errors.txt; the others are still exported.
+                CrisisError.log(error, { operation: 'Render stimulus for ZIP export', detail: `Stimulus id=${stimulus?.id || 'unknown'}, channel=${stimulus?.channel || 'unknown'}` });
+                failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${error?.message || error}`);
               }
             }
-            const exportData = buildProjectFileData();
+            if (failures.length === stimuli.length) throw new Error(tt('No inject could be rendered.', 'Aucun inject n\'a pu être rendu.', 'Kein Inject konnte gerendert werden.') + ` ${failures[0] || ''}`);
+            const exportData = buildProjectFileData({ forFile: true });
             const json = JSON.stringify(exportData, null, 2);
             const crisisSlug = slugify(appState.scenario.name);
             zip.file(`${crisisSlug}.json`, json);
             zip.file(`${crisisSlug}_chronogram.csv`, this.chronogramCsv(stimuli));
+            if (failures.length) zip.file('export_errors.txt', failures.join('\r\n'));
             const blob = await zip.generateAsync({ type: 'blob' });
             downloadBlob(blob, `${crisisSlug}.zip`);
-            pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
+            if (failures.length) pushToast(tt(`ZIP generated, but ${failures.length} inject(s) could not be rendered: see export_errors.txt in the archive.`, `ZIP généré, mais ${failures.length} inject(s) n'ont pas pu être rendus : voir export_errors.txt dans l'archive.`, `ZIP erstellt, aber ${failures.length} Inject(s) konnten nicht gerendert werden: siehe export_errors.txt im Archiv.`), 'warning');
+            else pushToast(tt('ZIP archive generated.', 'Archive ZIP générée.', 'ZIP-Archiv erstellt.'), 'success');
           } catch (error) {
             throw CrisisError.wrap(error, {
               operation: 'Export all stimuli ZIP',
@@ -441,7 +495,7 @@
           const numbers = ExerciseModel.numbers(appState.scenario);
           const width = Math.max(2, String(numbers.size).length);
           const number = String(numbers.get(stimulus.id) || 0).padStart(width, '0');
-          const minutes = stimulus.timestamp_offset_minutes;
+          const minutes = Math.max(0, Math.round(Number(stimulus.timestamp_offset_minutes) || 0));
           return `${number}_H+${String(Math.floor(minutes / 60)).padStart(2, '0')}-${String(minutes % 60).padStart(2, '0')}`;
         },
         filenameForStimulus(stimulus, ext = 'png') {
@@ -451,7 +505,7 @@
         /* The chronogram for the pilot: one line per stimulus, in play order (Excel-friendly). */
         chronogramCsv(stimuli) {
           const project = appState.scenario;
-          const quote = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+          const quote = csvCell;
           const header = ['#', 'Time', 'Simulated time', 'Phase', 'Recipient cell', 'Channel', 'Sender', 'Title', 'Status', 'File'];
           const numbers = ExerciseModel.numbers(project);
           const rows = stimuli.map((stimulus, index) => {
@@ -730,7 +784,7 @@
 
       async function saveScenarioToFile() {
         try {
-          const exportData = buildProjectFileData();
+          const exportData = buildProjectFileData({ forFile: true });
           const json = JSON.stringify(exportData, null, 2);
           const blob = new Blob([json], { type: 'application/json' });
           downloadBlob(blob, `${slugify(appState.scenario.name)}.json`);
@@ -843,12 +897,24 @@
         try {
           const zipImport = data?.__zipImport;
           if (zipImport) delete data.__zipImport;
+          // Not a CrisisMaker project (a template, another app's JSON…): refuse instead of
+          // filling the gaps with the demo and saving over the current project.
+          if (!data || typeof data !== 'object' || Array.isArray(data) || (!Array.isArray(data.stimuli) && !(data.scenario && typeof data.scenario === 'object'))) {
+            throw new Error(tt('This file is not a CrisisMaker project.', 'Ce fichier n\'est pas un projet CrisisMaker.', 'Diese Datei ist kein CrisisMaker-Projekt.'));
+          }
           const migrated = migrateScenario(data);
-          // Pre-sync custom templates so normalizeStimulus can find them during merge
+          // Pre-sync custom templates so normalizeStimulus can find them during merge,
+          // and put the current ones back if the file turns out to be unreadable.
+          const previousTemplates = appState.scenario.custom_templates;
           if (Array.isArray(migrated.custom_templates)) {
             appState.scenario.custom_templates = migrated.custom_templates;
           }
-          appState.scenario = mergeScenario(migrated);
+          try {
+            appState.scenario = mergeScenario(migrated);
+          } catch (error) {
+            appState.scenario.custom_templates = previousTemplates;
+            throw error;
+          }
           appState.scenario.video_debrief = persistVideoDebriefDraft(appState.scenario.video_debrief);
           appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
           restoreApiKeysFromStorage(appState.scenario.settings);

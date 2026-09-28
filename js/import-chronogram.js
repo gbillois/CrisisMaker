@@ -435,16 +435,19 @@ Convert these stimuli into complete CrisisStim objects. For stimuli with content
           const batchId = uid('batch');
           const timestamp = new Date().toISOString();
           const actorIdMap = {};
+          const sameName = (a, b) => String(a?.name || '').trim().toLowerCase() === String(b?.name || '').trim().toLowerCase();
+          let actorsCreated = 0, actorsMatched = 0;
 
           // 1. Insert actors (with dedup)
           if (importResult.actors && importResult.actors.length > 0) {
             for (const actor of importResult.actors) {
-              const existing = projectData.actors.find(
-                a => a.name.trim().toLowerCase() === actor.name.trim().toLowerCase()
-              );
+              if (!actor || typeof actor !== 'object') continue;
+              const existing = String(actor.name || '').trim() ? projectData.actors.find(a => sameName(a, actor)) : null;
               if (existing) {
                 actorIdMap[actor.id] = existing.id;
+                actorsMatched++;
               } else {
+                actorsCreated++;
                 const realId = uid('actor');
                 actorIdMap[actor.id] = realId;
                 projectData.actors.push({
@@ -461,13 +464,8 @@ Convert these stimuli into complete CrisisStim objects. For stimuli with content
             }
           }
 
-          // 2. Remove stimuli from previous import batch if any
-          const prevBatchIds = projectData.stimuli
-            .filter(s => s.import_source?.type === 'chronogram_ia')
-            .map(s => s.id);
-          if (prevBatchIds.length > 0) {
-            projectData.stimuli = projectData.stimuli.filter(s => !prevBatchIds.includes(s.id));
-          }
+          // 2. An import adds to the project: injects from an earlier import (possibly edited
+          //    since) are never deleted here.
 
           // 3. Insert stimuli
           let stimuliCreated = 0;
@@ -516,10 +514,8 @@ Convert these stimuli into complete CrisisStim objects. For stimuli with content
           projectData.stimuli.sort((a, b) => a.timestamp_offset_minutes - b.timestamp_offset_minutes);
 
           return {
-            actors_created: Object.keys(actorIdMap).length - (importResult.actors || []).filter(a => {
-              return projectData.actors.some(ea => ea.name.trim().toLowerCase() === a.name.trim().toLowerCase() && actorIdMap[a.id] !== uid('_'));
-            }).length,
-            actors_matched: (importResult.actors || []).length - Object.values(actorIdMap).filter(id => id.startsWith('actor_')).length,
+            actors_created: actorsCreated,
+            actors_matched: actorsMatched,
             stimuli_created: stimuliCreated,
             stimuli_implicit: stimuliImplicit,
             warnings: importResult.warnings || [],
