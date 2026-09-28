@@ -3645,6 +3645,9 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
   .app-shell:has(.content-builder) { height: auto; overflow: visible; }
   .content.content-builder { overflow: visible; }
   .sb-workspace { height: auto; }
+  .be-splitter { display: none; }
+  .sl-workspace .bottom-editor, .ds-workspace .bottom-editor { flex: 0 0 auto; }
+  .sl-workspace .sl-timeline, .ds-workspace .ds-timeline { flex: 0 0 auto; }
   .sb-stage { order: -1; grid-template-rows: auto 460px; }
   .sb-bin, .sb-inspector { max-height: 620px; }
   .sb-pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3744,17 +3747,21 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .be-phase { font-size: 0.78rem; color: var(--muted); }
 .be-actions { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
 .bottom-editor-body { padding: 12px 14px; }
+/* Main and Detailed storyline: the timeline on top, the editor at the bottom, a bar between
+   them to share the height; each zone scrolls vertically when it is too small. */
+.sl-workspace .bottom-editor, .ds-workspace .bottom-editor { flex: 0 1 var(--be-height, 42%); min-height: 56px; max-height: none; display: flex; flex-direction: column; }
+.sl-workspace .bottom-editor > *, .ds-workspace .bottom-editor > * { flex: 0 0 auto; }
+.sl-workspace .bottom-editor > .bottom-editor-body, .ds-workspace .bottom-editor > .bottom-editor-body { flex: 1 0 auto; }
+.be-splitter { flex: 0 0 10px; margin: -5px 0; }
 
 /* Main storyline */
-.sl-workspace .sl-timeline { flex: 0 0 auto; min-height: 190px; display: flex; flex-direction: column; }
-.sl-workspace .sl-editor { flex: 1 1 auto; max-height: none; min-height: 150px; }
-.sl-workspace .sl-timeline > .sb-timeline-panel { flex: 1; }
-.sl-workspace .sl-timeline .sb-timeline-scroll { flex: 0 0 auto; }
+.sl-workspace .sl-timeline { flex: 1 1 0; min-height: 80px; display: flex; flex-direction: column; overflow-y: auto; }
+.sl-workspace .sl-timeline > .sb-timeline-panel { flex: 1 1 auto; min-height: 0; }
 .sl-add { display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; color: var(--primary-strong); }
 .sb-workspace .sl-add select { width: auto; min-height: 30px; padding: 3px 6px; border: none; background: transparent; font-weight: 700; }
 .sl-editor-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; }
 .sl-what { grid-template-rows: auto minmax(0, 1fr); align-content: stretch; }
-.sl-what textarea { min-height: 150px; height: 100%; resize: vertical; font-size: 0.95rem; line-height: 1.55; }
+.sl-what textarea { min-height: 120px; height: auto; resize: vertical; font-size: 0.95rem; line-height: 1.55; }
 .sl-replan { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; background: #fff7e8; border-left: 3px solid var(--warning); font-size: 0.82rem; color: var(--primary-strong); }
 .sl-replan > span { flex: 1; min-width: 180px; }
 .sl-replan .sb-update { height: 32px; }
@@ -3807,7 +3814,7 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .ce-roles .sb-cast-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 
 /* Detailed storyline */
-.ds-workspace .ds-timeline { flex: 1 1 auto; min-height: 200px; display: flex; flex-direction: column; background: var(--sb-panel); border: 1px solid var(--sb-line); border-radius: var(--sb-radius); overflow: hidden; }
+.ds-workspace .ds-timeline { flex: 1 1 0; min-height: 80px; display: flex; flex-direction: column; background: var(--sb-panel); border: 1px solid var(--sb-line); border-radius: var(--sb-radius); overflow: hidden; }
 .ds-scroll { flex: 1; min-height: 0; overflow: auto; background: #fcfbfd; }
 .ds-toolbar { row-gap: 6px; }
 .ds-cells { display: flex; flex-wrap: wrap; gap: 5px; flex: 1 1 360px; }

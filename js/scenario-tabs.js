@@ -41,6 +41,70 @@ function renderUpdateButton(project, pending = sbPendingSyncCount(project)) {
   return `<button class="sb-tool sb-tool-label sb-update ${pending ? 'has-changes' : ''}" data-sb-action="open-modal" data-sb-modal="sync" title="${escapeAttribute(pending ? `${pending} change(s) to reflect in cascade: phases → inject plans → actors → injects` : 'Everything is up to date. Open to check.')}">${sbUiIcon('sync')}<span>Update</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>`;
 }
 
+/* The bar between the timeline and the bottom editor of the Main and Detailed storyline:
+   drag it (or use the arrow keys) to share the height, double-click to reset. Each zone
+   scrolls vertically when it gets too small. The height is kept per tab in appState.ui. */
+const BE_MIN_EDITOR = 56;
+const BE_MIN_TIMELINE = 80;
+
+function editorHeights() {
+  if (!appState.ui.editorHeights) appState.ui.editorHeights = {};
+  return appState.ui.editorHeights;
+}
+
+function editorHeightStyle(key) {
+  const height = editorHeights()[key];
+  return Number.isFinite(height) ? `style="--be-height:${height}px"` : '';
+}
+
+function renderEditorSplitter(key) {
+  return `<div class="resize-handle resize-handle-horizontal be-splitter" data-be-splitter="${key}" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="Resize the timeline and the editor" title="Drag to resize the timeline and the editor (double-click to reset)"></div>`;
+}
+
+function bindEditorSplitter(root) {
+  const handle = root.querySelector('[data-be-splitter]');
+  const timeline = handle?.previousElementSibling;
+  const editor = handle?.nextElementSibling;
+  if (!timeline || !editor) return;
+  const key = handle.dataset.beSplitter;
+  const total = () => timeline.getBoundingClientRect().height + editor.getBoundingClientRect().height;
+  const apply = (height, space = total()) => {
+    const value = Math.round(Math.min(Math.max(height, BE_MIN_EDITOR), Math.max(BE_MIN_EDITOR, space - BE_MIN_TIMELINE)));
+    editorHeights()[key] = value;
+    editor.style.setProperty('--be-height', `${value}px`);
+  };
+  handle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const pointerId = event.pointerId;
+    const startY = event.clientY;
+    const startHeight = editor.getBoundingClientRect().height;
+    const space = total();
+    const move = (moveEvent) => apply(startHeight - (moveEvent.clientY - startY), space);
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      if (handle.hasPointerCapture?.(pointerId)) handle.releasePointerCapture(pointerId);
+      document.body.classList.remove('is-resizing-panels');
+    };
+    document.body.classList.add('is-resizing-panels');
+    try { handle.setPointerCapture(pointerId); } catch (_) { /* Older browsers. */ }
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  });
+  handle.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    apply(editor.getBoundingClientRect().height + (event.key === 'ArrowUp' ? 24 : -24));
+  });
+  handle.addEventListener('dblclick', () => {
+    delete editorHeights()[key];
+    editor.style.removeProperty('--be-height');
+  });
+}
+
 // ═══ Main storyline ═════════════════════════════════════════════════════════
 function renderStorylineView() {
   return sbWithRenderMemo(() => {
@@ -71,7 +135,8 @@ function renderStorylineView() {
       </header>
       ${renderSbStatusBar()}
       <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'scenario', 'Context')}</div>
-      <section class="bottom-editor sl-editor" aria-label="Phase editor">
+      ${renderEditorSplitter('storyline')}
+      <section class="bottom-editor sl-editor" aria-label="Phase editor" ${editorHeightStyle('storyline')}>
         ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>Select a phase on the timeline to edit what happens. Drag its edges to change its duration; the following phases follow (ripple).</span></div>`}
       </section>
       ${renderSbModal(storyboard)}
@@ -101,7 +166,7 @@ function renderPhaseEditor(storyboard, block) {
     </div>
     <div class="bottom-editor-body sl-editor-body">
       <label class="sb-mini-field sl-what">What happens during this phase
-        <textarea data-sb-field="brief" rows="7" placeholder="${escapeAttribute(`In plain words, what happens during this phase: the events, what the players discover, the pressure they face. ${(SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint}`)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
+        <textarea data-sb-field="brief" rows="5" placeholder="${escapeAttribute(`In plain words, what happens during this phase: the events, what the players discover, the pressure they face. ${(SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint}`)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
       </label>
       <div class="sl-side">
         ${sbNeedsReplan(block) ? `<div class="sl-replan">${sbUiIcon('alert', 14)}<span>What happens changed: the ${block.beats.length} planned inject(s) still follow the previous version.</span>${renderUpdateButton(project)}</div>` : ''}
@@ -250,7 +315,8 @@ function renderDetailedView() {
       </header>
       ${renderSbStatusBar()}
       <div class="ds-timeline">${storyboard.blocks.length || items.length ? renderDetailedTimeline(project, items) : tabEmptyNote('Build the main storyline first: its phases frame the injects of every cell.', 'storyline', 'Main storyline')}</div>
-      <section class="bottom-editor ds-editor" aria-label="Inject editor">${selected ? renderInjectEditor(project, selected) : `<div class="bottom-editor-empty">${sbUiIcon('play', 18)}<span>Select an inject to edit it. Drag it to change its time, or to another cell row to change its recipient. ${cellScope ? `“+ Inject” adds one for the ${escapeHtml(cellScope.name)} at the playhead.` : 'Pick a cell above to focus on its injects.'}</span></div>`}</section>
+      ${renderEditorSplitter('detailed')}
+      <section class="bottom-editor ds-editor" aria-label="Inject editor" ${editorHeightStyle('detailed')}>${selected ? renderInjectEditor(project, selected) : `<div class="bottom-editor-empty">${sbUiIcon('play', 18)}<span>Select an inject to edit it. Drag it to change its time, or to another cell row to change its recipient. ${cellScope ? `“+ Inject” adds one for the ${escapeHtml(cellScope.name)} at the playhead.` : 'Pick a cell above to focus on its injects.'}</span></div>`}</section>
       ${renderSbModal(storyboard)}
     </section>`;
   });
@@ -1288,7 +1354,7 @@ function bindScenarioTabsEvents() {
     if (SuPlayer.timer) SuPlayer.stop();
     return;
   }
-  document.querySelectorAll('[data-sb-scope]').forEach((root) => tabBindInputs(root));
+  document.querySelectorAll('[data-sb-scope]').forEach((root) => { tabBindInputs(root); bindEditorSplitter(root); });
   if (appState.route === 'detailed') {
     const root = document.querySelector('.ds-workspace');
     const state = tabUI('detailed');
