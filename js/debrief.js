@@ -239,7 +239,7 @@
         };
       }
 
-      function renderDebriefView() {
+      function renderStoryDebriefView() {
         const debrief = appState.scenario.debrief = normalizeDebrief(appState.scenario.debrief, appState.scenario);
         return `
           ${renderLLMConfigBlock('debrief',

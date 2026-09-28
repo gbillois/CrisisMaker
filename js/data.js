@@ -221,6 +221,7 @@
           debrief: makeEmptyDebrief({ ...base, client: { ...base.client, name: '' } }),
           video_debrief: normalizeVideoDebrief(null, settingsOverrides.inject_language || settingsOverrides.language || 'en'),
           evaluation: typeof normalizeEvaluation === 'function' ? normalizeEvaluation(null) : { sheets: {} },
+          slide_debrief: typeof normalizeSlideDebrief === 'function' ? normalizeSlideDebrief(null) : {},
           settings: { ...base.settings, ...settingsOverrides }
         };
       }
@@ -321,6 +322,7 @@
           ),
           custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : [],
           evaluation: typeof normalizeEvaluation === 'function' ? normalizeEvaluation(input.evaluation) : (input.evaluation || { sheets: {} }),
+          slide_debrief: typeof normalizeSlideDebrief === 'function' ? normalizeSlideDebrief(input.slide_debrief) : (input.slide_debrief || {}),
           storyboard: storyboardModelLoaded() ? normalizeStoryboard(input.storyboard, input.scenario?.phases) : input.storyboard,
           storyboard_versions: storyboardModelLoaded() ? sbNormalizeVersions(input.storyboard_versions) : [],
           cells: storyboardModelLoaded() ? sbNormalizeCells(input.cells) : [],

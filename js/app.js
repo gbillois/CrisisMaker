@@ -130,6 +130,8 @@
           if (appState.route === 'builder') appState.route = 'storyline';
           if (appState.route === 'stimuli') appState.route = 'detailed';
           if (appState.route === 'checker') appState.route = 'summary';
+          // Video Debrief is now a part of the Debrief tab.
+          if (appState.route === 'video-debrief') { appState.route = 'debrief'; appState.ui.debriefPart = 'video'; }
           root.innerHTML = renderAppShell();
           bindGlobalEvents();
           bindCheckerEvents();
@@ -139,6 +141,7 @@
           bindScenarioTabsEvents();
           bindPlayEvents();
           bindEvaluationEvents();
+          bindDebriefHubEvents();
           bindStimulusModalSplitter();
           bindStimulusLinks();
           mountDebriefEditor();

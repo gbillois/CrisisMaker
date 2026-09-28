@@ -953,3 +953,43 @@ test('evaluation: Update with AI adapts every sheet to the scenario, keeping the
   assert.ok(sheet.adapted_at);
 });
 function escapeForTest(text) { return String(text).replace(/&/g, '&amp;'); }
+
+test('debrief: one tab with three parts; the slide deck shows the timeline, the phases, the evaluation and the debrief messages', async () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'debrief';`);
+  const hub = h.run('renderDebriefView()');
+  for (const part of ['slides', 'story', 'video']) assert.ok(hub.includes(`data-db-part="${part}"`), part);
+  assert.ok(hub.includes('data-sd-action="download"') && hub.includes('sd-grid'), 'slide debrief by default');
+  h.run(`appState.ui.debriefPart = 'story'`);
+  assert.ok(h.run('renderDebriefView()').includes('debrief-editor-frame'));
+  h.run(`appState.ui.debriefPart = 'video'`);
+  assert.ok(h.run('renderDebriefView()').includes('id="video-debrief-slot"'));
+  h.run(`appState.ui.debriefPart = 'slides'`);
+  const phases = h.run('sbMainBlocks(sbStoryboard()).length');
+  let kinds = h.json('sdSlides(appState.scenario).map((slide) => slide.kind)');
+  assert.equal(kinds[0], 'title');
+  assert.equal(kinds[kinds.length - 1], 'end');
+  assert.ok(kinds.includes('overview') && kinds.includes('timeline') && kinds.includes('evaluation'));
+  assert.equal(kinds.filter((kind) => kind === 'phase').length, phases, 'one slide per phase');
+  const timeline = h.json(`sdSlides(appState.scenario).find((slide) => slide.kind === 'timeline')`);
+  assert.equal(timeline.phases.length, phases);
+  assert.ok(timeline.events.length > 0, 'main events on the timeline');
+  // The debrief messages: written by the AI from the exercise and the evaluation marks.
+  const cell = h.run('appState.scenario.cells[0].id');
+  h.run(`evApplyField(appState.scenario, '${cell}|crit|crit_default_1|rating', 'U'); evApplyField(appState.scenario, '${cell}|sheet|strengths', 'Clear leadership')`);
+  h.run(`Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'TEST', ai_model: 'gpt-test' }); window.confirm = () => true;`);
+  const calls = mockAI(h, [{ key_messages: ['Isolate early', 'One voice outside'], went_well: ['Fast mobilisation'], to_improve: ['Late regulator notification'], recommendations: ['Write a GDPR notification template (DPO, 1 month)'], next_steps: ['Action plan review'] }]);
+  await h.run('SdAI.write(appState.scenario)');
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].payload.evaluation[0].criteria.some((line) => line.startsWith('U')) && calls[0].payload.evaluation[0].strengths === 'Clear leadership');
+  assert.ok(calls[0].payload.phases.some((phase) => phase.main_events.length));
+  assert.equal(h.run('appState.scenario.slide_debrief.key_messages'), 'Isolate early\nOne voice outside');
+  kinds = h.json('sdSlides(appState.scenario).map((slide) => slide.kind)');
+  assert.ok(kinds.includes('bullets') && kinds.filter((kind) => kind === 'columns').length === 2 && kinds.includes('cells'));
+  // Sections can be left out; everything is saved with the project.
+  h.run(`appState.scenario.slide_debrief.sections.phases = false`);
+  assert.equal(h.json('sdSlides(appState.scenario).filter((slide) => slide.kind === "phase").length'), 0);
+  const saved = h.json('mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).slide_debrief');
+  assert.equal(saved.sections.phases, false);
+  assert.ok(saved.recommendations.includes('GDPR'));
+});

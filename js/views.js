@@ -196,7 +196,6 @@
                   ${renderNavIconButton('play', svgBroadcast(), 'Play')}
                   ${renderNavIconButton('evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung'))}
                   ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
-                  ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
                 </div>
               </nav>
             </header>
@@ -215,7 +214,7 @@
               </div>
             </div>
 
-            <main class="content ${appState.route === 'video-debrief' ? 'content-video-debrief' : ''} ${['storyline', 'detailed', 'builder', 'stimuli'].includes(appState.route) ? 'content-builder' : ''}">
+            <main class="content ${appState.route === 'debrief' && debriefPart() === 'video' ? 'content-video-debrief' : ''} ${appState.route === 'debrief' ? 'content-debrief' : ''} ${['storyline', 'detailed', 'builder', 'stimuli'].includes(appState.route) ? 'content-builder' : ''}">
               ${vc ? `<section class="topbar">
                 <div class="page-title">
                   <h2>${vc.title}</h2>
@@ -435,12 +434,12 @@
             subtitle: tt('Build and challenge the exercise with controlled AI tools.', 'Construisez et challengez l\'exercice avec des outils IA contrôlés.', 'Übung mit kontrollierten KI-Werkzeugen erstellen und hinterfragen.')
           },
           debrief: {
-            title: tt('Crisis Debrief', 'Debrief de crise', 'Krisen-Debrief'),
-            subtitle: tt('Build an interactive timeline that reveals what really happened.', 'Construisez une timeline interactive qui révèle ce qui s\'est vraiment passé.', 'Interaktive Zeitleiste erstellen, die zeigt, was wirklich geschah.')
-          },
-          'video-debrief': {
-            title: tt('Video Debrief', 'Video Debrief', 'Video-Debrief'),
-            subtitle: tt('Turn the crisis story into a documentary video, produced right in your browser.', 'Transformez le récit de crise en vidéo documentaire, produite directement dans votre navigateur.', 'Krisengeschichte als Dokumentarvideo, direkt im Browser produziert.') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">' + tt('See an example', 'Voir un exemple', 'Beispiel ansehen') + '</a>'
+            title: 'Debrief',
+            subtitle: debriefPart() === 'video'
+              ? tt('Turn the crisis story into a documentary video, produced right in your browser.', 'Transformez le récit de crise en vidéo documentaire, produite directement dans votre navigateur.', 'Krisengeschichte als Dokumentarvideo, direkt im Browser produziert.') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">' + tt('See an example', 'Voir un exemple', 'Beispiel ansehen') + '</a>'
+              : debriefPart() === 'story'
+                ? tt('Build an interactive timeline that reveals what really happened.', 'Construisez une timeline interactive qui révèle ce qui s\'est vraiment passé.', 'Interaktive Zeitleiste erstellen, die zeigt, was wirklich geschah.')
+                : 'Three ways to debrief the exercise: a slide deck, an interactive story page, a documentary video.'
           }
         };
         return map[appState.route] || null;
@@ -460,7 +459,6 @@
         if (appState.route === 'evaluation') return renderEvaluationView();
         if (appState.route === 'library') return renderLibraryView();
         if (appState.route === 'debrief') return renderDebriefView();
-        if (appState.route === 'video-debrief') return renderVideoDebriefView();
         if (appState.route === 'agent') return renderAgentView();
         return renderProjectView();
       }
