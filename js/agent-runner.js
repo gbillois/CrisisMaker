@@ -1,4 +1,6 @@
 const AGENT_MAX_STEPS = 40;
+const AGENT_MAX_QUESTION_ROUNDS = 2;
+const AGENT_KINDS = ['builder', 'designer', 'reviewer'];
 const AGENT_CHECKPOINT_KEY = 'crisismaker_agent_checkpoint_v1';
 const AgentLog = {
   append(run, kind, message, detail) {
@@ -28,6 +30,8 @@ function agentNormalizeResponse(value) {
   const S = AgentSchema;
   const schema = value?.type === 'tool_call'
     ? S.object({ type: { ...S.text(), enum: ['tool_call'] }, tool: S.id, arguments: { type: 'object', additionalProperties: { type: 'json' } }, reason: S.text(500) }, ['type', 'tool', 'arguments'])
+    : value?.type === 'question'
+    ? S.object({ type: { ...S.text(), enum: ['question'] }, questions: { ...S.array(S.text(600), 5), minItems: 1 }, reason: S.text(500) }, ['type', 'questions'])
     : S.object({ type: { ...S.text(), enum: ['final'] }, summary: S.text(5000), issues: S.array(S.text(1500)), changes: S.array(S.text(1500)) }, ['type', 'summary', 'issues', 'changes']);
   ToolValidator.validate(value, schema, 'response');
   return value;
@@ -51,13 +55,13 @@ function agentAwait(promise, signal, timeoutMs = 90000) {
 class AgentRunner {
   constructor({ request, notify, maxSteps = AGENT_MAX_STEPS } = {}) {
     this.request = request || ((system, user, signal) => AITextGenerator.generate('agent', system, user, true, 4000, { signal, strictJSON: true }));
-    this.notify = notify || (() => { if (appState.route === 'agent' || (!this.active && !this.busy)) App.render(); });
+    this.notify = notify || (() => { if (appState.route === 'agent' || (typeof document !== 'undefined' && document.querySelector('.agent-panel')) || (!this.active && !this.busy)) App.render(); });
     this.maxSteps = Math.max(1, Math.min(AGENT_MAX_STEPS, maxSteps));
     this.registry = createAgentToolRegistry();
     this.status = 'idle'; this.step = 0; this.log = []; this.history = []; this.pending = null; this.checkpoint = null;
     this.kind = 'designer'; this.mode = 'agent'; this.objective = ''; this.changed = 0;
   }
-  get active() { return ['running', 'approval'].includes(this.status); }
+  get active() { return ['running', 'approval', 'question'].includes(this.status); }
   assertActive() {
     if (this.controller.signal.aborted || this.project !== appState.scenario) throw new DOMException('Stopped', 'AbortError');
   }
@@ -65,11 +69,25 @@ class AgentRunner {
     if (!this.active) return;
     this.controller.abort();
     this.resolveApproval?.(false); this.resolveApproval = null; this.pending = null;
+    this.resolveAnswer?.(null); this.resolveAnswer = null; this.question = null;
     this.status = 'stopped'; AgentLog.append(this, 'warning', 'Stopped. Completed edits remain; Undo restores the checkpoint.');
   }
   approve(allowed) {
     if (!this.pending || !this.resolveApproval) return;
     const resolve = this.resolveApproval; this.resolveApproval = null; this.pending = null; this.status = 'running'; resolve(allowed); this.notify();
+  }
+  /* The agent asked the user questions; resolves with the answers, or null when skipped. */
+  answer(text) {
+    if (!this.question || !this.resolveAnswer) return;
+    const resolve = this.resolveAnswer; this.resolveAnswer = null; this.question = null; this.status = 'running';
+    resolve(typeof text === 'string' && text.trim() ? text.trim().slice(0, 6000) : null); this.notify();
+  }
+  async ask(call) {
+    this.status = 'question';
+    this.question = { questions: call.questions, reason: call.reason || '' };
+    const answered = new Promise(resolve => { this.resolveAnswer = resolve; });
+    AgentLog.append(this, 'warning', 'Question for you', call.questions);
+    const answers = await answered; this.assertActive(); return answers;
   }
   async approval(call) {
     this.status = 'approval';
@@ -95,11 +113,11 @@ class AgentRunner {
   }
   async start({ kind = this.kind, mode = this.mode, objective = this.objective } = {}) {
     if (this.active || this.busy) return;
-    if (!['designer', 'reviewer'].includes(kind) || !['assist', 'agent', 'auto'].includes(mode) || typeof objective !== 'string' || !objective.trim() || objective.length > 8000) throw new AgentValidationError('Enter an objective of 1–8000 characters and select a valid mode.');
+    if (!AGENT_KINDS.includes(kind) || !['assist', 'agent', 'auto'].includes(mode) || typeof objective !== 'string' || !objective.trim() || objective.length > 8000) throw new AgentValidationError('Enter an objective of 1–8000 characters and select a valid mode.');
     if (appState.ui.generatingField || Object.values(appState.llmState).some(state => state?.loading) || appState.checkerState.analysisLoading) throw new AgentValidationError('Wait for the current AI operation to finish before starting an agent.');
     this.kind = kind; this.mode = mode; this.objective = objective;
     this.status = 'running'; this.busy = true; this.controller = new AbortController(); this.project = appState.scenario;
-    this.step = 0; this.log = []; this.history = []; this.changed = 0; this.pending = null;
+    this.step = 0; this.log = []; this.history = []; this.changed = 0; this.pending = null; this.question = null; this.questionRounds = 0;
     this.checkpointRun();
     AgentLog.append(this, 'info', 'Analyzing current exercise. A pre-run checkpoint is available.');
     const runController = this.controller, runProject = this.project;
@@ -119,6 +137,18 @@ class AgentRunner {
           if (input.length + system.length > 100000) throw new Error('Context too large.');
           call = agentNormalizeResponse(await agentAwait(this.request(system, input, this.controller.signal), this.controller.signal));
           this.assertActive();
+          if (call.type === 'question') {
+            if (this.questionRounds >= AGENT_MAX_QUESTION_ROUNDS) {
+              this.history.push({ questions: call.questions, instruction: 'No more questions: proceed with clearly disclosed assumptions.' }); this.history = this.history.slice(-8);
+              continue;
+            }
+            this.questionRounds++;
+            const answers = await this.ask(call);
+            this.history.push(answers ? { questions: call.questions, userAnswers: answers } : { questions: call.questions, userAnswers: null, instruction: 'The user skipped these questions. Proceed with clearly disclosed reasonable assumptions.' });
+            this.history = this.history.slice(-8);
+            AgentLog.append(this, 'info', answers ? 'Answers sent to the agent.' : 'Questions skipped: the agent will make assumptions.', answers || '');
+            continue;
+          }
           if (call.type === 'final') {
             this.status = 'complete'; AgentLog.append(this, 'success', call.summary, { issues: call.issues, reportedChanges: call.changes, appliedOperations: this.changed }); return;
           }
@@ -162,7 +192,7 @@ class AgentRunner {
       if (this.controller.signal.aborted || this.project !== appState.scenario) { this.status = 'stopped'; }
       else { this.controller.abort(); this.status = 'failed'; AgentLog.append(this, 'error', agentFailureMessage(error)); }
     } finally {
-      this.busy = false; this.pending = null; this.resolveApproval = null; this.notify();
+      this.busy = false; this.pending = null; this.resolveApproval = null; this.question = null; this.resolveAnswer = null; this.notify();
     }
   }
   loadCheckpoint() {

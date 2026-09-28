@@ -186,7 +186,7 @@
               <nav class="nav-topbar" aria-label="${tt('Workspace', 'Espace de travail', 'Arbeitsbereich')}">
                 <div class="nav-topbar-left">
                   ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
-                  ${renderNavIconButton('scenario', svgTarget(), 'Scenario & context')}
+                  ${renderNavIconButton('scenario', svgTarget(), tt('Context', 'Contexte', 'Kontext'))}
                   ${renderNavIconButton('storyline', svgStoryboard(), 'Main storyline')}
                   ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
                   ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
@@ -194,7 +194,6 @@
                   ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
                   ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                   ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
-                  ${renderNavIconButton('agent', svgTarget(), 'Agent')}
                   ${renderNavIconButton('checker', svgShieldCheck(), tt('Checker', 'Checker', 'Prüfer'))}
                 </div>
               </nav>
@@ -206,6 +205,10 @@
                 <button class="btn btn-secondary" data-action="toggle-settings-drawer" aria-label="Close">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="settings-drawer-body">
+                <article class="card settings-agent-card">
+                  <div class="section-header"><div><h3>${sbUiIcon('bot', 16)} ${tt('AI agent', 'Agent IA', 'KI-Agent')}</h3><p class="subtle">${tt('The agent builds and updates the exercise from any tab. Its console lets you run it directly, review every step and undo a run.', 'L\'agent construit et met à jour l\'exercice depuis chaque onglet. Sa console permet de le lancer directement, de suivre chaque étape et d\'annuler une exécution.', 'Der Agent erstellt und aktualisiert die Übung aus jedem Tab. In seiner Konsole starten Sie ihn direkt, prüfen jeden Schritt und machen einen Lauf rückgängig.')}</p></div></div>
+                  <button class="btn btn-secondary" data-agent-action="open-console">${sbUiIcon('open', 14)} ${tt('Open the agent console', 'Ouvrir la console de l\'agent', 'Agent-Konsole öffnen')}</button>
+                </article>
                 ${renderSettingsView()}
               </div>
             </div>
@@ -297,8 +300,8 @@
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgTarget()}</div>
-                      <strong>Scenario &amp; context</strong>
-                      <p>Answer five questions (client, duration, sector, cells, players), describe the exercise to the AI or start from the scenario library.</p>
+                      <strong>Context</strong>
+                      <p>Set the client, duration, simulated dates, cells, players and languages, describe your objectives and ideas, and let the AI agent build the exercise with you.</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgStoryboard()}</div>
@@ -348,7 +351,7 @@
                   <div class="launch-tips">
                     <div class="launch-tip">
                       <div class="launch-tip-num">1</div>
-                      <span><strong>Frame the exercise</strong>: in Scenario &amp; context, answer the five questions, then draft with AI or pick a scenario in the library.</span>
+                      <span><strong>Frame the exercise</strong>: pick a scenario in the Project library if you like, then fill in the Context tab and generate the exercise with AI.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">2</div>
@@ -395,8 +398,8 @@
             subtitle: tt('Project summary, data and scenario library.', 'Synthèse, données et bibliothèque de scénarios.', 'Projektübersicht, Daten und Szenario-Bibliothek.')
           },
           scenario: {
-            title: 'Scenario & context',
-            subtitle: tt('Frame the exercise and draft the main storyline.', 'Cadrez l\'exercice et esquissez la storyline principale.', 'Übung einordnen und Haupt-Storyline entwerfen.')
+            title: tt('Context', 'Contexte', 'Kontext'),
+            subtitle: tt('Frame the exercise, then build it with the AI agent.', 'Cadrez l\'exercice, puis construisez-le avec l\'agent IA.', 'Übung einordnen und mit dem KI-Agenten erstellen.')
           },
           cells: {
             title: 'Cells & actors',
@@ -931,20 +934,12 @@
         StoryboardHistory.ensure(project);
         if (!Array.isArray(project.cells)) project.cells = [];
         if (!project.exercise) project.exercise = { players_count: '', cells_count: '' };
-        const scenarioPlaceholder = 'Ex: "A French bank hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."';
         return sbWithRenderMemo(() => {
           sbCaptureFocus();
-          const storyboard = sbStoryboard();
           return `
           <section class="tab-page sc-page">
             ${renderContextGlance(project)}
-            <div class="sc-ai-row">
-              <div class="sc-ai-describe">${renderLLMConfigBlock('scenario', scenarioPlaceholder)}</div>
-              <article class="card sc-ai-draft" data-sb-scope>
-                <div class="sb-context-subtitle">${sbUiIcon('wand', 15)} Draft the main storyline with AI</div>
-                ${renderSbSkeletonForm(storyboard)}
-              </article>
-            </div>
+            ${renderContextBrief(project)}
             ${renderContextDetails(project)}
           </section>`;
         });

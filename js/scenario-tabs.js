@@ -59,11 +59,11 @@ function renderStorylineView() {
         <div class="sb-tb-group">
           <label class="sl-add">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="Add a phase"><option value="">Add phase…</option>${stages.map(([key, type]) => `<option value="${key}">${escapeHtml(type.label)}</option>`).join('')}</select></label>
           <button class="sb-tool sb-tool-label" data-sb-action="deepen-all" ${ai && storyboard.blocks.length && !readOnly ? '' : 'disabled'} title="Write the details of every phase with AI">${sbUiIcon('layers')}<span>Detail with AI</span></button>
-          <button class="sb-tool sb-tool-label" data-route="scenario" title="Start again from an AI draft. The scenario library is in the Project tab.">${sbUiIcon('wand')}<span>Start from…</span></button>
+          <button class="sb-tool sb-tool-label" data-route="scenario" title="Start again: generate with AI in Context, or pick a scenario in the Project library.">${sbUiIcon('wand')}<span>Start from…</span></button>
         </div>
       </header>
       ${renderSbStatusBar()}
-      <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote('No phase yet. Pick a scenario in the library, draft one with AI, or add a phase above.', 'scenario', 'Scenario & context')}</div>
+      <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'scenario', 'Context')}</div>
       <section class="bottom-editor sl-editor" aria-label="Phase editor">
         ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>Select a phase on the timeline to edit what happens. Drag its edges to change its duration; the following phases follow (ripple).</span></div>`}
       </section>
@@ -529,37 +529,84 @@ function suRefreshPlayback(project, items = sbExerciseItems(project)) {
   if (columns) sbWithRenderMemo(() => { columns.innerHTML = renderSummaryColumns(project, items); });
 }
 
-// ═══ Scenario & context helpers ══════════════════════════════════════════════
+// ═══ Context tab helpers ══════════════════════════════════════════════
 function renderContextGlance(project) {
   const sectors = ['Banking', 'Insurance', 'Energy', 'Healthcare', 'Transport', 'Industry', 'Telecom', 'Retail', 'Public sector', 'Pharmaceutical', 'Technology', 'Other'];
   const hours = Math.round((project.storyboard?.duration_minutes || SB_DEFAULT_DURATION) / 30) / 2;
   const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
-  return `<article class="card sc-glance" data-sb-scope>
-    <div class="section-header"><div><h3>Exercise at a glance</h3><p class="subtle">Five answers to frame everything else.</p></div></div>
-    <div class="sc-glance-grid">
-      <label class="field">Client<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="Organisation name"></label>
-      <label class="field">Duration (hours)<input type="number" min="0.5" max="168" step="0.5" data-sc-duration value="${hours}"></label>
+  const logo = project.client.logo_url || '';
+  return `<article class="card cx-frame" data-sb-scope>
+    <div class="section-header"><div><h3>Context</h3><p class="subtle">Who the exercise is for, how long it plays, the simulated clock and the audience.</p></div></div>
+    <div class="cx-row cx-row-client">
+      <label class="field">Client name<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="Organisation name"></label>
       <label class="field">Sector<select data-bind="client.sector">${[...new Set([project.client.sector, ...sectors].filter(Boolean))].map((sector) => sbOption(sector, sector, project.client.sector)).join('')}</select></label>
-      <label class="field">Number of cells<input type="number" min="0" max="20" step="1" data-sc-cells value="${escapeAttribute(project.exercise.cells_count || project.cells.length || '')}" placeholder="e.g. 3"><span class="helper">${project.cells.length} cell(s) defined</span></label>
+      <div class="field cx-logo">
+        <span>Logo</span>
+        <div class="cx-logo-row">
+          ${logo ? `<img class="cx-logo-preview" src="${escapeAttribute(logo)}" alt="Client logo">` : `<span class="cx-logo-empty">${sbUiIcon('image', 18)}</span>`}
+          <label class="btn btn-secondary btn-sm cx-logo-pick">${sbUiIcon('upload', 14)} ${logo ? 'Replace' : 'Upload a file'}<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif" data-cx-logo hidden></label>
+          ${logo ? `<button class="btn btn-ghost btn-sm" data-cx-logo-clear>${sbUiIcon('trash', 13)} Remove</button>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="cx-row cx-row-frame">
+      <label class="field">Exercise duration (hours)<input type="number" min="0.5" max="168" step="0.5" data-sc-duration value="${hours}"></label>
+      <label class="field">Simulated start date<input type="datetime-local" data-bind="scenario.start_date" value="${escapeAttribute(project.scenario.start_date || '')}"></label>
+      <label class="field">Simulated end date<input type="datetime-local" data-bind="scenario.end_date" value="${escapeAttribute(project.scenario.end_date || '')}" min="${escapeAttribute(project.scenario.start_date || '')}"></label>
+      <label class="field">Timezone<select data-bind="scenario.timezone">${TIMEZONES.map((item) => sbOption(item, item, project.scenario.timezone)).join('')}</select></label>
+      <label class="field">Number of crisis cells<input type="number" min="0" max="20" step="1" data-sc-cells value="${escapeAttribute(project.exercise.cells_count || project.cells.length || '')}" placeholder="e.g. 3"><span class="helper">${project.cells.length} cell(s) defined</span></label>
       <label class="field">Number of players<input type="number" min="0" max="10000" step="1" data-sc-players value="${escapeAttribute(project.exercise.players_count ?? '')}" placeholder="e.g. 15"><span class="helper">${players} listed in Cells & actors</span></label>
     </div>
-    <details class="sc-more"><summary>More settings: languages, start date, timezone, logo</summary>
-      <div class="field-grid cols-3">
-        <label class="field">Primary language<select data-bind="client.language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.client.language || 'en')).join('')}</select></label>
-        <label class="field">Inject language<select data-bind="settings.inject_language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.settings.inject_language || 'en')).join('')}</select></label>
-        <label class="field">Start date<input type="datetime-local" data-bind="scenario.start_date" value="${escapeAttribute(project.scenario.start_date || '')}"></label>
-        <label class="field">Timezone<select data-bind="scenario.timezone">${TIMEZONES.map((item) => sbOption(item, item, project.scenario.timezone)).join('')}</select></label>
-        <label class="field" style="grid-column: span 2">Logo (URL or data URI)<input type="url" data-bind="client.logo_url" value="${escapeAttribute(project.client.logo_url || '')}" placeholder="https://..."></label>
-      </div>
-    </details>
+    <div class="cx-row cx-row-lang">
+      <label class="field">Primary language<select data-bind="client.language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.client.language || 'en')).join('')}</select></label>
+      <label class="field">Default inject language<select data-bind="settings.inject_language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.settings.inject_language || 'en')).join('')}</select></label>
+    </div>
   </article>`;
+}
+
+/* The designer's context, handed to the agent that builds the next tabs. */
+function renderContextBrief(project) {
+  const storyboard = project.storyboard;
+  const run = getCrisisAgent();
+  const ai = isLLMAvailable();
+  const busy = run.active || run.busy;
+  const template = storyboard.meta.template_id && storyboard.meta.template_id !== 'agent' ? sbFindTemplate(storyboard.meta.template_id) : null;
+  const state = tabUI('context');
+  state.mode = state.mode || 'agent';
+  return `<article class="card cx-brief" data-sb-scope>
+    <div class="section-header"><div><h3>Context, objectives and ideas for the scenario</h3><p class="subtle">What you want to test, the audience, constraints, events you have in mind. The AI agent reads this with the context above${template ? ' and the library scenario you picked' : ''}, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.</p></div></div>
+    ${template ? `<p class="cx-template">${sbUiIcon('book', 14)} Starting from the library scenario <strong>${escapeHtml(template.name)}</strong>. The agent adapts it to your context. <button class="btn btn-ghost btn-xs" data-route="project">Change in Project</button></p>` : ''}
+    <textarea class="cx-brief-text" data-sb-meta="brief" rows="7" placeholder="e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.">${escapeHtml(storyboard.meta.brief)}</textarea>
+    <div class="cx-generate">
+      <label class="cx-mode">AI autonomy<select data-cx-mode ${busy ? 'disabled' : ''}>
+        <option value="agent" ${state.mode === 'agent' ? 'selected' : ''}>Ask me before big changes</option>
+        <option value="auto" ${state.mode === 'auto' ? 'selected' : ''}>Build automatically</option>
+      </select></label>
+      <button class="btn btn-primary" data-cx-generate ${ai && !busy ? '' : 'disabled'} ${ai ? '' : `title="${escapeAttribute('Configure an AI connection in Settings to generate with AI.')}"`}>${sbUiIcon('sparkles', 15)} Generate with AI</button>
+    </div>
+    ${ai ? '' : '<p class="agent-warning">Configure an AI connection in Settings to generate with AI.</p>'}
+    ${renderAgentPanel({ origin: 'context' })}
+  </article>`;
+}
+
+/* Objective handed to the builder agent: the context fields are in its state, this adds intent. */
+function contextAgentObjective(project) {
+  const storyboard = project.storyboard;
+  const template = storyboard.meta.template_id && storyboard.meta.template_id !== 'agent' ? sbFindTemplate(storyboard.meta.template_id) : null;
+  const brief = String(storyboard.meta.brief || '').trim();
+  return [
+    'Build the exercise from the Context tab so the Main storyline, Cells & actors and Detailed storyline tabs are ready to use.',
+    `Context, objectives and ideas from the designer: ${brief || '(none given: ask what you need)'}`,
+    template ? `Library scenario selected in the Project tab, to adapt: "${template.name}" (${storyboard.blocks.length} phases already on the main storyline).` : (storyboard.blocks.length ? `An existing main storyline has ${storyboard.blocks.length} phases: improve it rather than starting over, unless the context asks otherwise.` : 'No main storyline yet.'),
+    `Fit the play duration of ${storyboard.duration_minutes} minutes, ${project.exercise.cells_count || project.cells.length || 'a suitable number of'} player cells and ${project.exercise.players_count || 'an unknown number of'} players.`
+  ].join('\n').slice(0, 7900);
 }
 
 function renderContextDetails(project) {
   const storyboard = project.storyboard;
   const types = ['Ransomware', 'Data Breach', 'Supply Chain', 'DDoS', 'Insider Threat', 'Fraud', 'Other'];
-  return `<article class="card" data-sb-scope>
-    <div class="section-header"><div><h3>Scenario details</h3><p class="subtle">Used by every AI operation, the Agent and the Checker.</p></div></div>
+  return `<details class="card cx-details" data-sb-scope>
+    <summary><span><strong>Scenario details</strong><span class="subtle">Name, type, summary, objectives, synopsis and threat. Filled in by the AI, editable by hand.</span></span>${sbUiIcon('down', 16)}</summary>
     <div class="field-grid cols-2">
       <label class="field">Scenario name<input type="text" data-bind="name" value="${escapeAttribute(project.name || '')}"></label>
       <label class="field">Type<select data-bind="scenario.type">${[...new Set([project.scenario.type, ...types].filter(Boolean))].map((type) => sbOption(type, type, project.scenario.type)).join('')}</select></label>
@@ -569,9 +616,8 @@ function renderContextDetails(project) {
       <label class="field">Threat<textarea data-sb-meta="threat" rows="4" placeholder="Threat actor, initial access, impact">${escapeHtml(storyboard.meta.threat)}</textarea></label>
       <label class="field">Detailed context<textarea data-bind="scenario.detailed_context" rows="3" placeholder="Affected systems, attack vector, compromised data…">${escapeHtml(project.scenario.detailed_context || '')}</textarea></label>
       <label class="field">Narrative arc<textarea data-sb-project="scenario.narrative_arc" rows="3">${escapeHtml(project.scenario.narrative_arc || '')}</textarea></label>
-      <label class="field" style="grid-column:1/-1">Designer brief<textarea data-sb-meta="brief" rows="2" placeholder="Audience, what you want to test, constraints, tone…">${escapeHtml(storyboard.meta.brief)}</textarea></label>
     </div>
-  </article>`;
+  </details>`;
 }
 
 // ═══ Events ══════════════════════════════════════════════════════════════════
@@ -838,6 +884,25 @@ function tabBindInputs(root) {
     sbSetCellsCount(project, count);
     saveLocal(false);
     App.render();
+  }));
+  root.querySelectorAll('[data-cx-logo]').forEach((input) => input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { pushToast('Choose an image file for the logo.', 'error'); return; }
+    if (file.size > 1024 * 1024) { pushToast('Logo too large (max 1 MB).', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { project.client.logo_url = String(reader.result || ''); saveLocal(false); App.render(); };
+    reader.readAsDataURL(file);
+  }));
+  root.querySelectorAll('[data-cx-logo-clear]').forEach((button) => button.addEventListener('click', () => {
+    project.client.logo_url = '';
+    saveLocal(false);
+    App.render();
+  }));
+  root.querySelectorAll('[data-cx-mode]').forEach((select) => select.addEventListener('change', () => { tabUI('context').mode = select.value === 'auto' ? 'auto' : 'agent'; }));
+  root.querySelectorAll('[data-cx-generate]').forEach((button) => button.addEventListener('click', () => {
+    saveLocal(false);
+    startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', objective: contextAgentObjective(project), origin: 'context' });
   }));
   root.querySelectorAll('[data-sc-players]').forEach((input) => input.addEventListener('change', () => {
     project.exercise.players_count = input.value === '' ? '' : sbInt(input.value, 0, 0, 10000);

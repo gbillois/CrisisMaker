@@ -409,8 +409,9 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
   const context = h.run('renderScenarioView()');
-  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-sb-meta="synopsis"', 'skeleton.brief']) assert.ok(context.includes(marker), marker);
-  assert.ok(context.indexOf('data-sc-cells') < context.indexOf('skeleton.brief'), 'questions, then AI');
+  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-bind="client.sector"', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-cx-generate', 'Generate with AI', 'data-sb-meta="synopsis"']) assert.ok(context.includes(marker), marker);
+  assert.ok(context.indexOf('data-sc-players') < context.indexOf('data-sb-meta="brief"') && context.indexOf('data-cx-generate') < context.indexOf('data-sb-meta="synopsis"'), 'context, then objectives and AI, then details');
+  assert.ok(!context.includes('skeleton.brief') && !context.includes('llm-block-scenario'), 'the old AI blocks are gone');
   assert.ok(!context.includes('sb-template-card'), 'the library moved to the Project tab');
   const projectView = h.run('renderProjectView()');
   for (const marker of ['pj-summary', 'pj-data', 'data-action="new-scenario"', 'data-action="project-scroll-library"', 'data-action="load-json"', 'data-action="import-chronogram-ia"', 'data-action="load-example"', 'data-action="save-local"', 'data-action="save-json"', 'data-action="export-all"', 'Scenario library', 'sb-template-card', 'data-sb-action="export-current"', 'data-sb-action="import-template"']) assert.ok(projectView.includes(marker), marker);

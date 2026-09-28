@@ -36,8 +36,8 @@ async function execute(h, name, args) {
 test('registry exposes expected operations with strict schemas, no credential or code tools', () => {
   const h = harness();
   const catalog = h.json('[...createAgentToolRegistry().values()].map(({name, description, inputSchema, risk}) => ({name, description, inputSchema, risk}))');
-  assert.equal(catalog.length, 23);
-  for (const name of ['getScenario', 'createActor', 'updateStimulus', 'deleteStimulus', 'reorderStimuli', 'generateStimulusContent', 'improveStimulusContent', 'analyzeExerciseQuality']) assert.ok(catalog.some(t => t.name === name));
+  assert.equal(catalog.length, 30);
+  for (const name of ['getExerciseFrame', 'setExerciseFrame', 'updateStorylineMeta', 'buildMainStoryline', 'upsertCells', 'upsertCast', 'planPhaseInjects', 'getScenario', 'createActor', 'updateStimulus', 'deleteStimulus', 'reorderStimuli', 'generateStimulusContent', 'improveStimulusContent', 'analyzeExerciseQuality']) assert.ok(catalog.some(t => t.name === name));
   for (const tool of catalog) { assert.ok(tool.description); assert.equal(tool.inputSchema.additionalProperties, false); }
   assert.ok(!JSON.stringify(catalog).includes('ai_api_key'));
   assert.throws(() => h.run(`ToolValidator.validate(JSON.parse('{"__proto__":{}}'), AgentSchema.object())`), /Invalid/);
@@ -188,4 +188,75 @@ test('empty actor lists and exercise plan survive the normal project format', ()
   const h = harness();
   assert.equal(h.run('mergeScenario(migrateScenario(buildProjectFileData())).actors.length'), 0);
   const html = h.run('renderAgentView()'); assert.ok(html.includes('Build my exercise')); assert.ok(html.includes('Challenge my exercise')); assert.ok(html.includes('Undo agent changes'));
+});
+
+test('builder agent asks questions, waits for answers, then continues with them', async () => {
+  const h = harness();
+  const r = runner(h, [{ type: 'question', questions: ['Who plays?', 'What must be tested?'], reason: 'Audience changes the design' }, call('updateExerciseObjectives', { objectives: 'Test isolation' }), final]);
+  const promise = r.start({ kind: 'builder', objective: 'Build from context', mode: 'auto' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(r.status, 'question'); assert.equal(r.active, true);
+  assert.deepEqual([...r.question.questions], ['Who plays?', 'What must be tested?']);
+  r.answer('Executive committee; isolation decisions.');
+  await promise;
+  assert.equal(r.status, 'complete');
+  assert.ok(r.history.some(entry => entry.userAnswers === 'Executive committee; isolation decisions.'));
+  assert.equal(h.run('appState.scenario.scenario.objectives'), 'Test isolation');
+});
+
+test('skipped questions and extra question rounds make the agent proceed on assumptions', async () => {
+  const h = harness();
+  const question = { type: 'question', questions: ['Anything else?'] };
+  const r = runner(h, [question, question, question, final]);
+  const promise = r.start({ kind: 'builder', objective: 'Build', mode: 'auto' });
+  for (let round = 0; round < 2; round++) {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(r.status, 'question'); r.answer(null);
+  }
+  await promise;
+  assert.equal(r.status, 'complete');
+  assert.ok(r.history.some(entry => entry.instruction?.startsWith('No more questions')));
+  assert.throws(() => h.run(`agentNormalizeResponse({ type: 'question', questions: [] })`), /Invalid/);
+});
+
+test('builder tools set the frame, build the storyline, cells, cast and a per-cell inject plan', async () => {
+  const h = harness();
+  h.run(`StoryboardHistory.ensure(appState.scenario)`);
+  await execute(h, 'setExerciseFrame', { duration_minutes: 180, start_date: '2026-03-02T08:00', end_date: '2026-03-04T18:00', players_count: 12, cells_count: 2 });
+  const frame = h.json('agentExerciseFrame()');
+  assert.equal(frame.play_duration_minutes, 180); assert.equal(frame.simulated_end, '2026-03-04T18:00'); assert.equal(frame.cells_count, 2);
+  await assert.rejects(execute(h, 'setExerciseFrame', { end_date: 'not a date' }), /Invalid end_date/);
+  await execute(h, 'buildMainStoryline', {
+    title: 'Hospital ransomware', summary: 'Ransomware hits a hospital.', objectives: ['Decide on isolation', 'Notify on time'],
+    cast: [{ key: 'soc', label: 'SOC analyst', role: 'internal' }, { key: 'press', label: 'Health reporter', role: 'journalist' }],
+    phases: [
+      { type: 'trigger', title: 'Alerts', start_minutes: 0, duration_minutes: 60, brief: 'EDR alerts.', objectives: [0], beats: [{ at: 5, channel: 'email_internal', cast: 'soc', title: 'Alert storm' }] },
+      { type: 'containment', title: 'Isolate or not', start_minutes: 60, duration_minutes: 60, brief: 'Dilemma.' },
+      { type: 'exit', title: 'Exit', start_minutes: 120, duration_minutes: 60, brief: 'Close.', objectives: [1] }
+    ]
+  });
+  const main = h.json('sbMainBlocks(appState.scenario.storyboard).map(b => ({ id: b.id, start: b.start_minutes, end: b.start_minutes + b.duration_minutes, beats: b.beats.length }))');
+  assert.equal(main.length, 3); assert.equal(main[2].end, 180); assert.equal(main[0].beats, 1);
+  assert.equal(h.run('appState.scenario.scenario.objectives'), 'Decide on isolation\nNotify on time');
+  const cells = await execute(h, 'upsertCells', { cells: [{ name: 'Decision cell', description: 'Executive committee', players: [{ name: 'Ann Lee', role: 'CEO' }] }, { name: 'Communication cell' }] });
+  assert.equal(cells.cells.length, 2);
+  const decision = h.json(`appState.scenario.cells.find(c => c.name === 'Decision cell')`);
+  assert.equal(decision.players[0].role, 'CEO');
+  const cast = await execute(h, 'upsertCast', { cast: [{ label: 'Health reporter', role: 'journalist', actor: { name: 'Nora Diaz', title: 'Health reporter', organization: 'Daily Post' } }] });
+  assert.ok(cast.cast[0].actor_id);
+  assert.equal(h.run(`getActor('${cast.cast[0].actor_id}').name`), 'Nora Diaz');
+  const plan = await execute(h, 'planPhaseInjects', { id: main[1].id, replace: true, injects: [
+    { at: 10, channel: 'email_internal', cell: decision.id, cast: 'SOC analyst', title: 'Isolation request', intent: 'Forces the isolation decision.' },
+    { at: 70, channel: 'article_press', cell: 'Communication cell', cast: cast.cast[0].id, title: 'Reporter calls', intent: 'Media pressure.' }
+  ] });
+  assert.equal(plan.planned.length, 2);
+  assert.equal(plan.planned[0].cell_id, decision.id);
+  assert.equal(plan.planned[1].at, 60 + 59, 'clamped inside the phase');
+  assert.equal(plan.planned[1].cell_id, h.run(`appState.scenario.cells.find(c => c.name === 'Communication cell').id`));
+  await assert.rejects(execute(h, 'planPhaseInjects', { id: 'missing', injects: [] }), /Unknown item ID/);
+  const context = h.json('AgentContext.build()');
+  assert.equal(context.frame.play_duration_minutes, 180);
+  // Two preset cells from the frame; Decision cell was updated in place, Communication cell added.
+  assert.equal(context.storyboard.cells.length, 3);
+  assert.ok(context.storyboard.blocks[1].planned_per_cell[decision.id] >= 1);
 });

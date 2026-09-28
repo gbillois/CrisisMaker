@@ -88,11 +88,19 @@ iframe sub-app) and shows a placeholder instead; use the full app for it.
 
 The menu follows the design workflow, from left to right:
 
-1. **Project**: create, open, save and export projects.
-2. **Scenario & context**: five questions first (client, duration, sector, number
-   of cells, number of players), then the AI block (describe the exercise, or let the
-   AI draft the main storyline from a brief), then the **scenario library**, then the
-   scenario details (synopsis, threat, objectives, narrative arc, designer brief).
+1. **Project**: a summary with key figures; project data (new, create from the
+   library, open, import an Excel timeline, load the demo, save locally, export the
+   text content as JSON, export all injects); and the **scenario library** (preview,
+   use, export the current storyline as a template, import a template file). Every
+   built-in scenario plays in 3 hours.
+2. **Context**: the exercise frame (client, sector, logo; play duration, simulated
+   start and end dates, timezone, number of crisis cells and players; primary and
+   inject languages), then **Context, objectives and ideas for the scenario** with
+   **Generate with AI**. It starts the builder agent with all of the above and the
+   library scenario picked in Project: the agent asks you a few questions, then
+   builds the main storyline, the cells and players, the cast and its actors, and a
+   per-cell inject plan for every phase. The scenario details (name, type, summary,
+   objectives, synopsis, threat) stay editable in a collapsed block.
 3. **Main storyline**: the macro view. The phases of the crisis sit on a single time
    line (trigger & detection, investigation, containment, eradication, business
    continuity, recovery, crisis exit, twists). They are moved and resized with the
@@ -165,8 +173,18 @@ storyline and Summary tabs).
 
 ## Agent mode
 
-The **Agent** tab provides **Build my exercise** and **Challenge my exercise**.
-Enter a brief or review objective, choose an autonomy mode, and select **Start**.
+The agent is a core component rather than a tab. Tabs start it where the content
+lives (for example **Generate with AI** in Context) and show a compact panel with
+its progress, its questions, approvals, Stop and Undo. The full **agent console** is
+in **Settings → AI agent**; it offers **Build from the context**, **Build my
+exercise** and **Challenge my exercise**. Enter a brief or review objective, choose
+an autonomy mode, and select **Start**.
+
+The agent knows the storyline model: the exercise frame, the main storyline phases,
+player cells and players, the cast of simulated senders and their actors, and the
+planned injects of each phase addressed to a cell. It can reply with **questions**
+(at most two rounds); you answer or skip, and it proceeds with disclosed
+assumptions.
 The agent works on the currently open exercise and uses the existing AI connection
 settings, including local/cloud Ollama and all other supported providers. A model
 must be able to return structured JSON reliably; no additional backend, framework,
@@ -194,9 +212,9 @@ Exercise objectives, narrative arc and timed phases are optional fields inside
 `scenario`; they also appear in the normal Scenario view and Checker context.
 Existing project files remain compatible, including projects with no actors.
 
-Implementation is separated into `js/agent-prompts.js` (editable designer/reviewer
-instructions), `js/agent-tools.js` (23 controlled tools, including storyboard read/edit, validation and bounded
-context), `js/agent-runner.js` (execution, approvals, cancellation and checkpoint),
+Implementation is separated into `js/agent-prompts.js` (editable builder/designer/reviewer
+instructions), `js/agent-tools.js` (30 controlled tools, including the exercise frame, main storyline,
+cells, cast and per-cell inject plan, validation and bounded context), `js/agent-runner.js` (execution, approvals, cancellation and checkpoint),
 and `js/agent-view.js` (UI). Tools reuse existing actor/stimulus constructors,
 stimulus version history, generation prompts, provider transport and persistence.
 Structural checks flag missing data, timing gaps and duplicate content; the agent's

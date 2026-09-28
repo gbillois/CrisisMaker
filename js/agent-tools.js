@@ -20,7 +20,7 @@ const ToolValidator = {
         this.validate(item, child, `${path}.${key}`);
       }
     } else if (schema.type === 'array') {
-      if (!Array.isArray(value) || value.length > schema.maxItems) fail();
+      if (!Array.isArray(value) || value.length > schema.maxItems || value.length < (schema.minItems || 0)) fail();
       value.forEach((item, i) => this.validate(item, schema.items, `${path}[${i}]`));
     } else if (schema.type === 'string') {
       if (typeof value !== 'string' || value.length > schema.maxLength || value.length < (schema.minLength || 0)) fail();
@@ -70,24 +70,38 @@ function agentStimulus(stimulus, full = false) {
 }
 function agentScenario() {
   const s = appState.scenario;
-  return { id: s.id, name: s.name, client: agentPick(s.client, ['name', 'sector', 'language']), scenario: agentPick(s.scenario, ['type', 'summary', 'detailed_context', 'start_date', 'timezone', 'objectives', 'narrative_arc', 'phases']), actorCount: s.actors.length, stimulusCount: s.stimuli.length };
+  return { id: s.id, name: s.name, client: agentPick(s.client, ['name', 'sector', 'language']), scenario: agentPick(s.scenario, ['type', 'summary', 'detailed_context', 'start_date', 'end_date', 'timezone', 'objectives', 'narrative_arc', 'phases']), actorCount: s.actors.length, stimulusCount: s.stimuli.length };
+}
+function agentExerciseFrame() {
+  const project = appState.scenario, storyboard = project.storyboard;
+  return {
+    client: agentPick(project.client, ['name', 'sector', 'language']),
+    play_duration_minutes: storyboard?.duration_minutes || null,
+    simulated_start: project.scenario.start_date || '', simulated_end: project.scenario.end_date || '', timezone: project.scenario.timezone || '',
+    primary_language: project.client.language || '', inject_language: project.settings.inject_language || '',
+    cells_count: project.exercise?.cells_count ?? '', players_count: project.exercise?.players_count ?? '',
+    designer_context: agentExcerpt(storyboard?.meta?.brief || '', 6000),
+    library_scenario: storyboard?.meta?.template_id && storyboard.meta.template_id !== 'agent' ? storyboard.meta.template_id : null
+  };
 }
 const AgentContext = {
   build() {
     const s = agentScenario();
     s.scenario = Object.fromEntries(Object.entries(s.scenario).map(([k, v]) => [k, typeof v === 'string' ? agentExcerpt(v, 2500) : v]));
-    return { ...s, language: appState.scenario.settings.inject_language, storyboard: agentStoryboardSummary(), actors: appState.scenario.actors.slice(0, 12).map(agentActor), timeline: getSortedStimuli().slice(0, 20).map(s => ({ id: s.id, at: s.timestamp_offset_minutes, name: agentExcerpt(s.name || s.fields.subject || s.fields.headline || s.fields.text, 100) })), note: 'Actor/timeline/storyboard previews are limited. Use paginated list tools and getStoryboard for details.' };
+    return { ...s, language: appState.scenario.settings.inject_language, frame: agentExerciseFrame(), storyboard: agentStoryboardSummary(), actors: appState.scenario.actors.slice(0, 12).map(agentActor), timeline: getSortedStimuli().slice(0, 20).map(s => ({ id: s.id, at: s.timestamp_offset_minutes, name: agentExcerpt(s.name || s.fields.subject || s.fields.headline || s.fields.text, 100) })), note: 'Actor/timeline/storyboard previews are limited. Use paginated list tools and getStoryboard for details.' };
   }
 };
 /* Scenario Builder storyboard, compact: the designer's plan the injects should follow. */
 function agentStoryboardSummary() {
   const storyboard = appState.scenario.storyboard;
-  if (!storyboard?.blocks?.length) return { blocks: [], note: 'No Scenario Builder storyboard yet.' };
+  const cells = (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, players: cell.players.length }));
+  const cast = (storyboard?.cast || []).slice(0, 30).map(item => ({ id: item.id, label: item.label, role: item.role, actor_id: item.actor_id || null }));
+  if (!storyboard?.blocks?.length) return { blocks: [], cells, cast, note: 'No main storyline yet. Build it with buildMainStoryline.' };
   return {
     duration_minutes: storyboard.duration_minutes,
-    blocks: sbSortedBlocks(storyboard).slice(0, 24).map(block => ({ id: block.id, title: agentExcerpt(block.title, 120), start: block.start_minutes, end: sbBlockEnd(block), injects: block.stimuli_target, planned: block.beats.length })),
-    cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, players: cell.players.length })),
-    note: 'Phases of the main storyline, and the player cells that receive injects. Use getStoryboard for briefs and planned injects per cell.'
+    blocks: sbSortedBlocks(storyboard).slice(0, 24).map(block => ({ id: block.id, type: block.type, title: agentExcerpt(block.title, 120), start: block.start_minutes, end: sbBlockEnd(block), injects: block.stimuli_target, planned: block.beats.length, planned_per_cell: Object.fromEntries(cells.map(cell => [cell.id, block.beats.filter(beat => beat.cell_id === cell.id).length])) })),
+    cells, cast,
+    note: 'Phases of the main storyline, the player cells that receive injects and the cast who sends them. Use getStoryboard for briefs and the planned injects of each phase.'
   };
 }
 function agentConsistencyCheck() {
@@ -169,8 +183,8 @@ function createAgentToolRegistry() {
   const page = { offset: { type: 'integer', minimum: 0, maximum: 100000 }, limit: { type: 'integer', minimum: 1, maximum: 40 } };
   const paginate = (items, args, mapper) => { const offset = args.offset || 0, limit = args.limit || 20; return { total: items.length, nextOffset: offset + limit < items.length ? offset + limit : null, items: items.slice(offset, offset + limit).map(mapper) }; };
   add('getScenario', 'Read scenario and planning metadata; no settings or credentials.', {}, [], agentScenario);
-  add('updateScenario', 'Patch only supplied scenario/client values. Broad change requires approval in Agent mode.', { name: S.text(500), client: S.object({ name: S.text(300), sector: S.text(300), language: actorProps.language }), scenario: S.object({ type: S.text(300), summary: text, detailed_context: S.text(16000), start_date: S.text(30), timezone: { ...S.text(), enum: TIMEZONES }, narrative_arc: text }) }, [], args => {
-    if (args.scenario?.start_date && !Number.isFinite(Date.parse(args.scenario.start_date))) throw new AgentValidationError('Invalid start date.');
+  add('updateScenario', 'Patch only supplied scenario/client values. Broad change requires approval in Agent mode.', { name: S.text(500), client: S.object({ name: S.text(300), sector: S.text(300), language: actorProps.language }), scenario: S.object({ type: S.text(300), summary: text, detailed_context: S.text(16000), start_date: S.text(30), end_date: S.text(30), timezone: { ...S.text(), enum: TIMEZONES }, narrative_arc: text }) }, [], args => {
+    for (const key of ['start_date', 'end_date']) if (args.scenario?.[key] && !Number.isFinite(Date.parse(args.scenario[key]))) throw new AgentValidationError(`Invalid ${key}.`);
     if (args.name !== undefined) appState.scenario.name = args.name;
     Object.assign(appState.scenario.client, args.client || {}); Object.assign(appState.scenario.scenario, args.scenario || {});
     return agentScenario();
@@ -205,6 +219,121 @@ function createAgentToolRegistry() {
     Object.assign(block, sbPickBlockPatch(args.patch));
     StoryboardHistory.commit('Agent: edit block');
     return { id: block.id, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target };
+  }, 'write');
+  // ── Exercise frame, storyline, cells, cast and per-cell inject plan ──────────
+  add('getExerciseFrame', 'Read the exercise frame set in the Context tab: play duration, simulated start/end dates, timezone, languages, number of cells and players, and the designer context (objectives and ideas).', {}, [], agentExerciseFrame);
+  add('setExerciseFrame', 'Patch the exercise frame. duration_minutes is the real play time; start_date/end_date are the simulated in-story clock (ISO local date-time).', {
+    duration_minutes: { type: 'integer', minimum: 30, maximum: SB_MAX_DURATION }, start_date: S.text(30), end_date: S.text(30), timezone: { ...S.text(), enum: TIMEZONES }, players_count: { type: 'integer', minimum: 0, maximum: 10000 }, cells_count: { type: 'integer', minimum: 0, maximum: 30 }
+  }, [], args => {
+    const project = appState.scenario;
+    for (const key of ['start_date', 'end_date']) {
+      if (args[key] === undefined) continue;
+      if (args[key] && !Number.isFinite(Date.parse(args[key]))) throw new AgentValidationError(`Invalid ${key}.`);
+      project.scenario[key] = args[key];
+    }
+    if (args.timezone) project.scenario.timezone = args.timezone;
+    if (args.duration_minutes) { StoryboardHistory.ensure(); StoryboardHistory.flush(); project.storyboard.duration_minutes = Math.max(args.duration_minutes, sbStoryboardEnd(project.storyboard)); StoryboardHistory.commit('Agent: exercise duration'); }
+    project.exercise = project.exercise || { players_count: '', cells_count: '' };
+    if (args.players_count !== undefined) project.exercise.players_count = args.players_count;
+    if (args.cells_count !== undefined) { project.exercise.cells_count = args.cells_count; sbSetCellsCount(project, args.cells_count); }
+    sbAfterStoryboardChange(project, { save: false });
+    return agentExerciseFrame();
+  }, 'write');
+  add('updateStorylineMeta', 'Set the hidden synopsis (what really happens) and the threat description of the main storyline.', { synopsis: S.text(8000), threat: S.text(2000) }, [], args => {
+    StoryboardHistory.ensure(); StoryboardHistory.flush();
+    const meta = appState.scenario.storyboard.meta;
+    if (args.synopsis !== undefined) meta.synopsis = sbText(args.synopsis, 8000);
+    if (args.threat !== undefined) meta.threat = sbText(args.threat, 2000);
+    StoryboardHistory.commit('Agent: storyline synopsis');
+    return { synopsis: agentExcerpt(meta.synopsis, 600), threat: agentExcerpt(meta.threat, 400) };
+  }, 'write');
+  const blockTypes = Object.keys(SB_BLOCK_TYPES), channels = sbChannelKeys();
+  const beatSchema = S.object({ at: S.minutes, channel: { ...S.text(), enum: channels }, cell: S.text(160), cast: S.text(200), title: S.text(300), intent: S.text(2000) }, ['at', 'channel', 'title']);
+  add('buildMainStoryline', 'Create or replace the whole main storyline: ordered phases fitted to the play duration, the cast of simulated senders and objectives. Phases use minutes from exercise start. Optional beats plan injects per phase (at = minutes from phase start, cell = cell id or name, cast = cast key). Replaces the current storyline; a version is saved first.', {
+    title: S.text(300), summary: S.text(8000), threat: S.text(2000), objectives: S.array(S.text(600), 12),
+    cast: S.array(S.object({ key: S.text(80), label: S.text(200), role: { ...S.text(), enum: ROLES.map(r => r.value) }, organization: S.text(200), description: S.text(1000) }, ['key', 'label', 'role']), 30),
+    phases: S.array(S.object({ type: { ...S.text(), enum: blockTypes }, title: S.text(200), start_minutes: S.minutes, duration_minutes: { type: 'integer', minimum: 5, maximum: SB_MAX_DURATION }, injects: { type: 'integer', minimum: 0, maximum: SB_MAX_BEATS }, brief: S.text(4000), narrative: S.text(8000), objectives: S.array({ type: 'integer', minimum: 0, maximum: 11 }, 12), beats: S.array(beatSchema, SB_MAX_BEATS) }, ['type', 'title', 'start_minutes', 'duration_minutes', 'brief']), 24)
+  }, ['phases'], args => {
+    const project = appState.scenario;
+    if (!args.phases.length) throw new AgentValidationError('Provide at least one phase.');
+    StoryboardHistory.ensure(project); StoryboardHistory.snapshot('Before the agent storyline', 'ai');
+    const cells = project.cells || [];
+    const template = {
+      id: 'agent', name: args.title || project.name, summary: args.summary || project.storyboard.meta.synopsis, threat: args.threat || project.storyboard.meta.threat,
+      duration_minutes: project.storyboard.duration_minutes, objectives: args.objectives?.length ? args.objectives : sbObjectivesList(project), cast: args.cast || [],
+      blocks: args.phases.map((phase, index) => ({ key: `p${index + 1}`, type: phase.type, track: 'main', title: phase.title, start: phase.start_minutes, duration: phase.duration_minutes, stimuli: phase.injects ?? phase.beats?.length ?? SB_BLOCK_TYPES[phase.type].stimuli, brief: phase.brief, narrative: phase.narrative || '', objectives: phase.objectives || [], beats: [] }))
+    };
+    sbApplyTemplate(template, 'replace');
+    // Beats are mapped after the storyline exists, so cells and cast resolve to real ids.
+    const castMap = new Map(project.storyboard.cast.map(cast => [cast.label, cast.id]));
+    (args.cast || []).forEach(item => { const cast = project.storyboard.cast.find(entry => entry.label === item.label); if (cast) castMap.set(item.key, cast.id); });
+    sbMainBlocks(project.storyboard).forEach((block, index) => {
+      const beats = args.phases[index]?.beats || [];
+      if (beats.length) { block.beats = sbBeatsFromAI(project.storyboard, beats, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) })); block.stimuli_target = Math.max(block.stimuli_target, block.beats.length); }
+    });
+    if (!cells.length) sbAssignMissingCells(project);
+    StoryboardHistory.ensure(project, 'Agent: main storyline');
+    sbAfterStoryboardChange(project, { save: false });
+    return agentStoryboardSummary();
+  }, 'broad');
+  add('upsertCells', 'Create or update player cells (groups of participants who receive injects) and, when known, their players. Supply id to update an existing cell; players replaces that cell\'s player list.', {
+    cells: S.array(S.object({ id: S.id, name: S.text(160), description: S.text(1000), players: S.array(S.object({ name: S.text(200), role: S.text(200) }, ['role']), 200) }, ['name']), 20)
+  }, ['cells'], args => {
+    const project = appState.scenario;
+    if (!Array.isArray(project.cells)) project.cells = [];
+    const result = args.cells.map(input => {
+      let cell = input.id ? sbCell(project, input.id) : project.cells.find(item => item.name.toLowerCase() === input.name.toLowerCase());
+      if (input.id && !cell) throw new AgentValidationError('Unknown cell ID.');
+      if (!cell) {
+        const preset = SB_CELL_PRESETS.find(item => item.name.toLowerCase() === input.name.toLowerCase());
+        cell = sbMakeCell(preset?.key || 'custom', { name: input.name });
+        project.cells.push(cell);
+      }
+      cell.name = sbText(input.name, 160) || cell.name;
+      if (input.description !== undefined) cell.description = sbText(input.description, 1000);
+      if (input.players) cell.players = input.players.map(player => sbNormalizePlayer({ id: uid('player'), ...player }));
+      return { id: cell.id, name: cell.name, players: cell.players.length };
+    });
+    project.exercise = { ...(project.exercise || {}), cells_count: project.cells.length };
+    return { cells: result };
+  }, 'write');
+  add('upsertCast', 'Create or update the cast: simulated roles who send injects (attacker, journalist, regulator, customer, staff). With actor, the role is played by a named actor listed in Cells & actors (created or linked).', {
+    cast: S.array(S.object({ id: S.id, label: S.text(200), role: { ...S.text(), enum: ROLES.map(r => r.value) }, organization: S.text(200), description: S.text(1000), actor: S.object({ name: S.text(300), title: S.text(300), organization: S.text(300), language: { ...S.text(), enum: LANGUAGES.map(l => l.value) } }, ['name']) }, ['label']), 30)
+  }, ['cast'], args => {
+    const project = appState.scenario;
+    StoryboardHistory.ensure(project); StoryboardHistory.flush();
+    const storyboard = project.storyboard;
+    const result = args.cast.map(input => {
+      let cast = input.id ? storyboard.cast.find(item => item.id === input.id) : storyboard.cast.find(item => item.label.toLowerCase() === input.label.toLowerCase());
+      if (input.id && !cast) throw new AgentValidationError('Unknown cast ID.');
+      if (!cast) { cast = sbMakeCast({ label: input.label, role: input.role }); storyboard.cast.push(cast); }
+      Object.assign(cast, sbNormalizeCast({ ...cast, ...agentPick(input, ['label', 'role', 'organization', 'description']), id: cast.id }));
+      if (input.actor) {
+        const actor = sbFindActorForCast(project, { ...cast, label: input.actor.name }) || sbCreateActorForCast(project, cast, { ...input.actor, role: cast.role });
+        Object.assign(actor, agentPick(input.actor, ['title', 'organization', 'language']));
+        cast.actor_id = actor.id;
+      }
+      return { id: cast.id, label: cast.label, actor_id: cast.actor_id || null };
+    });
+    StoryboardHistory.commit('Agent: cast');
+    return { cast: result };
+  }, 'write');
+  add('planPhaseInjects', 'Plan the injects of one main-storyline phase, each addressed to a player cell and sent by a cast role. at = minutes from phase start. replace=true swaps the planned injects that are not yet written; written ones are kept. The Detailed storyline tab turns planned injects into written stimuli.', {
+    ...id, replace: { type: 'boolean' }, injects: S.array(beatSchema, SB_MAX_BEATS)
+  }, ['id', 'injects'], args => {
+    const project = appState.scenario;
+    StoryboardHistory.ensure(project); StoryboardHistory.flush();
+    const block = sbBlock(project.storyboard, args.id);
+    if (!block) throw new AgentValidationError('Unknown item ID.');
+    if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
+    const castMap = new Map(project.storyboard.cast.flatMap(cast => [[cast.id, cast.id], [cast.label, cast.id]]));
+    const planned = sbBeatsFromAI(project.storyboard, args.injects, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) }));
+    const kept = args.replace ? block.beats.filter(beat => sbStimulusForBeat(project, beat.id)) : block.beats;
+    block.beats = [...kept, ...planned].slice(0, SB_MAX_BEATS).sort((a, b) => a.offset_minutes - b.offset_minutes);
+    block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
+    block.key_cast = [...new Set(block.beats.map(beat => beat.cast_id).filter(Boolean))];
+    StoryboardHistory.commit('Agent: plan injects');
+    return { id: block.id, title: block.title, planned: block.beats.map(beat => ({ at: sbBeatAbsolute(block, beat), cell_id: beat.cell_id, cast_id: beat.cast_id, channel: beat.channel, title: beat.title })) };
   }, 'write');
   add('listActors', 'Read actors with pagination.', page, [], args => paginate(appState.scenario.actors, args, agentActor));
   add('getActor', 'Read a single actor.', id, ['id'], args => agentActor(requireItem(getActor, args.id)));

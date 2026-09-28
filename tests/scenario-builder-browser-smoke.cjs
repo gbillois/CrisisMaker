@@ -3,7 +3,29 @@
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
+function builderAgentAnswer(payload) {
+  // The Context tab's "Generate with AI" drives the builder agent: ask, build, plan, finish.
+  if (payload.step === 1) return { type: 'question', questions: ['Who plays the exercise?', 'Which decision matters most?'], reason: 'The audience changes the phases' };
+  if (!payload.state.storyboard.blocks.length) {
+    return { type: 'tool_call', tool: 'buildMainStoryline', reason: 'Main storyline from the context', arguments: {
+      title: 'Hospital ransomware drill', summary: 'A ransomware affiliate encrypts the hospital group.', objectives: ['Protect patient safety', 'Notify authorities on time'],
+      cast: [{ key: 'ciso', label: 'CISO', role: 'internal' }, { key: 'press', label: 'Health reporter', role: 'journalist' }],
+      phases: [
+        { type: 'trigger', title: 'Night alerts', start_minutes: 0, duration_minutes: 60, injects: 2, brief: 'EDR alerts.', objectives: [0] },
+        { type: 'containment', title: 'Isolate or not', start_minutes: 60, duration_minutes: 60, injects: 2, brief: 'Isolation dilemma.' },
+        { type: 'exit', title: 'Exit', start_minutes: 120, duration_minutes: 60, injects: 1, brief: 'Close.', objectives: [1] }
+      ] } };
+  }
+  const containment = payload.state.storyboard.blocks.find((block) => block.type === 'containment');
+  if (!containment.planned) {
+    const cell = payload.state.storyboard.cells[1];
+    return { type: 'tool_call', tool: 'planPhaseInjects', reason: 'Per-cell plan', arguments: { id: containment.id, injects: [{ at: 5, channel: 'email_internal', cell: cell.id, cast: 'CISO', title: 'Isolation request', intent: 'Forces the decision.' }] } };
+  }
+  return { type: 'final', summary: 'Built the storyline and the containment plan.', issues: [], changes: ['Main storyline', 'Inject plan'] };
+}
+
 function answerFor(system, user) {
+  if (system.includes('Crisis Context Builder Agent')) return builderAgentAnswer(JSON.parse(user));
   if (!system.includes('Scenario Builder')) return { subject: 'Generated subject', body: '<p>Generated body</p>', headline: 'Generated headline', text: 'Generated text', title: 'Generated title' };
   const payload = JSON.parse(user);
   if (payload.task.startsWith('Design a complete')) {
@@ -52,7 +74,7 @@ function answerFor(system, user) {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.evaluate(() => { appState.scenario = emptyScenario({ ...appState.scenario.settings, ai_provider: 'openai', ai_api_key: 'sk-test', ai_model: 'gpt-test' }); App.render(); });
 
-  // 1. Scenario & context: five questions, then the library.
+  // 1. Context: client, duration, cells and players.
   await page.click('.nav-icon-btn[data-route="scenario"]');
   await page.fill('[data-bind="client.name"]', 'Northwind Hospitals');
   await page.fill('[data-sc-duration]', '3');
@@ -73,11 +95,21 @@ function answerFor(system, user) {
   await page.keyboard.press('Control+z');
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
 
-  // AI draft of the main storyline from Scenario & context.
+  // Context tab: objectives and ideas, then Generate with AI runs the builder agent, which asks first.
   await page.click('.nav-icon-btn[data-route="scenario"]');
-  await page.fill('[data-sb-ui="skeleton.brief"]', 'Three-hour hospital ransomware exercise');
-  await page.click('[data-sb-action="generate-skeleton"]');
-  await page.waitForFunction(() => sbStoryboard().blocks.length === 3 && appState.route === 'storyline');
+  await page.fill('[data-sb-meta="brief"]', 'Three-hour hospital ransomware exercise for the executive cell');
+  await page.dispatchEvent('[data-sb-meta="brief"]', 'change');
+  await page.selectOption('[data-cx-mode]', 'auto');
+  await page.click('[data-cx-generate]');
+  await page.waitForSelector('.agent-panel .agent-question');
+  await page.fill('#agent-answer', 'The executive committee; the isolation decision.');
+  await page.click('.agent-panel [data-agent-action="answer"]');
+  await page.waitForFunction(() => crisisAgentRunner.status === 'complete');
+  assert.ok(await page.isVisible('.agent-panel.is-complete'));
+  assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 3);
+  assert.ok(await page.evaluate(() => crisisAgentRunner.history.some((entry) => entry.userAnswers?.includes('executive committee'))));
+  assert.equal(await page.evaluate(() => sbMainBlocks(sbStoryboard())[1].beats[0].cell_id), await page.evaluate(() => appState.scenario.cells[1].id));
+  await page.click('.nav-icon-btn[data-route="storyline"]');
 
   // 2. Main storyline: single line, phase editor at the bottom.
   assert.equal(await page.isVisible('.sb-inspector'), false);
