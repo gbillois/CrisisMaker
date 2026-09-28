@@ -1216,7 +1216,23 @@ function renderSceneCards(){
         inp.onchange = () => {
           const f = inp.files[0]; if (!f) return;
           const rd = new FileReader();
-          rd.onload = () => { s.src = rd.result; commitJsonOnly(); pushProject(); };
+          rd.onload = () => {
+            // Stored in the project: resized to the video's 1920 px (JPEG) so photos cannot
+            // fill the browser storage.
+            const original = String(rd.result || '');
+            const img = new Image();
+            img.onerror = () => { s.src = original; commitJsonOnly(); pushProject(); };
+            img.onload = () => {
+              const k = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight));
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.round(img.naturalWidth * k); canvas.height = Math.round(img.naturalHeight * k);
+              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+              const resized = canvas.toDataURL('image/jpeg', 0.85);
+              s.src = resized.length < original.length ? resized : original;
+              commitJsonOnly(); pushProject();
+            };
+            img.src = original;
+          };
           rd.readAsDataURL(f);
         };
         d.appendChild(inp); body.appendChild(d);
