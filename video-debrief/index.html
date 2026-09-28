@@ -892,6 +892,30 @@ Chaque scène : 2-4 phrases de VO, percutantes, rythmées. Les textes à l'écra
 Les cues "at" (secondes depuis le début de la VO de la scène) synchronisent l'écran sur la voix.
 coords = [longitude, latitude]. Dramaturgie : accroche → montée → bascule → conséquences → leçons → chute.`;
 
+/* JSON written by a model, repaired as a last resort (as in CrisisMaker): raw line breaks and
+   tabs inside strings, a quote inside a string that closes nothing, trailing commas. */
+function parseModelJson(text){
+  try { return JSON.parse(text); } catch (error) {
+    let out = '', inString = false, escaped = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (!inString) { if (c === '"') inString = true; out += c; continue; }
+      if (escaped) { escaped = false; out += c; continue; }
+      if (c === '\\') { escaped = true; out += c; continue; }
+      if (c === '\n') { out += '\\n'; continue; }
+      if (c === '\r') { out += '\\r'; continue; }
+      if (c === '\t') { out += '\\t'; continue; }
+      if (c === '"') {
+        const next = text.slice(i + 1).match(/^\s*(.)/)?.[1];
+        if (next === undefined || [',', '}', ']', ':'].includes(next)) { inString = false; out += c; } else out += '\\"';
+        continue;
+      }
+      out += c;
+    }
+    try { return JSON.parse(out.replace(/,\s*([}\]])/g, '$1')); } catch (_) { throw error; }
+  }
+}
+
 /* The studio's AI call, with a 5-minute limit that cancels the request. */
 async function callAI(systemPrompt, userPrompt){
   const controller = new AbortController();
@@ -931,24 +955,45 @@ async function callAIOnce(systemPrompt, userPrompt, signal){
     const d = await r.json();
     return d.choices[0].message.content;
   } else if (provider === 'ollama') {
-    // Reasoning models (GLM, qwen3, deepseek-r1…) are asked to answer directly; a model
-    // without that switch (HTTP 400 "does not support thinking") is called without it.
-    const call = (think) => fetchOllamaApi(baseUrl + '/api/chat', {
+    // Reasoning models (qwen3, deepseek-r1…) are asked to answer directly; GLM and gpt-oss reason
+    // briefly apart from the answer (asked not to reason, GLM writes its reasoning in the answer).
+    // A model without that switch (HTTP 400 "does not support thinking") is called without it.
+    // Streamed then assembled: a silent request of a minute or more is cut by relays and proxies.
+    const think = /^(glm|gpt-oss)/i.test(model) ? 'low' : false;
+    const call = (withThink) => fetchOllamaApi(baseUrl + '/api/chat', {
       method: 'POST', signal,
       headers: { 'Content-Type': 'application/json', ...(key ? { 'Authorization': 'Bearer ' + key } : {}) },
-      body: JSON.stringify({ model, ...(baseUrl !== 'https://ollama.com' ? { format: 'json' } : {}), stream: false, options: { num_predict: 8000, num_ctx: 32768 },
-        ...(think === false ? { think: false } : {}),
+      body: JSON.stringify({ model, ...(baseUrl !== 'https://ollama.com' ? { format: 'json' } : {}), stream: true, options: { num_predict: 8000, num_ctx: 32768 },
+        ...(withThink ? { think } : {}),
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
     });
-    let r = await call(false);
+    let r = await call(true);
     if (r.status === 400) {
       const text = await r.clone().text();
-      if (/think/i.test(text)) r = await call();
+      if (/think/i.test(text)) r = await call(false);
     }
     if (!r.ok) throw new Error('Ollama ' + r.status + ' : ' + (await r.text()).slice(0, 300));
-    const d = await r.json();
+    const d = { message: { content: '', thinking: '' } };
+    const reader = r.body.getReader(), decoder = new TextDecoder();
+    let buffer = '';
+    const line = (text) => {
+      if (!text.trim()) return;
+      let event;
+      try { event = JSON.parse(text); } catch (_) { throw new Error(uiText('Réponse inattendue du serveur IA (pas du JSON) : délai dépassé en chemin ?', 'Unexpected reply from the AI server (not JSON): it may have timed out on the way.', 'Unerwartete Antwort des KI-Servers (kein JSON): Zeitüberschreitung unterwegs?')); }
+      if (event.error) d.error = typeof event.error === 'string' ? event.error : event.error.message || JSON.stringify(event.error);
+      d.message.content += event.message?.content || '';
+      d.message.thinking += event.message?.thinking || '';
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n'); buffer = lines.pop(); lines.forEach(line);
+    }
+    line(buffer + decoder.decode());
     if (d.error) throw new Error('Ollama: ' + d.error);
-    const content = d.message?.content || '';
+    // Reasoning left in the answer (…</think>{…}) is not part of it.
+    const content = (d.message.content || '').replace(/^[\s\S]*?<\/think>/i, '');
     if (content.trim()) return content;
     const thinking = d.message?.thinking || '';
     if (thinking.includes('{')) return thinking.slice(thinking.indexOf('{'), thinking.lastIndexOf('}') + 1);
@@ -971,7 +1016,7 @@ $('btn-generate').addEventListener('click', async () => {
 - theme.preset : ${$('set-theme').value}${$('set-voice').value ? '\n- audio.voice : ' + $('set-voice').value : ''}`;
     const raw = await callAI(SCHEMA_DOC, user);
     const json = raw.replace(/^```json?\s*/m, '').replace(/```\s*$/m, '');
-    const p = JSON.parse(json.slice(json.indexOf('{'), json.lastIndexOf('}') + 1));
+    const p = parseModelJson(json.slice(json.indexOf('{'), json.lastIndexOf('}') + 1));
     applyProject(enforceSettings(p));
     $('gen-status').textContent = '';
     setStep(2);
