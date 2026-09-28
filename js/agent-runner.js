@@ -36,21 +36,31 @@ function agentNormalizeResponse(value) {
   ToolValidator.validate(value, schema, 'response');
   return value;
 }
-/* A reply cut at the token limit: the agent retries with a smaller step. */
+/* A reply cut at the token limit, or an answer that took too long: the agent retries
+   with a smaller step. */
+const AGENT_STEP_TIMEOUT = 240000;
 function agentTruncated(error) {
-  return error?.code === 'truncated';
+  return error?.code === 'truncated' || error?.code === 'timeout';
+}
+/* The provider's own reason (rate limit, model, quota…), without secrets or links. */
+function agentProviderReason(error) {
+  const text = agentRedact(String(error?.message || '')).replace(/https?:\/\/\S+/g, '[link]').replace(/\b(sk|pk|rk|key|Bearer)[-_ ][A-Za-z0-9._-]{8,}/g, '[REDACTED]').replace(/\s+/g, ' ').trim();
+  return text.length > 280 ? `${text.slice(0, 279)}…` : text;
 }
 function agentFailureMessage(error) {
-  // Provider errors may contain URLs, payloads or headers. Do not log them.
   if (error instanceof AgentValidationError) return error.message;
+  if (error?.code === 'timeout') return 'The AI took too long to answer. Ask for a smaller change, for example one inject at a time.';
   if (agentTruncated(error)) return 'The AI reply was cut off at its length limit. Ask for a smaller change, for example one inject at a time.';
   if (error instanceof SyntaxError) return 'The AI reply was not valid JSON. Retry, or choose a more capable model in Settings.';
-  return 'AI request or tool failed. Check the existing AI connection settings and retry. Completed edits are recoverable with Undo.';
+  const reason = agentProviderReason(error);
+  if (error?.status) return `The AI provider refused the request (HTTP ${error.status})${reason ? `: ${reason}` : '.'} Completed edits are recoverable with Undo.`;
+  if (/failed to fetch|network|load failed/i.test(reason)) return 'The AI provider could not be reached (network or connection settings). Completed edits are recoverable with Undo.';
+  return `AI request or tool failed${reason ? `: ${reason}` : '.'} Check the AI connection settings and retry. Completed edits are recoverable with Undo.`;
 }
-function agentAwait(promise, signal, timeoutMs = 90000) {
+function agentAwait(promise, signal, timeoutMs = AGENT_STEP_TIMEOUT) {
   return new Promise((resolve, reject) => {
     const abort = () => finish(reject, new DOMException('Stopped', 'AbortError'));
-    const timer = setTimeout(() => finish(reject, new Error('Agent request timed out.')), timeoutMs);
+    const timer = setTimeout(() => finish(reject, Object.assign(new Error('The AI took too long to answer.'), { code: 'timeout' })), timeoutMs);
     const finish = (settle, result) => { clearTimeout(timer); signal.removeEventListener('abort', abort); settle(result); };
     signal.addEventListener('abort', abort, { once: true });
     if (signal.aborted) abort();
@@ -199,7 +209,7 @@ class AgentRunner {
           if (!(error instanceof AgentValidationError || error instanceof SyntaxError || agentTruncated(error))) throw error;
           const message = agentFailureMessage(error);
           const instruction = agentTruncated(error)
-            ? 'Your last reply, or the content a tool generated, was cut off at the length limit. Take a smaller step: one tool call on one inject, with fewer or shorter fields.'
+            ? 'Your last reply, or the content a tool generated, was cut off or took too long. Take a smaller step: one tool call on one inject, with fewer or shorter fields.'
             : 'Correct your JSON/tool arguments; use the exact schema. Reply with exactly ONE JSON object per step: one tool call, the next ones come in later steps.';
           this.history.push({ error: message, instruction }); this.history = this.history.slice(-8);
           AgentLog.append(this, 'warning', message);

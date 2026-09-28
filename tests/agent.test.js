@@ -316,3 +316,26 @@ test('replies cut at the token limit or holding several objects: clear error, fi
   assert.equal(r.status, 'complete');
   assert.ok(r.history.some((entry) => /smaller step/.test(entry.instruction || '')));
 });
+
+test('failures say why: the provider reason (secrets and links removed), timeouts retried smaller', async () => {
+  const h = harness();
+  const refused = h.run(`agentFailureMessage(CrisisError.create('Rate limit reached for model x. See https://platform.example/docs key TEST-SECRET', { status: 429 }))`);
+  assert.ok(refused.includes('HTTP 429') && refused.includes('Rate limit reached') && !refused.includes('https://') && !refused.includes('TEST-SECRET'));
+  assert.ok(h.run(`agentFailureMessage(new TypeError('Failed to fetch'))`).includes('could not be reached'));
+  assert.ok(h.run(`agentFailureMessage(Object.assign(new Error('x'), { code: 'timeout' }))`).includes('took too long'));
+  // A step that times out is retried with a smaller step instead of failing the run.
+  h.run(`globalThis.slowOnce = true; globalThis.runner = new AgentRunner({ notify: () => {}, request: async () => { if (slowOnce) { slowOnce = false; throw Object.assign(new Error('The AI took too long to answer.'), { code: 'timeout' }); } return ${JSON.stringify(JSON.stringify(final))}; } });`);
+  await h.context.runner.start({ objective: 'Translate the first three injects into Japanese' });
+  assert.equal(h.context.runner.status, 'complete');
+  // A model refusing 8000 output tokens is asked again with 4096.
+  h.run(`appState.scenario.settings.ai_provider = 'anthropic'; appState.scenario.settings.ai_model = 'small-model';`);
+  const asked = [];
+  h.context.fetch = async (url, init) => {
+    const body = JSON.parse(init.body); asked.push(body.max_tokens);
+    if (body.max_tokens > 4096) return { ok: false, status: 400, statusText: 'Bad Request', clone() { return this; }, text: async () => JSON.stringify({ error: { message: 'max_tokens: 8000 > 4096, the maximum allowed for this model' } }), json: async () => ({ error: { message: 'max_tokens: 8000 > 4096, the maximum allowed for this model' } }) };
+    return { ok: true, status: 200, clone() { return this; }, text: async () => JSON.stringify({ content: [{ type: 'text', text: '{"type":"final","summary":"ok","issues":[],"changes":[]}' }], stop_reason: 'end_turn' }), json: async () => ({ content: [{ type: 'text', text: '{"type":"final","summary":"ok","issues":[],"changes":[]}' }], stop_reason: 'end_turn' }) };
+  };
+  const reply = await h.run(`AITextGenerator.generate('agent', 'system', 'user', true, 8000, { strictJSON: true })`);
+  assert.equal(reply.summary, 'ok');
+  assert.deepEqual(asked, [8000, 4096]);
+});

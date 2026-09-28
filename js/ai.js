@@ -524,7 +524,19 @@
           }
         },
 
+        /* A model that accepts fewer output tokens than asked (HTTP 400 on max_tokens): once more
+           with 4096, rather than failing. */
         async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000, options = {}) {
+          try {
+            return await this.generateOnce(channel, systemPrompt, userPrompt, quiet, maxTokens, options);
+          } catch (error) {
+            if (maxTokens > 4096 && error?.status === 400 && /max[_ ]?(output[_ ]?)?tokens|maxOutputTokens|num_predict/i.test(String(error.message || ''))) {
+              return this.generateOnce(channel, systemPrompt, userPrompt, quiet, 4096, options);
+            }
+            throw error;
+          }
+        },
+        async generateOnce(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000, options = {}) {
           if (options.promptFilter) { systemPrompt = options.promptFilter(systemPrompt); if (userPrompt) userPrompt = options.promptFilter(userPrompt); }
           const { ai_provider, ai_api_key, ai_model, azure_endpoint, azure_api_key, azure_deployment } = appState.scenario.settings;
           if (ai_provider === 'anthropic' && !ai_api_key) throw new Error(tt('Missing Anthropic API key.', 'Clé API Anthropic manquante.', 'Fehlender Anthropic-API-Schlüssel.'));
