@@ -1116,7 +1116,9 @@ function tabBindInputs(root) {
     });
   });
 
-  const selected = () => dsSelectedItem(project);
+  // Resolved once per render (bindings are rebuilt at each render), not at every keystroke.
+  let selectedItem;
+  const selected = () => (selectedItem === undefined ? (selectedItem = dsSelectedItem(project)) : selectedItem);
   root.querySelectorAll('[data-ds-beat]').forEach((input) => {
     const field = input.dataset.dsBeat;
     const isText = field === 'title' || field === 'intent';
@@ -1157,7 +1159,7 @@ function tabBindInputs(root) {
     if (field === 'name') item.stimulus.name = sbText(input.value, 500);
     item.stimulus.updated_at = new Date().toISOString();
     saveLocal(false);
-    App.render();
+    renderAfterPointer();
   }));
   root.querySelectorAll('[data-tab-ui]').forEach((input) => input.addEventListener('change', () => {
     detailed[input.dataset.tabUi] = sbInt(input.value, 3, 1, 10);
@@ -1199,7 +1201,7 @@ function dsBindTimeline(root) {
     if (!(event.ctrlKey || event.metaKey)) return;
     event.preventDefault();
     state.zoom = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, state.zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15)));
-    App.render();
+    sbRenderSoon();
   }, { passive: false });
 
   const scrub = (event) => {
@@ -1300,7 +1302,8 @@ function bindScenarioTabsEvents() {
 
 /* Keyboard shortcuts of the Detailed storyline. */
 function dsOnKeyDown(event) {
-  if (appState.route !== 'detailed' || appState.stimulusModalId || sbUI().modal) return;
+  // Not behind an overlay (settings, launch screen, import): Ctrl+Z would undo unseen edits.
+  if (appState.route !== 'detailed' || appState.stimulusModalId || sbUI().modal || appState.settingsDrawerOpen || appState.launchScreenOpen || appState.chronogramImport) return;
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || '') || event.target?.isContentEditable;
   if (typing) return;
   const state = tabUI('detailed');

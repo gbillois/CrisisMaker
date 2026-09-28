@@ -103,7 +103,19 @@
             setProjectState: (state) => applyVideoDebriefProjectState(state)
           };
         },
+        /* A render requested while rendering (e.g. the timeline fitting its zoom) runs once
+           after the current one: rendering inside a render bound every handler twice. */
         render() {
+          if (this._rendering) { this._renderAgain = true; return; }
+          this._rendering = true;
+          try {
+            this.renderNow();
+          } finally {
+            this._rendering = false;
+          }
+          if (this._renderAgain) { this._renderAgain = false; this.render(); }
+        },
+        renderNow() {
           const root = document.getElementById('app');
           setDocumentLanguage();
           // Load HD fonts if needed
@@ -133,6 +145,18 @@
         }
       };
 
+      /* Re-render after a field's "change", but not under the pointer: when the change comes
+         from clicking a button (the field loses focus), that click runs first. */
+      let pointerIsDown = false;
+      if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+        document.addEventListener('pointerdown', () => { pointerIsDown = true; }, true);
+        document.addEventListener('pointerup', () => { setTimeout(() => { pointerIsDown = false; }, 0); }, true);
+      }
+      function renderAfterPointer() {
+        if (!pointerIsDown) { App.render(); return; }
+        window.addEventListener('pointerup', () => setTimeout(() => App.render(), 0), { once: true, capture: true });
+      }
+
       function videoDebriefAISettings() {
         const settings = appState.scenario.settings;
         const supported = ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama'].includes(settings.ai_provider);
@@ -159,6 +183,9 @@
 
       function syncVideoDebriefProjectState(frame = document.getElementById('video-debrief-frame')) {
         if (!frame?.contentWindow) return;
+        // The studio now works for this project: older state and messages are ignored.
+        frame._projectRef = appState.scenario;
+        frame._videoDebriefState = null;
         appState.scenario.video_debrief = loadVideoDebriefDraft(appState.scenario.video_debrief);
         const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
         frame.contentWindow.postMessage({
@@ -168,6 +195,8 @@
       }
 
       function applyVideoDebriefProjectState(state) {
+        const frame = document.getElementById('video-debrief-frame');
+        if (frame && frame._projectRef && frame._projectRef !== appState.scenario) return; // from a previous project
         appState.scenario.video_debrief = persistVideoDebriefDraft(state);
         clearTimeout(window._videoDebriefSaveTimer);
         window._videoDebriefSaveTimer = setTimeout(() => saveLocal(false), 350);
@@ -176,19 +205,51 @@
       function captureVideoDebriefProjectState() {
         const frame = document.getElementById('video-debrief-frame');
         const state = frame?._videoDebriefState;
-        if (state) appState.scenario.video_debrief = persistVideoDebriefDraft(state);
+        if (state && frame._projectRef === appState.scenario) appState.scenario.video_debrief = persistVideoDebriefDraft(state);
         return appState.scenario.video_debrief;
       }
 
+      /* The Video Debrief studio stays mounted once opened, in a host outside #app placed over
+         the tab's slot: re-renders (a toast, the assistant, an agent step) never reload it, and a
+         video being produced keeps going while you visit other tabs. */
+      function placeVideoDebriefHost() {
+        const host = document.getElementById('video-debrief-host');
+        const slot = document.getElementById('video-debrief-slot');
+        if (!host) return;
+        if (!slot) { host.style.display = 'none'; return; }
+        const rect = slot.getBoundingClientRect();
+        Object.assign(host.style, { display: 'block', left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+      }
       function mountVideoDebrief() {
-        const frame = document.getElementById('video-debrief-frame');
-        if (!frame) return;
-        frame.addEventListener('load', () => {
+        const slot = document.getElementById('video-debrief-slot');
+        let host = document.getElementById('video-debrief-host');
+        if (!slot) { if (host) host.style.display = 'none'; return; }
+        if (!host) {
+          host = document.createElement('div');
+          host.id = 'video-debrief-host';
+          host.className = 'video-debrief-host';
+          const frame = document.createElement('iframe');
+          frame.id = 'video-debrief-frame';
+          frame.className = 'video-debrief-frame';
+          frame.title = tt('Video Debrief studio', 'Studio Video Debrief', 'Video-Debrief-Studio');
+          frame.setAttribute('allow', 'clipboard-write');
+          frame.addEventListener('load', () => {
+            syncVideoDebriefAISettings(frame);
+            syncVideoDebriefProjectState(frame);
+          });
+          frame.src = VIDEO_DEBRIEF_SRC;
+          host.appendChild(frame);
+          document.body.appendChild(host);
+          window.addEventListener('resize', placeVideoDebriefHost);
+          window.addEventListener('scroll', placeVideoDebriefHost, true);
+        } else {
+          const frame = document.getElementById('video-debrief-frame');
           syncVideoDebriefAISettings(frame);
-          syncVideoDebriefProjectState(frame);
-        }, { once: true });
-        syncVideoDebriefAISettings(frame);
-        syncVideoDebriefProjectState(frame);
+          // Another project was opened since: hand the studio the new one.
+          if (frame._projectRef !== appState.scenario) syncVideoDebriefProjectState(frame);
+        }
+        placeVideoDebriefHost();
+        requestAnimationFrame(placeVideoDebriefHost);
       }
 
       function ensureHDFonts() {
@@ -306,7 +367,7 @@
             if (!actor) return;
             actor[pathParts.join('.')] = input.value;
             if (pathParts.join('.') === 'name') actor.avatar_initials = initialsFromName(input.value);
-            App.render();
+            renderAfterPointer();
           });
         });
 
@@ -1224,9 +1285,12 @@
               App.render();
               // Run pipeline async
               (async () => {
+                // Cancelled (or replaced by a new import) while running: nothing more is applied or logged.
+                const current = () => appState.chronogramImport === state;
                 try {
                   const onLog = (entry) => {
-                    const logs = appState.chronogramImport?.llmLogs;
+                    if (!current()) return;
+                    const logs = state.llmLogs;
                     if (!logs) return;
                     if (entry.type === 'start') {
                       logs.push({ id: Date.now(), stepNum: entry.stepNum, stepLabel: entry.stepLabel, userPromptPreview: entry.userPromptPreview, responseText: '', status: 'streaming' });
@@ -1256,11 +1320,13 @@
                     state.file,
                     state.options,
                     (step, totalSteps, message, details) => {
+                      if (!current()) return;
                       state.progress = { step, totalSteps, message, details };
                       App.render();
                     },
                     onLog
                   );
+                  if (!current()) return;
                   state.result = result;
                   const autonomy = appState.chronogramImportAutonomy;
                   if (autonomy === 'fully_autonomous') {
@@ -1293,6 +1359,7 @@
                     App.render();
                   }
                 } catch (err) {
+                  if (!current()) return;
                   state.error = CrisisError.format(err, { operation: 'Import chronogram with AI' });
                   state.phase = 'result';
                   App.render();

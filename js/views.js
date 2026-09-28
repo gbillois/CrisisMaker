@@ -459,18 +459,11 @@
         return renderProjectView();
       }
 
+      /* The studio iframe lives outside the re-rendered page (see mountVideoDebrief): this is
+         only the slot it is placed over, so re-renders never reload it. */
+      const VIDEO_DEBRIEF_SRC = 'video-debrief/index.html?integrated=2';
       function renderVideoDebriefView() {
-        return `
-          <section class="video-debrief-workspace">
-            <iframe
-              id="video-debrief-frame"
-              class="video-debrief-frame"
-              src="video-debrief/index.html?integrated=2"
-              title="${tt('Video Debrief studio', 'Studio Video Debrief', 'Video-Debrief-Studio')}"
-              allow="clipboard-write"
-            ></iframe>
-          </section>
-        `;
+        return `<section class="video-debrief-workspace" id="video-debrief-slot" aria-label="${escapeAttribute(tt('Video Debrief studio', 'Studio Video Debrief', 'Video-Debrief-Studio'))}"></section>`;
       }
 
       function renderProjectView() {

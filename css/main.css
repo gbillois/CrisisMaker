@@ -4367,3 +4367,6 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .play-adjust .play-label { grid-column: 1 / -1; }
 @media (max-width: 600px) { .cc-gauges { grid-template-columns: 1fr; } }
 .save-indicator.is-error { color: var(--danger); font-weight: 700; }
+/* Video Debrief studio host: outside #app, placed over #video-debrief-slot. */
+.video-debrief-host { position: fixed; z-index: 5; display: none; overflow: hidden; background: #f5f4f8; }
+.video-debrief-host .video-debrief-frame { width: 100%; height: 100%; }

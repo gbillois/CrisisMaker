@@ -115,7 +115,7 @@ class AgentRunner {
   async start({ kind = this.kind, mode = this.mode, objective = this.objective } = {}) {
     if (this.active || this.busy) return;
     if (!AGENT_KINDS.includes(kind) || !['assist', 'agent', 'auto'].includes(mode) || typeof objective !== 'string' || !objective.trim() || objective.length > 8000) throw new AgentValidationError('Enter an objective of 1–8000 characters and select a valid mode.');
-    if (appState.ui.generatingField || Object.values(appState.llmState).some(state => state?.loading) || appState.checkerState.analysisLoading) throw new AgentValidationError('Wait for the current AI operation to finish before starting an agent.');
+    if (appState.ui.generatingField || Object.values(appState.llmState).some(state => state?.loading) || appState.checkerState.analysisLoading || (typeof SbPipeline !== 'undefined' && SbPipeline.active) || (typeof SbAI !== 'undefined' && SbAI.busy)) throw new AgentValidationError('Wait for the current AI operation to finish before starting an agent.');
     this.kind = kind; this.mode = mode; this.objective = objective;
     this.status = 'running'; this.busy = true; this.controller = new AbortController(); this.project = appState.scenario;
     this.step = 0; this.log = []; this.history = []; this.answers = []; this.changed = 0; this.pending = null; this.question = null; this.questionRounds = 0; this.final = null;

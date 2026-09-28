@@ -628,7 +628,7 @@ function sbBindInputs(root) {
       input.addEventListener('change', () => {
         StoryboardHistory.flush();
         // Title and "what happens" feed the inject plan: refresh the timeline and the Update count.
-        if (['title', 'brief'].includes(field)) App.render();
+        if (['title', 'brief'].includes(field)) renderAfterPointer();
       });
       return;
     }
@@ -979,7 +979,7 @@ function sbBindTimeline(root) {
       if (!(event.ctrlKey || event.metaKey)) return;
       event.preventDefault();
       sbSetZoom(ui.zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15));
-      App.render();
+      sbRenderSoon();
     }, { passive: false });
   }
   root.querySelectorAll('[data-sb-clip]').forEach((clip) => {
@@ -1040,8 +1040,16 @@ function sbBindTimeline(root) {
 }
 
 // ── Keyboard ─────────────────────────────────────────────────────────────────
+/* One render per animation frame for high-frequency input (Ctrl+wheel zoom). */
+let sbRenderQueued = false;
+function sbRenderSoon() {
+  if (sbRenderQueued) return;
+  sbRenderQueued = true;
+  requestAnimationFrame(() => { sbRenderQueued = false; App.render(); });
+}
+
 function sbOnKeyDown(event) {
-  if (appState.route !== 'storyline' || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen) return;
+  if (appState.route !== 'storyline' || appState.stimulusModalId || appState.settingsDrawerOpen || appState.launchScreenOpen || appState.chronogramImport) return;
   const ui = sbUI();
   const target = event.target;
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName || '') || target?.isContentEditable;

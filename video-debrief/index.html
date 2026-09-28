@@ -609,14 +609,26 @@ function videoDebriefState(){
     ui: { active_step: activeStep }
   };
 }
+/* The latest state is always readable by CrisisMaker (frameElement); saving it is debounced
+   and goes through one channel only (the direct bridge, else postMessage). Standalone, the
+   studio keeps its own draft; inside CrisisMaker, the project saves it. */
+let notifyTimer = null;
 function notifyCrisisMakerProjectChange(){
   const state = videoDebriefState();
-  try { localStorage.setItem('crisismaker_video_debrief_draft_v1', JSON.stringify(state)); } catch (error) {}
   if (window.frameElement) window.frameElement._videoDebriefState = state;
-  if (applyingCrisisMakerState || window.parent === window) return;
+  if (applyingCrisisMakerState) return;
+  clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(() => flushCrisisMakerProjectChange(state), 300);
+}
+function flushCrisisMakerProjectChange(state){
+  if (window.parent === window) {
+    try { localStorage.setItem('crisismaker_video_debrief_draft_v1', JSON.stringify(state)); } catch (error) {}
+    return;
+  }
   try {
     if (typeof window.parent.CrisisMakerVideoDebrief?.setProjectState === 'function') {
       window.parent.CrisisMakerVideoDebrief.setProjectState(state);
+      return;
     }
   } catch (error) {}
   const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
@@ -638,7 +650,8 @@ function applyCrisisMakerProjectState(state){
     if (setup.voice !== undefined) $('set-voice').value = setup.voice;
     if (state.project) {
       applyProject(JSON.parse(JSON.stringify(state.project)));
-    } else if (!state.source_material) {
+    } else {
+      // No video project in this CrisisMaker project: never keep the previous one's scenes.
       project = null;
       $('p-title').value = '';
       $('json-editor').value = '';
@@ -868,28 +881,23 @@ window.addEventListener('message', event => {
   }
 });
 if (window.parent !== window){
+  // Inside CrisisMaker the current project is the only source (never a draft left by
+  // another project); it is read once, directly, or asked for by message.
   applyCrisisMakerAISettings(storedCrisisMakerAISettings());
-  try {
-    const savedProjectState = localStorage.getItem('crisismaker_video_debrief_draft_v1');
-    if (savedProjectState) applyCrisisMakerProjectState(JSON.parse(savedProjectState));
-  } catch (error) {}
+  let direct = false;
   try {
     if (typeof window.parent.CrisisMakerVideoDebrief?.getAISettings === 'function') {
       applyCrisisMakerAISettings(window.parent.CrisisMakerVideoDebrief.getAISettings());
       applyInterfaceLanguage(window.parent.CrisisMakerVideoDebrief.getInterfaceLanguage?.());
       applyCrisisMakerProjectState(window.parent.CrisisMakerVideoDebrief.getProjectState());
-    } else {
-      const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
-      window.parent.postMessage({ type: 'video-debrief-request-ai-settings' }, targetOrigin);
-      window.parent.postMessage({ type: 'video-debrief-request-project-state' }, targetOrigin);
+      direct = true;
     }
-  } catch (error) {
+  } catch (error) {}
+  if (!direct) {
     const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
     window.parent.postMessage({ type: 'video-debrief-request-ai-settings' }, targetOrigin);
     window.parent.postMessage({ type: 'video-debrief-request-project-state' }, targetOrigin);
   }
-  const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
-  window.parent.postMessage({ type: 'video-debrief-request-project-state' }, targetOrigin);
 }
 
 /* ─────────── voix par langue (synchronisées avec le sélecteur) ─────────── */
