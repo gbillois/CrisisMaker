@@ -111,6 +111,9 @@ The menu follows the design workflow, from left to right:
    builds the main storyline, the cells and players, the cast and its actors, and a
    per-cell inject plan for every phase. The scenario details (name, type, summary,
    objectives, synopsis, threat) stay editable in a collapsed block.
+   **Existing crisis exercise file** (optional): load the chronogram of a previous
+   exercise (.xlsx, .xls or .pptx). The agent uses it as a reference when it generates
+   the scenario, and **Challenge it** audits the file as it is in Check & Challenge.
 3. **Main storyline**: the macro view. The phases of the crisis sit on a single time
    line (trigger & detection, investigation, containment, eradication, business
    continuity, recovery, crisis exit, twists). They are moved and resized with the
@@ -125,11 +128,20 @@ The menu follows the design workflow, from left to right:
    injects per cell. Pick a cell to work on its injects: drag a card to change its
    time or its recipient cell, plan new injects for the cell with AI, create and
    write them, and keep them in sync. The inject editor also opens at the bottom.
-6. **Summary**: key figures, a cells × phases heatmap with the load per 30 minutes,
-   an accelerated playback where injects reach each cell over time (with preview),
-   and a review: deterministic checks (idle cells, dead times, overloads, empty
-   phases, missing recipients or senders, orphans) plus an AI check of rhythm and
-   consistency. Each finding opens the inject or cell concerned.
+6. **Check & Challenge**: is the exercise ready to play? One **readiness** verdict
+   (Ready to play, Almost ready, Needs work) and score from three signals, each with
+   its gauge: the automatic checks, the AI challenge and the ready-to-play checklist,
+   with the next steps that actually hold the score down. Below: key figures, a
+   cells × phases heatmap with the load per 30 minutes, the **automatic checks**
+   (always up to date: idle cells, dead times, overloads, empty phases, missing
+   recipients or senders, orphans; each finding opens the inject or cell concerned),
+   and **Challenge with AI**: one click runs the five-axis quality analysis (coverage,
+   structure, pacing, actors, realism) with priority actions and verdicts, plus the
+   cell-by-cell timing review, whose findings join the automatic checks. The challenge
+   targets the current scenario, or the existing exercise file loaded in Context; the
+   last result of each is kept. The report exports to Markdown or Word. Then the
+   checklist and, folded, **Rehearse cell by cell** (accelerated playback where
+   injects reach each cell, with preview).
 
 7. **Play**: runs the exercise live, for its pilot.
    - **Generate all stimuli**: a ZIP with every stimulus numbered in play order
@@ -187,7 +199,7 @@ Under the hood:
 
 The storyboard is saved with the project (`storyboard`, `storyboard_versions`, `cells`,
 `exercise`);
-`scenario.phases` is derived from the main storyline so the Agent and the Checker keep
+`scenario.phases` is derived from the main storyline so the Agent and Check & Challenge keep
 working, and older projects with phases are converted automatically. Stimuli and
 actors keep a `scenario_link` (block, planned inject, content hashes, lock).
 
@@ -197,7 +209,8 @@ Implementation: `js/scenario-model.js` (schema, presets, checks, diff),
 operations), `js/scenario-sync.js` (links, generation pipeline, sync),
 `js/scenario-builder-view.js` and `js/scenario-builder-events.js` (shared timeline,
 modals and events), `js/scenario-tabs.js` (Main storyline, Cells & actors, Detailed
-storyline and Summary tabs).
+storyline and Check & Challenge tabs), `js/checker.js` (AI challenge, file import,
+checklist, report).
 
 ## Assistant
 
@@ -252,7 +265,7 @@ Uploaded audio/video references can be restored in the same tab; temporary media
 URLs do not survive a browser reload. Starting a new run replaces the checkpoint.
 Completed edits continue to use normal local saving, project files and exports.
 Exercise objectives, narrative arc and timed phases are optional fields inside
-`scenario`; they also appear in the normal Scenario view and Checker context.
+`scenario`; they also appear in the normal Scenario view and Check & Challenge context.
 Existing project files remain compatible, including projects with no actors.
 
 Implementation is separated into `js/agent-prompts.js` (editable builder/designer/reviewer

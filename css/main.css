@@ -3881,10 +3881,70 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .su-issue-group.is-warning > summary b { background: var(--warning); }
 .su-issue-group .sb-issues { margin: 0; padding: 0 10px 10px; }
 
+/* Check & Challenge */
+.card.cc-readiness { display: grid; grid-template-columns: minmax(220px, 0.9fr) minmax(0, 2fr); gap: 18px 24px; align-items: stretch; border-top: 4px solid var(--warning); }
+.card.cc-readiness.is-ready { border-top-color: var(--green); }
+.card.cc-readiness.is-work { border-top-color: var(--danger); }
+.cc-verdict { display: grid; align-content: start; gap: 4px; }
+.cc-verdict > strong { font-size: 1.45rem; letter-spacing: -0.02em; color: var(--primary-strong); }
+.cc-readiness.is-ready .cc-verdict > strong { color: var(--green-ink); }
+.cc-readiness.is-work .cc-verdict > strong { color: var(--danger); }
+.cc-overall { font-size: 2.4rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: var(--primary-strong); }
+.cc-overall small, .cc-gauge strong small { font-size: 0.45em; opacity: 0.6; font-weight: 700; }
+.cc-verdict p { margin: 4px 0 0; }
+.cc-gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cc-gauge { display: grid; align-content: start; gap: 5px; padding: 12px 14px; background: var(--sb-panel-alt, #faf7f0); border-left: 3px solid var(--muted); }
+.cc-gauge.is-good { border-left-color: var(--green); }
+.cc-gauge.is-mid { border-left-color: var(--warning); }
+.cc-gauge.is-low { border-left-color: var(--danger); }
+.cc-gauge-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cc-gauge strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; color: var(--primary-strong); }
+.cc-gauge-bar { height: 5px; background: #e8dfcd; overflow: hidden; }
+.cc-gauge-bar i { display: block; height: 100%; background: var(--muted); transition: width 0.3s; }
+.cc-gauge.is-good .cc-gauge-bar i { background: var(--green); }
+.cc-gauge.is-mid .cc-gauge-bar i { background: var(--warning); }
+.cc-gauge.is-low .cc-gauge-bar i { background: var(--danger); }
+.cc-gauge-hint { font-size: 0.76rem; color: var(--muted); }
+.cc-kpis { grid-column: 1 / -1; }
+.cc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 20px; align-items: start; }
+.cc-challenge { display: grid; gap: 12px; }
+.cc-challenge .section-header { margin-bottom: 0; }
+.cc-source { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cc-source > button:not(.btn) { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); background: #fff; color: var(--primary-strong); font: inherit; font-size: 0.84rem; font-weight: 600; cursor: pointer; }
+.cc-source > button:not(.btn).active { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.cc-source > button:not(.btn):disabled { opacity: 0.5; cursor: not-allowed; }
+.cc-run { display: grid; justify-items: start; gap: 8px; padding: 14px; background: var(--indigo-tint); border-left: 3px solid var(--indigo); }
+/* The checker blocks nested in the challenge card lose their own card frame. */
+.cc-challenge .card { border: none; box-shadow: none; padding: 0; background: transparent; }
+.cc-challenge .card::before { display: none; }
+.su-play { padding: 0; }
+.su-play > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 22px; margin: 0; cursor: pointer; list-style: none; }
+.su-play > summary::-webkit-details-marker { display: none; }
+.su-play[open] > summary svg { transform: rotate(180deg); }
+.su-play > :not(summary) { margin-left: 22px; margin-right: 22px; }
+.su-play > :last-child { margin-bottom: 22px; }
+
+/* Context: existing crisis exercise file */
+.cx-file { display: grid; gap: 8px; }
+.cx-file .cx-design-head { display: grid; gap: 2px; }
+.checker-dropzone.is-compact { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px; padding: 14px 16px; text-align: left; border-width: 1px; }
+.checker-dropzone.is-compact .checker-dropzone-icon { margin: 0; }
+.checker-dropzone.is-compact .checker-dropzone-icon svg { width: 26px; height: 26px; }
+.checker-dropzone.is-compact .checker-dropzone-title { font-size: 0.9rem; }
+.checker-dropzone.is-compact .checker-dropzone-sub, .checker-dropzone.is-compact .checker-dropzone-formats { font-size: 0.8rem; margin: 0; }
+.cx-file-loaded { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; background: #e1fded; border-left: 3px solid var(--green); }
+.cx-file-name { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.88rem; color: var(--primary-strong); }
+.cx-file-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.cx-file-details > summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--indigo); list-style: none; }
+.cx-file-details > summary::-webkit-details-marker { display: none; }
+.cx-file-details[open] > summary svg { transform: rotate(180deg); }
+.cx-file-details[open] > summary { margin-bottom: 10px; }
+
 @media (max-width: 1150px) {
   .sc-glance-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sc-ai-row, .sl-editor-body, .ds-editor-body { grid-template-columns: 1fr; }
   .su-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card.cc-readiness, .cc-grid { grid-template-columns: 1fr; }
   .ce-actor { grid-template-columns: 1fr 1fr; }
 }
 
@@ -4292,3 +4352,6 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 /* Docked log pane: on wide screens the page makes room for it instead of being covered. */
 @media (min-width: 1100px) { .play-page.has-log { padding-right: 404px; } }
 .toast-stack { z-index: 160; }
+.play-adjust { display: grid; grid-template-columns: repeat(4, auto); gap: 3px; }
+.play-adjust .play-label { grid-column: 1 / -1; }
+@media (max-width: 600px) { .cc-gauges { grid-template-columns: 1fr; } }

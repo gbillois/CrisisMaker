@@ -191,12 +191,11 @@
                   ${renderNavIconButton('storyline', svgStoryboard(), 'Main storyline')}
                   ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
                   ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
-                  ${renderNavIconButton('summary', svgPlayCircle(), 'Summary')}
+                  ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
                   ${renderNavIconButton('play', svgBroadcast(), 'Play')}
                   ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
                   ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                   ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
-                  ${renderNavIconButton('checker', svgShieldCheck(), tt('Checker', 'Checker', 'Prüfer'))}
                 </div>
               </nav>
             </header>
@@ -323,9 +322,9 @@
                       <p>Pick a cell and plan its injects under the main storyline, then write them with AI and keep them in sync.</p>
                     </div>
                     <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgPlayCircle()}</div>
-                      <strong>Summary</strong>
-                      <p>See the whole exercise, play it in accelerated time and let the AI check rhythm and consistency.</p>
+                      <div class="launch-feature-icon">${svgShieldCheck()}</div>
+                      <strong>Check &amp; Challenge</strong>
+                      <p>${tt('Know whether the exercise is ready to play: live consistency checks, one AI challenge on coverage, pacing and realism, a readiness checklist and a cell-by-cell rehearsal.', 'Sachez si l’exercice est prêt à être joué : contrôles de cohérence en continu, un challenge IA sur la couverture, le rythme et le réalisme, une checklist de préparation et une répétition cellule par cellule.', 'Wissen, ob die Übung spielbereit ist: laufende Konsistenzprüfungen, eine KI-Challenge zu Abdeckung, Tempo und Realismus, eine Bereitschafts-Checkliste und eine Probe Zelle für Zelle.')}</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgBroadcast()}</div>
@@ -347,11 +346,6 @@
                       <strong>${tt('Video Debrief', 'Video Debrief', 'Video-Debrief')}</strong>
                       <p>${tt('Turn the crisis story into an editable documentary video, preview every scene, then produce an MP4 locally or through GitHub Actions.', 'Transformez le récit de crise en vidéo documentaire éditable, prévisualisez chaque scène puis produisez un MP4 localement ou via GitHub Actions.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo, zeigen Sie jede Szene in der Vorschau an und produzieren Sie anschließend lokal oder über GitHub Actions eine MP4-Datei.')}</p>
                     </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgShieldCheck()}</div>
-                      <strong>${tt('Crisis Checker', 'Crisis Checker', 'Krisen-Prüfer')}</strong>
-                      <p>${tt('Audit any crisis exercise chronogram — import an .xlsx, .xls or .pptx file (or use your current scenario) and let the AI analyze coverage, pacing, actor balance and realism, then export a quality report.', 'Auditez n\'importe quel chronogramme — importez un fichier .xlsx, .xls ou .pptx (ou utilisez votre scénario actuel) et laissez l\'IA analyser la couverture, le rythme, l\'équilibre des acteurs et le réalisme, puis exportez un rapport qualité.', 'Prüfen Sie beliebige Krisenübungs-Chronogramme — importieren Sie eine .xlsx-, .xls- oder .pptx-Datei (oder verwenden Sie Ihr aktuelles Szenario) und lassen Sie die KI Abdeckung, Tempo, Akteur-Balance und Realismus analysieren, dann exportieren Sie einen Qualitätsbericht.')}</p>
-                    </div>
                   </div>
                 </div>
 
@@ -368,7 +362,7 @@
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">3</div>
-                      <span><strong>Detail each cell</strong>: in Detailed storyline, plan and write the injects of every cell, then review the whole exercise in Summary.</span>
+                      <span><strong>Detail each cell</strong>: in Detailed storyline, plan and write the injects of every cell, then challenge the whole exercise in Check &amp; Challenge.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
@@ -380,7 +374,7 @@
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">${sbUiIcon('star', 13)}</div>
-                      <span>${tt('<strong>Audit an existing timeline</strong> — open the Crisis Checker tab to import a chronogram file or analyze your current scenario with AI: get a quality score, heatmaps, and an actionable checklist.', '<strong>Auditez une timeline existante</strong> — ouvrez l\'onglet Crisis Checker pour importer un chronogramme ou analyser votre scénario actuel avec l\'IA : obtenez un score qualité, des heatmaps et une checklist actionnable.', '<strong>Prüfen Sie einen vorhandenen Zeitplan</strong> — öffnen Sie den Krisen-Prüfer-Tab, um eine Chronogramm-Datei zu importieren oder Ihr aktuelles Szenario mit KI zu analysieren: erhalten Sie einen Qualitätsscore, Heatmaps und eine umsetzbare Checkliste.')}</span>
+                      <span>${tt('<strong>Start from an existing exercise</strong>: load its chronogram (.xlsx, .xls or .pptx) in the Context tab to use it as a reference for the agent, or challenge it as is in Check &amp; Challenge.', '<strong>Partez d’un exercice existant</strong> : chargez son chronogramme (.xlsx, .xls ou .pptx) dans l’onglet Contexte pour qu’il serve de référence à l’agent, ou challengez-le tel quel dans Check &amp; Challenge.', '<strong>Von einer bestehenden Übung ausgehen</strong>: Chronogramm (.xlsx, .xls oder .pptx) im Tab Kontext laden, als Referenz für den Agenten nutzen oder direkt in Check &amp; Challenge hinterfragen.')}</span>
                     </div>
                   </div>
                 </div>
@@ -401,6 +395,7 @@
       }
 
       function viewConfig() {
+        if (appState.route === 'checker') appState.route = 'summary';
         const map = {
           project: {
             title: tt('Project', 'Projet', 'Projekt'),
@@ -419,8 +414,8 @@
             subtitle: tt('Run the exercise live: generate the stimuli, start the clock and send each inject on time.', 'Animez l\'exercice en direct : générez les stimuli, lancez l\'horloge et envoyez chaque inject à temps.', 'Übung live durchführen: Stimuli erzeugen, Uhr starten und jeden Inject pünktlich senden.')
           },
           summary: {
-            title: 'Summary',
-            subtitle: tt('Review the whole exercise and play it in accelerated time.', 'Revoyez l\'exercice complet et jouez-le en accéléré.', 'Gesamte Übung prüfen und im Zeitraffer abspielen.')
+            title: 'Check & Challenge',
+            subtitle: tt('Is the exercise ready to play? Live checks, an AI challenge and the readiness checklist.', 'L\'exercice est-il prêt à jouer ? Contrôles en continu, challenge IA et checklist de préparation.', 'Ist die Übung spielbereit? Laufende Prüfungen, KI-Challenge und Bereitschafts-Checkliste.')
           },
           stimuli: {
             title: 'Detailed storyline',
@@ -433,10 +428,6 @@
           agent: {
             title: 'Agent',
             subtitle: tt('Build and challenge the exercise with controlled AI tools.', 'Construisez et challengez l\'exercice avec des outils IA contrôlés.', 'Übung mit kontrollierten KI-Werkzeugen erstellen und hinterfragen.')
-          },
-          checker: {
-            title: tt('Crisis Checker', 'Crisis Checker', 'Krisen-Prüfer'),
-            subtitle: tt('Analyze a crisis timeline and check it is ready to play.', 'Analysez un chronogramme et vérifiez qu\'il est prêt à jouer.', 'Krisen-Zeitplan analysieren und Spielbereitschaft prüfen.')
           },
           debrief: {
             title: tt('Crisis Debrief', 'Debrief de crise', 'Krisen-Debrief'),
@@ -453,6 +444,7 @@
       function renderCurrentView() {
         if (appState.route === 'builder') appState.route = 'storyline';
         if (appState.route === 'stimuli') appState.route = 'detailed';
+        if (appState.route === 'checker') appState.route = 'summary';
         if (appState.route === 'project') return renderProjectView();
         if (appState.route === 'scenario') return renderScenarioView();
         if (appState.route === 'storyline') return renderStorylineView();
@@ -464,7 +456,6 @@
         if (appState.route === 'debrief') return renderDebriefView();
         if (appState.route === 'video-debrief') return renderVideoDebriefView();
         if (appState.route === 'agent') return renderAgentView();
-        if (appState.route === 'checker') return renderCheckerView();
         return renderProjectView();
       }
 

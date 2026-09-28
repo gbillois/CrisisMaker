@@ -409,10 +409,9 @@ Response format (strict JSON):
 
       // ─── Render: Drop Zone ────────────────────────────────────────────────────────
 
-      function renderCheckerDropZone() {
-        return `
-          <article class="card">
-            <div class="checker-dropzone" id="checker-dropzone">
+      function renderCheckerDropZone(options = {}) {
+        const zone = `
+            <div class="checker-dropzone${options.inner ? ' is-compact' : ''}" id="checker-dropzone">
               <div class="checker-dropzone-icon">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="12" y2="12"></line><line x1="15" y1="15" x2="12" y2="12"></line></svg>
               </div>
@@ -421,16 +420,30 @@ Response format (strict JSON):
               <p class="checker-dropzone-formats">${tt('Supported: .xlsx, .xls, .pptx', 'Formats acceptés : .xlsx, .xls, .pptx', 'Unterstützt: .xlsx, .xls, .pptx')}</p>
               <input type="file" id="checker-file-input" accept=".xlsx,.xls,.pptx" style="display:none;">
             </div>
-            ${appState.checkerState._fileError ? `<p class="checker-error-msg">${escapeHtml(appState.checkerState._fileError)}</p>` : ''}
-          </article>
-        `;
+            ${appState.checkerState._fileError ? `<p class="checker-error-msg">${escapeHtml(appState.checkerState._fileError)}</p>` : ''}`;
+        return options.inner ? zone : `<article class="card">${zone}</article>`;
       }
 
       // ─── Render: Imported file view (preview + mapping) ───────────────────────────
 
-      function renderCheckerImported() {
+      function renderCheckerImported(options = {}) {
         const cs = appState.checkerState;
         const pd = cs.parsedData;
+        // Inside the Context tab: a compact file line, the details folded underneath.
+        if (options.inner) return `
+          <div class="cx-file-loaded">
+            <span class="cx-file-name">${sbUiIcon('sheet', 16)} <strong>${escapeHtml(cs.file.name)}</strong> <span class="subtle">${pd.rows.length} ${tt('rows', 'lignes', 'Zeilen')}${cs.columnMappingLoading ? ` · ${tt('mapping the columns…', 'association des colonnes…', 'Spalten werden zugeordnet…')}` : ''}</span></span>
+            <span class="cx-file-actions">
+              <button class="btn btn-primary btn-sm" data-action="cc-challenge-file">${sbUiIcon('checkCircle', 14)} ${tt('Challenge it', 'Le challenger', 'Hinterfragen')}</button>
+              <button class="btn btn-secondary btn-sm" data-action="checker-clear-file">${sbUiIcon('close', 14)} ${tt('Remove', 'Retirer', 'Entfernen')}</button>
+            </span>
+          </div>
+          <details class="cx-file-details">
+            <summary>${tt('Preview and column mapping', 'Aperçu et correspondance des colonnes', 'Vorschau und Spaltenzuordnung')} ${sbUiIcon('down', 14)}</summary>
+            ${renderCheckerSheetSelector()}
+            ${renderCheckerPreviewTable()}
+            ${renderCheckerColumnMapping()}
+          </details>`;
         return `
           <article class="card">
             <div class="section-header" style="margin-bottom:16px;">
@@ -675,24 +688,44 @@ Response format (strict JSON):
         }
       }
 
+      /* Removes the external file only: the readiness checklist and the challenge of the
+         current scenario stay. */
       function checkerClearFile() {
-        const currentMode = appState.checkerState.mode || 'file';
+        const cs = appState.checkerState;
+        const keep = cs.mode === 'file' ? (cs.resultsByMode?.scenario || {}) : { analysisResult: cs.analysisResult, analysisError: cs.analysisError, llmLogs: cs.llmLogs, activeAxisTab: cs.activeAxisTab };
         appState.checkerState = {
-          mode: currentMode,
+          mode: 'scenario',
           file: null,
           parsedData: null,
           sheets: [],
           selectedSheet: '',
           columnMapping: {},
           columnMappingLoading: false,
-          analysisResult: null,
+          analysisResult: keep.analysisResult || null,
           analysisLoading: false,
-          analysisError: null,
-          llmLogs: [],
-          checklist: {},
-          activeAxisTab: 0
+          analysisError: keep.analysisError || null,
+          llmLogs: keep.llmLogs || [],
+          checklist: cs.checklist || {},
+          activeAxisTab: keep.activeAxisTab || 0,
+          resultsByMode: {}
         };
         App.render();
+      }
+
+      /* Switches what Check & Challenge audits (the scenario or the external file), keeping
+         the last challenge of each so going back and forth loses nothing. */
+      function checkerSwitchMode(mode) {
+        const cs = appState.checkerState;
+        if (!mode || cs.mode === mode) return;
+        const fields = ['analysisResult', 'analysisError', 'llmLogs', 'activeAxisTab'];
+        cs.resultsByMode = cs.resultsByMode || {};
+        cs.resultsByMode[cs.mode || 'scenario'] = Object.fromEntries(fields.map((key) => [key, cs[key]]));
+        const next = cs.resultsByMode[mode] || {};
+        cs.mode = mode;
+        cs.analysisResult = next.analysisResult || null;
+        cs.analysisError = next.analysisError || null;
+        cs.llmLogs = next.llmLogs || [];
+        cs.activeAxisTab = next.activeAxisTab || 0;
       }
 
       // ─── Render: Analyze button ─────────────────────────────────────────────────
@@ -814,6 +847,7 @@ OBJECTIVES: ${sc.scenario?.objectives || '—'}
 NARRATIVE ARC: ${sc.scenario?.narrative_arc || '—'}
 DURATION: H+0 to H+${Math.round(maxOffset / 60)}h (${stimuli.length} stimuli)
 ${checkerSerializeStoryboard(sc)}
+${typeof sbDesignContextLines === 'function' && sbDesignContextLines(sc).length ? `EXERCISE DESIGN (check that each cell's learning objectives are tested and that technical injects follow the attack path):\n${sbDesignContextLines(sc).join('\n')}\n` : ''}
 ACTORS (${actors.length}):
 ${actorList || 'None'}
 
@@ -1394,18 +1428,18 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
         return `
           <article class="card checker-results">
             <div class="section-header" style="margin-bottom:16px;">
-              <h3>${tt('Analysis Results', 'Résultats de l\'analyse', 'Analyseergebnisse')}</h3>
+              <h3>${cs.mode === 'file' ? escapeHtml(cs.file?.name || '') : tt('Current scenario', 'Scénario actuel', 'Aktuelles Szenario')}</h3>
               <div class="actions">
                 <button class="btn btn-secondary" data-action="checker-export-report">${tt('Export .md', 'Exporter .md', 'Exportieren .md')}</button>
                 <button class="btn btn-secondary" data-action="checker-export-report-docx">${tt('Export .docx', 'Exporter .docx', 'Exportieren .docx')}</button>
-                <button class="btn btn-secondary" data-action="checker-analyze">${tt('Re-analyze', 'Ré-analyser', 'Erneut analysieren')}</button>
+                <button class="btn btn-secondary" data-action="checker-analyze">${tt('Challenge again', 'Challenger à nouveau', 'Erneut prüfen')}</button>
               </div>
             </div>
 
             ${renderCheckerSummary(r)}
             ${renderCheckerPriorityActions(r)}
             ${renderCheckerAxes(r)}
-            ${renderCheckerHeatmap(r)}
+            ${cs.mode === 'file' ? renderCheckerHeatmap(r) : ''}
           </article>
         `;
       }

@@ -355,6 +355,73 @@ function renderInjectEditor(project, item) {
 }
 
 // ═══ Summary ═════════════════════════════════════════════════════════════════
+/* Check & Challenge: is the exercise ready to play? One readiness verdict from three signals
+   (automatic checks, the AI challenge, the ready-to-play checklist), then the load per cell
+   and phase, the live checks, the AI challenge, the checklist and a cell-by-cell rehearsal. */
+function ccChecklistProgress() {
+  if (typeof checkerGetChecklistCategories !== 'function') return { done: 0, total: 0 };
+  const checklist = appState.checkerState.checklist || {};
+  const checked = checklist.checked || {}, custom = checklist.customItems || {};
+  let done = 0, total = 0;
+  for (const category of checkerGetChecklistCategories()) {
+    const items = [...category.items, ...(custom[category.key] || [])];
+    total += items.length;
+    items.forEach((_, index) => { if (checked[`${category.key}_${index}`]) done++; });
+  }
+  return { done, total };
+}
+
+/* Live rule checks: the storyline structure and the exercise (cells, rhythm, recipients). */
+function ccRuleIssues(project) {
+  const seen = new Set();
+  return [...sbExerciseChecks(project), ...sbStructuralChecks(project.storyboard, project)].filter((issue) => {
+    const key = `${issue.code}:${issue.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/* AI signal: the timing review score and the challenge's axis verdicts, when they exist. */
+function ccAiScore(summaryState) {
+  const scores = [];
+  if (Number.isFinite(summaryState.review?.score)) scores.push(summaryState.review.score);
+  const axes = appState.checkerState.mode === 'scenario' ? appState.checkerState.analysisResult?.axes : null;
+  if (Array.isArray(axes) && axes.length) {
+    const value = { satisfactory: 100, acceptable: 60, insufficient: 20 };
+    scores.push(Math.round(axes.reduce((sum, axis) => sum + (value[axis.verdict] ?? 50), 0) / axes.length));
+  }
+  return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+}
+
+function ccReadiness(project, rules, summaryState) {
+  const structure = sbScore(rules);
+  const ai = ccAiScore(summaryState);
+  const list = ccChecklistProgress();
+  const checklist = list.total ? Math.round(100 * list.done / list.total) : null;
+  const signals = [structure, ai, checklist].filter((value) => value !== null);
+  const overall = Math.round(signals.reduce((a, b) => a + b, 0) / signals.length);
+  const verdict = overall >= 80 && ai !== null ? 'ready' : overall >= 60 ? 'almost' : 'work';
+  return { structure, ai, checklist, list, overall, verdict };
+}
+
+/* One AI challenge: the five-axis analysis, plus the cell-by-cell timing review of the scenario. */
+async function ccChallenge() {
+  const project = appState.scenario;
+  const cs = appState.checkerState;
+  const summary = tabUI('summary');
+  const tasks = [];
+  if (cs.mode === 'file' ? cs.parsedData : (project.stimuli || []).length) tasks.push(checkerRunAnalysis());
+  if (cs.mode !== 'file' && project.storyboard?.blocks?.length) {
+    tasks.push((async () => {
+      try { summary.review = await SbAI.reviewExercise(); }
+      catch (error) { pushToast(error?.name === 'AbortError' ? 'Review stopped.' : sbErrorMessage(error), 'error'); }
+      App.render();
+    })());
+  }
+  await Promise.all(tasks);
+}
+
 function renderSummaryView() {
   return sbWithRenderMemo(() => {
     const project = tabProject();
@@ -366,46 +433,96 @@ function renderSummaryView() {
     state.time = Math.min(Math.max(0, state.time), duration);
     const generated = items.filter((item) => item.stimulus).length;
     const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
+    const rules = ccRuleIssues(project);
+    const readiness = ccReadiness(project, rules, state);
+    const cs = appState.checkerState;
+    const fileLoaded = !!cs.parsedData;
+    const source = fileLoaded && cs.mode === 'file' ? 'file' : 'scenario';
+    if (cs.mode !== source) cs.mode = source;
     const kpi = (value, label) => `<div class="su-kpi"><strong>${value}</strong><span>${escapeHtml(label)}</span></div>`;
+    const verdicts = { ready: 'Ready to play', almost: 'Almost ready', work: 'Needs work' };
+    // The next steps, from what actually holds the score down.
+    const errors = rules.filter((issue) => issue.severity === 'error').length;
+    const steps = [
+      errors ? `fix the ${errors} error${errors > 1 ? 's' : ''} in the automatic checks` : '',
+      readiness.ai === null ? 'challenge the exercise with AI' : (readiness.ai < 80 && cs.analysisResult?.priority_actions?.length ? 'work through the priority actions of the challenge' : ''),
+      readiness.list.total && readiness.list.done < readiness.list.total ? `tick the ready-to-play checklist (${readiness.list.done}/${readiness.list.total})` : ''
+    ].filter(Boolean);
+    const hint = steps.length ? `Next: ${steps.join(', then ')}.` : 'The checks, the AI challenge and the checklist agree.';
+    const gauge = (label, value, hint) => `<div class="cc-gauge ${value === null ? 'is-empty' : value >= 80 ? 'is-good' : value >= 60 ? 'is-mid' : 'is-low'}">
+      <span class="cc-gauge-label">${escapeHtml(label)}</span>
+      <strong>${value === null ? '—' : `${value}<small>/100</small>`}</strong>
+      <span class="cc-gauge-bar"><i style="width:${value || 0}%"></i></span>
+      <span class="cc-gauge-hint">${escapeHtml(hint)}</span>
+    </div>`;
+    // The live review: the rules, plus the AI timing findings of the last challenge.
+    const aiIssues = (state.review?.issues || []).filter((issue) => issue.source === 'ai');
+    const review = { score: null, summary: state.review?.summary || '', issues: [...rules, ...aiIssues] };
+    const running = cs.analysisLoading || !!SbAI.busy;
+    state.liveIssues = review.issues;
     return `<section class="tab-page su-page" data-sb-scope>
       ${renderSbStatusBar()}
-      <div class="su-kpis">
-        ${kpi(escapeHtml(sbFormatDuration(duration)), 'Duration')}
-        ${kpi(phases.length, 'Phases')}
-        ${kpi(`${generated}<small>/${items.length}</small>`, 'Injects written')}
-        ${kpi(project.cells.length, 'Cells')}
-        ${kpi(players || escapeHtml(project.exercise.players_count || 0), 'Players')}
-        ${kpi(project.actors.length, 'Actors')}
-      </div>
+      <article class="card cc-readiness is-${readiness.verdict}">
+        <div class="cc-verdict">
+          <span class="page-eyebrow">Readiness</span>
+          <strong>${escapeHtml(verdicts[readiness.verdict])}</strong>
+          <span class="cc-overall">${readiness.overall}<small>/100</small></span>
+          <p class="subtle">${escapeHtml(hint)}</p>
+        </div>
+        <div class="cc-gauges">
+          ${gauge('Automatic checks', readiness.structure, `${rules.filter((issue) => issue.severity === 'error').length} error(s), ${rules.filter((issue) => issue.severity === 'warning').length} warning(s)`)}
+          ${gauge('AI challenge', readiness.ai, readiness.ai === null ? 'Not run yet' : 'Last challenge of the current scenario')}
+          ${gauge('Ready-to-play checklist', readiness.checklist, `${readiness.list.done} / ${readiness.list.total} items checked`)}
+        </div>
+        <div class="su-kpis cc-kpis">
+          ${kpi(escapeHtml(sbFormatDuration(duration)), 'Duration')}
+          ${kpi(phases.length, 'Phases')}
+          ${kpi(`${generated}<small>/${items.length}</small>`, 'Injects written')}
+          ${kpi(project.cells.length, 'Cells')}
+          ${kpi(players || escapeHtml(project.exercise.players_count || 0), 'Players')}
+          ${kpi(project.actors.length, 'Actors')}
+        </div>
+      </article>
       <article class="card">
-        <div class="section-header"><div><h3>Overview</h3><p class="subtle">Phases, and injects received by each cell in each phase.</p></div></div>
+        <div class="section-header"><div><h3>Load by cell and phase</h3><p class="subtle">Injects received by each cell in each phase, and their rhythm every 30 minutes.</p></div></div>
         ${renderSummaryOverview(project, items, phases, duration)}
       </article>
-      <article class="card su-play" data-su-play>
-        <div class="section-header">
-          <div><h3>Play the exercise</h3><p class="subtle">Injects reach each cell as time passes. Click one to preview it.</p></div>
-          <div class="su-controls">
-            <button class="btn btn-primary btn-sm" data-tab-action="su-toggle">${state.playing ? `${sbUiIcon('stop', 13)} Pause` : `${sbUiIcon('play', 13)} Play`}</button>
-            <button class="btn btn-secondary btn-sm" data-tab-action="su-restart" title="Back to the start">${sbUiIcon('undo', 13)}</button>
-            <select data-su-speed aria-label="Speed">${SU_SPEEDS.map((speed) => sbOption(speed, `×${speed}`, state.speed)).join('')}</select>
-            <span class="su-time" data-su-time>${sbFormatOffset(state.time)}</span>
+      <div class="cc-grid">
+        <article class="card cc-checks">
+          <div class="section-header"><div><h3>Automatic checks</h3><p class="subtle">Always up to date: storyline, cells, rhythm, recipients and senders${aiIssues.length ? ', plus the AI timing findings' : ''}.</p></div></div>
+          ${renderSummaryReview(project, review)}
+        </article>
+        <article class="card cc-challenge">
+          <div class="section-header"><div><h3>Challenge with AI</h3><p class="subtle">A critical senior designer reviews ${source === 'file' ? 'the external exercise file' : 'the exercise'} on five quality axes${source === 'scenario' ? ', and its timing cell by cell' : ''}: priority actions, verdicts and findings.</p></div></div>
+          <div class="cc-source" role="group" aria-label="What to challenge">
+            <button class="${source === 'scenario' ? 'active' : ''}" data-action="checker-set-mode" data-mode="scenario">${sbUiIcon('layers', 14)} Current scenario</button>
+            <button class="${source === 'file' ? 'active' : ''}" data-action="checker-set-mode" data-mode="file" ${fileLoaded ? '' : 'disabled title="Load an external exercise file in the Context tab first"'}>${sbUiIcon('sheet', 14)} ${fileLoaded ? escapeHtml(cs.file?.name || 'External file') : 'External file'}</button>
+            ${fileLoaded ? '' : `<button class="btn btn-ghost btn-xs" data-route="scenario">Load a file in Context ${sbUiIcon('chevronRight', 12)}</button>`}
           </div>
+          ${cs.analysisResult || cs.analysisLoading || cs.analysisError ? '' : `<div class="cc-run">
+            <button class="btn btn-primary" data-action="checker-analyze" ${isLLMAvailable() && !running && (source === 'file' || generated || storyboard.blocks.length) ? '' : 'disabled'}>${sbUiIcon('sparkles', 15)} Challenge with AI</button>
+            ${isLLMAvailable() ? '' : '<p class="agent-warning">Configure an AI connection in Settings to challenge the exercise.</p>'}
+          </div>`}
+          ${typeof renderCheckerResults === 'function' ? renderCheckerResults() : ''}
+        </article>
+      </div>
+      ${typeof renderCheckerChecklist === 'function' ? renderCheckerChecklist() : ''}
+      <details class="card su-play" data-su-play data-su-rehearse ${state.rehearseOpen ? 'open' : ''}>
+        <summary class="section-header">
+          <div><h3>Rehearse cell by cell</h3><p class="subtle">Replay the exercise in accelerated time and watch the injects reach each cell. To run it for real, use Play.</p></div>
+          ${sbUiIcon('down', 16)}
+        </summary>
+        <div class="su-controls">
+          <button class="btn btn-primary btn-sm" data-tab-action="su-toggle">${state.playing ? `${sbUiIcon('stop', 13)} Pause` : `${sbUiIcon('play', 13)} Play`}</button>
+          <button class="btn btn-secondary btn-sm" data-tab-action="su-restart" title="Back to the start">${sbUiIcon('undo', 13)}</button>
+          <select data-su-speed aria-label="Speed">${SU_SPEEDS.map((speed) => sbOption(speed, `×${speed}`, state.speed)).join('')}</select>
+          <span class="su-time" data-su-time>${sbFormatOffset(state.time)}</span>
         </div>
         <input type="range" class="su-scrub" min="0" max="${duration}" step="1" value="${Math.round(state.time)}" data-su-scrub aria-label="Exercise time">
         <div class="su-phase-now" data-su-phase>${escapeHtml(sbMainBlockAt(storyboard, state.time)?.title || '')}</div>
         <div class="su-columns" data-su-columns>${renderSummaryColumns(project, items)}</div>
         <div class="su-preview" data-su-preview>${renderSummaryPreview(project, items)}</div>
-      </article>
-      <article class="card">
-        <div class="section-header">
-          <div><h3>Review</h3><p class="subtle">Rhythm per cell, dead times, overloads and inconsistencies.</p></div>
-          <div class="actions">
-            <button class="btn btn-secondary btn-sm" data-tab-action="su-checks">Run checks</button>
-            <button class="btn btn-primary btn-sm" data-tab-action="su-ai" ${isLLMAvailable() && !sbBusy() ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Check with AI</button>
-          </div>
-        </div>
-        ${renderSummaryReview(project)}
-      </article>
+      </details>
     </section>`;
   });
 }
@@ -456,8 +573,7 @@ function renderSummaryPreview(project, items) {
     ${item.stimulus ? `<div class="su-preview-render">${renderStimulusPreview(item.stimulus, `su-preview-${item.stimulus.id}`)}</div>` : `<p class="sb-help">Planned, not written yet: ${escapeHtml(item.intent || '')}</p>`}`;
 }
 
-function renderSummaryReview(project) {
-  const review = tabUI('summary').review;
+function renderSummaryReview(project, review = tabUI('summary').review) {
   if (!review) return '<p class="sb-empty">Run the checks to review the rhythm and consistency of the exercise.</p>';
   const cellName = (id) => sbCell(project, id)?.name || '';
   const rank = { error: 0, warning: 1, info: 2 };
@@ -578,6 +694,7 @@ function renderContextBrief(project) {
     ${template
       ? `<p class="cx-template">${sbUiIcon('book', 14)} Library scenario loaded: <strong>${escapeHtml(template.name)}</strong>. Generate with AI to adapt it to your context, or load it as it is. <button class="btn btn-ghost btn-xs" data-route="project">Change in Project</button></p>`
       : `<p class="cx-template is-empty">${sbUiIcon('book', 14)} No library scenario loaded. The AI builds the scenario from your context, or <button class="btn btn-ghost btn-xs" data-route="project">load one from the Project library</button></p>`}
+    ${renderContextExerciseFile()}
     <label class="field cx-field">Context, objectives and ideas<textarea class="cx-brief-text" data-sb-meta="brief" rows="5" placeholder="e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.">${escapeHtml(storyboard.meta.brief)}</textarea></label>
     <div class="cx-design">
       <div class="cx-design-col">
@@ -604,6 +721,28 @@ function renderContextBrief(project) {
   </article>`;
 }
 
+/* An existing crisis exercise (chronogram .xlsx/.xls or .pptx): a reference for the agent,
+   and a file Check & Challenge can audit as it is. */
+function renderContextExerciseFile() {
+  const cs = appState.checkerState || {};
+  const loaded = !!cs.parsedData;
+  return `<div class="cx-file ${loaded ? 'is-loaded' : ''}">
+    <div class="cx-design-head"><strong>Existing crisis exercise file</strong><span class="helper">${loaded
+      ? 'The agent uses it as a reference when it generates the scenario. Challenge it to audit the file as it is.'
+      : 'Optional. A chronogram from a previous exercise (.xlsx, .xls or .pptx): the agent uses it as a reference, and Check &amp; Challenge can audit it.'}</span></div>
+    ${typeof renderCheckerDropZone === 'function' ? (loaded ? renderCheckerImported({ inner: true }) : renderCheckerDropZone({ inner: true })) : ''}
+  </div>`;
+}
+
+/* A bounded excerpt of the loaded exercise file, for the agent. */
+function contextExerciseFileExcerpt() {
+  const cs = appState.checkerState || {};
+  if (!cs.parsedData || typeof checkerSerializeChronogram !== 'function') return '';
+  const text = String(checkerSerializeChronogram()?.serialized || '');
+  const limit = 3200;
+  return `Existing crisis exercise file "${cs.file?.name || 'file'}" loaded as a reference (reuse its good ideas, pacing and injects where they fit; do not copy it blindly):\n${text.length > limit ? `${text.slice(0, limit)}\n[… truncated]` : text}`;
+}
+
 /* Objective handed to the builder agent: the context fields are in its state, this adds intent. */
 /* The library scenario loaded in Project, if any. */
 function contextLibraryTemplate(project) {
@@ -619,8 +758,9 @@ function contextAgentObjective(project) {
     'Build the exercise from the Context tab so the Main storyline, Cells & actors and Detailed storyline tabs are ready to use.',
     `Context, objectives and ideas from the designer: ${brief || '(none given: ask what you need)'}`,
     template ? `Library scenario selected in the Project tab, to adapt: "${template.name}" (${storyboard.blocks.length} phases already on the main storyline).` : (storyboard.blocks.length ? `An existing main storyline has ${storyboard.blocks.length} phases: improve it rather than starting over, unless the context asks otherwise.` : 'No main storyline yet.'),
-    `Fit the play duration of ${storyboard.duration_minutes} minutes, ${project.exercise.cells_count || project.cells.length || 'a suitable number of'} player cells and ${project.exercise.players_count || 'an unknown number of'} players.`
-  ].join('\n').slice(0, 7900);
+    `Fit the play duration of ${storyboard.duration_minutes} minutes, ${project.exercise.cells_count || project.cells.length || 'a suitable number of'} player cells and ${project.exercise.players_count || 'an unknown number of'} players.`,
+    contextExerciseFileExcerpt()
+  ].filter(Boolean).join('\n').slice(0, 7900);
 }
 
 function renderContextDetails(project) {
@@ -733,7 +873,7 @@ async function tabHandleAction(event) {
   const storyboard = project.storyboard;
   const detailed = tabUI('detailed');
   const summary = tabUI('summary');
-  const readOnlyAllowed = ['ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-checks', 'su-goto', 'su-issue', 'open-detailed'];
+  const readOnlyAllowed = ['ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
   if (sbReadOnly() && !readOnlyAllowed.includes(action)) return;
   try {
     switch (action) {
@@ -840,16 +980,6 @@ async function tabHandleAction(event) {
         summary.time = 0;
         summary.preview = null;
         break;
-      case 'su-checks':
-        summary.review = { score: null, summary: '', issues: sbExerciseChecks(project), checked_at: new Date().toISOString() };
-        break;
-      case 'su-ai':
-        try {
-          summary.review = await SbAI.reviewExercise();
-        } catch (error) {
-          pushToast(error?.name === 'AbortError' ? 'Review stopped.' : sbErrorMessage(error), 'error');
-        }
-        break;
       case 'su-goto': {
         const item = tabItemByKey(project, value);
         if (!item) break;
@@ -862,7 +992,7 @@ async function tabHandleAction(event) {
         break;
       }
       case 'su-issue': {
-        const issue = summary.review?.issues?.[Number(value)];
+        const issue = (summary.liveIssues || summary.review?.issues)?.[Number(value)];
         if (!issue) break;
         SuPlayer.stop();
         appState.route = 'detailed';
@@ -1017,6 +1147,7 @@ function tabBindInputs(root) {
   }));
 
   // Summary playback controls.
+  root.querySelectorAll('[data-su-rehearse]').forEach((details) => details.addEventListener('toggle', () => { summary.rehearseOpen = details.open; }));
   root.querySelectorAll('[data-su-speed]').forEach((select) => select.addEventListener('change', () => { summary.speed = Number(select.value) || 60; }));
   root.querySelectorAll('[data-su-scrub]').forEach((input) => input.addEventListener('input', () => {
     summary.time = Number(input.value) || 0;

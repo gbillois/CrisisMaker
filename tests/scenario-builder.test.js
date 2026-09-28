@@ -445,7 +445,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   for (const marker of ['data-ds-time', 'data-ds-cell', 'data-tab-action="ds-plan"']) assert.ok(inject.includes(marker), marker);
   h.run(`tabUI('summary').review = { score: null, summary: '', issues: sbExerciseChecks(appState.scenario) }; tabUI('summary').time = 120`);
   const summary = h.run('renderSummaryView()');
-  for (const marker of ['su-kpis', 'su-heat', 'data-su-scrub', 'data-su-columns', 'data-tab-action="su-ai"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
+  for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'data-su-scrub', 'data-su-columns', 'data-su-rehearse', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
   h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'; appState.scenario.cells[0].name = '<img src=y onerror=alert(1)>'; sbUI().selected = [sbStoryboard().blocks[0].id]`);
   for (const view of ['renderStorylineView()', 'renderCellsView()', 'renderDetailedView()', 'renderSummaryView()']) assert.ok(!/<img src=[xy]/.test(h.run(view)), view);
 });
@@ -567,4 +567,57 @@ test('play: clock, numbering, timing, statuses both ways with the log, on-the-fl
   asked = h.run('globalThis.asked');
   assert.equal(asked, 2, 'two confirmations');
   assert.equal(h.run(`getStimulus('${id}').status`), 'sent', 'declining the second confirmation keeps everything');
+});
+
+test('check & challenge: one readiness verdict, the checker merged into Summary, the exercise file in Context', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'checker'`);
+  // The old Checker tab is gone: its route opens Check & Challenge.
+  assert.equal(h.run('viewConfig().title'), 'Check & Challenge');
+  assert.equal(h.run('appState.route'), 'summary');
+  const shell = h.run('renderAppShell()');
+  assert.ok(/Check (&amp;|&) Challenge/.test(shell), 'nav renamed');
+  assert.ok(!/data-route="checker"/.test(shell), 'no Checker button');
+
+  // Readiness: live rules only, then the AI challenge and the checklist join in.
+  let readiness = h.run(`ccReadiness(appState.scenario, ccRuleIssues(appState.scenario), tabUI('summary'))`);
+  assert.equal(readiness.ai, null);
+  assert.ok(readiness.structure >= 0 && readiness.structure <= 100);
+  assert.notEqual(readiness.verdict, 'ready', 'never ready without an AI challenge');
+  h.run(`appState.checkerState.mode = 'scenario'; appState.checkerState.analysisResult = { axes: [{ verdict: 'satisfactory' }, { verdict: 'insufficient' }] }; tabUI('summary').review = { score: 80, issues: [] }`);
+  readiness = h.run(`ccReadiness(appState.scenario, ccRuleIssues(appState.scenario), tabUI('summary'))`);
+  assert.equal(readiness.ai, 70, 'mean of the timing score (80) and the axes (60)');
+
+  // No external file: the challenge audits the scenario, the file source is greyed.
+  let view = h.run('renderSummaryView()');
+  assert.ok(/data-mode="file" disabled/.test(view) && view.includes('data-route="scenario"'), 'points to Context to load a file');
+  assert.ok(!view.includes('checker-dropzone'), 'no file loader in Check & Challenge');
+
+  // Context hosts the exercise file loader.
+  let context = h.run('renderScenarioView()');
+  assert.ok(context.includes('Existing crisis exercise file') && context.includes('checker-dropzone is-compact'));
+  h.run(`Object.assign(appState.checkerState, { file: { name: 'old-drill.xlsx' }, parsedData: { headers: ['Time', 'Sender', 'Content'], rows: [['09:00', 'CERT', 'Ransom note found on <b>file server</b>']] }, sheets: [], columnMapping: checkerAutoDetectColumns(['Time', 'Sender', 'Content']) })`);
+  context = h.run('renderScenarioView()');
+  assert.ok(context.includes('old-drill.xlsx') && context.includes('data-action="cc-challenge-file"') && context.includes('Preview and column mapping'));
+  const objective = h.run('contextAgentObjective(appState.scenario)');
+  assert.ok(objective.includes('old-drill.xlsx') && objective.includes('Ransom note found'), 'the agent gets the file as a reference');
+  assert.ok(objective.length <= 7900);
+
+  // Switching what to challenge keeps the result of each source.
+  h.run(`checkerSwitchMode('file')`);
+  assert.equal(h.run('appState.checkerState.analysisResult'), null);
+  h.run(`appState.checkerState.analysisResult = { summary: 'file result', axes: [] }`);
+  view = h.run('renderSummaryView()');
+  assert.ok(view.includes('old-drill.xlsx') && !/data-mode="file" disabled/.test(view));
+  h.run(`checkerSwitchMode('scenario')`);
+  assert.equal(h.run('appState.checkerState.analysisResult.axes.length'), 2, 'scenario result restored');
+  h.run(`checkerSwitchMode('file')`);
+  assert.equal(h.run('appState.checkerState.analysisResult.summary'), 'file result');
+
+  // Removing the file keeps the checklist and the scenario challenge.
+  h.run(`appState.checkerState.checklist = { checked: { a_0: true } }; checkerClearFile()`);
+  assert.equal(h.run('appState.checkerState.mode'), 'scenario');
+  assert.equal(h.run('appState.checkerState.parsedData'), null);
+  assert.equal(h.run('appState.checkerState.checklist.checked.a_0'), true);
+  assert.equal(h.run('appState.checkerState.analysisResult.axes.length'), 2);
 });

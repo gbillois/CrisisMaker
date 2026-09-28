@@ -27,7 +27,7 @@
         chronogramImportAutonomy: 'mostly_autonomous',
         chronogramImport: null,
         checkerState: {
-          mode: 'file',
+          mode: 'scenario',
           file: null,
           parsedData: null,
           sheets: [],
@@ -113,6 +113,7 @@
           });
           if (appState.route === 'builder') appState.route = 'storyline';
           if (appState.route === 'stimuli') appState.route = 'detailed';
+          if (appState.route === 'checker') appState.route = 'summary';
           root.innerHTML = renderAppShell();
           bindGlobalEvents();
           bindCheckerEvents();
@@ -730,20 +731,28 @@
             case 'debrief-export-config': exportDebriefConfig(); break;
             case 'checker-set-mode': {
               const newMode = event.currentTarget.dataset.mode;
-              if (newMode && appState.checkerState.mode !== newMode) {
-                appState.checkerState.mode = newMode;
-                appState.checkerState.analysisResult = null;
-                appState.checkerState.analysisError = null;
-                appState.checkerState.llmLogs = [];
+              if (newMode && appState.checkerState.mode !== newMode && !appState.checkerState.analysisLoading) {
+                checkerSwitchMode(newMode);
                 App.render();
               }
+              break;
+            }
+            case 'cc-challenge-file': {
+              // From Context: audit the loaded file as it is in Check & Challenge.
+              const cs = appState.checkerState;
+              if (!cs.parsedData) break;
+              if (!cs.analysisLoading) checkerSwitchMode('file');
+              appState.route = 'summary';
+              App.render();
+              if (isLLMAvailable() && !cs.analysisResult && !cs.analysisLoading && typeof ccChallenge === 'function') ccChallenge();
               break;
             }
             case 'checker-clear-file':
               checkerClearFile();
               break;
             case 'checker-analyze':
-              checkerRunAnalysis();
+              // Check & Challenge runs the five-axis analysis and, for the scenario, the timing review.
+              if (typeof ccChallenge === 'function') ccChallenge(); else checkerRunAnalysis();
               break;
             case 'checker-toggle-llm-stream':
               appState.checkerState.showLLMStream = !appState.checkerState.showLLMStream;

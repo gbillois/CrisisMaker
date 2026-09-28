@@ -260,11 +260,9 @@ function renderPlayBar(project, play, ui, items, now, counts, phases) {
     <div class="play-bar-main">
       <div class="play-controls">
         <button class="play-start ${play.running ? 'is-pause' : ''}" data-play="toggle" title="${escapeAttribute(tt('Start or pause (Space)', 'Démarrer ou mettre en pause (Espace)', 'Start oder Pause (Leertaste)'))}">${play.running ? sbUiIcon('pause', 22) : sbUiIcon('play', 22)}<span>${play.running ? tt('Pause', 'Pause', 'Pause') : started ? tt('Resume', 'Reprendre', 'Fortsetzen') : tt('Start', 'Démarrer', 'Start')}</span></button>
-        <div class="play-adjust">
-          <button class="btn btn-secondary btn-xs" data-play="shift" data-play-value="-5" title="−5 min">−5</button>
-          <button class="btn btn-secondary btn-xs" data-play="shift" data-play-value="-1" title="−1 min">−1</button>
-          <button class="btn btn-secondary btn-xs" data-play="shift" data-play-value="1" title="+1 min">+1</button>
-          <button class="btn btn-secondary btn-xs" data-play="shift" data-play-value="5" title="+5 min">+5</button>
+        <div class="play-adjust" role="group" aria-label="${escapeAttribute(tt('Adjust the clock', 'Recaler l’horloge', 'Uhr anpassen'))}">
+          <span class="play-label">${tt('Adjust the clock (min)', 'Recaler l’horloge (min)', 'Uhr anpassen (Min)')}</span>
+          ${[-5, -1, 1, 5].map((value) => `<button class="btn btn-secondary btn-xs" data-play="shift" data-play-value="${value}" title="${escapeAttribute(value < 0 ? tt(`Move the exercise clock back ${-value} min (the room is late)`, `Reculer l’horloge de l’exercice de ${-value} min (la salle est en retard)`, `Übungsuhr ${-value} Min zurückstellen (der Raum ist im Verzug)`) : tt(`Move the exercise clock forward ${value} min (skip a lull)`, `Avancer l’horloge de l’exercice de ${value} min (sauter un temps mort)`, `Übungsuhr ${value} Min vorstellen (Leerlauf überspringen)`))}">${value > 0 ? '+' : '−'}${Math.abs(value)}</button>`).join('')}
         </div>
         <button class="btn btn-secondary btn-sm play-add" data-play="add" title="${escapeAttribute(tt('Create an inject at the current exercise time and open the editor', 'Créer un inject à l’heure actuelle de l’exercice et ouvrir l’éditeur', 'Inject zur aktuellen Übungszeit erstellen und Editor öffnen'))}">${sbUiIcon('plus', 14)} ${tt('Add inject now', 'Ajouter un inject', 'Inject jetzt hinzufügen')}</button>
         <label class="play-speed">${tt('Speed', 'Vitesse', 'Tempo')}<select data-play-speed>${PLAY_SPEEDS.map((speed) => `<option value="${speed}" ${play.speed === speed ? 'selected' : ''}>${speed === 1 ? tt('×1 real time', '×1 temps réel', '×1 Echtzeit') : `×${speed}`}</option>`).join('')}</select></label>
