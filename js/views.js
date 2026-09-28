@@ -1002,6 +1002,7 @@
             <label class="field">${tt('Timeline (minutes)', 'Timeline (minutes)', 'Zeitplan (Minuten)')}
               <input type="number" min="0" step="5" data-stimulus-bind="${stimulus.id}.timestamp_offset_minutes" value="${stimulus.timestamp_offset_minutes}">
             </label>
+            ${typeof renderStimulusLinks === 'function' ? renderStimulusLinks(appState.scenario, stimulus) : ''}
           </div>
 
           <div class="actions" style="margin:16px 0 4px;">

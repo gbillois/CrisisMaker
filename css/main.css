@@ -3874,6 +3874,8 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .rcpt .chip-toggle .cell-dot { margin-right: 0; }
 .rcpt .chip-toggle:has(input:disabled) { cursor: default; opacity: 0.75; }
 .rcpt .rcpt-all { font-weight: 700; }
+.stimulus-recipients { grid-column: 1 / -1; display: grid; gap: 7px; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+
 .sl-ai { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--sb-line); }
 .sl-ai-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--primary-strong); }
 .sl-ai .btn { justify-self: end; }

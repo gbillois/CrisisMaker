@@ -889,3 +889,13 @@ test('recipients: an inject goes to one cell, several cells or all cells', () =>
   assert.ok(!h.json('sbExerciseChecks(appState.scenario)').some((issue) => issue.code === 'no_cell' && issue.item_key === item.key));
   assert.ok(h.run(`ExerciseModel.cellById(appState.scenario, '${two}').name`).includes(' + '));
 });
+
+test('inject editor: the phase it belongs to and the cells that receive it', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const stimulus = h.json('appState.scenario.stimuli.find((item) => item.scenario_link?.beat_id)');
+  const html = h.run(`renderStimulusLinks(appState.scenario, getStimulus('${stimulus.id}'))`);
+  assert.ok(html.includes(`data-stimulus-phase="${stimulus.id}"`) && html.includes(`data-rcpt="beat:${stimulus.scenario_link.beat_id}"`) && html.includes('All cells'));
+  const manual = h.run(`(() => { const s = makeStimulus('email_internal', appState.scenario.actors[0].id, 5); appState.scenario.stimuli.push(s); return s.id; })()`);
+  assert.ok(h.run(`renderStimulusLinks(appState.scenario, getStimulus('${manual}'))`).includes(`data-rcpt="stim:${manual}"`));
+});

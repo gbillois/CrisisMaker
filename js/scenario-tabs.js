@@ -265,6 +265,61 @@ async function slOpenKeyEditor(project, beatId) {
   appState.stimulusModalId = stimulus.id;
 }
 
+/* In the full inject editor: the phase the inject belongs to and the cells that receive it. */
+function stimulusItemKey(project, stimulus) {
+  const beatId = stimulus.scenario_link?.beat_id;
+  return beatId && slFindBeat(project.storyboard, beatId) ? `beat:${beatId}` : `stim:${stimulus.id}`;
+}
+
+function renderStimulusLinks(project, stimulus) {
+  if (!project.storyboard) return '';
+  const phases = sbMainBlocks(project.storyboard);
+  const current = ExerciseModel.phaseOfStimulus(project, stimulus);
+  const readOnly = sbReadOnly() ? 'disabled' : '';
+  return `<label class="field">Phase
+      <select data-stimulus-phase="${escapeAttribute(stimulus.id)}" ${readOnly || !phases.length ? 'disabled' : ''}>
+        ${current ? '' : '<option value="" selected>Outside the storyline</option>'}
+        ${phases.map((block) => `<option value="${escapeAttribute(block.id)}" ${current?.id === block.id ? 'selected' : ''}>${escapeHtml(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}</option>`).join('')}
+      </select>
+    </label>
+    <div class="field stimulus-recipients">Received by
+      ${renderRecipientPicker(project, stimulusItemKey(project, stimulus), stimulus.cell_id || '', readOnly)}
+    </div>`;
+}
+
+function bindStimulusLinks() {
+  const project = appState.scenario;
+  const modal = document.querySelector('[data-stimulus-modal-body]');
+  if (!modal || !project?.storyboard) return;
+  modal.querySelectorAll('[data-stimulus-phase]').forEach((select) => select.addEventListener('change', () => {
+    const stimulus = getStimulus(select.dataset.stimulusPhase);
+    const block = sbBlock(project.storyboard, select.value);
+    const item = stimulus && tabItemByKey(project, stimulusItemKey(project, stimulus));
+    if (!block || !item || sbReadOnly()) return;
+    // Into the chosen phase: its time stays when it already falls inside, else the phase start.
+    const inside = item.time >= block.start_minutes && item.time < sbBlockEnd(block);
+    dsMoveItem(project, item, inside ? item.time : block.start_minutes, undefined);
+    if (item.kind === 'stimulus') {
+      stimulus.scenario_link = sbNormalizeLink({ ...(stimulus.scenario_link || {}), block_id: block.id, beat_id: '', offset: Math.max(0, stimulus.timestamp_offset_minutes - block.start_minutes), at: stimulus.timestamp_offset_minutes });
+    }
+    saveLocal(false);
+    App.render();
+  }));
+  modal.querySelectorAll('[data-rcpt]').forEach((group) => group.addEventListener('change', (event) => applyRecipientChange(project, group, event.target)));
+}
+
+/* A tick in a recipient picker: "All cells", or the set of ticked cells. */
+function applyRecipientChange(project, group, box) {
+  const item = tabItemByKey(project, group.dataset.rcpt);
+  if (!item || sbReadOnly()) return;
+  let value;
+  // Unticking "All cells" keeps every cell ticked, ready to untick some.
+  if (box.value === SB_ALL_CELLS) value = box.checked ? SB_ALL_CELLS : sbJoinRecipients(project, project.cells.map((cell) => cell.id));
+  else value = sbJoinRecipients(project, [...group.querySelectorAll('input:checked')].map((input) => input.value).filter((id) => id !== SB_ALL_CELLS));
+  dsMoveItem(project, item, item.time, value || 'none');
+  App.render();
+}
+
 /* The phase and planned inject of a beat id. */
 function slFindBeat(storyboard, beatId) {
   for (const block of storyboard.blocks) {
@@ -1401,17 +1456,7 @@ function tabBindInputs(root) {
     detailed.playhead = sbInt(input.value, item.time, 0, SB_MAX_DURATION);
     App.render();
   }));
-  root.querySelectorAll('[data-rcpt]').forEach((group) => group.addEventListener('change', (event) => {
-    const item = tabItemByKey(project, group.dataset.rcpt);
-    if (!item || sbReadOnly()) return;
-    const box = event.target;
-    let value;
-    // Unticking "All cells" keeps every cell ticked, ready to untick some.
-    if (box.value === SB_ALL_CELLS) value = box.checked ? SB_ALL_CELLS : sbJoinRecipients(project, project.cells.map((cell) => cell.id));
-    else value = sbJoinRecipients(project, [...group.querySelectorAll('input:checked')].map((input) => input.value).filter((id) => id !== SB_ALL_CELLS));
-    dsMoveItem(project, item, item.time, value || 'none');
-    App.render();
-  }));
+  root.querySelectorAll('[data-rcpt]').forEach((group) => group.addEventListener('change', (event) => applyRecipientChange(project, group, event.target)));
   root.querySelectorAll('[data-ds-stim]').forEach((input) => input.addEventListener('change', () => {
     const item = selected();
     if (item?.kind !== 'stimulus') return;

@@ -138,6 +138,7 @@
           bindScenarioTabsEvents();
           bindPlayEvents();
           bindStimulusModalSplitter();
+          bindStimulusLinks();
           mountDebriefEditor();
           mountVideoDebrief();
           renderToasts();
