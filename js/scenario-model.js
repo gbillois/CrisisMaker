@@ -149,7 +149,9 @@ function sbClockTime(minutes, startDate) {
   if (!Number.isFinite(start)) return '';
   const date = new Date(start + Math.round(Number(minutes) || 0) * 60000);
   const pad = (value) => String(value).padStart(2, '0');
-  return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const english = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days = typeof tt === 'function' ? tt(english, ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'], ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']) : english;
+  return `${days[date.getDay()]} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 // ── Stable hashing (used to detect manual edits and outdated content) ────────

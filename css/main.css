@@ -4485,10 +4485,13 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .ev-criterion { display: grid; gap: 4px; }
 .ev-criterion .ev-observe { min-height: 40px; font-size: 0.78rem; color: var(--muted); }
 .ev-rating { width: 100%; font-weight: 800; text-align: center; }
-.ev-time { display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
-.ev-time small { color: var(--muted); }
-.ev-inject { display: grid; gap: 2px; font-size: 0.84rem; }
-.ev-inject .subtle { font-size: 0.78rem; }
+/* Table cells, not grids: two grid cells side by side would merge into one column. */
+.ev-time { font-variant-numeric: tabular-nums; }
+.ev-time b, .ev-time small { display: block; }
+.ev-time small { margin-top: 2px; color: var(--muted); }
+.ev-inject { font-size: 0.84rem; }
+.ev-inject strong, .ev-inject .subtle { display: block; }
+.ev-inject .subtle { margin-top: 2px; font-size: 0.78rem; }
 .ev-add { justify-self: start; }
 .ev-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 900px) { .ev-table, .ev-table tbody, .ev-table tr, .ev-table td { display: block; width: 100% !important; } .ev-table thead { display: none; } .ev-table tr { border-bottom: 1px solid var(--line); padding: 6px 0; } .ev-table td { border-top: 0; } .ev-summary { grid-template-columns: 1fr; } }

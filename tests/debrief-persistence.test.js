@@ -182,4 +182,20 @@ assert.match(editorFrame.srcdoc, /\.group:has\(#btn-load\)\{display:none\}/);
 assert.doesNotMatch(editorFrame.srcdoc, /Standalone workspace/);
 assert.equal(editorFrame.src, undefined);
 
+// The editor's interface follows the app language; every label it translates is in its source.
+const missingLabels = vm.runInContext('DEBRIEF_EDITOR_UI.filter((entry) => !CRISIS_DEBRIEF_EDITOR_SOURCE.includes(entry[0])).map((entry) => entry[0]).join(" | ")', context);
+assert.equal(missingLabels, '');
+assert.match(editorFrame.srcdoc, /<html lang="en">/);
+assert.match(editorFrame.srcdoc, /Download the timeline/);
+assert.match(editorFrame.srcdoc, /Load the example/);
+assert.doesNotMatch(editorFrame.srcdoc, /Télécharger|Aperçu de la timeline|hors-ligne|Exemple StonaWave|'Supprimer'/);
+for (const [language, label] of [['de', /Zeitleiste herunterladen/], ['fr', /Télécharger la timeline/]]) {
+  context.appState.scenario.settings.language = language;
+  vm.runInContext('mountDebriefEditor()', context);
+  assert.match(editorFrame.srcdoc, new RegExp(`<html lang="${language}">`));
+  assert.match(editorFrame.srcdoc, label);
+  assert.doesNotMatch(editorFrame.srcdoc, /Exemple StonaWave/);
+}
+context.appState.scenario.settings.language = 'en';
+
 console.log('Debrief and Video Debrief project persistence round-trip passed.');

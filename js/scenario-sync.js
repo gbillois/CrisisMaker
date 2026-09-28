@@ -160,14 +160,14 @@ function sbStimulusStatus(project, stimulus) {
   const block = storyboard && sbBlock(storyboard, link.block_id);
   const beat = block && link.beat_id ? block.beats.find((item) => item.id === link.beat_id) : null;
   const manual = sbIsManuallyEdited(stimulus);
-  if (!block || (link.beat_id && !beat)) return { key: 'orphan', label: 'Orphan', manual, locked: link.locked, block };
+  if (!block || (link.beat_id && !beat)) return { key: 'orphan', label: tt('Orphan', 'Orphelin', 'Verwaist'), manual, locked: link.locked, block };
   const outdated = link.source_hash && sbBeatSourceHash(block, beat) !== link.source_hash;
   const expected = sbExpectedOffset(block, beat, link);
   const mistimed = stimulus.timestamp_offset_minutes !== expected;
-  if (link.locked) return { key: 'locked', label: 'Locked', manual, locked: true, block, beat, outdated, mistimed };
-  if (outdated) return { key: 'outdated', label: 'Outdated', manual, locked: false, block, beat };
-  if (mistimed) return { key: 'retime', label: 'Time changed', manual, locked: false, block, beat };
-  return { key: manual ? 'manual' : 'synced', label: manual ? 'Manual edit' : 'In sync', manual, locked: false, block, beat };
+  if (link.locked) return { key: 'locked', label: tt('Locked', 'Verrouillé', 'Gesperrt'), manual, locked: true, block, beat, outdated, mistimed };
+  if (outdated) return { key: 'outdated', label: tt('Outdated', 'Obsolète', 'Veraltet'), manual, locked: false, block, beat };
+  if (mistimed) return { key: 'retime', label: tt('Time changed', 'Heure modifiée', 'Zeit geändert'), manual, locked: false, block, beat };
+  return { key: manual ? 'manual' : 'synced', label: manual ? tt('Manual edit', 'Modification manuelle', 'Manuelle Bearbeitung') : tt('In sync', 'Synchronisé', 'Synchron'), manual, locked: false, block, beat };
 }
 
 function sbExpectedOffset(block, beat, link) {
