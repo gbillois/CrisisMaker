@@ -616,7 +616,7 @@ async function fetchOllamaApi(url, init){
   const proxy = $('ai-proxy-url').value;
   if (!proxy) return fetch(url, init);
   return fetch(proxy, {
-    method: 'POST',
+    method: 'POST', signal: init.signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider: 'ollama', url, method: init.method || 'POST', headers: init.headers || {}, body: init.body || '' })
   });
@@ -892,13 +892,23 @@ Chaque scène : 2-4 phrases de VO, percutantes, rythmées. Les textes à l'écra
 Les cues "at" (secondes depuis le début de la VO de la scène) synchronisent l'écran sur la voix.
 coords = [longitude, latitude]. Dramaturgie : accroche → montée → bascule → conséquences → leçons → chute.`;
 
+/* The studio's AI call, with a 5-minute limit that cancels the request. */
 async function callAI(systemPrompt, userPrompt){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 300000);
+  try { return await callAIOnce(systemPrompt, userPrompt, controller.signal); }
+  catch (error) {
+    if (controller.signal.aborted) throw new Error(uiText("L'IA a mis plus de 5 minutes à répondre : réessayez ou choisissez un modèle plus rapide.", 'The AI took more than 5 minutes to answer: retry, or choose a faster model.', 'Die KI hat länger als 5 Minuten gebraucht: erneut versuchen oder ein schnelleres Modell wählen.'));
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+async function callAIOnce(systemPrompt, userPrompt, signal){
   const provider = $('ai-provider').value, key = $('ai-key').value.trim(), model = $('ai-model').value.trim();
   const baseUrl = ($('ai-base-url').value || 'http://localhost:11434').replace(/\/+$/, '');
   if (!key && (provider !== 'ollama' || baseUrl === 'https://ollama.com')) throw new Error(uiText('Configurez une clé API dans les réglages CrisisMaker, ou choisissez la création manuelle.', 'Add an API key in the CrisisMaker settings, or choose manual creation.', 'Hinterlegen Sie einen API-Schlüssel in den CrisisMaker-Einstellungen oder wählen Sie die manuelle Erstellung.'));
   if (provider === 'anthropic'){
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+      method: 'POST', signal,
       headers: { 'Content-Type': 'application/json', 'x-api-key': key,
                  'anthropic-version': '2023-06-01',
                  'anthropic-dangerous-direct-browser-access': 'true' },
@@ -912,7 +922,7 @@ async function callAI(systemPrompt, userPrompt){
     const endpoint = provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
     const providerLabel = provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
     const r = await fetch(endpoint, {
-      method: 'POST',
+      method: 'POST', signal,
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, ...(provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker Video Debrief' } : {}) },
       body: JSON.stringify({ model, response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
@@ -924,7 +934,7 @@ async function callAI(systemPrompt, userPrompt){
     // Reasoning models (GLM, qwen3, deepseek-r1…) are asked to answer directly; a model
     // without that switch (HTTP 400 "does not support thinking") is called without it.
     const call = (think) => fetchOllamaApi(baseUrl + '/api/chat', {
-      method: 'POST',
+      method: 'POST', signal,
       headers: { 'Content-Type': 'application/json', ...(key ? { 'Authorization': 'Bearer ' + key } : {}) },
       body: JSON.stringify({ model, ...(baseUrl !== 'https://ollama.com' ? { format: 'json' } : {}), stream: false, options: { num_predict: 8000, num_ctx: 32768 },
         ...(think === false ? { think: false } : {}),

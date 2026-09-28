@@ -384,3 +384,61 @@ test('Ollama: reasoning models (GLM, qwen3…) are asked to answer directly, in 
   h.context.fetch = async () => stream([{ message: { content: '' } }, { done: true, done_reason: 'stop', message: { content: '' } }]);
   await assert.rejects(h.run(`AITextGenerator.generateStreaming('checker_analysis', 'system', 'user', null, 4000)`), (error) => /Empty Ollama response/.test(error.message));
 });
+
+test('reliability: transient errors are retried, keys never reach the technical log, reasoning and cut-off replies are explained', async () => {
+  const h = harness();
+  h.run(`llmRetryDelay = () => 0; Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'sk-proj-SECRETSECRETSECRET', ai_model: 'gpt-test' }); CrisisTechLog.clear();`);
+  const reply = (data, status = 200, headers = {}) => ({ ok: status < 400, status, statusText: '', headers: { get: (name) => headers[name.toLowerCase()] || null }, clone() { return this; }, text: async () => JSON.stringify(data), json: async () => data });
+  const answers = [reply({ error: { message: 'Rate limit reached', code: 'rate_limit' } }, 429, { 'retry-after': '1' }), reply({ error: { message: 'Overloaded' } }, 503), reply({ choices: [{ message: { content: '<think>{"draft":1} maybe</think>{"summary":"ok"}' }, finish_reason: 'stop' }] })];
+  let calls = 0;
+  h.context.fetch = async () => answers[calls++];
+  const result = await h.run(`AITextGenerator.generate('scenario_builder', 'system', 'user', true, 2000, {})`);
+  assert.equal(result.summary, 'ok', 'reasoning stripped before parsing');
+  assert.equal(calls, 3, '429 and 503 retried');
+  const log = h.run('CrisisTechLog.text()');
+  assert.equal((log.match(/FAILED/g) || []).length, 2);
+  assert.ok(/attempt=3/.test(log) && /status=429/.test(log) && !log.includes('SECRETSECRET'), 'attempts logged, key masked');
+  // Never retried: an exhausted quota, a bad key.
+  calls = 0;
+  h.context.fetch = async () => { calls++; return reply({ error: { message: 'You exceeded your current quota', code: 'insufficient_quota' } }, 429); };
+  await assert.rejects(h.run(`AITextGenerator.generate('x', 's', 'u', true, 2000, {})`), (error) => error.status === 429);
+  assert.equal(calls, 1);
+  // An empty reply cut at the length limit says so.
+  h.context.fetch = async () => reply({ choices: [{ message: { content: '' }, finish_reason: 'length' }] });
+  await assert.rejects(h.run(`AITextGenerator.generate('x', 's', 'u', true, 2000, {})`), (error) => error.code === 'truncated');
+  h.context.fetch = async () => reply({ choices: [{ message: { content: null, refusal: 'I cannot help with that' }, finish_reason: 'stop' }] });
+  await assert.rejects(h.run(`AITextGenerator.generate('x', 's', 'u', true, 2000, {})`), (error) => /declined/.test(error.message));
+  // A time limit that cancels the request itself.
+  h.context.fetch = (url, init) => new Promise((resolve, reject) => init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
+  await assert.rejects(h.run(`AITextGenerator.generate('x', 's', 'u', true, 2000, { timeoutMs: 30 })`), (error) => error.code === 'timeout' && /stopped/.test(error.message));
+  // Wrapped errors keep what the provider said.
+  const wrapped = h.run(`(() => { const e = CrisisError.wrap(CrisisError.create('Bad gateway', { provider: 'openai', model: 'gpt-test', status: 502, detail: 'upstream' }), { operation: 'Write inject' }); return [e.status, e.provider, e.model, e.detail].join('|'); })()`);
+  assert.equal(wrapped, '502|openai|gpt-test|upstream');
+});
+
+test('reliability: a streamed reply cut at its length limit is reported as such; CJK text counts more tokens', async () => {
+  const h = harness();
+  h.context.TextDecoder = TextDecoder;
+  h.run(`Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'TEST', ai_model: 'gpt-test' })`);
+  const sse = (events) => {
+    const chunks = events.map((event) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
+    return { ok: true, status: 200, headers: { get: () => 'text/event-stream' }, body: { getReader: () => ({ read: async () => (chunks.length ? { done: false, value: chunks.shift() } : { done: true }), cancel() {} }) } };
+  };
+  h.context.fetch = async () => sse([{ choices: [{ delta: { content: '{"summary":"half' } }] }, { choices: [{ delta: {}, finish_reason: 'length' }] }]);
+  await assert.rejects(h.run(`AITextGenerator.generateStreaming('checker_analysis', 's', 'u', null, 1000)`), (error) => error.code === 'truncated');
+  assert.ok(h.run(`llmEstimateTokens('日本語のテキスト'.repeat(100))`) > h.run(`llmEstimateTokens('English text'.repeat(67))`) * 2);
+});
+
+test('reliability: phases are planned in requests sized by the injects asked for', async () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'TEST', ai_model: 'gpt-test' });`);
+  h.run(`sbMainBlocks(sbStoryboard()).forEach((block) => { block.beats = []; block.narrative = 'x'; block.stimuli_target = 20; block.locked = false; })`);
+  const budgets = [];
+  h.run(`AITextGenerator.generate = async (channel, system, user, quiet, maxTokens) => { budgetsSeen.push({ maxTokens, targets: JSON.parse(user).target.length }); return { blocks: [] }; }`);
+  h.context.budgetsSeen = budgets;
+  const ids = h.json('sbMainBlocks(sbStoryboard()).map((block) => block.id)');
+  await h.run(`SbAI.deepen(${JSON.stringify(ids)}, 3)`).catch((error) => assert.match(error.message, /did not return/));
+  assert.ok(budgets.length >= Math.ceil(ids.length * 20 / 30), 'about 30 injects per request');
+  assert.ok(budgets.every((entry) => entry.targets * 20 <= 30 || entry.targets === 1));
+  assert.ok(budgets.every((entry) => entry.maxTokens >= 1200 + 180 * 20 * entry.targets || entry.maxTokens === 16000));
+});

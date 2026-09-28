@@ -47,7 +47,16 @@ function agentProviderReason(error) {
   const text = agentRedact(String(error?.message || '')).replace(/https?:\/\/\S+/g, '[link]').replace(/\b(sk|pk|rk|key|Bearer)[-_ ][A-Za-z0-9._-]{8,}/g, '[REDACTED]').replace(/\s+/g, ' ').trim();
   return text.length > 280 ? `${text.slice(0, 279)}…` : text;
 }
+/* Who answered: provider, model and the provider's error code, to investigate (Settings →
+   Technical log has the full trace). */
+function agentFailureSource(error) {
+  const parts = [[error?.provider, error?.model].filter(Boolean).join(' / '), error?.code && !['timeout', 'truncated'].includes(error.code) ? `code ${error.code}` : ''].filter(Boolean);
+  return parts.length ? ` [${agentRedact(parts.join(', '))}]` : '';
+}
 function agentFailureMessage(error) {
+  return agentFailureText(error) + (error instanceof AgentValidationError ? '' : `${agentFailureSource(error)} Details in Settings → Technical log.`);
+}
+function agentFailureText(error) {
   if (error instanceof AgentValidationError) return error.message;
   if (error?.code === 'timeout') return 'The AI took too long to answer. Ask for a smaller change, for example one inject at a time.';
   if (agentTruncated(error)) return 'The AI reply was cut off at its length limit. Ask for a smaller change, for example one inject at a time.';
@@ -56,6 +65,19 @@ function agentFailureMessage(error) {
   if (error?.status) return `The AI provider refused the request (HTTP ${error.status})${reason ? `: ${reason}` : '.'} Completed edits are recoverable with Undo.`;
   if (/failed to fetch|network|load failed/i.test(reason)) return 'The AI provider could not be reached (network or connection settings). Completed edits are recoverable with Undo.';
   return `AI request or tool failed${reason ? `: ${reason}` : '.'} Check the AI connection settings and retry. Completed edits are recoverable with Undo.`;
+}
+/* An AI call with a time limit that also cancels the request itself: start() receives a
+   signal of its own, aborted with the caller's, on the time limit, and once settled. */
+async function agentCall(start, signal, timeoutMs = AGENT_STEP_TIMEOUT) {
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  if (signal) { if (signal.aborted) controller.abort(); else signal.addEventListener('abort', onAbort, { once: true }); }
+  try {
+    return await agentAwait(start(controller.signal), signal || controller.signal, timeoutMs);
+  } finally {
+    controller.abort();
+    signal?.removeEventListener?.('abort', onAbort);
+  }
 }
 function agentAwait(promise, signal, timeoutMs = AGENT_STEP_TIMEOUT) {
   return new Promise((resolve, reject) => {
@@ -159,7 +181,7 @@ class AgentRunner {
             while (input.length + system.length > 100000 && recent.length) { recent = recent.slice(1); input = build(recent); }
             if (input.length + system.length > 100000) throw new AgentValidationError('The exercise is too large for one agent step. Narrow the objective to a phase or a cell.');
           }
-          call = agentNormalizeResponse(await agentAwait(this.request(system, input, this.controller.signal), this.controller.signal));
+          call = agentNormalizeResponse(await agentCall((signal) => this.request(system, input, signal), this.controller.signal));
           this.assertActive();
           if (call.type === 'question') {
             if (this.questionRounds >= AGENT_MAX_QUESTION_ROUNDS) {

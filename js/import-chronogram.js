@@ -66,14 +66,18 @@
               }
               return result;
             } catch (err) {
-              if (attempt === maxRetries) {
+              // Network, rate limit and overload are already retried by AITextGenerator; a key,
+              // quota, cut-off reply or cancel would fail again: only an unreadable reply is retried.
+              const unreadable = err instanceof SyntaxError || err?.name === 'SyntaxError' || /not valid JSON|malformed|pas un JSON|kein gültiges/i.test(String(err?.message || ''));
+              if (err?.name === 'AbortError') throw err;
+              if (attempt === maxRetries || !unreadable) {
                 if (onLog) onLog({ type: 'error', message: err.message });
                 throw CrisisError.wrap(err, {
                   operation: 'Chronogram AI import LLM call',
                   message: tt(
-                    `AI import failed after ${maxRetries + 1} attempts. Last error: ${err.message}`,
-                    `Import IA échoué après ${maxRetries + 1} tentatives. Dernière erreur : ${err.message}`,
-                    `KI-Import nach ${maxRetries + 1} Versuchen fehlgeschlagen. Letzter Fehler: ${err.message}`
+                    `AI import failed (attempt ${attempt + 1}). Last error: ${err.message}`,
+                    `Import IA échoué (tentative ${attempt + 1}). Dernière erreur : ${err.message}`,
+                    `KI-Import fehlgeschlagen (Versuch ${attempt + 1}). Letzter Fehler: ${err.message}`
                   )
                 });
               }
@@ -386,7 +390,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All text fields (warn
 }`;
         },
 
-        step3UserPrompt(extractedStimuli, structureAnalysis, projectData) {
+        step3UserPrompt(extractedStimuli, structureAnalysis, projectData, knownActors = []) {
           const clientLang = projectData.client?.language || 'en';
           const injectLang = projectData.settings?.inject_language || projectData.settings?.language || clientLang;
           const injectLangName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[injectLang] || 'English';
@@ -398,19 +402,56 @@ IMPORTANT: Write your entire response in ${respondInLang}. All text fields (warn
 - Start time: ${structureAnalysis.exercise_start_time || '00:00'}
 
 STIMULI EXTRACTED IN PREVIOUS STEP:
-${JSON.stringify(extractedStimuli, null, 2)}
-
+${JSON.stringify(extractedStimuli)}
+${knownActors.length ? `
+ACTORS ALREADY CREATED (reuse their exact id when the same person or organisation sends a stimulus; only add new actors):
+${JSON.stringify(knownActors.map((actor) => ({ id: actor.id, name: actor.name, organization: actor.organization || '' })))}
+` : ''}
 OPTIONS:
 - Create actors: yes
 
 Convert these stimuli into complete CrisisStim objects. For stimuli with content_complete=false, generate complete realistic content in ${injectLangName}. For stimuli with content_complete=true, keep the original content as-is. Reply with the requested JSON.`;
         },
 
+        /* In batches of about 12 stimuli: one reply must hold every converted stimulus with its
+           full content, so a long chronogram in one request would be cut at its length limit.
+           Actors created by a batch are given to the next ones, then merged by id and name. */
         async callLLM_Step3(extractedStimuli, structureAnalysis, projectData, onLog = null) {
           const sysPrompt = this.step3SystemPrompt();
-          const usrPrompt = this.step3UserPrompt(extractedStimuli, structureAnalysis, projectData);
-          if (onLog) onLog({ type: 'start', stepNum: 3, stepLabel: tt('Step 3 — Generate CrisisStim objects', 'Étape 3 — Générer les objets CrisisStim', 'Schritt 3 — CrisisStim-Objekte generieren'), userPromptPreview: usrPrompt.slice(0, 400) });
-          return this.callLLMWithRetry(sysPrompt, usrPrompt, 2, 16384, onLog);
+          const rows = Array.isArray(extractedStimuli) ? extractedStimuli : [];
+          const count = (row) => Math.max(1, Array.isArray(row?.stimuli) ? row.stimuli.length : 1);
+          const batches = [];
+          for (const row of rows) {
+            const last = batches[batches.length - 1];
+            if (last && last.reduce((sum, item) => sum + count(item), 0) + count(row) <= 12) last.push(row);
+            else batches.push([row]);
+          }
+          if (!batches.length) batches.push([]);
+          const merged = { actors: [], stimuli: [], warnings: [], skipped_rows: [] };
+          const actorByName = new Map();
+          for (const [index, batch] of batches.entries()) {
+            const usrPrompt = this.step3UserPrompt(batch, structureAnalysis, projectData, merged.actors);
+            if (onLog) onLog({ type: 'start', stepNum: 3, stepLabel: `${tt('Step 3 — Generate CrisisStim objects', 'Étape 3 — Générer les objets CrisisStim', 'Schritt 3 — CrisisStim-Objekte generieren')}${batches.length > 1 ? ` (${index + 1}/${batches.length})` : ''}`, userPromptPreview: usrPrompt.slice(0, 400) });
+            const result = await this.callLLMWithRetry(sysPrompt, usrPrompt, 1, 16384, onLog);
+            // One actor per name: a repeat created by a later batch points to the first one.
+            const remap = new Map();
+            for (const actor of Array.isArray(result.actors) ? result.actors : []) {
+              if (!actor || typeof actor !== 'object') continue;
+              const key = String(actor.name || actor.id || '').trim().toLowerCase();
+              const existing = merged.actors.find((item) => item.id === actor.id) || (key && actorByName.get(key));
+              if (existing) { if (actor.id && actor.id !== existing.id) remap.set(actor.id, existing.id); continue; }
+              merged.actors.push(actor);
+              if (key) actorByName.set(key, actor);
+            }
+            for (const stimulus of Array.isArray(result.stimuli) ? result.stimuli : []) {
+              if (!stimulus || typeof stimulus !== 'object') continue;
+              if (remap.has(stimulus.actor_id)) stimulus.actor_id = remap.get(stimulus.actor_id);
+              merged.stimuli.push(stimulus);
+            }
+            merged.warnings.push(...(Array.isArray(result.warnings) ? result.warnings : []));
+            merged.skipped_rows.push(...(Array.isArray(result.skipped_rows) ? result.skipped_rows : []));
+          }
+          return merged;
         },
 
         // ── Validation ──

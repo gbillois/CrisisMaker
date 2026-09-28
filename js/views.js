@@ -9,12 +9,16 @@
         return messages[errorCode] || errorCode;
       }
 
+      /* A short hint from the HTTP status, then the full detail (provider, model, status,
+         code, provider message) to investigate. */
       function classifyLLMError(err) {
-        const msg = err?.message || '';
-        if (msg.includes('401') || msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('api key')) return 'auth';
-        if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('rate')) return 'quota';
-        if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('connection')) return 'network';
-        return CrisisError.format(err, { operation: 'LLM generation' });
+        const status = Number(err?.status) || 0;
+        const text = `${err?.message || ''} ${err?.code || ''}`;
+        const hint = status === 401 || status === 403 || /invalid[_ ]api[_ ]key|incorrect api key/i.test(text) ? 'auth'
+          : status === 429 || /insufficient_quota|rate limit/i.test(text) ? 'quota'
+            : !status && /failed to fetch|network error|load failed/i.test(text) ? 'network' : '';
+        const detail = `${CrisisError.format(err, { operation: 'LLM generation' })}\n${tt('Details in Settings → Technical log.', 'Détails dans Paramètres → Journal technique.', 'Details unter Einstellungen → Technisches Protokoll.')}`;
+        return hint ? `${getLLMErrorMessage(hint)}\n${detail}` : detail;
       }
 
       function renderLLMConfigBlock(zone, placeholder, options = {}) {
@@ -226,9 +230,35 @@
             ${appState.historyModalStimulusId ? renderHistoryModal(getStimulus(appState.historyModalStimulusId)) : ''}
             ${appState.stimulusModalId ? renderStimulusModal(getStimulus(appState.stimulusModalId)) : ''}
             ${appState.chronogramImport ? renderChronogramImportModals() : ''}
+            ${appState.techLogOpen ? renderTechLogModal() : ''}
             ${renderAssistant()}
           </div>
         `;
+      }
+
+      /* Settings → Technical log: every AI attempt and error of the session, keys masked. */
+      function renderTechLogModal() {
+        const entries = typeof CrisisTechLog !== 'undefined' ? CrisisTechLog.entries : [];
+        const failed = entries.filter((entry) => entry.kind === 'error' || entry.ok === false).length;
+        return `
+          <div class="modal-backdrop tech-log-backdrop">
+            <div class="modal-box tech-log-box" role="dialog" aria-modal="true" aria-label="Technical log">
+              <div class="modal-header">
+                <h3>${tt('Technical log', 'Journal technique', 'Technisches Protokoll')} <small>${entries.length} ${tt('entries', 'entrées', 'Einträge')}${failed ? ` · ${failed} ${tt('failed', 'en échec', 'fehlgeschlagen')}` : ''}</small></h3>
+                <button class="btn btn-secondary" data-action="tech-log-close" aria-label="Close">${sbUiIcon('close', 16)}</button>
+              </div>
+              <div class="modal-body">
+                <p class="helper">${tt('Every AI call of this session (provider, model, size of the request, duration, HTTP status, stop reason, attempt, start of the reply) and every error, newest first. API keys are masked and prompts are never recorded, but replies may contain exercise content. Kept in memory only: a reload clears it.', 'Chaque appel IA de la session (fournisseur, modèle, taille de la requête, durée, statut HTTP, raison d’arrêt, tentative, début de la réponse) et chaque erreur, du plus récent au plus ancien. Les clés API sont masquées et les prompts ne sont jamais enregistrés, mais les réponses peuvent contenir du contenu de l’exercice. En mémoire seulement : un rechargement l’efface.', 'Jeder KI-Aufruf dieser Sitzung (Anbieter, Modell, Anfragegröße, Dauer, HTTP-Status, Stoppgrund, Versuch, Anfang der Antwort) und jeder Fehler, neueste zuerst. API-Schlüssel sind maskiert, Prompts werden nie gespeichert, Antworten können aber Übungsinhalte enthalten. Nur im Speicher: Neuladen löscht es.')}</p>
+                <div class="actions tech-log-actions">
+                  <button class="btn btn-secondary btn-sm" data-action="tech-log-refresh">${sbUiIcon('undo', 13)} ${tt('Refresh', 'Actualiser', 'Aktualisieren')}</button>
+                  <button class="btn btn-secondary btn-sm" data-action="tech-log-copy">${tt('Copy', 'Copier', 'Kopieren')}</button>
+                  <button class="btn btn-primary btn-sm" data-action="tech-log-download">${sbUiIcon('download', 13)} ${tt('Download (.txt)', 'Télécharger (.txt)', 'Herunterladen (.txt)')}</button>
+                  <button class="btn btn-ghost btn-sm" data-action="tech-log-clear">${tt('Clear', 'Effacer', 'Leeren')}</button>
+                </div>
+                <pre class="tech-log-pre">${escapeHtml(typeof CrisisTechLog !== 'undefined' ? CrisisTechLog.text() : '')}</pre>
+              </div>
+            </div>
+          </div>`;
       }
 
       function renderNavIconButton(route, iconSvg, label) {
@@ -869,6 +899,7 @@
               <div class="actions" style="margin-top:18px;">
                 <button class="btn btn-primary" data-action="test-connection" ${connectionTest.status === 'testing' ? 'disabled' : ''}>${connectionTest.status === 'testing' ? `<span class="ai-spinner"></span>${tt('Testing…', 'Test en cours…', 'Wird getestet…')}` : tt('Test connection', 'Tester la connexion', 'Verbindung testen')}</button>
                 <button class="btn btn-secondary" data-action="save-local">${tt('Save locally', 'Sauvegarder localement', 'Lokal speichern')}</button>
+                <button class="btn btn-ghost" data-action="tech-log-open" title="${tt('Every AI call and error of this session, to investigate a failure', 'Chaque appel IA et chaque erreur de la session, pour analyser un échec', 'Jeder KI-Aufruf und jeder Fehler dieser Sitzung, zur Fehleranalyse')}">${sbUiIcon('sheet', 14)} ${tt('Technical log', 'Journal technique', 'Technisches Protokoll')}${typeof CrisisTechLog !== 'undefined' && CrisisTechLog.entries.length ? ` (${CrisisTechLog.entries.length})` : ''}</button>
               </div>
               ${statusTone ? `
                 <div style="margin-top:14px;padding:12px 14px;border-radius:8px;border:1px solid ${statusTone.border};background:${statusTone.background};color:${statusTone.text};">

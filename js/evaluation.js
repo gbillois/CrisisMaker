@@ -367,8 +367,7 @@ Write in the language requested. Reply only with a JSON object: {"criteria":[{"c
 
   async updateCell(project, cell, signal) {
     const user = JSON.stringify(this.context(project, cell));
-    const request = AITextGenerator.generate('evaluation', this.systemPrompt(), user, true, 4000, { signal, strictJSON: true, promptFilter: typeof agentRedact === 'function' ? agentRedact : undefined });
-    const result = await (typeof agentAwait === 'function' ? agentAwait(request, signal, typeof SB_AI_TIMEOUT !== 'undefined' ? SB_AI_TIMEOUT : 180000) : request);
+    const result = await agentCall((callSignal) => AITextGenerator.generate('evaluation', this.systemPrompt(), user, true, 4000, { signal: callSignal, strictJSON: true, promptFilter: agentRedact, timeoutMs: SB_AI_TIMEOUT }), signal, SB_AI_TIMEOUT);
     const criteria = (Array.isArray(result?.criteria) ? result.criteria : [])
       .filter((item) => item && typeof item === 'object' && typeof item.text === 'string' && item.text.trim())
       .slice(0, 20)

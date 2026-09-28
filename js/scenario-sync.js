@@ -322,8 +322,9 @@ function sbGenerationBrief(project, block, beat, options = {}) {
 async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
   const project = appState.scenario;
   const brief = sbGenerationBrief(project, block, beat, { actorId: stimulus.actor_id, preserve: options.preserve ? deepClone(stimulus.fields) : null });
-  const generated = await agentAwait(
-    AITextGenerator.generateForStimulus(stimulus, null, agentRedact(brief), { signal: options.signal, quiet: true, maxTokens: 3000, promptFilter: agentRedact }),
+  // 4500 output tokens: room for long HTML bodies and Japanese or Chinese text.
+  const generated = await agentCall(
+    (signal) => AITextGenerator.generateForStimulus(stimulus, null, agentRedact(brief), { signal, quiet: true, maxTokens: 4500, promptFilter: agentRedact, timeoutMs: 150000 }),
     options.signal, 150000
   );
   if (options.assertActive) options.assertActive();

@@ -4568,3 +4568,11 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .sd-cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
 .sd-cells > div { padding: 4px 5px; background: #f5f4f9; border: 1px solid var(--cell); font-size: 6px; }
 @media (max-width: 900px) { .db-parts { grid-template-columns: 1fr; } .db-parts button small { display: none; } .sd-head-fields { grid-template-columns: 1fr; } }
+
+/* Settings → Technical log */
+.tech-log-box { width: min(1100px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.tech-log-box .modal-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
+.tech-log-box h3 small { margin-left: 8px; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.tech-log-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tech-log-pre { flex: 1; min-height: 240px; max-height: 62vh; overflow: auto; margin: 0; padding: 12px; background: #16121f; color: #e6e4ee; font: 12px/1.5 'IBM Plex Mono', ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; }
+.llm-error-banner { white-space: pre-line; }

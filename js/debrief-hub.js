@@ -285,8 +285,7 @@ const SdAI = {
 Use the exercise design, the phases and main events, what really happened, and above all the evaluators' marks and notes (P = performed without challenges, S = some challenges, M = major challenges, U = unable to be performed). Be specific to this exercise and this organisation, factual, constructive, never generic. Link findings to the learning objectives. When the evaluation is empty, base the findings on the design and say what to confirm with the participants.
 Write in the language requested. Each item is one short sentence (max 25 words). Reply only with a JSON object:
 {"key_messages":["3 to 5 items"],"went_well":["3 to 6 items"],"to_improve":["3 to 6 items"],"recommendations":["3 to 6 items, each with an owner and a horizon"],"next_steps":["2 to 4 items"]}`;
-      const request = AITextGenerator.generate('slide_debrief', system, JSON.stringify(this.context(project)), true, 4000, { signal, strictJSON: true, promptFilter: typeof agentRedact === 'function' ? agentRedact : undefined });
-      const result = await (typeof agentAwait === 'function' ? agentAwait(request, signal, typeof SB_AI_TIMEOUT !== 'undefined' ? SB_AI_TIMEOUT : 180000) : request);
+      const result = await agentCall((callSignal) => AITextGenerator.generate('slide_debrief', system, JSON.stringify(this.context(project)), true, 4000, { signal: callSignal, strictJSON: true, promptFilter: agentRedact, timeoutMs: SB_AI_TIMEOUT }), signal, SB_AI_TIMEOUT);
       if (appState.scenario !== project) return;
       let filled = 0;
       SD_TEXT_FIELDS.forEach(([key]) => {

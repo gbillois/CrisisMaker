@@ -869,6 +869,18 @@
             case 'checker-export-report-docx':
               checkerExportReportDocx();
               break;
+            case 'tech-log-open': appState.techLogOpen = true; App.render(); break;
+            case 'tech-log-close': appState.techLogOpen = false; App.render(); break;
+            case 'tech-log-refresh': App.render(); break;
+            case 'tech-log-clear': CrisisTechLog.clear(); App.render(); break;
+            case 'tech-log-copy':
+              navigator.clipboard?.writeText(CrisisTechLog.text()).then(
+                () => pushToast(tt('Technical log copied.', 'Journal technique copié.', 'Technisches Protokoll kopiert.'), 'success'),
+                () => pushToast(tt('Copy not allowed by the browser: use Download.', 'Copie refusée par le navigateur : utilisez Télécharger.', 'Kopieren vom Browser blockiert: Herunterladen verwenden.'), 'error'));
+              break;
+            case 'tech-log-download':
+              downloadBlob(new Blob([CrisisTechLog.text()], { type: 'text/plain;charset=utf-8' }), `crisismaker-tech-log-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.txt`);
+              break;
             case 'test-connection': {
               const provider = appState.scenario.settings.ai_provider;
               appState.connectionTest = {

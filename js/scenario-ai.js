@@ -3,13 +3,27 @@
    the configured provider through AITextGenerator and validates the output. */
 const SB_AI_TIMEOUT = 180000;
 
+/* About 40k tokens of request: fits every current cloud model with room to answer. */
+const SB_AI_MAX_TOKENS = 40000;
+function sbEstimateTokens(text) {
+  return typeof llmEstimateTokens === 'function' ? llmEstimateTokens(text) : Math.ceil(String(text || '').length / 3.5);
+}
+function sbShrinkStrings(value, max) {
+  if (typeof value === 'string') return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  if (Array.isArray(value)) return value.map((item) => sbShrinkStrings(item, max));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, sbShrinkStrings(item, max)]));
+  return value;
+}
+
 function sbErrorMessage(error) {
   if (error instanceof AgentValidationError) return error.message;
   if (error?.name === 'AbortError') return 'Stopped.';
-  if (error instanceof SyntaxError) return 'The AI returned malformed JSON. Retry, or use a more capable model.';
-  if (/timed out/i.test(error?.message || '')) return 'The AI request timed out. Retry, or use a faster model.';
+  const source = typeof agentFailureSource === 'function' ? agentFailureSource(error) : '';
+  const more = ' Details in Settings → Technical log.';
+  if (error instanceof SyntaxError || error?.name === 'SyntaxError') return `The AI returned malformed JSON (${agentRedact(String(error.message || '')).slice(0, 160)}). Retry, or use a more capable model.${source}${more}`;
+  if (error?.code === 'timeout' || /timed out|took too long/i.test(error?.message || '')) return `The AI request timed out. Retry, ask for a smaller change, or use a faster model.${source}${more}`;
   const text = typeof CrisisError !== 'undefined' ? CrisisError.format(error, { operation: 'Scenario Builder AI' }) : (error?.message || 'AI request failed.');
-  return agentRedact(text).slice(0, 700);
+  return `${agentRedact(text).slice(0, 1200)}${more}`;
 }
 
 function sbAISystemPrompt() {
@@ -157,9 +171,15 @@ const SbAI = {
     const signal = options.signal || controller.signal;
     if (!nested) { this.busy = label; this.controller = controller; this.lastError = ''; sbNotify(); }
     try {
-      const user = agentRedact(typeof userPayload === 'string' ? userPayload : JSON.stringify(userPayload));
-      if (user.length > 120000) throw new AgentValidationError('The storyboard is too large for one AI request. Work block by block.');
-      const result = await agentAwait(AITextGenerator.generate('scenario_builder', sbAISystemPrompt(), user, true, maxTokens, { signal, promptFilter: agentRedact }), signal, SB_AI_TIMEOUT);
+      let user = agentRedact(typeof userPayload === 'string' ? userPayload : JSON.stringify(userPayload));
+      // A large exercise: the long texts of the context (narratives, intents, briefs) are
+      // shortened step by step until the request fits, instead of failing.
+      for (const max of [900, 500, 280, 160]) {
+        if (sbEstimateTokens(user) <= SB_AI_MAX_TOKENS || typeof userPayload !== 'object' || !userPayload?.context) break;
+        user = agentRedact(JSON.stringify({ ...userPayload, context: sbShrinkStrings(userPayload.context, max) }));
+      }
+      if (sbEstimateTokens(user) > SB_AI_MAX_TOKENS * 1.5) throw new AgentValidationError('The storyboard is too large for one AI request. Work phase by phase.');
+      const result = await agentCall((callSignal) => AITextGenerator.generate('scenario_builder', sbAISystemPrompt(), user, true, maxTokens, { signal: callSignal, promptFilter: agentRedact, timeoutMs: SB_AI_TIMEOUT }), signal, SB_AI_TIMEOUT);
       if (signal.aborted || appState.scenario !== project) throw new DOMException('Stopped', 'AbortError');
       if (!result || typeof result !== 'object' || Array.isArray(result)) throw new AgentValidationError('The AI response is not a JSON object.');
       return result;
@@ -218,8 +238,18 @@ const SbAI = {
       return [block.id, target === 2 ? 'narrative' : block.narrative.trim() ? 'beats' : 'narrative_and_beats'];
     }));
     let changed = 0;
-    for (let index = 0; index < targets.length; index += 6) {
-      const chunk = targets.slice(index, index + 6);
+    // Requests sized by the injects asked for, so one reply never runs past its length limit:
+    // up to 6 phases and about 30 new injects per request (a big phase goes alone).
+    const newBeats = (block) => (wants.get(block.id) === 'narrative' ? 0 : Math.max(0, (block.stimuli_target || 0) - block.beats.length));
+    const chunks = [];
+    for (const block of targets) {
+      const last = chunks[chunks.length - 1];
+      const load = last ? last.reduce((sum, entry) => sum + newBeats(entry), 0) : Infinity;
+      if (last && last.length < 6 && load + newBeats(block) <= 30) last.push(block);
+      else chunks.push([block]);
+    }
+    for (const chunk of chunks) {
+      const beatsAsked = chunk.reduce((sum, block) => sum + newBeats(block), 0);
       const payload = {
         task: 'Deepen the storyboard for the TARGET phases, keeping global coherence with the whole storyboard (previous and next phases) and a balanced workload across the cells.',
         target: chunk.map((block) => ({ id: block.id, want: wants.get(block.id), injects: block.stimuli_target, duration: block.duration_minutes, existing_beats: block.beats.length })),
@@ -235,7 +265,9 @@ const SbAI = {
           'Only add cast entries for roles that do not exist yet.'
         ]
       };
-      const result = await this.request(options.nested ? 'Planning injects' : `Deepening ${targets.length} block(s)`, payload, 8000, options);
+      // About 180 tokens per planned inject and 250 per narrative, plus the envelope.
+      const budget = Math.min(16000, Math.max(8000, 1200 + 180 * beatsAsked + 250 * chunk.length));
+      const result = await this.request(options.nested ? 'Planning injects' : `Deepening ${targets.length} block(s)`, payload, budget, options);
       const castMap = sbMergeCastFromAI(storyboard, result.cast);
       const nextRev = storyboard.rev + 1;
       for (const item of Array.isArray(result.blocks) ? result.blocks : []) {
