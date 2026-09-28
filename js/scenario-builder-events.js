@@ -133,6 +133,26 @@ function sbReplaceStoryboard(storyboard, label) {
   sbAfterStoryboardChange(project, { save: true });
 }
 
+/* Applies a library scenario to the storyline (replace or insert). A version is saved first.
+   Returns false when the user declines replacing the current storyline. */
+function sbUseTemplate(template, mode = 'replace') {
+  const project = appState.scenario;
+  const ui = sbUI();
+  if (mode === 'replace' && project.storyboard.blocks.length && !window.confirm(`Replace the current storyboard with "${template.name}"? A version is saved first and Undo is available.`)) return false;
+  StoryboardHistory.snapshot(`Before template "${template.name}"`, 'ai');
+  const before = project.storyboard;
+  sbApplyTemplate(template, mode);
+  if (project.storyboard !== before) StoryboardHistory.ensure(project, `Use template "${template.name}"`);
+  else StoryboardHistory.commit(`Insert template "${template.name}"`);
+  sbAfterStoryboardChange(project, { save: true });
+  ui.modal = null;
+  ui.previewId = null;
+  ui.selected = [];
+  ui.playhead = 0;
+  if (mode === 'replace') ui.zoom = null;
+  return true;
+}
+
 async function sbHandleAction(event) {
   const element = event.currentTarget;
   const action = element.dataset.sbAction;
@@ -353,20 +373,22 @@ async function sbHandleAction(event) {
         const template = sbFindTemplate(element.dataset.sbTemplate);
         if (!template) break;
         const mode = element.dataset.sbMode === 'insert' ? 'insert' : 'replace';
-        if (mode === 'replace' && storyboard.blocks.length && !window.confirm(`Replace the current storyboard with "${template.name}"? A version is saved first and Undo is available.`)) break;
-        StoryboardHistory.snapshot(`Before template "${template.name}"`, 'ai');
-        const before = project.storyboard;
-        sbApplyTemplate(template, mode);
-        if (project.storyboard !== before) StoryboardHistory.ensure(project, `Use template "${template.name}"`);
-        else StoryboardHistory.commit(`Insert template "${template.name}"`);
-        sbAfterStoryboardChange(project, { save: true });
-        ui.modal = null;
-        ui.previewId = null;
-        ui.selected = [];
-        ui.playhead = 0;
-        if (mode === 'replace') ui.zoom = null;
+        if (!sbUseTemplate(template, mode)) break;
         appState.route = 'storyline';
         pushToast(`"${template.name}" ${mode === 'insert' ? 'inserted' : 'loaded'}. Refine blocks, then generate injects.`, 'success');
+        App.render();
+        break;
+      }
+      case 'select-template': {
+        // Load from the library: remember the scenario, then frame it in Context.
+        const template = sbFindTemplate(element.dataset.sbTemplate);
+        if (!template) break;
+        storyboard.meta.library_id = template.id;
+        ui.modal = null;
+        ui.previewId = null;
+        saveLocal(false);
+        appState.route = 'scenario';
+        pushToast(`"${template.name}" loaded. Set the key information, then generate the scenario with AI or load the basic scenario.`, 'success');
         App.render();
         break;
       }

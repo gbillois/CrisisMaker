@@ -91,13 +91,15 @@ The menu follows the design workflow, from left to right:
 1. **Project**: a summary with key figures; project data (new, create from the
    library, open, import an Excel timeline, load the demo, save locally, export the
    text content as JSON, export all injects); and the **scenario library** (preview,
-   use, export the current storyline as a template, import a template file). Every
-   built-in scenario plays in 3 hours.
+   load, export the current storyline as a template, import a template file). **Load**
+   selects a scenario and opens Context. Every built-in scenario plays in 3 hours.
 2. **Context**: the exercise frame (client, sector, logo; play duration, simulated
    start and end dates, timezone, number of crisis cells and players; primary and
-   inject languages), then **Context, objectives and ideas for the scenario** with
-   **Generate with AI**. It starts the builder agent with all of the above and the
-   library scenario picked in Project: the agent asks you a few questions, then
+   inject languages), then **Scenario generation**: your objectives and ideas, then
+   either **Load basic scenario from library** (the loaded library scenario as it is;
+   greyed when none is loaded) or **Generate with AI**. It starts the builder agent
+   with all of the above and adapts the loaded library scenario: the agent asks you a
+   few questions, then
    builds the main storyline, the cells and players, the cast and its actors, and a
    per-cell inject plan for every phase. The scenario details (name, type, summary,
    objectives, synopsis, threat) stay editable in a collapsed block.

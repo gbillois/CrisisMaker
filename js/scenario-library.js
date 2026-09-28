@@ -71,6 +71,7 @@ function sbApplyTemplate(template, mode = 'replace') {
   } else {
     incoming.rev = (current?.rev || 0) + 1;
     incoming.meta.brief = current?.meta?.brief || '';
+    incoming.meta.library_id = current?.meta?.library_id || '';
     for (const cast of incoming.cast) {
       const actor = sbFindActorForCast(project, cast);
       if (actor) cast.actor_id = actor.id;

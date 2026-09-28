@@ -152,7 +152,8 @@ function sbEmptyStoryboard(duration = SB_DEFAULT_DURATION) {
     tracks: sbDefaultTracks(['main', 'technical', 'governance', 'communication', 'legal', 'business']),
     blocks: [],
     cast: [],
-    meta: { synopsis: '', threat: '', brief: '', template_id: '', validated_rev: null, coherence: null }
+    // library_id: scenario loaded from the library in Project; template_id: last one applied.
+    meta: { synopsis: '', threat: '', brief: '', template_id: '', library_id: '', validated_rev: null, coherence: null }
   };
 }
 
@@ -277,6 +278,7 @@ function normalizeStoryboard(input, legacyPhases = []) {
     threat: sbText(meta.threat, 2000),
     brief: sbText(meta.brief, 8000),
     template_id: sbText(meta.template_id, 120),
+    library_id: sbText(meta.library_id, 120),
     validated_rev: Number.isInteger(meta.validated_rev) ? meta.validated_rev : null,
     coherence: meta.coherence && typeof meta.coherence === 'object' ? sbNormalizeCoherence(meta.coherence) : null
   };

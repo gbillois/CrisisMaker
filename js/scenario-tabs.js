@@ -570,18 +570,21 @@ function renderContextBrief(project) {
   const run = getCrisisAgent();
   const ai = isLLMAvailable();
   const busy = run.active || run.busy;
-  const template = storyboard.meta.template_id && storyboard.meta.template_id !== 'agent' ? sbFindTemplate(storyboard.meta.template_id) : null;
+  const template = contextLibraryTemplate(project);
   const state = tabUI('context');
   state.mode = state.mode || 'agent';
   return `<article class="card cx-brief" data-sb-scope>
-    <div class="section-header"><div><h3>Context, objectives and ideas for the scenario</h3><p class="subtle">What you want to test, the audience, constraints, events you have in mind. The AI agent reads this with the context above${template ? ' and the library scenario you picked' : ''}, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.</p></div></div>
-    ${template ? `<p class="cx-template">${sbUiIcon('book', 14)} Starting from the library scenario <strong>${escapeHtml(template.name)}</strong>. The agent adapts it to your context. <button class="btn btn-ghost btn-xs" data-route="project">Change in Project</button></p>` : ''}
+    <div class="section-header"><div><h3>Scenario generation</h3><p class="subtle">Describe what you want to test, the audience, constraints and events you have in mind. Then load the basic library scenario as it is, or generate the scenario with AI: the agent reads this with the context above${template ? ' and the library scenario' : ''}, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.</p></div></div>
+    ${template
+      ? `<p class="cx-template">${sbUiIcon('book', 14)} Library scenario loaded: <strong>${escapeHtml(template.name)}</strong>. Generate with AI to adapt it to your context, or load it as it is. <button class="btn btn-ghost btn-xs" data-route="project">Change in Project</button></p>`
+      : `<p class="cx-template is-empty">${sbUiIcon('book', 14)} No library scenario loaded. The AI builds the scenario from your context, or <button class="btn btn-ghost btn-xs" data-route="project">load one from the Project library</button></p>`}
     <textarea class="cx-brief-text" data-sb-meta="brief" rows="7" placeholder="e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.">${escapeHtml(storyboard.meta.brief)}</textarea>
     <div class="cx-generate">
       <label class="cx-mode">AI autonomy<select data-cx-mode ${busy ? 'disabled' : ''}>
         <option value="agent" ${state.mode === 'agent' ? 'selected' : ''}>Ask me before big changes</option>
         <option value="auto" ${state.mode === 'auto' ? 'selected' : ''}>Build automatically</option>
       </select></label>
+      <button class="btn btn-secondary" data-cx-load-basic ${template && !busy ? '' : 'disabled'} title="${escapeAttribute(template ? `Replace the main storyline with "${template.name}" as it is in the library` : 'Load a scenario from the library in the Project tab first')}">${sbUiIcon('book', 15)} Load basic scenario from library</button>
       <button class="btn btn-primary" data-cx-generate ${ai && !busy ? '' : 'disabled'} ${ai ? '' : `title="${escapeAttribute('Configure an AI connection in Settings to generate with AI.')}"`}>${sbUiIcon('sparkles', 15)} Generate with AI</button>
     </div>
     ${ai ? '' : '<p class="agent-warning">Configure an AI connection in Settings to generate with AI.</p>'}
@@ -590,9 +593,15 @@ function renderContextBrief(project) {
 }
 
 /* Objective handed to the builder agent: the context fields are in its state, this adds intent. */
+/* The library scenario loaded in Project, if any. */
+function contextLibraryTemplate(project) {
+  const id = project.storyboard?.meta?.library_id;
+  return id ? sbFindTemplate(id) : null;
+}
+
 function contextAgentObjective(project) {
   const storyboard = project.storyboard;
-  const template = storyboard.meta.template_id && storyboard.meta.template_id !== 'agent' ? sbFindTemplate(storyboard.meta.template_id) : null;
+  const template = contextLibraryTemplate(project);
   const brief = String(storyboard.meta.brief || '').trim();
   return [
     'Build the exercise from the Context tab so the Main storyline, Cells & actors and Detailed storyline tabs are ready to use.',
@@ -900,7 +909,17 @@ function tabBindInputs(root) {
     App.render();
   }));
   root.querySelectorAll('[data-cx-mode]').forEach((select) => select.addEventListener('change', () => { tabUI('context').mode = select.value === 'auto' ? 'auto' : 'agent'; }));
+  root.querySelectorAll('[data-cx-load-basic]').forEach((button) => button.addEventListener('click', () => {
+    const template = contextLibraryTemplate(project);
+    if (!template || !sbUseTemplate(template, 'replace')) return;
+    appState.route = 'storyline';
+    pushToast(`"${template.name}" loaded as it is. Refine the phases, then plan and write the injects.`, 'success');
+    App.render();
+  }));
   root.querySelectorAll('[data-cx-generate]').forEach((button) => button.addEventListener('click', () => {
+    // The agent adapts the loaded library scenario: put it on the storyline first.
+    const template = contextLibraryTemplate(project);
+    if (template && project.storyboard.meta.template_id !== template.id && !sbUseTemplate(template, 'replace')) return;
     saveLocal(false);
     startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', objective: contextAgentObjective(project), origin: 'context' });
   }));

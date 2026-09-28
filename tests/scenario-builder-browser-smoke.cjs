@@ -88,7 +88,13 @@ function answerFor(system, user) {
   // The scenario library lives on the Project tab.
   await page.click('.nav-icon-btn[data-route="project"]');
   await page.click('.pj-library [data-sb-action="preview-template"][data-sb-template="ransomware-double-extortion"]');
-  await page.click('.sb-modal-foot [data-sb-action="use-template"][data-sb-mode="replace"]');
+  // Load selects the scenario and opens Context; nothing replaces the storyline yet.
+  assert.equal(await page.isDisabled('[data-cx-load-basic]').catch(() => null), null);
+  await page.click('.sb-modal-foot [data-sb-action="select-template"]');
+  assert.equal(await page.evaluate(() => appState.route), 'scenario');
+  assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
+  assert.ok((await page.locator('.cx-brief').innerText()).includes('Ransomware with double extortion'));
+  await page.click('[data-cx-load-basic]');
   assert.equal(await page.evaluate(() => appState.route), 'storyline');
   assert.equal(await page.evaluate(() => sbStoryboard().tracks.length), 1);
   assert.ok(await page.evaluate(() => sbStoryboard().blocks.length) >= 8);

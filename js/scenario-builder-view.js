@@ -185,17 +185,19 @@ function sbMiniTimeline(template) {
 function renderSbTemplateCard(template) {
   const stats = sbTemplateStats(template);
   const search = `${template.name} ${template.category} ${(template.tags || []).join(' ')} ${template.summary || ''}`.toLowerCase();
-  return `<article class="sb-template-card" data-sb-search="${escapeAttribute(search)}">
+  const loaded = sbStoryboard().meta.library_id === template.id;
+  return `<article class="sb-template-card ${loaded ? 'is-loaded' : ''}" data-sb-search="${escapeAttribute(search)}">
     <div class="sb-template-head">
       <span class="sb-template-icon">${sbIcon(template.icon || 'square', 18)}</span>
       <div><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.category || 'Custom')}${template.builtin ? '' : ' · My template'}</small></div>
+      ${loaded ? `<span class="sb-loaded-tag">${sbUiIcon('check', 12)} Loaded</span>` : ''}
     </div>
     <p>${escapeHtml(template.summary || '')}</p>
     ${sbMiniTimeline(template)}
     <div class="sb-template-meta"><span>${escapeHtml(sbFormatDuration(stats.duration))}</span><span>${stats.blocks} blocks</span><span>${stats.injects} injects</span></div>
     <div class="sb-template-actions">
       <button class="btn btn-secondary btn-xs" data-sb-action="preview-template" data-sb-template="${escapeAttribute(template.id)}">Preview</button>
-      <button class="btn btn-primary btn-xs" data-sb-action="use-template" data-sb-template="${escapeAttribute(template.id)}" data-sb-mode="replace">Use</button>
+      <button class="btn btn-primary btn-xs" data-sb-action="select-template" data-sb-template="${escapeAttribute(template.id)}">Load</button>
     </div>
   </article>`;
 }
@@ -559,8 +561,7 @@ function renderSbPreviewModal() {
   const footer = `${template.builtin ? '' : `<button class="btn btn-ghost btn-sm" data-sb-action="delete-template" data-sb-template="${escapeAttribute(template.id)}">${sbUiIcon('trash', 13)} Delete</button>`}
     <button class="btn btn-ghost btn-sm" data-sb-action="export-template" data-sb-template="${escapeAttribute(template.id)}">${sbUiIcon('download', 13)} Export</button>
     ${hasBlocks ? `<button class="btn btn-secondary btn-sm" data-sb-action="use-template" data-sb-template="${escapeAttribute(template.id)}" data-sb-mode="insert">Insert after current storyline</button>` : ''}
-    <button class="btn btn-secondary btn-sm" data-sb-action="adapt-template" data-sb-template="${escapeAttribute(template.id)}" ${isLLMAvailable() && !sbBusy() ? '' : 'disabled'} title="Adapt names, systems, regulators and media to your organisation">${sbUiIcon('wand', 13)} Adapt with AI</button>
-    <button class="btn btn-primary btn-sm" data-sb-action="use-template" data-sb-template="${escapeAttribute(template.id)}" data-sb-mode="replace">Use this scenario</button>`;
+    <button class="btn btn-primary btn-sm" data-sb-action="select-template" data-sb-template="${escapeAttribute(template.id)}" title="Load it, set the key information in Context, then generate with AI or load the basic scenario">Load</button>`;
   return sbModalShell(escapeHtml(template.name), body, footer, 'sb-modal-wide');
 }
 

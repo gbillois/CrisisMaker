@@ -4085,3 +4085,10 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 @media print { .assistant-fab, .assistant-panel { display: none !important; } }
 .assistant-head .btn { white-space: nowrap; }
 @media (max-width: 480px) { .assistant-head .btn { font-size: 0.72rem; padding: 4px 8px; } }
+.cx-template.is-empty { background: var(--surface-alt); border-left-color: var(--line-strong); color: var(--muted); }
+.sb-template-card.is-loaded { border-color: var(--indigo); box-shadow: inset 0 3px 0 var(--indigo); }
+.sb-template-head { position: relative; }
+.sb-loaded-tag { margin-left: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; background: var(--indigo); color: #fff; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+/* Toasts sit above the assistant button */
+.toast-stack { bottom: 96px; }
+@media (max-width: 768px) { .toast-stack { bottom: 78px; } }

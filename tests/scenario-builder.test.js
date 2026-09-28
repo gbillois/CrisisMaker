@@ -428,7 +428,13 @@ test('view: the six tabs and every modal render without a DOM and escape user te
     assert.ok(h.run('renderStorylineView()').includes('sb-modal'), modal);
   }
   h.run(`sbUI().modal = 'preview'; sbUI().previewId = 'ransomware-double-extortion'`);
-  assert.ok(h.run('renderProjectView()').includes('Use this scenario'));
+  const preview = h.run('renderProjectView()');
+  assert.ok(preview.includes('data-sb-action="select-template"') && !preview.includes('Use this scenario'), 'library offers Load');
+  h.run(`sbUI().modal = null; sbStoryboard().meta.library_id = 'ransomware-double-extortion'`);
+  const loaded = h.run('renderScenarioView()');
+  assert.ok(loaded.includes('Scenario generation') && loaded.includes('Library scenario loaded') && /data-cx-load-basic\s(?!disabled)/.test(loaded), 'Context offers the loaded library scenario');
+  h.run(`sbStoryboard().meta.library_id = ''`);
+  assert.ok(/data-cx-load-basic disabled/.test(h.run('renderScenarioView()')), 'greyed without a library scenario');
   h.run(`sbUI().modal = null; appState.scenario.cells[0].players.push(sbNormalizePlayer({ name: 'Ann Lee', role: 'CEO' }))`);
   const cells = h.run('renderCellsView()');
   for (const marker of ['data-ce-cell', 'data-ce-player', 'data-actor-bind', 'Attackers', 'Press', 'Authorities']) assert.ok(cells.includes(marker), marker);
