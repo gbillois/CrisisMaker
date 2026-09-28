@@ -1274,6 +1274,8 @@ Return this structure:
           // keep the first complete object; the agent gets the next ones on its next steps.
           const first = firstJsonObject(body);
           if (first) { try { return JSON.parse(first); } catch (_) { /* Report the original error. */ } }
+          const repaired = repairLLMJson(body);
+          if (repaired && typeof repaired === 'object') return repaired;
           throw error;
         }
       }
@@ -1294,6 +1296,32 @@ Return this structure:
           else if (char === '}' && --depth === 0) return text.slice(start, i + 1);
         }
         return null;
+      }
+
+      /* Last resort for almost-JSON written by a model: raw line breaks and tabs inside strings,
+         unescaped quotes inside a string (an HTML attribute such as class="lead": a quote that is
+         not followed by , } ] or : closes nothing), and trailing commas. Null when still invalid. */
+      function repairLLMJson(text) {
+        const source = String(text || '');
+        let out = '', inString = false, escaped = false;
+        for (let i = 0; i < source.length; i++) {
+          const char = source[i];
+          if (!inString) { if (char === '"') inString = true; out += char; continue; }
+          if (escaped) { escaped = false; out += char; continue; }
+          if (char === '\\') { escaped = true; out += char; continue; }
+          if (char === '\n') { out += '\\n'; continue; }
+          if (char === '\r') { out += '\\r'; continue; }
+          if (char === '\t') { out += '\\t'; continue; }
+          if (char === '"') {
+            const next = source.slice(i + 1).match(/^\s*(.)/)?.[1];
+            if (next === undefined || [',', '}', ']', ':'].includes(next)) { inString = false; out += char; }
+            else out += '\\"';
+            continue;
+          }
+          out += char;
+        }
+        out = out.replace(/,\s*([}\]])/g, '$1');
+        try { return JSON.parse(out); } catch (_) { return null; }
       }
 
       /* A reply cut at the token limit is never valid JSON: say so instead of "malformed JSON". */
@@ -1323,6 +1351,8 @@ Return this structure:
           try {
             return JSON.parse(match[0]);
           } catch (innerErr) {
+            const repaired = repairLLMJson(match[0]);
+            if (repaired && typeof repaired === 'object') return repaired;
             throw CrisisError.wrap(innerErr, {
               operation: 'Parse extracted LLM JSON',
               message: tt('LLM response contained malformed JSON.', 'La réponse du LLM contenait un JSON mal formé.', 'Die LLM-Antwort enthielt fehlerhaftes JSON.'),

@@ -476,3 +476,13 @@ test('reliability: phases are planned in requests sized by the injects asked for
   assert.ok(budgets.every((entry) => entry.targets * 20 <= 30 || entry.targets === 1));
   assert.ok(budgets.every((entry) => entry.maxTokens >= 1200 + 180 * 20 * entry.targets || entry.maxTokens === 16000));
 });
+
+test('almost-JSON from a model is repaired as a last resort: raw line breaks, quotes in HTML, trailing commas', () => {
+  const h = harness();
+  h.context.broken = '{"subject":"Backup catalogues deleted","body":"<p class="lead">First line\nSecond line</p>",}';
+  assert.equal(h.run('parseLLMJson(broken).body'), '<p class="lead">First line\nSecond line</p>');
+  assert.equal(h.run('parseStrictLLMJson(broken).subject'), 'Backup catalogues deleted');
+  h.context.quoted = '```json\n{"text":"The CEO said "no payment" this morning","time":"09:40"}\n```';
+  assert.equal(h.run('parseLLMJson(quoted).text'), 'The CEO said "no payment" this morning');
+  assert.throws(() => h.run('parseLLMJson("{\\"a\\": [1, 2")'), /malformed|not valid/i);
+});
