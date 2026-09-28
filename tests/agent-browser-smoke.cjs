@@ -47,7 +47,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await page.locator('[data-route="scenario"]').click();
   await page.locator('[data-sb-project="scenario.objectives"]').waitFor();
   assert.ok((await page.locator('[data-sb-project="scenario.objectives"]').inputValue()).includes('isolation'));
-  await page.locator('[data-route="stimuli"]').click();
+  await page.locator('[data-route="detailed"]').click();
   assert.ok((await page.locator('main').innerText()).includes('Isolation decision'));
   await page.locator('[data-route="agent"]').click();
   await page.locator('#agent-kind').selectOption('reviewer');

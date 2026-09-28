@@ -1,6 +1,5 @@
 /* Scenario Builder tab: multi-track storyboard editor in the spirit of a video
    editing suite (bin, program monitor, timeline, inspector). */
-const SB_LAYOUT_KEY = 'crisismaker_builder_layout_v1';
 
 /* Compact layout for laptop screens (13" and similar). */
 function sbCompact() {
@@ -10,28 +9,11 @@ function sbHeaderWidth() {
   return sbCompact() ? 150 : 188;
 }
 function sbRowHeight(main) {
+  if (main && appState.route === 'storyline') return sbCompact() ? 104 : 120;
   return sbCompact() ? (main ? 66 : 56) : (main ? 78 : 66);
 }
 
 /* Which side panels are open; remembered per browser. */
-function sbPanels() {
-  const ui = sbUI();
-  if (!ui.panels) {
-    let saved = null;
-    try { saved = JSON.parse(localStorage.getItem(SB_LAYOUT_KEY) || 'null'); } catch (_) { saved = null; }
-    const wide = typeof window === 'undefined' || !(Number(window.innerWidth) > 0) || window.innerWidth >= 1500;
-    const tall = typeof window === 'undefined' || !(Number(window.innerHeight) > 0) || window.innerHeight >= 900;
-    ui.panels = {
-      left: saved && 'left' in saved ? (['blocks', 'cast'].includes(saved.left) ? saved.left : null) : (wide ? 'blocks' : null),
-      right: saved && 'right' in saved ? saved.right === true : wide,
-      monitor: saved && ['full', 'compact'].includes(saved.monitor) ? saved.monitor : (wide && tall ? 'full' : 'compact')
-    };
-  }
-  return ui.panels;
-}
-function sbSavePanels() {
-  try { localStorage.setItem(SB_LAYOUT_KEY, JSON.stringify(sbPanels())); } catch (_) { /* Layout memory is optional. */ }
-}
 const SB_ZOOM_MIN = 0.6;
 const SB_ZOOM_MAX = 24;
 const SB_WORKSTREAM_DEFAULTS = ['technical', 'governance', 'communication', 'legal', 'business'];
@@ -129,89 +111,6 @@ function sbUiIcon(name, size = 16) {
 }
 
 // ── View ─────────────────────────────────────────────────────────────────────
-function renderScenarioBuilderView() {
-  return sbWithRenderMemo(renderScenarioBuilderMarkup);
-}
-
-function renderScenarioBuilderMarkup() {
-  const ui = sbUI();
-  const storyboard = sbStoryboard();
-  sbCaptureFocus();
-  if (ui.zoom === null) { ui.zoom = 3; ui.needsFit = true; }
-  ui.playhead = Math.min(Math.max(0, ui.playhead), storyboard.duration_minutes);
-  const readOnly = sbReadOnly();
-  const panels = sbPanels();
-  const columns = ['44px', panels.left ? 'var(--sb-left-width)' : '', 'minmax(0, 1fr)', panels.right ? 'var(--sb-right-width)' : '', '44px'].filter(Boolean).join(' ');
-  return `<section class="sb-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="Phase Builder">
-    ${renderSbToolbar(storyboard)}
-    ${renderSbStatusBar()}
-    <div class="sb-body" style="grid-template-columns:${columns}">
-      ${renderSbRail('left')}
-      ${panels.left ? renderSbBin(storyboard) : ''}
-      <div class="sb-stage ${panels.monitor === 'compact' ? 'is-compact-monitor' : ''}">
-        ${panels.monitor === 'compact' ? renderSbMonitorStrip(storyboard) : renderSbMonitor(storyboard)}
-        ${renderSbTimeline(storyboard)}
-      </div>
-      ${panels.right ? renderSbInspector(storyboard) : ''}
-      ${renderSbRail('right')}
-    </div>
-    ${renderSbModal(storyboard)}
-  </section>`;
-}
-
-function renderSbRail(side) {
-  const panels = sbPanels();
-  const storyboard = sbStoryboard();
-  const button = (action, value, icon, label, active, shortcut) => `<button class="sb-rail-btn ${active ? 'active' : ''}" data-sb-action="${action}" ${value ? `data-sb-value="${value}"` : ''} aria-pressed="${active}" title="${escapeAttribute(`${label} (${shortcut})`)}">${icon}<span>${escapeHtml(label)}</span></button>`;
-  if (side === 'left') {
-    return `<nav class="sb-rail sb-rail-left" aria-label="Bin panels">
-      ${button('toggle-left', 'blocks', sbIcon('square', 18), 'Blocks', panels.left === 'blocks', '[')}
-      ${button('toggle-left', 'cast', sbIcon('users', 18), `Cast ${storyboard.cast.length}`, panels.left === 'cast', '[')}
-    </nav>`;
-  }
-  const selected = sbSelectedBlock();
-  return `<nav class="sb-rail sb-rail-right" aria-label="Side panels">
-    ${button('toggle-right', '', sbUiIcon('layers', 18), selected ? 'Block' : 'Details', panels.right, ']')}
-    ${button('toggle-monitor', '', sbUiIcon(panels.monitor === 'full' ? 'fit' : 'play', 18), panels.monitor === 'full' ? 'Monitor' : 'Monitor', panels.monitor === 'full', 'M')}
-    <span class="sb-rail-spacer"></span>
-    <button class="sb-rail-btn" data-route="scenario" title="Scenario context: library, framing, client and actors">${sbIcon('target', 18)}<span>Context</span></button>
-  </nav>`;
-}
-
-function renderSbToolbar(storyboard) {
-  const project = appState.scenario;
-  const coherence = storyboard.meta.coherence;
-  const pending = sbPendingSyncCount(project);
-  const missing = storyboard.blocks.reduce((sum, block) => sum + block.beats.filter((beat) => !sbStimulusForBeat(project, beat.id)).length, 0);
-  const ai = isLLMAvailable();
-  const aiTitle = ai ? '' : ' (configure AI in Settings)';
-  const validated = storyboard.meta.validated_rev;
-  return `<header class="sb-toolbar">
-    <div class="sb-tb-title">
-      <span class="sb-eyebrow">Phase Builder</span>
-      <div class="sb-tb-name-row">
-        <strong class="sb-tb-name" title="${escapeAttribute(project.name || 'Untitled scenario')}">${escapeHtml(project.name || 'Untitled scenario')}</strong>
-        <span class="sb-chip sb-chip-rev" title="Storyboard revision">rev ${storyboard.rev}</span>
-        ${validated !== null ? `<span class="sb-chip sb-chip-ok" title="Validated revision">${sbUiIcon('check', 12)} validated rev ${validated}${validated !== storyboard.rev ? ' · changed since' : ''}</span>` : ''}
-      </div>
-    </div>
-    <div class="sb-tb-group" role="group" aria-label="History">
-      <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="Undo ${escapeAttribute(StoryboardHistory.lastLabel('undo'))} (Ctrl+Z)">${sbUiIcon('undo')}</button>
-      <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="Redo ${escapeAttribute(StoryboardHistory.lastLabel('redo'))} (Ctrl+Shift+Z)">${sbUiIcon('redo')}</button>
-      <button class="sb-tool sb-tool-label" data-sb-action="open-modal" data-sb-modal="versions" title="Versions and autosaves">${sbUiIcon('history')}<span>Versions</span></button>
-    </div>
-    <div class="sb-tb-group" role="group" aria-label="AI design">
-      <button class="sb-tool sb-tool-label" data-route="scenario" title="Start again from the library or an AI skeleton (Scenario context)">${sbUiIcon('wand')}<span>Start from…</span></button>
-      <button class="sb-tool sb-tool-label" data-sb-action="deepen-all" ${ai && storyboard.blocks.length ? '' : 'disabled'} title="Add the next layer of detail to every block${aiTitle}">${sbUiIcon('layers')}<span>Deepen all</span></button>
-      <button class="sb-tool sb-tool-label" data-sb-action="open-modal" data-sb-modal="coherence" title="Check global coherence">${sbScoreDot(coherence?.score)}<span>Coherence</span></button>
-    </div>
-    <div class="sb-tb-group sb-tb-output" role="group" aria-label="Injects">
-      <button class="sb-tool sb-tool-label" data-sb-action="open-modal" data-sb-modal="sync" title="Propagate storyboard changes to actors and injects">${sbUiIcon('sync')}<span>Sync</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>
-      <button class="btn btn-primary btn-sm sb-generate-btn" data-sb-action="open-modal" data-sb-modal="generate" title="Create actors and injects from the storyboard">${sbUiIcon('play', 14)} Generate injects${missing ? ` <span class="sb-count sb-count-light">${missing}</span>` : ''}</button>
-    </div>
-  </header>`;
-}
-
 function sbScoreDot(score) {
   if (score === undefined || score === null) return sbUiIcon('check');
   const tone = score >= 80 ? 'good' : score >= 60 ? 'mid' : 'low';
@@ -229,29 +128,6 @@ function renderSbStatusBar() {
 }
 
 // ── Bin (left panel) ─────────────────────────────────────────────────────────
-function renderSbBin(storyboard) {
-  const panel = sbPanels().left;
-  return `<aside class="sb-bin" aria-label="${panel === 'cast' ? 'Cast' : 'Blocks'}">
-    <div class="sb-panel-head"><strong>${panel === 'cast' ? `Cast · ${storyboard.cast.length}` : 'Blocks'}</strong><button class="sb-icon-btn" data-sb-action="toggle-left" data-sb-value="${panel}" title="Hide panel ([)">${sbUiIcon('close', 14)}</button></div>
-    <div class="sb-bin-body">
-      ${panel === 'cast' ? renderSbCast(storyboard) : renderSbPalette()}
-    </div>
-  </aside>`;
-}
-
-function renderSbPalette() {
-  const groups = [['stage', 'Crisis stages', 'Main storyline'], ['workstream', 'Crisis management workstreams', 'Parallel tracks'], ['custom', 'Your own', '']];
-  return `<p class="sb-help">Drag a block onto a track, or click to add it. Double-click a clip to edit it.</p>
-    ${groups.map(([group, title, subtitle]) => `<div class="sb-palette-group">
-      <div class="sb-palette-title">${escapeHtml(title)}${subtitle ? `<span>${escapeHtml(subtitle)}</span>` : ''}</div>
-      ${Object.entries(SB_BLOCK_TYPES).filter(([, type]) => type.group === group).map(([key, type]) => `
-        <button class="sb-palette-item" draggable="true" data-sb-palette="${key}" data-sb-action="add-block" data-sb-type="${key}" style="--clip-color:${type.color}" title="${escapeAttribute(type.hint)}">
-          <span class="sb-palette-icon">${sbIcon(type.icon, 15)}</span>
-          <span class="sb-palette-text"><strong>${escapeHtml(type.label)}</strong><small>${escapeHtml(sbFormatDuration(type.duration))} · ${type.stimuli} injects</small></span>
-        </button>`).join('')}
-    </div>`).join('')}`;
-}
-
 function renderSbLibrary() {
   const ui = sbUI();
   ui.libraryCategory = ui.libraryCategory || '';
@@ -332,84 +208,6 @@ function renderSbCast(storyboard) {
 }
 
 // ── Program monitor ──────────────────────────────────────────────────────────
-function renderSbMonitor(storyboard) {
-  const ui = sbUI();
-  const project = appState.scenario;
-  const at = ui.playhead;
-  const active = sbBlocksAt(storyboard, at);
-  const main = active.find((block) => sbTrack(storyboard, block.track_id)?.kind === 'main');
-  const parallel = active.filter((block) => block !== main);
-  const stats = sbStats(storyboard, project.stimuli);
-  const coherence = storyboard.meta.coherence;
-  const pending = sbPendingSyncCount(project);
-  const upcoming = storyboard.blocks.flatMap((block) => block.beats.map((beat) => ({ block, beat, time: sbBeatAbsolute(block, beat) })))
-    .filter((item) => item.time >= at - 20 && item.time <= at + 90).sort((a, b) => a.time - b.time).slice(0, 7);
-  const clock = sbClockTime(at, project.scenario.start_date);
-  return `<section class="sb-monitor" aria-label="Program monitor">
-    <button class="sb-icon-btn sb-monitor-collapse" data-sb-action="toggle-monitor" title="Collapse the monitor (M)">${sbUiIcon('minus', 14)}</button>
-    <div class="sb-monitor-program">
-      <div class="sb-timecode"><strong>${sbFormatOffset(at)}</strong>${clock ? `<span>${escapeHtml(clock)}</span>` : ''}</div>
-      ${main ? `<button class="sb-now" data-sb-action="select-block" data-sb-block="${main.id}" style="--clip-color:${sbBlockColor(main, storyboard)}">
-          <span class="sb-now-kicker">${sbIcon((SB_BLOCK_TYPES[main.type] || SB_BLOCK_TYPES.custom).icon, 13)} ${escapeHtml((SB_BLOCK_TYPES[main.type] || SB_BLOCK_TYPES.custom).label)}</span>
-          <strong>${escapeHtml(main.title)}</strong>
-          <span class="sb-now-text">${escapeHtml(main.narrative || main.brief || 'No description yet.')}</span>
-        </button>` : `<div class="sb-now is-empty"><strong>${storyboard.blocks.length ? 'No main storyline block here' : 'Empty storyboard'}</strong><span class="sb-now-text">${storyboard.blocks.length ? 'Move the playhead or add a crisis stage.' : 'Start from the Library, generate a Skeleton with AI, or drag blocks onto the timeline.'}</span></div>`}
-      ${parallel.length ? `<div class="sb-parallel">${parallel.map((block) => `<button class="sb-parallel-chip" data-sb-action="select-block" data-sb-block="${block.id}" style="--clip-color:${sbBlockColor(block, storyboard)}">${escapeHtml(block.title)}</button>`).join('')}</div>` : ''}
-    </div>
-    <div class="sb-monitor-feed">
-      <div class="sb-monitor-title">Around the playhead</div>
-      ${upcoming.length ? `<ol class="sb-feed">${upcoming.map(({ block, beat, time }) => {
-        const stimulus = sbStimulusForBeat(project, beat.id);
-        const status = stimulus ? sbStimulusStatus(project, stimulus) : null;
-        return `<li class="${time < at ? 'is-past' : ''}">
-          <span class="sb-feed-time">${sbFormatOffset(time)}</span>
-          <i class="sb-dot" style="background:${sbChannelColor(beat.channel)}"></i>
-          <button class="sb-feed-title" data-sb-action="${stimulus ? 'open-stimulus' : 'select-block'}" data-sb-stimulus="${escapeAttribute(stimulus?.id || '')}" data-sb-block="${block.id}" title="${escapeAttribute(beat.intent)}">${escapeHtml(beat.title || channelLabel(beat.channel))}</button>
-          <span class="sb-status is-${status?.key || 'planned'}">${escapeHtml(status?.label || 'Planned')}</span>
-        </li>`;
-      }).join('')}</ol>` : '<p class="sb-empty">No inject planned around this time.</p>'}
-    </div>
-    <div class="sb-monitor-kpis">
-      ${sbKpi(sbFormatDuration(storyboard.duration_minutes), 'Duration')}
-      ${sbKpi(stats.blocks, 'Blocks')}
-      ${sbKpi(`${stats.beats}<small>/${stats.planned}</small>`, 'Injects planned', true)}
-      ${sbKpi(stats.generated, 'Generated')}
-      <button class="sb-kpi sb-kpi-btn" data-sb-action="open-modal" data-sb-modal="coherence">${sbScoreRing(coherence?.score)}<span>Coherence${coherence && coherence.checked_rev !== storyboard.rev ? ' · outdated' : ''}</span></button>
-      <button class="sb-kpi sb-kpi-btn ${pending ? 'is-alert' : ''}" data-sb-action="open-modal" data-sb-modal="sync"><strong>${pending}</strong><span>To sync</span></button>
-      <div class="sb-levels" title="Blocks per level of detail">${['Structure', 'Narrative', 'Inject plan'].map((label, index) => `<span><i class="sb-level-${index + 1}"></i>${label} ${stats.levels[index]}</span>`).join('')}</div>
-    </div>
-  </section>`;
-}
-
-function renderSbMonitorStrip(storyboard) {
-  const ui = sbUI();
-  const project = appState.scenario;
-  const at = ui.playhead;
-  const active = sbBlocksAt(storyboard, at);
-  const main = active.find((block) => sbTrack(storyboard, block.track_id)?.kind === 'main');
-  const parallel = active.filter((block) => block !== main);
-  const stats = sbStats(storyboard, project.stimuli);
-  const coherence = storyboard.meta.coherence;
-  const pending = sbPendingSyncCount(project);
-  const clock = sbClockTime(at, project.scenario.start_date);
-  return `<section class="sb-monitor-strip" aria-label="Program monitor">
-    <span class="sb-strip-time"><strong>${sbFormatOffset(at)}</strong>${clock ? `<small>${escapeHtml(clock)}</small>` : ''}</span>
-    ${main ? `<button class="sb-strip-now" data-sb-action="select-block" data-sb-block="${main.id}" style="--clip-color:${sbBlockColor(main, storyboard)}" title="${escapeAttribute(main.narrative || main.brief)}">${sbIcon((SB_BLOCK_TYPES[main.type] || SB_BLOCK_TYPES.custom).icon, 13)}<span>${escapeHtml(main.title)}</span></button>` : `<span class="sb-strip-empty">${storyboard.blocks.length ? 'No main block at this time' : 'Empty storyboard: start from the Scenario context tab or drag blocks'}</span>`}
-    ${parallel.slice(0, 3).map((block) => `<button class="sb-parallel-chip" data-sb-action="select-block" data-sb-block="${block.id}" style="--clip-color:${sbBlockColor(block, storyboard)}">${escapeHtml(block.title)}</button>`).join('')}${parallel.length > 3 ? `<span class="sb-strip-more">+${parallel.length - 3}</span>` : ''}
-    <span class="sb-strip-kpis">
-      <span title="Planned injects / target"><b>${stats.beats}</b>/${stats.planned} planned</span>
-      <span title="Generated injects"><b>${stats.generated}</b> generated</span>
-      <button data-sb-action="open-modal" data-sb-modal="coherence" title="Coherence">${sbScoreDot(coherence?.score)}</button>
-      ${pending ? `<button class="is-alert" data-sb-action="open-modal" data-sb-modal="sync" title="Changes to sync"><b>${pending}</b> to sync</button>` : ''}
-    </span>
-    <button class="sb-icon-btn sb-strip-toggle" data-sb-action="toggle-monitor" title="Expand the monitor (M)">${sbUiIcon('fit', 14)}</button>
-  </section>`;
-}
-
-function sbKpi(value, label, html = false) {
-  return `<div class="sb-kpi"><strong>${html ? value : escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`;
-}
-
 function sbScoreRing(score) {
   const value = Number.isFinite(score) ? score : null;
   const circumference = 2 * Math.PI * 15;
@@ -436,14 +234,11 @@ function renderSbTimeline(storyboard) {
         <button class="sb-tool sb-tool-label ${ui.ripple ? 'is-on' : ''}" data-sb-action="toggle-ripple" aria-pressed="${ui.ripple}" title="Ripple: moving or resizing a block shifts the following ones">${sbUiIcon('ripple', 14)}<span>Ripple</span></button>
         <label class="sb-inline-label" title="Exercise duration in minutes"><span class="sb-hide-compact">Duration</span><input type="number" min="30" max="${SB_MAX_DURATION}" step="15" value="${storyboard.duration_minutes}" data-sb-duration ${readOnly}><span>min</span></label>
       </div>
-      <div class="sb-tb-group">
-        <button class="sb-tool sb-tool-label" data-sb-action="add-track" ${readOnly} title="Add a workstream track">${sbUiIcon('plus', 14)}<span>Track</span></button>
-      </div>
     </div>
     <div class="sb-timeline-scroll" id="sb-timeline-scroll">
       <div class="sb-canvas" style="width:${sbHeaderWidth() + width}px;--ppm:${ppm};--hour:${(60 * ppm).toFixed(2)}px;--quarter:${(15 * ppm).toFixed(2)}px;--header:${sbHeaderWidth()}px">
         <div class="sb-ruler-row">
-          <div class="sb-corner"><span>Tracks</span><small>${storyboard.tracks.length}</small></div>
+          <div class="sb-corner"><span>Phases</span><small>${sbMainBlocks(storyboard).length}</small></div>
           <div class="sb-ruler" data-sb-ruler style="width:${width}px">${renderSbRuler(storyboard, ppm)}</div>
         </div>
         ${storyboard.tracks.map((track, index) => renderSbTrack(storyboard, track, index, width)).join('')}
@@ -477,7 +272,7 @@ function renderSbTrack(storyboard, track, index, width) {
   return `<div class="sb-track-row ${track.kind === 'main' ? 'is-main' : ''}" style="--track-color:${track.color}">
     <div class="sb-track-head" style="height:${height}px">
       <input class="sb-track-name" data-sb-track-name="${track.id}" value="${escapeAttribute(track.name)}" aria-label="Track name" ${readOnly}>
-      <small>${track.kind === 'main' ? 'Main storyline' : 'Workstream'} · ${blocks.length} blocks · ${injects} injects</small>
+      <small>${blocks.length} phases · ${injects} injects</small>
       ${track.kind === 'main' ? '' : `<span class="sb-track-actions">
         <button class="sb-icon-btn" data-sb-action="move-track" data-sb-track="${track.id}" data-sb-value="-1" ${index <= 1 || readOnly ? 'disabled' : ''} title="Move up">${sbUiIcon('up', 13)}</button>
         <button class="sb-icon-btn" data-sb-action="move-track" data-sb-track="${track.id}" data-sb-value="1" ${index === storyboard.tracks.length - 1 || readOnly ? 'disabled' : ''} title="Move down">${sbUiIcon('down', 13)}</button>
@@ -513,6 +308,7 @@ function renderSbClip(storyboard, block, top, height) {
     <span class="sb-clip-handle is-left" data-sb-resize="left"></span>
     <div class="sb-clip-body">
       <div class="sb-clip-head"><span class="sb-clip-icon">${sbIcon(type.icon, 13)}</span><strong>${escapeHtml(block.title)}</strong></div>
+      ${block.brief ? `<div class="sb-clip-brief">${escapeHtml(block.brief)}</div>` : ''}
       <div class="sb-clip-meta">
       <span class="sb-clip-sub">${sbFormatOffset(block.start_minutes)} · ${escapeHtml(sbFormatDuration(block.duration_minutes))} · ${block.beats.length || block.stimuli_target}${block.beats.length && block.beats.length !== block.stimuli_target ? `/${block.stimuli_target}` : ''} inj.</span>
       <span class="sb-clip-flags">
@@ -530,203 +326,6 @@ function renderSbClip(storyboard, block, top, height) {
 }
 
 // ── Inspector (right panel) ──────────────────────────────────────────────────
-function renderSbInspector(storyboard) {
-  const block = sbSelectedBlock();
-  const ui = sbUI();
-  if (!block) {
-    return `<aside class="sb-inspector" aria-label="Inspector">
-      ${ui.selected.length > 1 ? renderSbMultiInspector(storyboard) : renderSbEmptyInspector(storyboard)}
-    </aside>`;
-  }
-  const type = SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom;
-  const level = sbDetailLevel(block);
-  const project = appState.scenario;
-  const linked = sbStimuliForBlock(project, block.id);
-  const complete = block.beats.length && block.beats.every((beat) => sbStimulusForBeat(project, beat.id));
-  const readOnly = sbReadOnly() || block.locked ? 'disabled' : '';
-  const tabs = [['brief', 'Brief'], ['narrative', 'Narrative'], ['plan', `Injects · ${block.beats.length}/${block.stimuli_target}`], ['links', `Links · ${linked.length}`]];
-  const tab = tabs.some(([key]) => key === ui.inspector) ? ui.inspector : 'brief';
-  return `<aside class="sb-inspector" aria-label="Inspector" style="--clip-color:${sbBlockColor(block, storyboard)}">
-    <div class="sb-inspector-head">
-      <div class="sb-inspector-kicker"><span class="sb-clip-icon">${sbIcon(type.icon, 14)}</span>
-        <select data-sb-field="type" aria-label="Block type" ${readOnly}>${Object.entries(SB_BLOCK_TYPES).map(([key, value]) => sbOption(key, value.label, block.type)).join('')}</select>
-        <button class="sb-icon-btn" data-sb-action="toggle-right" title="Hide panel (])">${sbUiIcon('close', 14)}</button>
-      </div>
-      <input class="sb-inspector-title" data-sb-field="title" value="${escapeAttribute(block.title)}" aria-label="Block title" ${readOnly}>
-      <div class="sb-inspector-meta">
-        <select data-sb-field="track_id" aria-label="Track" ${readOnly}>${storyboard.tracks.map((track) => sbOption(track.id, track.name, block.track_id)).join('')}</select>
-        <select data-sb-field="status" aria-label="Status" ${sbReadOnly() ? 'disabled' : ''}>${[['draft', 'Draft'], ['refined', 'Refined'], ['validated', 'Validated']].map(([value, label]) => sbOption(value, label, block.status)).join('')}</select>
-        <button class="sb-icon-btn ${block.locked ? 'is-on' : ''}" data-sb-action="toggle-lock" title="${block.locked ? 'Unlock' : 'Lock (protects from AI and sync)'}" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon(block.locked ? 'lock' : 'unlock', 14)}</button>
-      </div>
-      <ol class="sb-depth" aria-label="Level of detail">${['Structure', 'Narrative', 'Inject plan', 'Injects'].map((label, index) => `<li class="${index < level || (index === 3 && complete) ? 'done' : ''} ${index === level ? 'next' : ''}">${label}</li>`).join('')}</ol>
-    </div>
-    <div class="sb-tabs sb-tabs-small" role="tablist">${tabs.map(([key, label]) => `<button role="tab" aria-selected="${tab === key}" class="sb-tab ${tab === key ? 'active' : ''}" data-sb-action="set-inspector" data-sb-value="${key}">${escapeHtml(label)}</button>`).join('')}</div>
-    <div class="sb-inspector-body">
-      ${tab === 'brief' ? renderSbBriefTab(block, readOnly) : tab === 'narrative' ? renderSbNarrativeTab(block, readOnly) : tab === 'plan' ? renderSbPlanTab(storyboard, block, readOnly) : renderSbLinksTab(block)}
-    </div>
-    <div class="sb-inspector-foot">
-      <button class="btn btn-primary btn-sm" data-sb-action="generate-block" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon('play', 13)} Generate injects</button>
-      <button class="btn btn-secondary btn-sm" data-sb-action="send-to-agent" ${sbReadOnly() ? 'disabled' : ''} title="Open the Agent tab with a brief scoped to this block">${sbUiIcon('agent', 13)} Agent</button>
-      <button class="sb-icon-btn" data-sb-action="duplicate-block" ${sbReadOnly() ? 'disabled' : ''} title="Duplicate (Ctrl+D)">${sbUiIcon('copy', 15)}</button>
-      <button class="sb-icon-btn is-danger" data-sb-action="delete-block" ${readOnly} title="Delete (Del)">${sbUiIcon('trash', 15)}</button>
-    </div>
-  </aside>`;
-}
-
-function renderSbBriefTab(block, readOnly) {
-  const objectives = sbObjectivesList(appState.scenario);
-  const extra = block.objectives.filter((objective) => !objectives.includes(objective));
-  const ai = isLLMAvailable();
-  return `<div class="sb-field-grid">
-      <label class="sb-mini-field">Start · ${sbFormatOffset(block.start_minutes)}<input type="number" min="0" step="1" data-sb-field="start_minutes" value="${block.start_minutes}" ${readOnly}></label>
-      <label class="sb-mini-field">Duration (min)<input type="number" min="5" step="5" data-sb-field="duration_minutes" value="${block.duration_minutes}" ${readOnly}></label>
-      <label class="sb-mini-field">Injects<input type="number" min="0" max="${SB_MAX_BEATS}" step="1" data-sb-field="stimuli_target" value="${block.stimuli_target}" ${readOnly}></label>
-    </div>
-    <label class="sb-mini-field">Brief · what should happen in this block
-      <textarea data-sb-field="brief" rows="5" placeholder="${escapeAttribute((SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
-    </label>
-    <div class="sb-mini-field">Objectives tested
-      ${objectives.length || extra.length ? `<div class="sb-checklist">${[...objectives, ...extra].map((objective) => `<label><input type="checkbox" data-sb-objective="${escapeAttribute(objective)}" ${block.objectives.includes(objective) ? 'checked' : ''} ${readOnly}><span>${escapeHtml(objective)}</span></label>`).join('')}</div>` : '<p class="sb-empty">Add exercise objectives in the scenario panel (click an empty area of the timeline).</p>'}
-    </div>
-    <label class="sb-mini-field">Designer notes
-      <textarea data-sb-field="notes" rows="3" placeholder="Facilitation notes, expected reactions, props…" ${readOnly}>${escapeHtml(block.notes)}</textarea>
-    </label>
-    <div class="sb-ai-row">
-      <button class="btn btn-secondary btn-sm" data-sb-action="deepen-block" ${ai && !readOnly ? '' : 'disabled'}>${sbUiIcon('layers', 13)} ${block.narrative.trim() ? (block.beats.length >= block.stimuli_target && block.beats.length ? 'Complete' : 'Plan injects') : 'Write narrative'}</button>
-    </div>`;
-}
-
-function renderSbNarrativeTab(block, readOnly) {
-  const ui = sbUI();
-  const ai = isLLMAvailable();
-  return `<label class="sb-mini-field">Narrative · hidden story, what players know, dilemmas
-      <textarea data-sb-field="narrative" rows="10" placeholder="What really happens, what players know and do not know, which decisions and dilemmas they face, possible consequences…" ${readOnly}>${escapeHtml(block.narrative)}</textarea>
-    </label>
-    <div class="sb-ai-box">
-      <div class="sb-ai-box-title">${sbUiIcon('wand', 13)} Iterate with AI</div>
-      <button class="btn btn-secondary btn-sm" data-sb-action="deepen-block" data-sb-level="2" ${ai && !readOnly ? '' : 'disabled'}>${block.narrative.trim() ? 'Rewrite narrative' : 'Write narrative'}</button>
-      <label class="sb-mini-field">Rewrite this block with an instruction
-        <textarea data-sb-ui="rewrite" rows="3" placeholder="e.g. Make the attacker contact the CEO directly; add a regulator deadline; shorter and more ambiguous" ${readOnly}>${escapeHtml(ui.rewrite)}</textarea>
-      </label>
-      <button class="btn btn-secondary btn-sm" data-sb-action="rewrite-block" ${ai && !readOnly ? '' : 'disabled'}>Apply instruction</button>
-    </div>`;
-}
-
-function renderSbPlanTab(storyboard, block, readOnly) {
-  const project = appState.scenario;
-  const ai = isLLMAvailable();
-  const channels = Object.keys(TEMPLATE_LIBRARY);
-  return `<div class="sb-plan-head">
-      <span>${block.beats.length} of ${block.stimuli_target} injects planned</span>
-      <span class="sb-inline">
-        <button class="btn btn-secondary btn-xs" data-sb-action="deepen-block" data-sb-level="3" ${ai && !readOnly && block.beats.length < Math.max(1, block.stimuli_target) ? '' : 'disabled'}>${sbUiIcon('wand', 12)} Plan with AI</button>
-        <button class="btn btn-secondary btn-xs" data-sb-action="add-beat" ${readOnly}>${sbUiIcon('plus', 12)} Inject</button>
-      </span>
-    </div>
-    <div class="sb-beats">
-      ${block.beats.map((beat) => {
-        const stimulus = sbStimulusForBeat(project, beat.id);
-        const status = stimulus ? sbStimulusStatus(project, stimulus) : null;
-        const templates = beat.channel === 'article_press' ? Object.entries(ARTICLE_TEMPLATE_LIBRARY) : beat.channel === 'breaking_news_tv' ? Object.entries(TV_TEMPLATE_LIBRARY) : [];
-        return `<div class="sb-beat-card" style="--beat-color:${sbChannelColor(beat.channel)}">
-          <div class="sb-beat-row">
-            <label class="sb-beat-time" title="Minutes from block start">+<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" data-sb-beat="${beat.id}.offset_minutes" value="${beat.offset_minutes}" ${readOnly}><em>${sbFormatOffset(sbBeatAbsolute(block, beat))}</em></label>
-            <select data-sb-beat="${beat.id}.channel" aria-label="Channel" ${readOnly}>${channels.map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select>
-            ${templates.length ? `<select data-sb-beat="${beat.id}.template_id" aria-label="Outlet" ${readOnly}>${sbOption('', 'Default outlet', beat.template_id)}${templates.map(([key, value]) => sbOption(key, value.label || key, beat.template_id)).join('')}</select>` : ''}
-            <button class="sb-icon-btn" data-sb-action="delete-beat" data-sb-beat-id="${beat.id}" title="Remove" ${readOnly}>${sbUiIcon('trash', 13)}</button>
-          </div>
-          <select data-sb-beat="${beat.id}.cast_id" aria-label="Sender" ${readOnly}>${sbOption('', '- Sender role -', beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, cast.label, beat.cast_id)).join('')}</select>
-          <input type="text" data-sb-beat="${beat.id}.title" value="${escapeAttribute(beat.title)}" placeholder="Inject title" aria-label="Inject title" ${readOnly}>
-          <textarea data-sb-beat="${beat.id}.intent" rows="2" placeholder="What it says and which pressure or decision it creates" ${readOnly}>${escapeHtml(beat.intent)}</textarea>
-          <div class="sb-beat-foot">
-            ${stimulus ? `<span class="sb-status is-${status?.key}">${escapeHtml(status?.label || '')}${status?.manual && status.key !== 'manual' ? ' · edited' : ''}</span><button class="btn btn-ghost btn-xs" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(stimulus.id)}">${sbUiIcon('open', 11)} Open</button>`
-              : `<span class="sb-status is-planned">Not generated</span><button class="btn btn-ghost btn-xs" data-sb-action="generate-beat" data-sb-beat-id="${beat.id}" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon('play', 11)} Create</button>`}
-          </div>
-        </div>`;
-      }).join('') || `<p class="sb-empty">No inject planned yet. Add them manually or let the AI plan ${block.stimuli_target || 'them'}.</p>`}
-    </div>`;
-}
-
-function renderSbLinksTab(block) {
-  const project = appState.scenario;
-  const linked = sbStimuliForBlock(project, block.id);
-  const readOnly = sbReadOnly() ? 'disabled' : '';
-  return `<p class="sb-help">Injects generated from or linked to this block. Manual edits are detected and preserved during sync; locked injects are never modified automatically.</p>
-    <div class="sb-links">
-      ${linked.map((stimulus) => {
-        const status = sbStimulusStatus(project, stimulus);
-        const locked = stimulus.scenario_link.locked;
-        return `<div class="sb-link-row">
-          <i class="sb-dot" style="background:${sbChannelColor(stimulus.channel)}"></i>
-          <span class="sb-link-time">${sbFormatOffset(stimulus.timestamp_offset_minutes)}</span>
-          <button class="sb-link-title" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(stimulus.id)}">${escapeHtml(sbStimulusLabel(stimulus))}</button>
-          <span class="sb-status is-${status?.key}">${escapeHtml(status?.label || '')}</span>
-          <button class="sb-icon-btn ${locked ? 'is-on' : ''}" data-sb-action="lock-stimulus" data-sb-stimulus="${escapeAttribute(stimulus.id)}" title="${locked ? 'Unlock' : 'Lock: never modified by sync'}" ${readOnly}>${sbUiIcon(locked ? 'lock' : 'unlock', 13)}</button>
-          <button class="sb-icon-btn" data-sb-action="unlink-stimulus" data-sb-stimulus="${escapeAttribute(stimulus.id)}" title="Unlink from the storyboard" ${readOnly}>${sbUiIcon('link', 13)}</button>
-        </div>`;
-      }).join('') || '<p class="sb-empty">No inject linked yet.</p>'}
-    </div>
-    ${renderSbLinkCandidates(block, readOnly)}`;
-}
-
-function renderSbLinkCandidates(block, readOnly) {
-  const project = appState.scenario;
-  const candidates = project.stimuli.filter((stimulus) => !sbStimulusLink(stimulus))
-    .sort((a, b) => Math.abs(a.timestamp_offset_minutes - block.start_minutes) - Math.abs(b.timestamp_offset_minutes - block.start_minutes));
-  if (!candidates.length) return '';
-  const inside = (stimulus) => stimulus.timestamp_offset_minutes >= block.start_minutes && stimulus.timestamp_offset_minutes < sbBlockEnd(block);
-  return `<div class="sb-ai-box"><div class="sb-ai-box-title">${sbUiIcon('link', 13)} Link an existing inject</div>
-    <p class="sb-help">Injects created by hand or imported can follow this block: they are then retimed and flagged by Sync when the block changes.</p>
-    <span class="sb-inline"><select data-sb-link-select ${readOnly}>${candidates.slice(0, 60).map((stimulus) => sbOption(stimulus.id, `${inside(stimulus) ? '● ' : ''}${sbFormatOffset(stimulus.timestamp_offset_minutes)} · ${sbStimulusLabel(stimulus)}`, candidates[0].id)).join('')}</select>
-    <button class="btn btn-secondary btn-xs" data-sb-action="link-stimulus" ${readOnly}>Link</button></span>
-  </div>`;
-}
-
-function renderSbMultiInspector(storyboard) {
-  const blocks = sbUI().selected.map((id) => sbBlock(storyboard, id)).filter(Boolean);
-  return `<div class="sb-inspector-head"><div class="sb-inspector-kicker">${blocks.length} blocks selected<button class="sb-icon-btn" data-sb-action="deselect" title="Clear selection">${sbUiIcon('close', 14)}</button></div></div>
-    <div class="sb-inspector-body">
-      <ul class="sb-multi-list">${blocks.map((block) => `<li style="--clip-color:${sbBlockColor(block, storyboard)}"><button data-sb-action="select-block" data-sb-block="${block.id}">${escapeHtml(block.title)}</button><small>${sbFormatOffset(block.start_minutes)}</small></li>`).join('')}</ul>
-      <p class="sb-help">Drag one of them on the timeline to move all selected blocks together, or use the arrow keys.</p>
-      <div class="sb-ai-row">
-        <button class="btn btn-secondary btn-sm" data-sb-action="deepen-selection" ${isLLMAvailable() && !sbReadOnly() ? '' : 'disabled'}>${sbUiIcon('layers', 13)} Deepen selection</button>
-        <button class="btn btn-primary btn-sm" data-sb-action="generate-block" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon('play', 13)} Generate injects</button>
-        <button class="btn btn-secondary btn-sm" data-sb-action="delete-block" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon('trash', 13)} Delete</button>
-      </div>
-    </div>`;
-}
-
-function renderSbEmptyInspector(storyboard) {
-  const project = appState.scenario;
-  const readOnly = sbReadOnly() ? 'disabled' : '';
-  const unlinked = project.stimuli.filter((stimulus) => !sbStimulusLink(stimulus)).length;
-  const stats = sbStats(storyboard, project.stimuli);
-  return `<div class="sb-panel-head"><strong>Inspector</strong><button class="sb-icon-btn" data-sb-action="toggle-right" title="Hide panel (])">${sbUiIcon('close', 14)}</button></div>
-    <div class="sb-inspector-body">
-      <div class="sb-empty-state">
-        <span class="sb-empty-icon">${sbUiIcon('layers', 22)}</span>
-        <strong>Select a block to edit it</strong>
-        <p class="sb-help">Click a clip on the timeline. Double-click jumps to its title.</p>
-      </div>
-      <div class="sb-facts">
-        <span><b>Blocks</b>${stats.blocks}</span>
-        <span><b>Planned</b>${stats.beats}/${stats.planned} injects</span>
-        <span><b>Generated</b>${stats.generated}</span>
-        <span><b>Duration</b>${escapeHtml(sbFormatDuration(storyboard.duration_minutes))}</span>
-      </div>
-      <dl class="sb-shortcuts">
-        <dt>[ / ]</dt><dd>Show or hide side panels</dd>
-        <dt>M</dt><dd>Expand or collapse the monitor</dd>
-        <dt>Ctrl+Z</dt><dd>Undo · Ctrl+Shift+Z redo</dd>
-        <dt>Del · Ctrl+D</dt><dd>Delete · duplicate block</dd>
-        <dt>← →</dt><dd>Move the selection</dd>
-        <dt>Ctrl+wheel · + −</dt><dd>Zoom</dd>
-      </dl>
-      ${unlinked && storyboard.blocks.length ? `<div class="sb-ai-box"><div class="sb-ai-box-title">${unlinked} inject(s) not linked to the storyboard</div><p class="sb-help">Link them to the main storyline block covering their time so they follow future changes.</p><button class="btn btn-secondary btn-sm" data-sb-action="auto-link" ${readOnly}>${sbUiIcon('link', 13)} Link by time</button></div>` : ''}
-      <button class="btn btn-ghost btn-xs" data-route="scenario">Brief, synopsis, objectives and actors in Scenario context →</button>
-    </div>`;
-}
-
 // ── Modals ───────────────────────────────────────────────────────────────────
 function sbModalShell(title, body, footer = '', size = '') {
   return `<div class="modal-backdrop sb-modal-backdrop" data-sb-backdrop>
@@ -757,7 +356,7 @@ function renderSbSkeletonForm(storyboard) {
   const brief = skeleton.brief || storyboard.meta.brief || project.scenario.summary || '';
   const linked = project.stimuli.filter((stimulus) => sbStimulusLink(stimulus)).length;
   const ai = isLLMAvailable();
-  return `<p class="sb-help">The AI designs the full structure: main storyline, parallel workstreams, timing, injects per block, roles and objectives. You then refine it in the Phase Builder.</p>
+  return `<p class="sb-help">The AI drafts the main storyline: its phases, timing, injects per phase, roles and objectives. You then refine it in Main storyline.</p>
     <label class="sb-mini-field">Brief
       <textarea data-sb-ui="skeleton.brief" rows="5" placeholder="e.g. 4-hour ransomware exercise for the executive crisis cell of a regional hospital group, testing isolation, patient safety, communication and regulatory decisions">${escapeHtml(brief)}</textarea>
     </label>
@@ -765,66 +364,12 @@ function renderSbSkeletonForm(storyboard) {
       <label class="sb-mini-field">Duration (min)<input type="number" min="30" step="15" data-sb-ui="skeleton.duration" value="${skeleton.duration || storyboard.duration_minutes}"></label>
       <label class="sb-mini-field">Target injects (optional)<input type="number" min="0" step="1" data-sb-ui="skeleton.injects" value="${escapeAttribute(skeleton.injects)}"></label>
     </div>
-    <div class="sb-mini-field">Workstreams
-      <div class="sb-checklist sb-checklist-inline">${SB_TRACK_PRESETS.filter((track) => track.kind !== 'main').map((track) => `<label><input type="checkbox" data-sb-skeleton-track="${track.key}" ${skeleton.tracks.includes(track.key) ? 'checked' : ''}><span>${escapeHtml(track.name)}</span></label>`).join('')}</div>
-    </div>
     ${storyboard.blocks.length ? `<p class="agent-warning">Replaces the current storyboard. A version is saved first and can be restored${linked ? `; ${linked} linked inject(s) will be flagged in Sync` : ''}.</p>` : ''}
-    ${!ai ? '<p class="agent-warning">Configure an AI connection in Settings to generate a skeleton, or start from the library.</p>' : ''}
-    <div class="sb-ai-row"><button class="btn btn-primary btn-sm" data-sb-action="generate-skeleton" ${ai && !sbBusy() ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Generate skeleton</button></div>`;
+    ${!ai ? '<p class="agent-warning">Configure an AI connection in Settings to draft with AI, or start from the library below.</p>' : ''}
+    <div class="sb-ai-row"><button class="btn btn-primary btn-sm" data-sb-action="generate-skeleton" ${ai && !sbBusy() ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Draft the storyline</button></div>`;
 }
 
 /* Scenario context tab: starting points (library, AI) and exercise framing. */
-function renderScenarioContextStart() {
-  return sbWithRenderMemo(() => {
-    const storyboard = sbStoryboard();
-    sbCaptureFocus();
-    const stats = sbStats(storyboard, appState.scenario.stimuli);
-    return `<section class="sb-context" data-sb-scope>
-      ${renderSbStatusBar()}
-      <article class="card sb-context-start">
-        <div class="section-header">
-          <div><h3>Start from</h3><p class="subtle">Pick a ready-made scenario or let the AI draft the phases, then refine them in the Phase Builder.</p></div>
-          ${storyboard.blocks.length ? `<button class="btn btn-primary btn-sm" data-route="builder">${sbIcon('flag', 14)} Open the Phase Builder · ${stats.blocks} blocks</button>` : ''}
-        </div>
-        <div class="sb-context-grid">
-          <div class="sb-context-library">
-            <div class="sb-context-subtitle">${sbIcon('database', 15)} Scenario library</div>
-            ${renderSbLibrary()}
-          </div>
-          <div class="sb-context-ai">
-            <div class="sb-context-subtitle">${sbUiIcon('wand', 15)} Generate with AI</div>
-            ${renderSbSkeletonForm(storyboard)}
-          </div>
-        </div>
-      </article>
-      ${renderScenarioFraming(storyboard)}
-      ${sbUI().modal === 'preview' ? renderSbPreviewModal() : ''}
-    </section>`;
-  });
-}
-
-function renderScenarioFraming(storyboard) {
-  const project = appState.scenario;
-  const readOnly = sbReadOnly() ? 'disabled' : '';
-  const phases = project.scenario.phases || [];
-  return `<article class="card sb-framing">
-    <div class="section-header"><div><h3>Exercise framing</h3><p class="subtle">Used by every AI operation of the Phase Builder, the Agent and the Checker.</p></div></div>
-    <div class="field-grid cols-2">
-      <label class="field">Scenario name<input type="text" data-sb-project="name" value="${escapeAttribute(project.name || '')}" placeholder="Untitled scenario" ${readOnly}></label>
-      <label class="field">Designer brief<textarea data-sb-meta="brief" rows="3" placeholder="Audience, duration, what you want to test, constraints, tone…" ${readOnly}>${escapeHtml(storyboard.meta.brief)}</textarea></label>
-      <label class="field">Synopsis · the hidden story<textarea data-sb-meta="synopsis" rows="5" placeholder="What really happens from the attacker's first move to the end of the crisis" ${readOnly}>${escapeHtml(storyboard.meta.synopsis)}</textarea></label>
-      <label class="field">Exercise objectives · one per line<textarea data-sb-project="scenario.objectives" rows="5" placeholder="Decide on isolation under uncertainty&#10;Notify authorities on time&#10;…" ${readOnly}>${escapeHtml(project.scenario.objectives || '')}</textarea></label>
-      <label class="field">Threat<textarea data-sb-meta="threat" rows="3" placeholder="Threat actor, initial access, impact" ${readOnly}>${escapeHtml(storyboard.meta.threat)}</textarea></label>
-      <label class="field">Narrative arc<textarea data-sb-project="scenario.narrative_arc" rows="3" placeholder="How pressure builds and how the exercise ends" ${readOnly}>${escapeHtml(project.scenario.narrative_arc || '')}</textarea></label>
-    </div>
-    <div class="sb-context-phases">
-      <span class="sb-context-subtitle">Phases</span>
-      ${phases.length ? `<ol>${phases.map((phase) => `<li><b>${sbFormatOffset(phase.start_minutes)}</b> ${escapeHtml(phase.name)}</li>`).join('')}</ol>` : '<span class="subtle">No phase yet.</span>'}
-      <button class="btn btn-ghost btn-xs" data-route="builder">Edit in the Phase Builder →</button>
-    </div>
-  </article>`;
-}
-
 function renderSbVersionsModal(storyboard) {
   const ui = sbUI();
   const versions = StoryboardHistory.versions();
@@ -879,7 +424,7 @@ function renderSbCoherenceModal(storyboard) {
       ${sbScoreRing(report?.score)}
       <div>
         <strong>${report ? `Score ${report.score}/100` : 'Not checked yet'}</strong>
-        <p class="sb-help">${report ? `${escapeHtml(report.summary || 'Deterministic checks only.')} Checked on rev ${report.checked_rev}${report.checked_rev !== storyboard.rev ? ' (storyboard changed since)' : ''}.` : 'Run the checks to review structure, timing, objectives coverage and workstream balance.'}</p>
+        <p class="sb-help">${report ? `${escapeHtml(report.summary || 'Deterministic checks only.')} Checked on rev ${report.checked_rev}${report.checked_rev !== storyboard.rev ? ' (storyboard changed since)' : ''}.` : 'Run the checks to review structure, timing, objectives coverage and workload across cells.'}</p>
       </div>
     </div>
     ${groups.map(([severity, title]) => {
@@ -902,23 +447,24 @@ function renderSbGenerateModal(storyboard) {
   const ui = sbUI();
   const project = appState.scenario;
   const options = ui.generate;
-  const selection = ui.selected.map((id) => sbBlock(storyboard, id)).filter(Boolean);
-  const scope = options.scope === 'selection' && selection.length ? selection : sbSortedBlocks(storyboard);
-  const toPlan = scope.filter((block) => !block.locked && block.beats.length < block.stimuli_target);
-  const missing = scope.reduce((sum, block) => sum + block.beats.filter((beat) => !sbStimulusForBeat(project, beat.id)).length, 0);
+  const cell = options.scope === 'cell' ? sbCell(project, options.cellId) : null;
+  const scope = sbSortedBlocks(storyboard);
+  const toPlan = cell ? [] : scope.filter((block) => !block.locked && block.beats.length < block.stimuli_target);
+  const missing = scope.reduce((sum, block) => sum + block.beats.filter((beat) => !sbStimulusForBeat(project, beat.id) && (!cell || beat.cell_id === cell.id)).length, 0);
   const toPlanCount = toPlan.reduce((sum, block) => sum + block.stimuli_target - block.beats.length, 0);
   const castMissing = storyboard.cast.filter((cast) => !sbFindActorForCast(project, cast)).length;
   const running = SbPipeline.active;
   const ai = isLLMAvailable();
+  const cellOption = sbCell(project, options.cellId);
   const body = `<div class="sb-generate">
       <div class="sb-mini-field">Scope
         <div class="sb-segmented">
-          <button class="${options.scope !== 'selection' ? 'active' : ''}" data-sb-action="generate-scope" data-sb-value="all">Whole storyboard · ${storyboard.blocks.length} blocks</button>
-          <button class="${options.scope === 'selection' ? 'active' : ''}" data-sb-action="generate-scope" data-sb-value="selection" ${selection.length ? '' : 'disabled'}>Selection · ${selection.length} block(s)</button>
+          <button class="${!cell ? 'active' : ''}" data-sb-action="generate-scope" data-sb-value="all">Whole exercise · ${storyboard.blocks.length} phases</button>
+          ${cellOption ? `<button class="${cell ? 'active' : ''}" data-sb-action="generate-scope" data-sb-value="cell">${escapeHtml(cellOption.name)} only</button>` : ''}
         </div>
       </div>
       <div class="sb-pipeline">
-        <label class="${options.plan && ai ? 'on' : ''}"><input type="checkbox" data-sb-generate="plan" ${options.plan && ai ? 'checked' : ''} ${ai ? '' : 'disabled'}><span><b>1 · Plan</b>Complete the inject plan with AI (${toPlanCount} to plan in ${toPlan.length} block(s))</span></label>
+        <label class="${options.plan && ai && !cell ? 'on' : ''}"><input type="checkbox" data-sb-generate="plan" ${options.plan && ai && !cell ? 'checked' : ''} ${ai && !cell ? '' : 'disabled'}><span><b>1 · Plan</b>${cell ? 'Not used for a single cell: plan it with “Plan with AI”' : `Complete the inject plan with AI (${toPlanCount} to plan in ${toPlan.length} phase(s))`}</span></label>
         <label class="${options.cast ? 'on' : ''}"><input type="checkbox" data-sb-generate="cast" ${options.cast ? 'checked' : ''}><span><b>2 · Cast</b>Create missing actors for the roles (${castMissing} role(s) without actor)</span></label>
         <label class="on"><input type="checkbox" checked disabled><span><b>3 · Create</b>Create one inject per planned item (${missing} ready now), linked to its block</span></label>
         <label class="${options.write && ai ? 'on' : ''}"><input type="checkbox" data-sb-generate="write" ${options.write && ai ? 'checked' : ''} ${ai ? '' : 'disabled'}><span><b>4 · Write</b>Write each inject with AI in ${escapeHtml(sbLanguageName(project))}, with the storyboard as context</span></label>

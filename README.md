@@ -84,60 +84,73 @@ iframe sub-app) and shows a placeholder instead; use the full app for it.
 - [MITRE ATT&CK / D3Fend threat and mitigation document](docs/mitre-attack-d3fend-threat-mitigation.md)
 - [Debrief generation and automation](docs/debrief-automation.md)
 
-## Scenario context and Phase Builder
+## Designing an exercise: six tabs
 
-An exercise starts in **Scenario context** (first tab): pick a ready-made scenario
-from the library or generate a skeleton with AI, then frame the exercise (name,
-designer brief, synopsis, threat, objectives, narrative arc), the client, the threat
-and the actors.
+The menu follows the design workflow, from left to right:
 
-The **Phase Builder** (second tab) storyboards the crisis phases on a multi-track
-timeline, in the spirit of a video editing suite. Side panels (blocks, cast,
-inspector) fold into icon rails and the program monitor collapses to a single strip,
-so the timeline can use the whole screen on a laptop (`[`, `]` and `M` toggle them;
-the layout is remembered per browser):
+1. **Project**: create, open, save and export projects.
+2. **Scenario & context**: five questions first (client, duration, sector, number
+   of cells, number of players), then the AI block (describe the exercise, or let the
+   AI draft the main storyline from a brief), then the **scenario library**, then the
+   scenario details (synopsis, threat, objectives, narrative arc, designer brief).
+3. **Main storyline**: the macro view. The phases of the crisis sit on a single time
+   line (trigger & detection, investigation, containment, eradication, business
+   continuity, recovery, crisis exit, twists). They are moved and resized with the
+   mouse (snap, ripple, zoom), duplicated and locked. Selecting a phase opens its
+   editor **at the bottom of the screen**: what happens during the phase, the
+   objectives it tests, hidden details and facilitation notes, and AI rewrite.
+4. **Cells & actors**: the player cells (decision, operational, communication, IT,
+   legal, business continuity, HR, or your own) with their players, and the simulated
+   actors who send injects, grouped by type (attackers, press, authorities, customers,
+   partners, experts, internal senders). Storyline roles are linked to actors here.
+5. **Detailed storyline**: the main storyline stays on top; below it, one row of
+   injects per cell. Pick a cell to work on its injects: drag a card to change its
+   time or its recipient cell, plan new injects for the cell with AI, create and
+   write them, and keep them in sync. The inject editor also opens at the bottom.
+6. **Summary**: key figures, a cells × phases heatmap with the load per 30 minutes,
+   an accelerated playback where injects reach each cell over time (with preview),
+   and a review: deterministic checks (idle cells, dead times, overloads, empty
+   phases, missing recipients or senders, orphans) plus an AI check of rhythm and
+   consistency. Each finding opens the inject or cell concerned.
 
-- **Timeline:** a *main storyline* of sequential crisis stages (trigger & detection,
-  investigation, containment, eradication, business continuity, recovery, crisis
-  exit, twists) plus parallel *workstream* tracks (crisis cell & governance,
-  communication, legal & regulatory, HR, logistics, customers & partners). Blocks are
-  dragged from the **Bin**, moved and resized with the mouse (snap, ripple mode,
-  multi-selection, zoom), duplicated and locked. The **Program monitor** shows what
-  happens at the playhead and the injects around it.
-- **Blocks** carry a duration, a number of injects, a brief, objectives and notes, and
-  are refined by layers of detail: *structure* → *narrative* (hidden story, what
-  players know, dilemmas) → *inject plan* (time, channel, sender, intent) →
-  *injects* (generated stimuli linked to their block).
-- **AI** (optional, same provider settings as the rest of the app): generate a
-  complete skeleton from a brief, deepen every block or one block to the next layer,
-  rewrite a block from an instruction, suggest roles, and run a global coherence
-  review (deterministic checks plus an AI critique with one-click fixes). Every AI
+Every inject has a **recipient cell** (`cell_id` on planned injects and stimuli).
+Cells replace the parallel workstreams of earlier versions: when an older project or
+a library scenario is loaded, workstream injects move into the main phase covering
+their time, addressed to the matching cell, and their objectives and briefs are kept
+on that phase.
+
+Under the hood:
+
+- **Layers of detail**: *structure* → *narrative* (hidden story, what players know,
+  dilemmas) → *inject plan* (time, cell, channel, sender, intent) → *injects*
+  (generated stimuli linked to their phase).
+- **AI** (optional, same provider settings as the rest of the app): draft the main
+  storyline, detail every phase or one phase, rewrite a phase from an instruction,
+  plan injects for one cell, suggest roles, and review the whole exercise. Every AI
   operation saves a version first and is a single undo step.
-- **History:** undo/redo of every storyboard edit (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z),
-  automatic versions (before AI operations, generations and restores, and every five
-  minutes while editing, kept in the browser's IndexedDB), named versions and
-  "validated" milestones saved with the project, and a diff against the current
-  storyboard before restoring.
-- **Generate injects** (whole storyboard or selected blocks): plans missing injects,
-  creates actors for the cast roles, creates one stimulus per planned inject through
-  the Agent's `createActor`/`createStimulus` tools, then writes each one with the
-  storyboard as context, in the inject language. A checkpoint allows undoing the whole
-  generation. **Send to Agent** prepares a brief scoped to one block for the Agent tab.
-- **Sync** keeps injects and actors coherent when the scenario evolves: moved blocks
-  reschedule their injects, changed briefs/narratives/plans flag injects as outdated
-  (regenerated if untouched, *adapted* with minimal changes if edited by hand), removed
-  blocks leave orphans to unlink or delete, and new planned injects are created.
-  Locked injects are never modified. Injects moved by hand in the Timeline keep their
-  time unless you choose otherwise. Link status also appears in the Injects tab.
-- **Library** (in Scenario context): eight ready-made storyboards (ransomware with double extortion,
-  personal data breach, software supply chain, DDoS & hacktivism, CEO fraud with
-  deepfake, destructive wiper, insider threat, OT/industrial incident), each with
-  objectives, cast, tracks and a complete inject plan. They can be previewed, used,
-  inserted after the current storyline, or adapted to the organisation with AI. Your
-  own storyboards can be saved as templates in the browser and exchanged as
-  `.crisisscenario.json` files.
+- **History**: undo/redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z), automatic versions (before
+  AI operations, generations and restores, and every five minutes while editing, kept
+  in the browser's IndexedDB), named and "validated" versions saved with the project,
+  and a diff before restoring.
+- **Generate injects** (whole exercise, one phase or one cell): plans missing injects,
+  creates actors for the roles, creates one stimulus per planned inject through the
+  Agent's `createActor`/`createStimulus` tools, then writes each one with the storyline
+  and its recipient cell as context, in the inject language. A checkpoint allows
+  undoing the whole generation.
+- **Sync** keeps injects and actors coherent when the scenario evolves: moved phases
+  reschedule their injects, changed briefs, plans or recipients flag injects as
+  outdated (regenerated if untouched, *adapted* with minimal changes if edited by
+  hand), removed phases leave orphans to unlink or delete, and new planned injects are
+  created. Locked injects are never modified.
+- **Library**: eight ready-made scenarios (ransomware with double extortion, personal
+  data breach, software supply chain, DDoS & hacktivism, CEO fraud with deepfake,
+  destructive wiper, insider threat, OT/industrial incident), each with objectives,
+  roles, cells and a complete inject plan. They can be previewed, used, inserted after
+  the current storyline, or adapted to the organisation with AI. Your own storylines
+  can be saved as templates and exchanged as `.crisisscenario.json` files.
 
-The storyboard is saved with the project (`storyboard`, `storyboard_versions`);
+The storyboard is saved with the project (`storyboard`, `storyboard_versions`, `cells`,
+`exercise`);
 `scenario.phases` is derived from the main storyline so the Agent and the Checker keep
 working, and older projects with phases are converted automatically. Stimuli and
 actors keep a `scenario_link` (block, planned inject, content hashes, lock).
@@ -146,7 +159,9 @@ Implementation: `js/scenario-model.js` (schema, presets, checks, diff),
 `js/scenario-library-data.js` and `js/scenario-library.js` (library),
 `js/scenario-history.js` (undo/redo and versions), `js/scenario-ai.js` (AI
 operations), `js/scenario-sync.js` (links, generation pipeline, sync),
-`js/scenario-builder-view.js` and `js/scenario-builder-events.js` (UI).
+`js/scenario-builder-view.js` and `js/scenario-builder-events.js` (shared timeline,
+modals and events), `js/scenario-tabs.js` (Main storyline, Cells & actors, Detailed
+storyline and Summary tabs).
 
 ## Agent mode
 

@@ -21,7 +21,7 @@ function sbComputeStimulusContentHash(stimulus) {
   return sbHash({ fields, name: stimulus.name || '', actor_id: stimulus.actor_id, channel: stimulus.channel, template_id: stimulus.template_id });
 }
 function sbBeatSourceHash(block, beat) {
-  return sbHash({ block: [block.title, block.brief, block.narrative, block.objectives], beat: beat ? [beat.title, beat.intent, beat.channel, beat.template_id, beat.cast_id] : null });
+  return sbHash({ block: [block.title, block.brief, block.narrative, block.objectives], beat: beat ? [beat.title, beat.intent, beat.channel, beat.template_id, beat.cast_id, beat.cell_id] : null });
 }
 function sbActorContentHash(actor) {
   return sbHash({ name: actor.name, role: actor.role, organization: actor.organization, title: actor.title, language: actor.language });
@@ -55,6 +55,7 @@ function sbIsManuallyEdited(stimulus) {
 /* Records that a stimulus now reflects the current block/beat. */
 function sbStampStimulus(stimulus, block, beat, storyboard) {
   const previous = sbStimulusLink(stimulus);
+  if (beat?.cell_id) stimulus.cell_id = beat.cell_id;
   stimulus.scenario_link = sbNormalizeLink({
     block_id: block.id,
     beat_id: beat?.id || '',
@@ -215,6 +216,7 @@ function sbGenerationBrief(project, block, beat, options = {}) {
     block.narrative ? `- What is happening: ${sbText(block.narrative, 1600)}` : '',
     block.objectives.length ? `- Objectives tested: ${block.objectives.join('; ')}` : '',
     beat ? `- THIS INJECT (${channelLabel(beat.channel)} at ${sbFormatOffset(sbBeatAbsolute(block, beat))}): "${beat.title}". ${beat.intent}` : '',
+    (() => { const cell = sbCell(project, beat?.cell_id || options.cellId); return cell ? `- Recipient: the ${cell.name}${cell.description ? ` (${cell.description})` : ''}. Address the inject to them.` : ''; })(),
     actor ? `- Sender: ${actor.name}, ${actor.title || ''} at ${actor.organization || ''}.` : '',
     neighbours.length ? `- Other injects in this phase (stay consistent, do not repeat them): ${neighbours.join(' | ')}` : '',
     `- Write in ${sbLanguageName(project)} unless the channel has its own language. Replace every example or placeholder value of the template (names, dates, organisations) with content consistent with this scenario.`
@@ -243,7 +245,7 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
     clean[key] = scrub(value);
   }
   if (!Object.keys(clean).length) throw new AgentValidationError('The AI returned no field of this template.');
-  saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Phase Builder: adapted to scenario change' : 'Phase Builder: AI generation');
+  saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Storyline: adapted to scenario change' : 'Storyline: AI generation');
   Object.assign(stimulus.generated_text, clean);
   stimulus.status = 'ready';
   stimulus.updated_at = new Date().toISOString();
@@ -322,8 +324,8 @@ const SbPipeline = {
   },
 
   /* scope: array of block ids, or null for the whole storyboard. */
-  async run({ blockIds = null, beatIds = null, plan = true, cast = true, write = true, keepCheckpoint = false } = {}) {
-    if (this.active || SbAI.busy) throw new AgentValidationError('Another Phase Builder operation is running.');
+  async run({ blockIds = null, beatIds = null, cellIds = null, plan = true, cast = true, write = true, keepCheckpoint = false } = {}) {
+    if (this.active || SbAI.busy) throw new AgentValidationError('Another storyline operation is running.');
     if (getCrisisAgent().active || getCrisisAgent().busy) throw new AgentValidationError('Wait for the agent run to finish.');
     const project = appState.scenario;
     StoryboardHistory.ensure(project);
@@ -344,7 +346,7 @@ const SbPipeline = {
     let written = 0;
     try {
       // 1. Plan missing beats with AI (inject plan = level 3).
-      const needPlan = beatIds ? [] : blocks.filter((block) => !block.locked && block.beats.length < block.stimuli_target);
+      const needPlan = beatIds || cellIds ? [] : blocks.filter((block) => !block.locked && block.beats.length < block.stimuli_target);
       if (plan && needPlan.length) {
         if (!aiAvailable) this.note('warning', `${needPlan.length} block(s) have no complete inject plan and AI is not configured: only planned injects will be created.`);
         else {
@@ -356,7 +358,7 @@ const SbPipeline = {
         }
       }
       const beats = blocks.flatMap((block) => block.beats.map((beat) => ({ block, beat })))
-        .filter(({ beat }) => !sbStimulusForBeat(project, beat.id) && (!beatIds || beatIds.includes(beat.id)));
+        .filter(({ beat }) => !sbStimulusForBeat(project, beat.id) && (!beatIds || beatIds.includes(beat.id)) && (!cellIds || cellIds.includes(beat.cell_id)));
       this.total = beats.length;
       if (!beats.length) this.note('info', 'Every planned inject already has a stimulus. Use Sync to update existing ones.');
       // 2. Actors for the roles used by these beats.
@@ -453,7 +455,7 @@ const SbPipeline = {
 
   /* Applies the selected sync actions (impact.action) with one checkpoint. */
   async applyImpacts(impacts) {
-    if (this.active || SbAI.busy) throw new AgentValidationError('Another Phase Builder operation is running.');
+    if (this.active || SbAI.busy) throw new AgentValidationError('Another storyline operation is running.');
     const project = appState.scenario;
     const storyboard = project.storyboard;
     const selected = impacts.filter((impact) => impact.action && impact.action !== 'skip');
@@ -537,12 +539,85 @@ const SbPipeline = {
   }
 };
 
+// ── Whole-exercise view: every planned or written inject ─────────────────────
+/* Planned injects (beats, with their stimulus when generated) plus stimuli that are
+   not attached to a planned inject (manual, imported or orphan). Sorted by time. */
+function sbExerciseItems(project = appState.scenario) {
+  const storyboard = project.storyboard;
+  const items = [];
+  const beatIds = new Set();
+  for (const block of storyboard?.blocks || []) {
+    for (const beat of block.beats) {
+      beatIds.add(beat.id);
+      const stimulus = sbStimulusForBeat(project, beat.id);
+      const status = stimulus ? sbStimulusStatus(project, stimulus) : null;
+      items.push({
+        key: `beat:${beat.id}`, kind: 'beat', block, beat, stimulus,
+        time: stimulus ? stimulus.timestamp_offset_minutes : sbBeatAbsolute(block, beat),
+        cell_id: beat.cell_id || '', channel: beat.channel,
+        title: beat.title || (stimulus ? sbStimulusLabel(stimulus) : channelLabel(beat.channel)),
+        intent: beat.intent,
+        sender: sbCastLabel(storyboard, beat.cast_id) || (stimulus ? getActor(stimulus.actor_id)?.name || '' : ''),
+        status: status?.key || 'planned'
+      });
+    }
+  }
+  for (const stimulus of project.stimuli || []) {
+    const beatId = sbStimulusLink(stimulus)?.beat_id;
+    if (beatId && beatIds.has(beatId)) continue;
+    const status = sbStimulusStatus(project, stimulus);
+    items.push({
+      key: `stim:${stimulus.id}`, kind: 'stimulus', block: storyboard ? sbMainBlockAt(storyboard, stimulus.timestamp_offset_minutes) : null, beat: null, stimulus,
+      time: stimulus.timestamp_offset_minutes, cell_id: stimulus.cell_id || '', channel: stimulus.channel,
+      title: sbStimulusLabel(stimulus), intent: stimulus.generation_prompt || '',
+      sender: getActor(stimulus.actor_id)?.name || '', status: status?.key || 'manual'
+    });
+  }
+  return items.sort((a, b) => a.time - b.time);
+}
+
+/* Deterministic rhythm and consistency checks over the whole exercise. */
+function sbExerciseChecks(project = appState.scenario) {
+  const issues = [];
+  const add = (severity, code, message, extra = {}) => issues.push({ severity, code, message, at: null, cell_id: '', item_key: '', suggestion: '', source: 'rules', ...extra });
+  const items = sbExerciseItems(project);
+  const duration = project.storyboard?.duration_minutes || Math.max(0, ...items.map((item) => item.time));
+  const cells = project.cells || [];
+  if (!items.length) { add('info', 'empty', 'No inject yet: plan injects in the Detailed storyline.'); return issues; }
+  if (!cells.length) add('warning', 'no_cells', 'No player cell: create cells in Cells & actors.');
+  for (const cell of cells) {
+    const times = items.filter((item) => item.cell_id === cell.id).map((item) => item.time).sort((a, b) => a - b);
+    if (!times.length) { add('warning', 'cell_idle', `The ${cell.name} receives no inject.`, { cell_id: cell.id }); continue; }
+    const marks = [0, ...times, duration];
+    // Dead time is judged against the cell's own rhythm: a quiet cell is not flagged for every half hour.
+    const threshold = Math.max(45, Math.round(1.8 * duration / (times.length + 1)));
+    for (let index = 1; index < marks.length; index++) {
+      const gap = marks[index] - marks[index - 1];
+      if (gap > threshold) add('warning', 'gap', `The ${cell.name} receives nothing between ${sbFormatOffset(marks[index - 1])} and ${sbFormatOffset(marks[index])} (${sbFormatDuration(gap)}).`, { at: marks[index - 1], cell_id: cell.id });
+    }
+    for (let index = 0; index < times.length; index++) {
+      const burst = times.filter((time) => time >= times[index] && time < times[index] + 10).length;
+      if (burst > 3) { add('warning', 'peak', `${burst} injects reach the ${cell.name} within 10 minutes from ${sbFormatOffset(times[index])}: risk of overload.`, { at: times[index], cell_id: cell.id }); break; }
+    }
+  }
+  for (const block of project.storyboard ? sbMainBlocks(project.storyboard) : []) {
+    if (!items.some((item) => item.time >= block.start_minutes && item.time < sbBlockEnd(block))) add('warning', 'phase_empty', `Phase "${block.title}" has no inject.`, { at: block.start_minutes });
+  }
+  for (const item of items) {
+    if (!item.cell_id || !cells.some((cell) => cell.id === item.cell_id)) add('warning', 'no_cell', `"${item.title}" has no recipient cell.`, { at: item.time, item_key: item.key });
+    if (!item.sender) add('info', 'no_sender', `"${item.title}" has no sender.`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
+    if (item.status === 'orphan') add('warning', 'orphan', `"${item.title}" no longer matches the storyline (orphan).`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
+    if (item.time > duration) add('error', 'after_end', `"${item.title}" is scheduled after the end of the exercise.`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
+  }
+  return issues.slice(0, 80);
+}
+
 // ── Handoff to the Agent tab ─────────────────────────────────────────────────
 function sbAgentBrief(project, block) {
   const storyboard = project.storyboard;
   const beats = block.beats.map((beat) => `- ${sbFormatOffset(sbBeatAbsolute(block, beat))} · ${channelLabel(beat.channel)} · from ${sbCastLabel(storyboard, beat.cast_id) || 'any relevant actor'}: ${beat.title}${beat.intent ? ` (${beat.intent})` : ''}`).join('\n');
   return sbText([
-    `Phase Builder block: "${block.title}" (${SB_BLOCK_TYPES[block.type]?.label || 'Custom'}), from ${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))} (minutes ${block.start_minutes}–${sbBlockEnd(block)}).`,
+    `Main storyline phase: "${block.title}" (${SB_BLOCK_TYPES[block.type]?.label || 'Custom'}), from ${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))} (minutes ${block.start_minutes}–${sbBlockEnd(block)}).`,
     block.brief ? `Brief: ${block.brief}` : '',
     block.narrative ? `Narrative: ${block.narrative}` : '',
     block.objectives.length ? `Objectives to test: ${block.objectives.join('; ')}` : '',
@@ -561,6 +636,7 @@ function sbSendToAgent(block) {
   appState.route = 'agent';
 }
 
+const SB_LIVE_ROUTES = ['scenario', 'storyline', 'cells', 'detailed', 'summary'];
 function sbNotify() {
-  if (typeof App !== 'undefined' && appState.route === 'builder') App.render();
+  if (typeof App !== 'undefined' && SB_LIVE_ROUTES.includes(appState.route)) App.render();
 }

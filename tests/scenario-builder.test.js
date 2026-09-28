@@ -62,17 +62,77 @@ test('model: legacy phases migrate to main-track blocks and phases stay derived'
   assert.equal(empty.scenario.objectives, undefined);
 });
 
-test('model: example project ships a linked multi-track storyboard without pending sync', () => {
+test('model: example project ships a single linked storyline with recipient cells and no pending sync', () => {
   const h = harness();
   h.run('appState.scenario = defaultScenario()');
-  const info = h.json(`({ blocks: appState.scenario.storyboard.blocks.length, tracks: appState.scenario.storyboard.tracks.length, linked: appState.scenario.stimuli.filter(s => s.scenario_link).length, impacts: sbComputeImpacts(appState.scenario).length, issues: sbStructuralChecks(appState.scenario.storyboard, appState.scenario).filter(i => i.severity !== 'info').map(i => i.message) })`);
-  assert.equal(info.blocks, 8);
-  assert.equal(info.tracks, 3);
+  const info = h.json(`({ blocks: appState.scenario.storyboard.blocks.length, tracks: appState.scenario.storyboard.tracks.length, cells: appState.scenario.cells.map(c => c.key), beatsWithoutCell: appState.scenario.storyboard.blocks.flatMap(b => b.beats).filter(b => !sbCell(appState.scenario, b.cell_id)).length, stimuliWithoutCell: appState.scenario.stimuli.filter(s => !s.cell_id).length, linked: appState.scenario.stimuli.filter(s => s.scenario_link).length, impacts: sbComputeImpacts(appState.scenario).length, issues: sbStructuralChecks(appState.scenario.storyboard, appState.scenario).filter(i => i.severity !== 'info').map(i => i.message), exercise: appState.scenario.exercise })`);
+  assert.equal(info.tracks, 1);
+  assert.equal(info.blocks, 6);
+  assert.deepEqual(info.cells, ['operational', 'communication', 'legal', 'business']);
+  assert.equal(info.beatsWithoutCell, 0);
+  assert.equal(info.stimuliWithoutCell, 0);
   assert.equal(info.linked, 19);
   assert.equal(info.impacts, 0);
   assert.deepEqual(info.issues, []);
+  assert.deepEqual(info.exercise, { players_count: 12, cells_count: 4 });
 });
 
+test('model: workstreams flatten into the main storyline with recipient cells, links and objectives kept', () => {
+  const h = harness();
+  const result = h.json(`(() => {
+    const project = emptyScenario({});
+    const sb = project.storyboard; const main = sbMainTrack(sb).id;
+    sb.tracks.push({ id: 'track_com', key: 'communication', name: 'Communication', kind: 'workstream', color: '#000', collapsed: false });
+    sb.blocks.push(sbMakeBlock('trigger', { id: 'm1', track_id: main, start_minutes: 0, duration_minutes: 60, beats: [sbMakeBeat({ id: 'beat_a', offset_minutes: 5, channel: 'article_press', title: 'Press call' })] }, sb));
+    sb.blocks.push(sbMakeBlock('investigation', { id: 'm2', track_id: main, start_minutes: 60, duration_minutes: 60 }, sb));
+    sb.blocks.push(sbMakeBlock('communication', { id: 'w1', track_id: 'track_com', start_minutes: 50, duration_minutes: 40, objectives: ['Communicate'], brief: 'Media storm', beats: [sbMakeBeat({ id: 'beat_w', offset_minutes: 20, channel: 'email_internal', title: 'Holding statement' })] }, sb));
+    project.stimuli.push({ id: 'st1', channel: 'email_internal', fields: {}, scenario_link: { block_id: 'w1', beat_id: 'beat_w', offset: 20 } });
+    sbFlattenWorkstreams(project);
+    const beat = sbBlock(sb, 'm2').beats.find(b => b.id === 'beat_w');
+    return { tracks: sb.tracks.length, blocks: sb.blocks.map(b => b.id), beatAt: sbBeatAbsolute(sbBlock(sb, 'm2'), beat), beatCell: sbCell(project, beat.cell_id).key, pressCell: sbCell(project, sbBlock(sb, 'm1').beats[0].cell_id).key, link: project.stimuli[0].scenario_link.block_id, stimulusCell: project.stimuli[0].cell_id === beat.cell_id, objectives: sbBlock(sb, 'm2').objectives, notes: sbBlock(sb, 'm2').notes };
+  })()`);
+  assert.equal(result.tracks, 1);
+  assert.deepEqual(result.blocks, ['m1', 'm2']);
+  assert.equal(result.beatAt, 70);
+  assert.equal(result.beatCell, 'communication');
+  assert.equal(result.pressCell, 'communication');
+  assert.equal(result.link, 'm2');
+  assert.ok(result.stimulusCell);
+  assert.deepEqual(result.objectives, ['Communicate']);
+  assert.ok(result.notes.includes('Media storm'));
+  const legacy = h.json(`mergeScenario({ name: 'Old', storyboard: { tracks: [{ id: 't1', key: 'main', kind: 'main', name: 'Main' }, { id: 't2', key: 'technical', kind: 'workstream', name: 'Tech' }], blocks: [{ id: 'a', track_id: 't1', type: 'trigger', start_minutes: 0, duration_minutes: 90 }, { id: 'b', track_id: 't2', type: 'custom', start_minutes: 10, duration_minutes: 30, beats: [{ id: 'x', offset_minutes: 5, channel: 'email_internal', title: 'Logs' }] }] }, actors: [], stimuli: [{ id: 's', channel: 'email_internal', cell_id: 'bad id!', fields: {} }] })`);
+  assert.equal(legacy.storyboard.tracks.length, 1);
+  assert.equal(legacy.storyboard.blocks[0].beats[0].cell_id, legacy.cells.find(c => c.key === 'it').id);
+  assert.ok(legacy.stimuli[0].cell_id !== 'bad id!');
+});
+
+test('model: cell count adds presets without dropping cells in use, and cell changes outdate linked injects', () => {
+  const h = harness();
+  h.run('appState.scenario = defaultScenario()');
+  h.run('sbSetCellsCount(appState.scenario, 6)');
+  assert.equal(h.run('appState.scenario.cells.length'), 6);
+  h.run('sbSetCellsCount(appState.scenario, 1)');
+  assert.equal(h.run('appState.scenario.cells.length'), 4, 'cells with injects are kept');
+  const before = h.run('sbComputeImpacts(appState.scenario).length');
+  assert.equal(before, 0);
+  h.run(`(() => { const block = sbStoryboard().blocks.find(b => b.beats.length); block.beats[0].cell_id = appState.scenario.cells.find(c => c.id !== block.beats[0].cell_id).id; })()`);
+  assert.ok(h.json('sbComputeImpacts(appState.scenario).map(i => i.kind)').includes('outdated'));
+});
+
+test('checks: exercise rules flag idle cells, dead times, floods, empty phases and missing recipients', () => {
+  const h = harness();
+  const codes = h.json(`(() => {
+    const project = emptyScenario({}); const sb = project.storyboard; const main = sbMainTrack(sb).id;
+    sb.duration_minutes = 240;
+    project.cells = [sbMakeCell('decision'), sbMakeCell('communication')];
+    const decision = project.cells[0].id;
+    sb.blocks.push(sbMakeBlock('trigger', { id: 'p1', track_id: main, start_minutes: 0, duration_minutes: 120, beats: [0, 2, 4, 6, 8].map(at => sbMakeBeat({ offset_minutes: at, channel: 'email_internal', title: 'Flood ' + at, cell_id: decision, cast_id: '' })) }, sb));
+    sb.blocks.push(sbMakeBlock('exit', { id: 'p2', track_id: main, start_minutes: 120, duration_minutes: 120 }, sb));
+    return sbExerciseChecks(project).map(i => i.code);
+  })()`);
+  for (const code of ['cell_idle', 'gap', 'peak', 'phase_empty', 'no_sender']) assert.ok(codes.includes(code), code);
+  assert.deepEqual(h.json(`sbExerciseChecks(emptyScenario({})).map(i => i.code)`), ['empty']);
+});
 test('persistence: storyboard, named versions and stimulus links survive export/import', () => {
   const h = harness();
   h.run(`sbApplyTemplate(sbFindTemplate('personal-data-breach'), 'replace'); StoryboardHistory.ensure(appState.scenario, 'Use template');
@@ -124,7 +184,7 @@ test('checks: deterministic coherence rules flag gaps, overlaps, coverage and pl
   assert.ok(h.run('sbScore(sbStructuralChecks(sbStoryboard(), appState.scenario))') < 100);
 });
 
-test('AI: skeleton output is repaired, validated and applied as one undoable step', async () => {
+test('AI: skeleton output is repaired, validated and applied as one undoable step on a single storyline', async () => {
   const h = harness();
   const calls = mockAI(h, [{ title: 'Hospital ransomware', summary: 'Hidden story', threat: 'Affiliate', objectives: ['Protect patients', 'Notify on time'],
     cast: [{ key: 'ciso', label: 'CISO', role: 'internal', organization: 'Hospital' }, { key: 'press', label: 'Health reporter', role: 'journalist', organization: 'Daily' }],
@@ -133,22 +193,51 @@ test('AI: skeleton output is repaired, validated and applied as one undoable ste
       { key: 'b2', type: 'investigation', title: 'Scoping', track: 'main', start: 70, duration: 100, stimuli: 3, brief: 'Scope' },
       { key: 'b3', type: 'unknown', title: 'Press storm', track: 'communication', start: 400, duration: 90, stimuli: 2, brief: 'Media', objectives: [1] },
       { key: 'b4', type: 'exit', title: 'Closure', track: 'main', start: 200, duration: 20, stimuli: 1, brief: 'End' }] }]);
-  await h.run(`(async () => { const result = await SbAI.skeleton({ brief: 'Hospital ransomware', duration: 240, tracks: ['communication'] }); sbReplaceStoryboard(result.storyboard, 'AI skeleton'); })()`);
+  await h.run(`(async () => { const result = await SbAI.skeleton({ brief: 'Hospital ransomware', duration: 240 }); sbReplaceStoryboard(result.storyboard, 'AI skeleton'); })()`);
   const sb = h.json('sbStoryboard()');
-  const main = sb.blocks.filter(b => b.track_id === sb.tracks[0].id).sort((a, b) => a.start_minutes - b.start_minutes);
+  assert.equal(sb.tracks.length, 1);
+  const main = [...sb.blocks].sort((a, b) => a.start_minutes - b.start_minutes);
   assert.equal(main[0].start_minutes, 0);
   for (let i = 1; i < main.length; i++) assert.equal(main[i].start_minutes, main[i - 1].start_minutes + main[i - 1].duration_minutes);
   assert.equal(main[main.length - 1].start_minutes + main[main.length - 1].duration_minutes, 240);
-  const press = sb.blocks.find(b => b.title === 'Press storm');
-  assert.equal(press.type, 'communication');
-  assert.ok(press.start_minutes + press.duration_minutes <= 240);
+  assert.ok(!sb.blocks.some(b => b.title === 'Press storm'), 'workstream folded into the storyline');
+  assert.ok(sb.blocks.some(b => b.notes.includes('Press storm')));
   assert.equal(sb.cast.length, 2);
   assert.ok(calls[0].system.includes('Scenario Builder'));
+  assert.ok(calls[0].system.includes('CELLS') || calls[0].system.toLowerCase().includes('cell'));
   assert.ok(!JSON.stringify(calls).includes('TEST-SECRET'));
   assert.equal(h.run('StoryboardHistory.undo()'), 'AI skeleton');
   assert.equal(h.run('sbStoryboard().blocks.length'), 0);
 });
 
+test('AI: planCellInjects adds beats for one cell and reviewExercise merges rules with AI findings', async () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); Object.assign(appState.scenario.settings, { ai_api_key: 'TEST-SECRET', ai_provider: 'openai' }); StoryboardHistory.ensure();`);
+  const target = h.json(`({ block: sbMainBlocks(sbStoryboard())[1].id, cell: appState.scenario.cells[1].id, name: appState.scenario.cells[1].name, before: sbMainBlocks(sbStoryboard())[1].beats.length })`);
+  const calls = mockAI(h, [
+    () => ({ beats: [{ at: 5, channel: 'article_press', cast: 'new_reporter', title: 'Reporter calls', intent: 'Pressure' }, { at: 9999, channel: 'email_internal', cast: 'new_reporter', title: 'Too late', intent: 'Clamp' }, { at: 1, channel: 'sms_notification', title: 'Extra', intent: 'Dropped' }], cast: [{ key: 'new_reporter', label: 'Reporter', role: 'journalist', organization: 'Daily' }] }),
+    () => ({ score: 71, summary: 'Rhythm is uneven.', issues: [{ severity: 'warning', at: 90, cell: target.name, message: 'Two floods in a row.', suggestion: 'Spread them.' }, { severity: 'bogus', message: '' }] })
+  ]);
+  h.context.target = target;
+  const added = await h.run(`SbAI.planCellInjects(target.block, target.cell, 2, 'more pressure').then(r => JSON.stringify(r))`).then(JSON.parse);
+  assert.equal(added.length, 2);
+  assert.ok(added.every(beat => beat.cell_id === target.cell));
+  const block = h.json(`sbBlock(sbStoryboard(), target.block)`);
+  assert.equal(block.beats.length, target.before + 2);
+  assert.ok(block.beats.every(beat => beat.offset_minutes < block.duration_minutes));
+  assert.ok(h.json('sbStoryboard().cast').some(cast => cast.label === 'Reporter'));
+  assert.equal(calls[0].payload.target.cell_id, target.cell);
+  assert.equal(calls[0].payload.instruction, 'more pressure');
+  const review = await h.run(`SbAI.reviewExercise().then(r => JSON.stringify(r))`).then(JSON.parse);
+  assert.equal(review.score, 71);
+  const ai = review.issues.filter(issue => issue.source === 'ai');
+  assert.equal(ai.length, 1);
+  assert.equal(ai[0].cell_id, target.cell);
+  assert.equal(ai[0].at, 90);
+  assert.ok(review.issues.some(issue => issue.source === 'rules'));
+  assert.ok(calls[1].payload.injects.length > 19);
+  assert.ok(!JSON.stringify(calls).includes('TEST-SECRET'));
+});
 test('AI: deepen adds narrative then exactly the missing beats, keeping existing ones and locked blocks', async () => {
   const h = harness();
   h.run(`const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
@@ -218,6 +307,31 @@ test('pipeline: plans, casts, creates linked injects through agent tools and wri
   assert.equal(h.run(`sbBlock(sbStoryboard(), 'b1').beats.length`), 0);
 });
 
+test('pipeline: a cell-scoped run only creates that cell\'s injects and carries the recipient into the brief', async () => {
+  const h = harness();
+  h.run(`const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
+    appState.scenario.cells = [sbMakeCell('decision'), sbMakeCell('communication')];
+    const [decision, communication] = appState.scenario.cells.map(c => c.id);
+    sb.cast.push(sbMakeCast({ id: 'cast_ceo', label: 'CEO', role: 'internal' }));
+    sb.blocks.push(sbMakeBlock('trigger', { id: 'b1', track_id: main, start_minutes: 0, duration_minutes: 60, stimuli_target: 5, beats: [
+      sbMakeBeat({ id: 'beat_d', offset_minutes: 5, channel: 'email_internal', cast_id: 'cast_ceo', title: 'Board call', cell_id: decision }),
+      sbMakeBeat({ id: 'beat_c', offset_minutes: 10, channel: 'email_internal', cast_id: 'cast_ceo', title: 'Press line', cell_id: communication })] }, sb));`);
+  const calls = mockAI(h, [() => { throw new Error('no planning expected'); }]);
+  const guided = [];
+  h.context.guided = guided;
+  h.run(`AITextGenerator.generateForStimulus = async (stimulus, field, text) => { guided.push(text); return { subject: 'S', body: '<p>B</p>' }; };`);
+  const cell = h.run('appState.scenario.cells[0].id');
+  h.context.cell = cell;
+  const result = await h.run(`SbPipeline.run({ cellIds: [cell], cast: false }).then(r => JSON.stringify(r))`).then(JSON.parse);
+  assert.deepEqual(result, { created: 1, written: 1 });
+  const stimuli = h.json('appState.scenario.stimuli');
+  assert.equal(stimuli.length, 1);
+  assert.equal(stimuli[0].cell_id, cell);
+  assert.equal(stimuli[0].scenario_link.beat_id, 'beat_d');
+  assert.ok(guided[0].includes('Decision cell'));
+  assert.equal(calls.length, 0);
+});
+
 test('sync: moved blocks retime injects, changed briefs flag content, manual edits are adapted and locks respected', async () => {
   const h = harness();
   h.run(`{ const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
@@ -252,26 +366,28 @@ test('sync: moved blocks retime injects, changed briefs flag content, manual edi
   assert.ok(h.json('sbComputeImpacts(appState.scenario)').some(i => i.kind === 'missing' && i.beat_id === 'k4'));
 });
 
-test('agent integration: storyboard tools, phases tool and scoped Agent brief', async () => {
+test('agent integration: storyboard tools expose cells, phases tool and scoped Agent brief', async () => {
   const h = harness();
   h.run(`sbApplyTemplate(sbFindTemplate('ceo-fraud-deepfake'), 'replace'); StoryboardHistory.ensure(appState.scenario, 'Use');`);
   const registry = h.json('[...createAgentToolRegistry().keys()]');
   assert.ok(registry.includes('getStoryboard') && registry.includes('updateStoryboardBlock'));
   const storyboard = await h.run(`(async () => JSON.stringify(await createAgentToolRegistry().get('getStoryboard').execute({})))()`).then(JSON.parse);
-  assert.ok(storyboard.blocks.length >= 8);
+  assert.ok(storyboard.blocks.length >= 5);
+  assert.equal(storyboard.tracks, undefined);
+  assert.ok(storyboard.cells.length >= 2);
+  const cellIds = new Set(storyboard.cells.map(cell => cell.id));
+  assert.ok(storyboard.blocks.flatMap(block => block.beats).every(beat => cellIds.has(beat.cell_id)));
   const blockId = storyboard.blocks[0].id;
   h.context.args = { id: blockId, patch: { brief: 'Agent brief' } };
   h.run(`ToolValidator.validate(args, createAgentToolRegistry().get('updateStoryboardBlock').inputSchema); createAgentToolRegistry().get('updateStoryboardBlock').execute(args)`);
   assert.equal(h.run(`sbBlock(sbStoryboard(), '${blockId}').brief`), 'Agent brief');
   h.run(`createAgentToolRegistry().get('setPhases').execute({ phases: [{ name: 'Fraud call', start_minutes: 0, end_minutes: 90, purpose: 'Deepfake call' }, { name: 'Exit', start_minutes: 90, end_minutes: 120, purpose: 'Close' }] })`);
   assert.deepEqual(h.json('appState.scenario.scenario.phases.map(p => p.name)'), ['Fraud call', 'Exit']);
-  assert.ok(h.run('sbStoryboard().blocks.some(b => b.track_id !== sbMainTrack(sbStoryboard()).id)'), 'workstreams kept');
   h.run(`sbSendToAgent(sbStoryboard().blocks[0])`);
   assert.equal(h.run('appState.route'), 'agent');
   assert.ok(h.run('getCrisisAgent().objective').includes('Work ONLY on injects scheduled inside this time window'));
   assert.ok(h.run('JSON.stringify(AgentContext.build())').includes('storyboard'));
 });
-
 test('library: user templates round-trip through save, export format and import parsing', () => {
   const h = harness();
   h.run(`sbApplyTemplate(sbFindTemplate('insider-threat-sabotage'), 'replace'); StoryboardHistory.ensure(appState.scenario, 'Use');`);
@@ -289,33 +405,36 @@ test('library: user templates round-trip through save, export format and import 
   assert.ok(h.run('sbStoryboard().duration_minutes') > saved.duration_minutes);
 });
 
-test('view: builder renders every panel and modal without a DOM', () => {
+test('view: the six tabs and every modal render without a DOM and escape user text', () => {
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
-  const html = h.run('renderScenarioBuilderView()');
-  for (const marker of ['sb-toolbar', 'sb-bin', 'sb-monitor', 'sb-timeline-panel', 'sb-inspector', 'data-sb-clip', 'Generate injects']) assert.ok(html.includes(marker), marker);
-  for (const modal of ['skeleton', 'versions', 'coherence', 'generate', 'sync']) {
+  const context = h.run('renderScenarioView()');
+  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'Scenario library', 'sb-template-card', 'data-sb-meta="synopsis"', 'skeleton.brief']) assert.ok(context.includes(marker), marker);
+  assert.ok(context.indexOf('data-sc-cells') < context.indexOf('skeleton.brief') && context.indexOf('skeleton.brief') < context.indexOf('Scenario library'), 'questions, then AI, then library');
+  assert.ok(!context.includes('data-sb-skeleton-track'), 'no workstream choice any more');
+  const storyline = h.run('renderStorylineView()');
+  for (const marker of ['sb-toolbar', 'sb-timeline-panel', 'data-sb-clip', 'data-sl-add', 'bottom-editor']) assert.ok(storyline.includes(marker), marker);
+  assert.ok(!storyline.includes('sb-inspector') && !storyline.includes('sb-bin'), 'no side columns');
+  h.run(`sbUI().selected = [sbStoryboard().blocks[1].id]`);
+  const phase = h.run('renderStorylineView()');
+  for (const marker of ['bottom-editor-head', 'data-sb-field="brief"', 'data-sb-objective', 'data-tab-action="open-detailed"', 'rewrite-block']) assert.ok(phase.includes(marker), marker);
+  for (const modal of ['versions', 'coherence', 'generate', 'sync']) {
     h.run(`sbUI().modal = '${modal}'`);
-    assert.ok(h.run('renderScenarioBuilderView()').includes('sb-modal'), modal);
+    assert.ok(h.run('renderStorylineView()').includes('sb-modal'), modal);
   }
   h.run(`sbUI().modal = 'preview'; sbUI().previewId = 'ransomware-double-extortion'`);
-  assert.ok(h.run('renderScenarioBuilderView()').includes('Use this scenario'));
-  h.run(`sbUI().modal = null; sbUI().selected = [sbStoryboard().blocks[0].id];`);
-  for (const tab of ['brief', 'narrative', 'plan', 'links']) {
-    h.run(`sbUI().inspector = '${tab}'`);
-    assert.ok(h.run('renderScenarioBuilderView()').includes('sb-inspector-head'), tab);
-  }
-  for (const left of ['blocks', 'cast', null]) {
-    h.run(`sbPanels().left = ${JSON.stringify(left)}`);
-    const markup = h.run('renderScenarioBuilderView()');
-    assert.equal(markup.includes('class="sb-bin"'), left !== null, String(left));
-    assert.ok(!markup.includes('sb-template-card'), 'library lives in Scenario context');
-  }
-  h.run(`sbPanels().right = false; sbPanels().monitor = 'compact'`);
-  const collapsed = h.run('renderScenarioBuilderView()');
-  assert.ok(!collapsed.includes('sb-inspector-head') && collapsed.includes('sb-monitor-strip') && collapsed.includes('sb-rail-right'));
-  const context = h.run('renderScenarioView()');
-  for (const marker of ['Scenario library', 'Generate with AI', 'Exercise framing', 'sb-template-card', 'data-sb-meta="synopsis"', 'data-actor-bind']) assert.ok(context.includes(marker), marker);
-  h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'`);
-  assert.ok(!h.run('renderScenarioBuilderView()').includes('<img src=x'));
+  assert.ok(h.run('renderScenarioView()').includes('Use this scenario'));
+  h.run(`sbUI().modal = null; appState.scenario.cells[0].players.push(sbNormalizePlayer({ name: 'Ann Lee', role: 'CEO' }))`);
+  const cells = h.run('renderCellsView()');
+  for (const marker of ['data-ce-cell', 'data-ce-player', 'data-actor-bind', 'Attackers', 'Press', 'Authorities']) assert.ok(cells.includes(marker), marker);
+  const detailed = h.run('renderDetailedView()');
+  for (const marker of ['data-tab-action="ds-cell"', 'ds-phase-row', 'data-ds-item', 'bottom-editor']) assert.ok(detailed.includes(marker), marker);
+  h.run(`tabUI('detailed').cell = appState.scenario.cells[0].id; tabUI('detailed').selected = sbExerciseItems(appState.scenario).find(i => i.cell_id === appState.scenario.cells[0].id).key`);
+  const inject = h.run('renderDetailedView()');
+  for (const marker of ['data-ds-time', 'data-ds-cell', 'data-tab-action="ds-plan"']) assert.ok(inject.includes(marker), marker);
+  h.run(`tabUI('summary').review = { score: null, summary: '', issues: sbExerciseChecks(appState.scenario) }; tabUI('summary').time = 120`);
+  const summary = h.run('renderSummaryView()');
+  for (const marker of ['su-kpis', 'su-heat', 'data-su-scrub', 'data-su-columns', 'data-tab-action="su-ai"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
+  h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'; appState.scenario.cells[0].name = '<img src=y onerror=alert(1)>'; sbUI().selected = [sbStoryboard().blocks[0].id]`);
+  for (const view of ['renderStorylineView()', 'renderCellsView()', 'renderDetailedView()', 'renderSummaryView()']) assert.ok(!/<img src=[xy]/.test(h.run(view)), view);
 });

@@ -160,14 +160,12 @@
             ${appState.launchScreenOpen ? renderLaunchScreen() : ''}
             <nav class="nav-topbar">
               <div class="nav-topbar-left">
-                <button class="nav-icon-btn nav-home-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil', 'Startseite')}">
-                  ${svgHome()}
-                  <span>${tt('Home', 'Accueil', 'Startseite')}</span>
-                </button>
-                ${renderNavIconButton('scenario', svgTarget(), 'Scenario context')}
-                ${renderNavIconButton('builder', svgStoryboard(), 'Phase Builder')}
                 ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
-                ${renderNavIconButton('stimuli', svgPen(), tt('Timeline', 'Timeline', 'Zeitplan'))}
+                ${renderNavIconButton('scenario', svgTarget(), 'Scenario & context')}
+                ${renderNavIconButton('storyline', svgStoryboard(), 'Main storyline')}
+                ${renderNavIconButton('cells', svgUsers(), 'Cells & actors')}
+                ${renderNavIconButton('detailed', svgPen(), 'Detailed storyline')}
+                ${renderNavIconButton('summary', svgPlayCircle(), 'Summary')}
                 ${renderNavIconButton('library', svgGrid(), tt('Injects', 'Injects', 'Injects'))}
                 ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
                 ${renderNavIconButton('video-debrief', svgVideo(), tt('Video Debrief', 'Video Debrief', 'Video-Debrief'))}
@@ -179,6 +177,9 @@
               </div>
               <div class="nav-topbar-right">
                 <span id="save-indicator" style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-right:8px;"></span>
+                <button class="nav-gear-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil', 'Startseite')}">
+                  ${svgHome()}
+                </button>
                 <button class="nav-gear-btn" data-action="save-local" title="${tt('Save', 'Sauvegarder', 'Speichern')}">
                   ${svgSave()}
                 </button>
@@ -198,7 +199,7 @@
               </div>
             </div>
 
-            <main class="content ${appState.route === 'video-debrief' ? 'content-video-debrief' : ''} ${appState.route === 'builder' ? 'content-builder' : ''}">
+            <main class="content ${appState.route === 'video-debrief' ? 'content-video-debrief' : ''} ${['storyline', 'detailed', 'builder', 'stimuli'].includes(appState.route) ? 'content-builder' : ''}">
               ${vc ? `<section class="topbar">
                 <div class="page-title">
                   <h2>${vc.title}</h2>
@@ -228,6 +229,8 @@
         </button>`;
       }
 
+      function svgUsers() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21a7 7 0 0 1 14 0"></path><path d="M16 4a4 4 0 0 1 0 8"></path><path d="M22 21a7 7 0 0 0-5-6.7"></path></svg>'; }
+      function svgPlayCircle() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m10 8 6 4-6 4z"></path></svg>'; }
       function svgStoryboard() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path><path d="M6 13h5"></path><path d="M9 16h8"></path><path d="M14 13h4"></path><path d="M7 4v5"></path><path d="M12 4v5"></path><path d="M17 4v5"></path></svg>'; }
       function svgFolder() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'; }
       function svgTarget() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'; }
@@ -272,24 +275,34 @@
                   <div class="welcome-block-title" style="margin-bottom:14px;">${tt('What you can do', 'Ce que vous pouvez faire', 'Was Sie tun können')}</div>
                   <div class="launch-features">
                     <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgStoryboard()}</div>
-                      <strong>Phase Builder</strong>
-                      <p>Storyboard the crisis phases on a multi-track timeline, refine them layer by layer with AI, then generate and keep actors and injects in sync.</p>
-                    </div>
-                    <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgFolder()}</div>
-                      <strong>${tt('Project', 'Projet', 'Projekt')}</strong>
-                      <p>${tt('Create, open, save and export your crisis exercise projects. Import existing Excel timelines with AI assistance.', 'Créez, ouvrez, sauvegardez et exportez vos projets. Importez des chronologies Excel existantes avec l\'aide de l\'IA.', 'Erstellen, öffnen, speichern und exportieren Sie Ihre Krisenübungsprojekte. Importieren Sie vorhandene Excel-Zeitpläne mit KI-Unterstützung.')}</p>
+                      <strong>Project</strong>
+                      <p>Create, open, save and export your exercise projects. Import existing Excel timelines with AI assistance.</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgTarget()}</div>
-                      <strong>Scenario context</strong>
-                      <p>${tt('Define the client organisation, crisis type, timeline and actors who will receive injects during the exercise.', 'Définissez l\'organisation cliente, le type de crise, la chronologie et les acteurs qui recevront les injects.', 'Definieren Sie die Kundenorganisation, den Krisentyp, den Zeitplan und die Akteure, die während der Übung Injects erhalten.')}</p>
+                      <strong>Scenario &amp; context</strong>
+                      <p>Answer five questions (client, duration, sector, cells, players), describe the exercise to the AI or start from the scenario library.</p>
+                    </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgStoryboard()}</div>
+                      <strong>Main storyline</strong>
+                      <p>Lay out the phases of the crisis on a single timeline and write what happens in each one, by hand or with AI.</p>
+                    </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgUsers()}</div>
+                      <strong>Cells &amp; actors</strong>
+                      <p>Create the player cells and their participants, and the simulated actors who send injects: attackers, press, authorities.</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgPen()}</div>
-                      <strong>${tt('Timeline', 'Timeline', 'Zeitplan')}</strong>
-                      <p>${tt('Write or AI-generate realistic crisis injects: emails, SMS, calls, social posts and more — with polished visual templates.', 'Rédigez ou générez par IA des injects réalistes : emails, SMS, appels, posts sociaux — avec des gabarits visuels soignés.', 'Schreiben oder generieren Sie mit KI realistische Krisen-Injects: E-Mails, SMS, Anrufe, Social-Media-Beiträge und mehr — mit ansprechenden visuellen Vorlagen.')}</p>
+                      <strong>Detailed storyline</strong>
+                      <p>Pick a cell and plan its injects under the main storyline, then write them with AI and keep them in sync.</p>
+                    </div>
+                    <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgPlayCircle()}</div>
+                      <strong>Summary</strong>
+                      <p>See the whole exercise, play it in accelerated time and let the AI check rhythm and consistency.</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgGrid()}</div>
@@ -319,15 +332,15 @@
                   <div class="launch-tips">
                     <div class="launch-tip">
                       <div class="launch-tip-num">1</div>
-                      <span><strong>Frame and build the scenario</strong>: in Scenario context, start from the library or an AI skeleton; then refine each phase in the Phase Builder and generate actors and injects.</span>
+                      <span><strong>Frame the exercise</strong>: in Scenario &amp; context, answer the five questions, then draft with AI or pick a scenario in the library.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">2</div>
-                      <span>${tt('<strong>Set up your scenario</strong> — define the client, crisis type and actors in the Scenario tab.', '<strong>Configurez votre scénario</strong> — définissez le client, le type de crise et les acteurs dans l\'onglet Scénario.', '<strong>Richten Sie Ihr Szenario ein</strong> — definieren Sie den Auftraggeber, den Krisentyp und die Akteure im Szenario-Tab.')}</span>
+                      <span><strong>Shape the main storyline</strong>: adjust the phases on the timeline and describe what happens in each, then set up the cells and actors.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">3</div>
-                      <span>${tt('<strong>Create your injects</strong> — add messages, calls or social posts in the Timeline editor, with optional AI content generation.', '<strong>Créez vos injects</strong> — ajoutez des messages, appels ou posts dans l\'éditeur Timeline, avec génération de contenu IA en option.', '<strong>Erstellen Sie Ihre Injects</strong> — fügen Sie Nachrichten, Anrufe oder Social-Media-Beiträge im Zeitplan-Editor hinzu, mit optionaler KI-Inhaltsgenerierung.')}</span>
+                      <span><strong>Detail each cell</strong>: in Detailed storyline, plan and write the injects of every cell, then review the whole exercise in Summary.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
@@ -366,11 +379,19 @@
             subtitle: tt('Create, open, save and export your crisis exercise project.', 'Créez, ouvrez, sauvegardez et exportez votre projet d\'exercice de crise.', 'Erstellen, öffnen, speichern und exportieren Sie Ihr Krisenübungsprojekt.')
           },
           scenario: {
-            title: 'Scenario context',
-            subtitle: 'Frame the exercise: start from the library or AI, then set client, threat, objectives and actors.'
+            title: 'Scenario & context',
+            subtitle: 'Answer five questions, describe the exercise to the AI or pick a scenario from the library.'
+          },
+          cells: {
+            title: 'Cells & actors',
+            subtitle: 'The cells who play the exercise, their players, and the simulated actors who send injects.'
+          },
+          summary: {
+            title: 'Summary',
+            subtitle: 'See the whole exercise, play it in accelerated time and check it for issues.'
           },
           stimuli: {
-            title: tt('Timeline', 'Timeline', 'Zeitplan'),
+            title: 'Detailed storyline',
             subtitle: tt('Create realistic injects and generate their content with AI.', 'Créez des injects réalistes et générez leur contenu avec l\'IA.', 'Erstellen Sie realistische Injects und generieren Sie deren Inhalt mit KI.')
           },
           library: {
@@ -398,10 +419,14 @@
       }
 
       function renderCurrentView() {
-        if (appState.route === 'builder') return renderScenarioBuilderView();
+        if (appState.route === 'builder') appState.route = 'storyline';
+        if (appState.route === 'stimuli') appState.route = 'detailed';
         if (appState.route === 'project') return renderProjectView();
         if (appState.route === 'scenario') return renderScenarioView();
-        if (appState.route === 'stimuli') return renderStimuliView();
+        if (appState.route === 'storyline') return renderStorylineView();
+        if (appState.route === 'cells') return renderCellsView();
+        if (appState.route === 'detailed') return renderDetailedView();
+        if (appState.route === 'summary') return renderSummaryView();
         if (appState.route === 'library') return renderLibraryView();
         if (appState.route === 'debrief') return renderDebriefView();
         if (appState.route === 'video-debrief') return renderVideoDebriefView();
@@ -513,8 +538,8 @@
         const allStimuli = getSortedStimuli();
         if (!allStimuli.length) {
           return `<section class="grid" style="max-width:600px; margin: 60px auto; text-align:center;">
-            <p class="subtle">${tt('No injects yet. Create some in the Timeline view.', 'Aucun inject encore. Créez-en dans la vue Timeline.', 'Noch keine Injects. Erstellen Sie welche in der Zeitplan-Ansicht.')}</p>
-            <button class="btn btn-primary" data-action="nav-stimuli">${tt('Go to Timeline', 'Aller à la Timeline', 'Zum Zeitplan')}</button>
+            <p class="subtle">No injects yet. Plan and write them in the Detailed storyline.</p>
+            <button class="btn btn-primary" data-action="nav-stimuli">Go to Detailed storyline</button>
           </section>`;
         }
         const f = appState.libraryFilter;
@@ -584,7 +609,7 @@
         const status = sbStimulusStatus(appState.scenario, stimulus);
         if (!status) return '';
         const block = status.block ? ` · ${status.block.title}` : '';
-        return ` <span class="sb-status is-${status.key}" title="${escapeAttribute(`Phase Builder${block}`)}">${escapeHtml(status.label)}</span>`;
+        return ` <span class="sb-status is-${status.key}" title="${escapeAttribute(`Storyline${block}`)}">${escapeHtml(status.label)}</span>`;
       }
 
       function renderLibraryCard(stimulus) {
@@ -860,112 +885,36 @@
       }
 
       function renderScenarioView() {
-        const scenario = appState.scenario;
-        const sectors = [
-          ['Banking', 'Banque'], ['Energy', 'Énergie'], ['Healthcare', 'Santé'], ['Transport', 'Transport'],
-          ['Industry', 'Industrie'], ['Telecom', 'Telecom'], ['Retail', 'Retail'], ['Public sector', 'Public'], ['Other', 'Autre']
-        ];
-        const types = [['Ransomware', 'Ransomware'], ['Data Breach', 'Data Breach'], ['Supply Chain', 'Supply Chain'], ['DDoS', 'DDoS'], ['Insider Threat', 'Insider Threat'], ['Other', 'Autre']];
-        const langOptions = LANGUAGES.map((l) => `<option value="${l.value}" ${(scenario.client.language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('');
-        const scenarioPlaceholder = tt(
-          'Ex: "A French bank hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."',
-          'Ex: "Exercice de crise pour un hôpital français (CHU de Lyon). Scénario : fuite de données patients via un prestataire compromis. Début le 15 mars 2026 à 8h."',
-          'Bsp.: „Eine deutsche Bank wurde von einem Ransomware-Angriff getroffen. Die Angreifer verschlüsselten alle Handelssysteme. Der Angriff begann am Montagmorgen um 8 Uhr MEZ."'
-        );
-        const actorsPlaceholder = tt(
-          'Ex: "I need journalists from Le Monde and the Financial Times, an ANSSI authority, 2 internal actors (the CISO and the CEO), and an angry B2C customer on Twitter."',
-          'Ex: "Génère des acteurs réalistes pour ce scénario. Je veux un mix de journalistes FR et internationaux, les autorités pertinentes, et des acteurs internes."',
-          'Bsp.: „Ich benötige Journalisten von Spiegel und der Financial Times, eine BSI-Behörde, 2 interne Akteure (CISO und CEO) und einen verärgerten B2C-Kunden auf Twitter."'
-        );
-        return `
-          <section class="grid">
-            ${renderScenarioContextStart()}
-            ${renderLLMConfigBlock('scenario', scenarioPlaceholder)}
-            <article class="card">
-              <div class="section-header"><h3>${tt('Client', 'Client', 'Auftraggeber')}</h3></div>
-              <div class="field-grid cols-2">
-                <label class="field">${tt('Client name', 'Nom du client', 'Name des Auftraggebers')}<input type="text" data-bind="client.name" value="${escapeAttribute(scenario.client.name)}"></label>
-                <label class="field">${tt('Sector', 'Secteur', 'Sektor')}
-                  <select data-bind="client.sector">${sectors.map(([en, fr]) => `<option value="${en}" ${scenario.client.sector === en || scenario.client.sector === fr ? 'selected' : ''}>${tt(en, fr)}</option>`).join('')}</select>
-                </label>
-                <label class="field">${tt('Primary language', 'Langue principale', 'Primärsprache')}
-                  <select data-bind="client.language">${langOptions}</select>
-                </label>
-                <label class="field">${tt('Inject language', 'Langue des injects', 'Sprache der Injects')}
-                  <select data-bind="settings.inject_language">
-                    ${LANGUAGES.map((l) => `<option value="${l.value}" ${(scenario.settings.inject_language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('')}
-                  </select>
-                </label>
-                <p class="helper" style="grid-column:1/-1">${tt('Default language for AI-generated inject content (emails, social posts, memos). Press articles keep their publication\'s native language.', 'Langue par défaut pour le contenu des injects générés par IA (emails, posts, mémos). Les articles de presse conservent la langue de leur publication.', 'Standardsprache für KI-generierte Inject-Inhalte (E-Mails, Social-Media-Beiträge, Memos). Presseartikel behalten die Sprache ihrer Publikation.')}</p>
-                <label class="field">${tt('Logo (URL or data URI)', 'Logo (URL ou data URI)', 'Logo (URL oder Data-URI)')}<input type="url" data-bind="client.logo_url" value="${escapeAttribute(scenario.client.logo_url || '')}" placeholder="https://..."></label>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="section-header"><h3>${tt('Scenario / Threat', 'Scénario / Menace', 'Szenario / Bedrohung')}</h3></div>
-              <div class="field-grid cols-2">
-                <label class="field">${tt('Scenario name', 'Nom du scénario', 'Szenarioname')}<input type="text" data-bind="name" value="${escapeAttribute(scenario.name)}"></label>
-                <label class="field">${tt('Type', 'Type', 'Typ')}
-                  <select data-bind="scenario.type">${types.map(([en, fr]) => `<option value="${en}" ${scenario.scenario.type === en || scenario.scenario.type === fr ? 'selected' : ''}>${tt(en, fr)}</option>`).join('')}</select>
-                </label>
-                <label class="field">${tt('Start date', 'Date de début', 'Startdatum')}<input type="datetime-local" data-bind="scenario.start_date" value="${escapeAttribute(scenario.scenario.start_date)}"></label>
-                <label class="field">${tt('Timezone', 'Fuseau horaire', 'Zeitzone')}
-                  <select data-bind="scenario.timezone">${TIMEZONES.map((item) => `<option value="${item}" ${scenario.scenario.timezone === item ? 'selected' : ''}>${item}</option>`).join('')}</select>
-                </label>
-                <label class="field" style="grid-column: 1 / -1;">${tt('Scenario summary', 'Résumé du scénario', 'Szenariozusammenfassung')}
-                  <textarea data-bind="scenario.summary">${escapeHtml(scenario.scenario.summary)}</textarea>
-                  <span class="helper">${tt('Injected into all AI prompts for content generation.', 'Injecté dans tous les prompts IA pour la génération de contenu.', 'In alle KI-Prompts zur Inhaltsgenerierung eingefügt.')}</span>
-                </label>
-                <label class="field" style="grid-column: 1 / -1;">${tt('Detailed context (optional)', 'Contexte détaillé (optionnel)', 'Detaillierter Kontext (optional)')}
-                  <textarea data-bind="scenario.detailed_context" rows="5" placeholder="${tt('Timeline, affected systems, attack vector, compromised data...', 'Chronologie, systèmes affectés, vecteur d\'attaque, données compromises...', 'Zeitplan, betroffene Systeme, Angriffsvektor, kompromittierte Daten...')}">${escapeHtml(scenario.scenario.detailed_context || '')}</textarea>
-                </label>
-              </div>
-            </article>
-
-            <article class="card">
+        const project = appState.scenario;
+        StoryboardHistory.ensure(project);
+        if (!Array.isArray(project.cells)) project.cells = [];
+        if (!project.exercise) project.exercise = { players_count: '', cells_count: '' };
+        const scenarioPlaceholder = 'Ex: "A French bank hit by a ransomware attack. The attackers encrypted all the trading systems. The attack started Monday morning at 8am CET."';
+        return sbWithRenderMemo(() => {
+          sbCaptureFocus();
+          const storyboard = sbStoryboard();
+          return `
+          <section class="tab-page sc-page">
+            ${renderContextGlance(project)}
+            <div class="sc-ai-row">
+              <div class="sc-ai-describe">${renderLLMConfigBlock('scenario', scenarioPlaceholder)}</div>
+              <article class="card sc-ai-draft" data-sb-scope>
+                <div class="sb-context-subtitle">${sbUiIcon('wand', 15)} Draft the main storyline with AI</div>
+                ${renderSbSkeletonForm(storyboard)}
+              </article>
+            </div>
+            <article class="card sb-context" data-sb-scope>
               <div class="section-header">
-                <div>
-                  <h3>${tt('Simulated actors', 'Acteurs simulés', 'Simulierte Akteure')}</h3>
-                  <p class="subtle">${tt('Actors available to sign or emit injects.', 'Acteurs disponibles pour signer ou émettre les stimuli.', 'Akteure, die Injects unterzeichnen oder aussenden können.')}</p>
-                </div>
-                <div class="actions">
-                  <button class="btn btn-secondary" data-action="generate-sample-actors">${tt('Generate sample actors', 'Générer des acteurs types', 'Beispielakteure generieren')}</button>
-                  <button class="btn btn-primary" data-action="add-actor">${tt('Add actor', 'Ajouter un acteur', 'Akteur hinzufügen')}</button>
-                </div>
+                <div><h3>Scenario library</h3><p class="subtle">Ready-made scenarios with their phases, cells and injects. Using one opens the Main storyline.</p></div>
+                ${storyboard.blocks.length ? `<button class="btn btn-secondary btn-sm" data-route="storyline">Current storyline · ${sbMainBlocks(storyboard).length} phases →</button>` : ''}
               </div>
-              ${renderLLMConfigBlock('actors', actorsPlaceholder)}
-              <div style="overflow-x:auto;">
-                <table class="table">
-                  <thead><tr><th>${tt('Name', 'Nom', 'Name')}</th><th>${tt('Role', 'Rôle', 'Rolle')}</th><th>${tt('Organization', 'Organisation', 'Organisation')}</th><th>${tt('Title', 'Titre', 'Titel')}</th><th>${tt('Language', 'Langue', 'Sprache')}</th><th>${tt('Actions', 'Actions', 'Aktionen')}</th></tr></thead>
-                  <tbody>
-                    ${scenario.actors.map((actor) => {
-                      const actorLangOpts = LANGUAGES.map((l) => `<option value="${l.value}" ${(actor.language || 'en') === l.value ? 'selected' : ''}>${l.label}</option>`).join('');
-                      return `<tr>
-                        <td><input type="text" data-actor-bind="${actor.id}.name" value="${escapeAttribute(actor.name)}"></td>
-                        <td>
-                          <select data-actor-bind="${actor.id}.role">
-                            ${ROLES.map((role) => `<option value="${role.value}" ${actor.role === role.value ? 'selected' : ''}>${escapeHtml(roleLabel(role.value))}</option>`).join('')}
-                          </select>
-                        </td>
-                        <td><input type="text" data-actor-bind="${actor.id}.organization" value="${escapeAttribute(actor.organization)}"></td>
-                        <td><input type="text" data-actor-bind="${actor.id}.title" value="${escapeAttribute(actor.title)}"></td>
-                        <td>
-                          <select data-actor-bind="${actor.id}.language">${actorLangOpts}</select>
-                        </td>
-                        <td>
-                          <div class="actions">
-                            <button class="btn btn-ghost" data-action="duplicate-actor" data-actor-id="${actor.id}">${tt('Duplicate', 'Dupliquer', 'Duplizieren')}</button>
-                            <button class="btn btn-danger" data-action="delete-actor" data-actor-id="${actor.id}">${tt('Delete', 'Supprimer', 'Löschen')}</button>
-                          </div>
-                        </td>
-                      </tr>`;
-                    }).join('')}
-                  </tbody>
-                </table>
-              </div>
+              ${renderSbStatusBar()}
+              ${renderSbLibrary()}
+              ${sbUI().modal === 'preview' ? renderSbPreviewModal() : ''}
             </article>
-          </section>
-        `;
+            ${renderContextDetails(project)}
+          </section>`;
+        });
       }
 
       function renderStimuliView() {

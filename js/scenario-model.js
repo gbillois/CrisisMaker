@@ -188,6 +188,7 @@ function sbNormalizeBeat(input = {}) {
     channel,
     template_id: sbValidTemplateId(channel, input.template_id),
     cast_id: sbSafeId(input.cast_id),
+    cell_id: sbSafeId(input.cell_id),
     title: sbText(input.title, 300),
     intent: sbText(input.intent, 2000)
   };
@@ -519,6 +520,7 @@ function sbTemplateToStoryboard(template, options = {}) {
       channel: beat.channel,
       template_id: beat.template_id,
       cast_id: castIds.get(String(beat.cast ?? beat.cast_id ?? '')) || '',
+      cell_id: beat.cell_id || '',
       title: beat.title,
       intent: beat.intent
     }));
@@ -734,4 +736,185 @@ function sbBuildExampleStoryboard(project) {
   storyboard.meta.synopsis = project.scenario.summary;
   storyboard.meta.threat = 'PharmLeaks ransomware group: contractor VPN credential, AD compromise, backup sabotage, 2.4 TB exfiltrated, double extortion.';
   return storyboard;
+}
+
+
+// ── Cells: groups of players who receive injects ─────────────────────────────
+const SB_CELL_PRESETS = [
+  { key: 'decision', name: 'Decision cell', description: 'Executive committee: arbitration, strategy and external commitments.', color: '#0b2f4a' },
+  { key: 'operational', name: 'Operational crisis cell', description: 'Coordinates the response, business impacts and logistics.', color: '#0f6d8f' },
+  { key: 'communication', name: 'Communication cell', description: 'Internal and external communication, media and social networks.', color: '#7c3aed' },
+  { key: 'it', name: 'IT & technical cell', description: 'Investigation, containment and recovery of information systems.', color: '#2563eb' },
+  { key: 'legal', name: 'Legal & compliance cell', description: 'Regulatory notifications, legal exposure and insurers.', color: '#0f766e' },
+  { key: 'business', name: 'Business continuity cell', description: 'Degraded mode, customers, suppliers and continuity plans.', color: '#d48c00' },
+  { key: 'hr', name: 'HR & people cell', description: 'Staff, social partners, wellbeing and internal organisation.', color: '#e11d48' }
+];
+const SB_TRACK_TO_CELL = { technical: 'it', governance: 'decision', communication: 'communication', legal: 'legal', business: 'business', people: 'hr' };
+const SB_CHANNEL_TO_CELL = {
+  article_press: 'communication', breaking_news_tv: 'communication', post_twitter: 'communication', post_linkedin: 'communication', post_reddit: 'communication', press_release: 'communication',
+  email_authority: 'legal', dark_web_forum: 'decision', audio_message: 'decision',
+  email_internal: 'operational', internal_memo: 'operational', sms_notification: 'operational', email_external: 'business'
+};
+
+function sbNormalizePlayer(input = {}) {
+  return { id: sbSafeId(input.id, 'player'), name: sbText(input.name, 200), role: sbText(input.role, 200), email: sbText(input.email, 200) };
+}
+
+function sbNormalizeCell(input = {}) {
+  const preset = SB_CELL_PRESETS.find((item) => item.key === input.key);
+  return {
+    id: sbSafeId(input.id, 'cell'),
+    key: sbSafeId(input.key) || 'custom',
+    name: sbText(input.name, 160) || preset?.name || 'New cell',
+    description: sbText(input.description, 1000),
+    color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : (preset?.color || '#5d7384'),
+    players: (Array.isArray(input.players) ? input.players : []).slice(0, 200).map(sbNormalizePlayer)
+  };
+}
+
+function sbNormalizeCells(value) {
+  const seen = new Set();
+  return (Array.isArray(value) ? value : []).slice(0, 30).map(sbNormalizeCell).filter((cell) => !seen.has(cell.id) && seen.add(cell.id));
+}
+
+function sbNormalizeExercise(value = {}) {
+  const count = (input) => (input === '' || input === null || input === undefined ? '' : sbInt(input, '', 0, 10000));
+  return { players_count: count(value?.players_count), cells_count: count(value?.cells_count) };
+}
+
+function sbMakeCell(key = 'custom', values = {}) {
+  const preset = SB_CELL_PRESETS.find((item) => item.key === key);
+  return sbNormalizeCell({ id: uid('cell'), key, name: preset?.name, description: preset?.description, color: preset?.color, ...values });
+}
+
+function sbCell(project, id) {
+  return (project.cells || []).find((cell) => cell.id === id) || null;
+}
+
+/* Finds the cell of a preset, creating it when needed. */
+function sbEnsureCell(project, key) {
+  if (!Array.isArray(project.cells)) project.cells = [];
+  let cell = project.cells.find((item) => item.key === key);
+  if (!cell) {
+    cell = sbMakeCell(SB_CELL_PRESETS.some((item) => item.key === key) ? key : 'operational');
+    project.cells.push(cell);
+  }
+  return cell;
+}
+
+function sbCellKeyForChannel(channel) {
+  return SB_CHANNEL_TO_CELL[channel] || 'operational';
+}
+
+/* Default recipient for an inject: matching cell, else the first cell (created if none). */
+function sbDefaultCellId(project, channel, create = true) {
+  const key = sbCellKeyForChannel(channel);
+  const existing = (project.cells || []).find((cell) => cell.key === key) || (project.cells || [])[0];
+  if (existing) return existing.id;
+  return create ? sbEnsureCell(project, key).id : '';
+}
+
+/* Adds preset cells until the requested count is reached; never removes cells. */
+function sbSetCellsCount(project, count) {
+  if (!Array.isArray(project.cells)) project.cells = [];
+  const target = Math.min(SB_CELL_PRESETS.length + 20, Math.max(0, Number(count) || 0));
+  for (const preset of SB_CELL_PRESETS) {
+    if (project.cells.length >= target) break;
+    if (!project.cells.some((cell) => cell.key === preset.key)) project.cells.push(sbMakeCell(preset.key));
+  }
+  while (project.cells.length < target) project.cells.push(sbMakeCell('custom', { name: `Cell ${project.cells.length + 1}` }));
+  // Lowering the count only removes empty cells: never one with players or injects.
+  const used = new Set([...(project.storyboard?.blocks || []).flatMap((block) => block.beats.map((beat) => beat.cell_id)), ...(project.stimuli || []).map((stimulus) => stimulus.cell_id)]);
+  for (let index = project.cells.length - 1; index >= 0 && project.cells.length > target; index--) {
+    const cell = project.cells[index];
+    if (!cell.players.length && !used.has(cell.id)) project.cells.splice(index, 1);
+  }
+  return project.cells;
+}
+
+function sbMainBlockAt(storyboard, minute) {
+  const main = sbMainBlocks(storyboard);
+  return main.find((block) => minute >= block.start_minutes && minute < sbBlockEnd(block))
+    || [...main].reverse().find((block) => block.start_minutes <= minute)
+    || main[0] || null;
+}
+
+/* Cells replace parallel workstreams: their injects move into the main phase covering
+   their time, addressed to the matching cell; the workstream blocks are removed. */
+function sbFlattenWorkstreams(project) {
+  const storyboard = project.storyboard;
+  if (!storyboard) return project;
+  if (!Array.isArray(project.cells)) project.cells = [];
+  const cellsBefore = project.cells.length;
+  const main = sbMainTrack(storyboard);
+  const workstreams = storyboard.blocks.filter((block) => block.track_id !== main.id);
+  if (workstreams.length && !sbMainBlocks(storyboard).length) {
+    // No main storyline: promote the workstream blocks themselves.
+    workstreams.forEach((block) => { block.track_id = main.id; });
+  } else {
+    for (const block of workstreams) {
+      const track = sbTrack(storyboard, block.track_id);
+      const cellKey = SB_TRACK_TO_CELL[track?.key] || null;
+      const targets = new Set();
+      for (const beat of block.beats) {
+        const at = sbBeatAbsolute(block, beat);
+        const target = sbMainBlockAt(storyboard, at);
+        if (!target) continue;
+        const moved = { ...beat, offset_minutes: Math.max(0, Math.min(at - target.start_minutes, target.duration_minutes - 1)) };
+        if (!moved.cell_id && cellKey) moved.cell_id = sbEnsureCell(project, cellKey).id;
+        target.beats.push(moved);
+        target.beats.sort((a, b) => a.offset_minutes - b.offset_minutes);
+        target.stimuli_target = Math.max(target.stimuli_target, target.beats.length);
+        targets.add(target);
+        for (const stimulus of project.stimuli || []) {
+          const link = stimulus.scenario_link;
+          if (link?.beat_id === beat.id) { link.block_id = target.id; link.offset = moved.offset_minutes; }
+        }
+      }
+      const covering = targets.size ? [...targets] : [sbMainBlockAt(storyboard, block.start_minutes)].filter(Boolean);
+      const note = `Parallel workstream "${block.title}" (${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))}): ${block.brief || block.narrative}`.slice(0, 900);
+      covering.forEach((target) => {
+        target.notes = sbText([target.notes, note].filter(Boolean).join('\n'), 4000);
+        // Objectives tested by the workstream stay covered by the phases that absorb it.
+        (block.objectives || []).forEach((objective) => { if (!target.objectives.includes(objective)) target.objectives.push(objective); });
+      });
+      for (const stimulus of project.stimuli || []) {
+        const link = stimulus.scenario_link;
+        if (link?.block_id === block.id && !link.beat_id && covering[0]) link.block_id = covering[0].id;
+      }
+    }
+    storyboard.blocks = storyboard.blocks.filter((block) => block.track_id === main.id);
+  }
+  storyboard.tracks = [main];
+  sbAssignMissingCells(project);
+  if (project.cells.length !== cellsBefore) sbSortCells(project);
+  return project;
+}
+
+/* Every beat and stimulus gets a recipient cell: the preset cell matching its channel,
+   created when missing (new cells are kept in the preset order). */
+function sbAssignMissingCells(project) {
+  if (!Array.isArray(project.cells)) project.cells = [];
+  const storyboard = project.storyboard;
+  const before = project.cells.length;
+  const cellFor = (channel) => sbEnsureCell(project, sbCellKeyForChannel(channel)).id;
+  const beatCells = new Map();
+  for (const block of storyboard?.blocks || []) {
+    for (const beat of block.beats) {
+      if (!beat.cell_id || !sbCell(project, beat.cell_id)) beat.cell_id = cellFor(beat.channel);
+      beatCells.set(beat.id, beat.cell_id);
+    }
+  }
+  for (const stimulus of project.stimuli || []) {
+    const fromBeat = beatCells.get(stimulus.scenario_link?.beat_id);
+    if (fromBeat) stimulus.cell_id = fromBeat;
+    else if (!stimulus.cell_id || !sbCell(project, stimulus.cell_id)) stimulus.cell_id = cellFor(stimulus.channel);
+  }
+  if (project.cells.length !== before) sbSortCells(project);
+  return project;
+}
+
+function sbSortCells(project) {
+  const rank = (cell) => { const index = SB_CELL_PRESETS.findIndex((preset) => preset.key === cell.key); return index < 0 ? 99 : index; };
+  project.cells = project.cells.map((cell, index) => ({ cell, index })).sort((a, b) => rank(a.cell) - rank(b.cell) || a.index - b.index).map((entry) => entry.cell);
 }
