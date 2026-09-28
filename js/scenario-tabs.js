@@ -117,7 +117,7 @@ function renderStorylineView() {
     const readOnly = sbReadOnly();
     const block = sbSelectedBlock();
     const ai = isLLMAvailable();
-    const stages = Object.entries(SB_BLOCK_TYPES).filter(([key]) => !['crisis_cell', 'communication', 'legal', 'hr', 'logistics', 'customers'].includes(key));
+    const stages = slPhaseTypes();
     return `<section class="sb-workspace sl-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="Main storyline">
       <header class="sb-toolbar">
         <div class="sb-tb-title"><span class="sb-eyebrow">Main storyline</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong><span class="sb-chip sb-chip-rev">rev ${storyboard.rev}</span></div></div>
@@ -142,6 +142,14 @@ function renderStorylineView() {
   });
 }
 
+/* The phase types of the main storyline, the same in "Add phase" and the phase editor. The
+   workstream types (cells, communication, legal…) are cells now, not phases; a phase that
+   still has one keeps it in its own list. */
+const SL_WORKSTREAM_TYPES = ['crisis_cell', 'communication', 'legal', 'hr', 'logistics', 'customers'];
+function slPhaseTypes(current = null) {
+  return Object.entries(SB_BLOCK_TYPES).filter(([key]) => key === current || !SL_WORKSTREAM_TYPES.includes(key));
+}
+
 function renderDetailAllButton(storyboard, ai, readOnly) {
   return `<button class="btn btn-ghost btn-sm" data-sb-action="deepen-all" ${ai && storyboard.blocks.length && !readOnly ? '' : 'disabled'} title="Write the details of every phase with AI">${sbUiIcon('layers', 13)} Detail all phases with AI</button>`;
 }
@@ -156,7 +164,7 @@ function renderPhaseEditor(storyboard, block) {
   return `<div class="bottom-editor-head" style="--clip-color:${sbBlockColor(block, storyboard)}">
       <span class="sb-clip-icon">${sbIcon((SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).icon, 16)}</span>
       <input class="be-title" data-sb-field="title" value="${escapeAttribute(block.title)}" aria-label="Phase title" ${readOnly}>
-      <select data-sb-field="type" aria-label="Phase type" ${readOnly}>${Object.entries(SB_BLOCK_TYPES).map(([key, value]) => sbOption(key, value.label, block.type)).join('')}</select>
+      <select data-sb-field="type" aria-label="Phase type" ${readOnly}>${slPhaseTypes(block.type).map(([key, value]) => sbOption(key, value.label, block.type)).join('')}</select>
       <label class="be-inline">Start · ${sbFormatOffset(block.start_minutes)}<input type="number" min="0" step="5" data-sb-field="start_minutes" value="${block.start_minutes}" ${readOnly}></label>
       <label class="be-inline">Duration (min)<input type="number" min="5" step="5" data-sb-field="duration_minutes" value="${block.duration_minutes}" ${readOnly}></label>
       <span class="be-actions">
