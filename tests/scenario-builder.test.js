@@ -495,3 +495,23 @@ test('context: learning objectives per player category and the attack path feed 
   assert.ok(reloaded.cells.find((item) => item.id === cell.id).objectives.includes('NIS2'));
   assert.ok(reloaded.scenario.attack_path.includes('Impact'));
 });
+
+test('scenario first: injects grouped by phase, phase and cell filters, scenario-first checks', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.libraryFilter = { phase: '', cellId: '', channel: '', status: '', actorId: '', sort: 'timeline' };`);
+  const phases = h.json('sbMainBlocks(sbStoryboard()).map((block) => ({ id: block.id, title: block.title }))');
+  const view = h.run('renderLibraryView()');
+  assert.ok(view.includes('data-library-filter="phase"') && view.includes('data-library-filter="cellId"'));
+  assert.ok(view.includes('By phase'));
+  const order = phases.map((phase) => view.indexOf(`<strong>${phase.title}</strong>`));
+  assert.ok(order.every((index) => index > 0) && order.every((index, i) => !i || index > order[i - 1]), 'one section per phase, in scenario order');
+  h.run(`appState.libraryFilter.phase = '${phases[1].id}'`);
+  const one = h.run('renderLibraryView()');
+  assert.ok(one.includes(`<strong>${phases[1].title}</strong>`) && !one.includes(`<strong>${phases[0].title}</strong>`));
+  // The agent's check reads the storyline and the cells before the injects.
+  h.run(`appState.scenario.cells.push(sbMakeCell('custom', { name: 'Idle cell' }))`);
+  const check = h.json('agentConsistencyCheck()');
+  assert.ok(check.issues.some((issue) => issue.includes('Cell "Idle cell" receives no inject')));
+  assert.ok(check.note.includes('scenario first'));
+  assert.ok(h.run('AgentPrompts.protocol').includes('The scenario is the core'));
+});

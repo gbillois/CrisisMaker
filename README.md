@@ -1,6 +1,10 @@
 # CrisisMaker
 
-CrisisMaker by Wavestone is a static browser application for designing and exporting cyber crisis exercise stimuli.
+CrisisMaker by Wavestone is a platform to design and run cyber crisis exercises,
+in the browser. The scenario is the core: its main storyline and phases, the player
+cells and their learning objectives, and the attack path. Injects (stimuli) serve
+the phases: each belongs to a phase, is addressed to a cell and is written from the
+scenario. The exercise is then played phase by phase and debriefed.
 
 ## Azure OpenAI
 

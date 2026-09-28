@@ -274,7 +274,7 @@
                   <span class="hero-kicker">CrisisMaker</span>
                 </div>
                 <h1 class="launch-hero-title">${tt('Design, run, and debrief crisis exercises.', 'Concevez, animez et débriefez vos exercices de crise.', 'Entwerfen, leiten und debriefen Sie Krisenübungen.')}</h1>
-                <p class="launch-hero-desc">${tt('A complete studio to prepare realistic scenarios, create crisis injects, audit timelines, and produce polished interactive or video debriefs.', 'Un studio complet pour préparer des scénarios réalistes, créer des injects, auditer des chronogrammes et produire des débriefs interactifs ou vidéo soignés.', 'Ein vollständiges Studio zur Vorbereitung realistischer Szenarien, Erstellung von Krisen-Injects, Prüfung von Zeitplänen und Produktion interaktiver oder videobasierter Debriefs.')}</p>
+                <p class="launch-hero-desc">${tt('A platform to design and run crisis exercises: build the scenario and its phases, organise the player cells and their objectives, plan and write the injects of each phase, play the exercise, then debrief it.', 'Une plateforme pour concevoir et animer des exercices de crise : construisez le scénario et ses phases, organisez les cellules de joueurs et leurs objectifs, planifiez et rédigez les injects de chaque phase, jouez l’exercice, puis débriefez-le.', 'Eine Plattform zum Entwerfen und Durchführen von Krisenübungen: Szenario und Phasen aufbauen, Spielerzellen und ihre Ziele organisieren, die Injects jeder Phase planen und schreiben, die Übung spielen und nachbesprechen.')}</p>
                 <div class="launch-hero-stats">
                   <div class="hero-stat">
                     <strong>${tt('Stand alone or AI powered', 'Autonome ou propulsé par l\'IA', 'Eigenständig oder KI-gestützt')}</strong>
@@ -298,7 +298,7 @@
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgFolder()}</div>
                       <strong>Project</strong>
-                      <p>Create, open, save and export your exercise projects. Import existing Excel timelines with AI assistance.</p>
+                      <p>The exercise at a glance, projects to open, save and export, and a library of ready-made scenarios to start from.</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgTarget()}</div>
@@ -328,7 +328,7 @@
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgGrid()}</div>
                       <strong>${tt('Injects', 'Injects', 'Injects')}</strong>
-                      <p>${tt('Browse, filter and preview all injects. Export them as styled images or download the complete package as a ZIP.', 'Parcourez, filtrez et prévisualisez tous les injects. Exportez-les en images ou téléchargez le package complet en ZIP.', 'Durchsuchen, filtern und vorab anzeigen Sie alle Injects. Exportieren Sie sie als gestaltete Bilder oder laden Sie das komplette Paket als ZIP herunter.')}</p>
+                      <p>${tt('Every inject of the scenario, gathered by phase and filterable by cell: preview them for facilitation and export them as styled images or a ZIP.', 'Tous les injects du scénario, regroupés par phase et filtrables par cellule : prévisualisez-les pour l’animation et exportez-les en images stylées ou en ZIP.', 'Alle Injects des Szenarios, nach Phase gruppiert und nach Zelle filterbar: für die Moderation ansehen und als gestaltete Bilder oder ZIP exportieren.')}</p>
                     </div>
                     <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgDebrief()}</div>
@@ -365,7 +365,7 @@
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
-                      <span>${tt('<strong>Export your deliverables</strong> — use the Injects view to preview everything, then export a ZIP with all styled injects ready for facilitation.', '<strong>Exportez vos livrables</strong> — utilisez la vue Injects pour tout prévisualiser, puis exportez un ZIP avec tous les injects prêts pour l\'animation.', '<strong>Exportieren Sie Ihre Lieferobjekte</strong> — verwenden Sie die Injects-Ansicht zur Vorschau, dann exportieren Sie ein ZIP mit allen gestalteten Injects für die Übungsleitung.')}</span>
+                      <span>${tt('<strong>Run the exercise</strong> — in Summary, play it phase by phase and watch the injects reach each cell; the Injects view gathers them by phase for facilitation and export.', '<strong>Animez l’exercice</strong> — dans Summary, jouez-le phase par phase et voyez les injects arriver à chaque cellule ; la vue Injects les regroupe par phase pour l’animation et l’export.', '<strong>Übung durchführen</strong> — in Summary Phase für Phase abspielen und sehen, wie die Injects jede Zelle erreichen; die Injects-Ansicht gruppiert sie nach Phase für Moderation und Export.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">5</div>
@@ -417,7 +417,7 @@
           },
           library: {
             title: tt('Injects', 'Injects', 'Injects'),
-            subtitle: tt('Browse, filter and export all injects.', 'Parcourez, filtrez et exportez tous les injects.', 'Alle Injects durchsuchen, filtern und exportieren.')
+            subtitle: tt('Every inject of the scenario, phase by phase.', 'Tous les injects du scénario, phase par phase.', 'Alle Injects des Szenarios, Phase für Phase.')
           },
           agent: {
             title: 'Agent',
@@ -581,30 +581,72 @@
           </article>`;
       }
 
+      /* The main-storyline phase an inject belongs to: its linked phase, else the phase at its time. */
+      function libraryPhaseOf(stimulus) {
+        const storyboard = appState.scenario.storyboard;
+        if (!storyboard) return null;
+        const linked = stimulus.scenario_link?.block_id ? sbBlock(storyboard, stimulus.scenario_link.block_id) : null;
+        if (linked && sbTrack(storyboard, linked.track_id)?.kind === 'main') return linked;
+        return sbMainBlockAt(storyboard, stimulus.timestamp_offset_minutes) || null;
+      }
+
       function renderLibraryView() {
         const allStimuli = getSortedStimuli();
         if (!allStimuli.length) {
           return `<section class="grid" style="max-width:600px; margin: 60px auto; text-align:center;">
-            <p class="subtle">No injects yet. Plan and write them in the Detailed storyline.</p>
+            <p class="subtle">No injects yet. Build the scenario and its phases, then plan and write the injects of each phase in the Detailed storyline.</p>
             <button class="btn btn-primary" data-action="nav-stimuli">Go to Detailed storyline</button>
           </section>`;
         }
         const f = appState.libraryFilter;
+        const phases = appState.scenario.storyboard ? sbMainBlocks(appState.scenario.storyboard) : [];
+        const cells = appState.scenario.cells || [];
         let filtered = allStimuli;
+        if (f.phase) filtered = filtered.filter((s) => (libraryPhaseOf(s)?.id || 'none') === f.phase);
+        if (f.cellId) filtered = filtered.filter((s) => (s.cell_id || 'none') === f.cellId);
         if (f.channel) filtered = filtered.filter((s) => s.channel === f.channel);
         if (f.status) filtered = filtered.filter((s) => s.status === f.status);
         if (f.actorId) filtered = filtered.filter((s) => s.actor_id === f.actorId);
         if (f.sort === 'updated') filtered = [...filtered].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
         else if (f.sort === 'channel') filtered = [...filtered].sort((a, b) => a.channel.localeCompare(b.channel));
         else if (f.sort === 'actor') filtered = [...filtered].sort((a, b) => (getActor(a.actor_id)?.name || '').localeCompare(getActor(b.actor_id)?.name || ''));
-        // default sort = timeline (already sorted by getSortedStimuli)
+        // Default: the scenario's order, phase by phase (already sorted by time).
 
         const channelOptions = [...new Set(allStimuli.map((s) => s.channel))].sort();
         const actorOptions = appState.scenario.actors;
+        const byPhase = !f.sort || f.sort === 'timeline';
+        const groups = byPhase
+          ? [...phases.map((phase) => ({ phase, items: filtered.filter((s) => libraryPhaseOf(s) === phase) })), { phase: null, items: filtered.filter((s) => !libraryPhaseOf(s)) }].filter((group) => group.items.length)
+          : [{ phase: undefined, items: filtered }];
+        const renderGroup = (group) => {
+          if (group.phase === undefined) return `<div class="library-card-grid">${group.items.map((s) => renderLibraryCard(s)).join('')}</div>`;
+          const phase = group.phase;
+          const color = phase ? sbBlockColor(phase, appState.scenario.storyboard) : 'var(--line-strong)';
+          const planned = phase ? phase.stimuli_target : 0;
+          return `<section class="library-phase" style="--phase-color:${escapeAttribute(color)}">
+            <header class="library-phase-head">
+              <span class="library-phase-time">${phase ? `${escapeHtml(sbFormatOffset(phase.start_minutes))} – ${escapeHtml(sbFormatOffset(sbBlockEnd(phase)))}` : ''}</span>
+              <strong>${phase ? escapeHtml(phase.title) : tt('Outside the storyline', 'Hors storyline', 'Außerhalb der Storyline')}</strong>
+              <span class="library-phase-count">${group.items.length}${phase && planned ? ` / ${planned} ${tt('planned', 'prévus', 'geplant')}` : ''} ${tt('injects', 'injects', 'Injects')}</span>
+              ${phase?.brief ? `<p>${escapeHtml(phase.brief)}</p>` : ''}
+            </header>
+            <div class="library-card-grid">${group.items.map((s) => renderLibraryCard(s)).join('')}</div>
+          </section>`;
+        };
 
         return `
           <section class="grid">
             <div class="library-filter-bar">
+              <select data-library-filter="phase">
+                <option value="">${tt('All phases', 'Toutes les phases', 'Alle Phasen')}</option>
+                ${phases.map((phase) => `<option value="${phase.id}" ${f.phase === phase.id ? 'selected' : ''}>${escapeHtml(`${sbFormatOffset(phase.start_minutes)} · ${phase.title}`)}</option>`).join('')}
+                <option value="none" ${f.phase === 'none' ? 'selected' : ''}>${tt('Outside the storyline', 'Hors storyline', 'Außerhalb der Storyline')}</option>
+              </select>
+              <select data-library-filter="cellId">
+                <option value="">${tt('All cells', 'Toutes les cellules', 'Alle Zellen')}</option>
+                ${cells.map((cell) => `<option value="${cell.id}" ${f.cellId === cell.id ? 'selected' : ''}>${escapeHtml(cell.name)}</option>`).join('')}
+                <option value="none" ${f.cellId === 'none' ? 'selected' : ''}>${tt('No recipient cell', 'Sans cellule destinataire', 'Ohne Empfängerzelle')}</option>
+              </select>
               <select data-library-filter="channel">
                 <option value="">${tt('All channels', 'Tous les types', 'Alle Kanäle')}</option>
                 ${channelOptions.map((ch) => `<option value="${ch}" ${f.channel === ch ? 'selected' : ''}>${escapeHtml(channelLabel(ch))}</option>`).join('')}
@@ -620,7 +662,7 @@
                 ${actorOptions.map((a) => `<option value="${a.id}" ${f.actorId === a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
               </select>
               <select data-library-filter="sort">
-                <option value="timeline" ${f.sort === 'timeline' ? 'selected' : ''}>${tt('Sort: timeline', 'Tri : timeline', 'Sortierung: Zeitplan')}</option>
+                <option value="timeline" ${f.sort === 'timeline' ? 'selected' : ''}>${tt('By phase', 'Par phase', 'Nach Phase')}</option>
                 <option value="updated" ${f.sort === 'updated' ? 'selected' : ''}>${tt('Sort: last modified', 'Tri : modifié', 'Sortierung: Zuletzt geändert')}</option>
                 <option value="channel" ${f.sort === 'channel' ? 'selected' : ''}>${tt('Sort: channel', 'Tri : type', 'Sortierung: Kanal')}</option>
                 <option value="actor" ${f.sort === 'actor' ? 'selected' : ''}>${tt('Sort: actor', 'Tri : acteur', 'Sortierung: Akteur')}</option>
@@ -644,9 +686,7 @@
                 </div>
               </div>
             ` : ''}
-            <div class="library-card-grid">
-              ${filtered.map((s) => renderLibraryCard(s)).join('')}
-            </div>
+            ${groups.map(renderGroup).join('') || `<p class="subtle">${tt('No inject matches these filters.', 'Aucun inject ne correspond à ces filtres.', 'Kein Inject entspricht diesen Filtern.')}</p>`}
           </section>
         `;
       }

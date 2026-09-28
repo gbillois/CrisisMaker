@@ -10,7 +10,7 @@
         toasts: [],
         videoFiles: makeDefaultVideoFiles(initialScenario),  // stimulusId → { objectUrl, fileName }
         audioFiles: {},  // stimulusId → { objectUrl, fileName, blob } — in-memory only, never persisted
-        libraryFilter: { channel: '', status: '', actorId: '', sort: 'timeline' },
+        libraryFilter: { phase: '', cellId: '', channel: '', status: '', actorId: '', sort: 'timeline' },
         historyModalStimulusId: null,
         libraryExpandedId: null,
         llmState: makeDefaultLLMState(),
@@ -547,7 +547,7 @@
         appState.slideshowIndex = 0;
         appState.historyModalStimulusId = null;
         appState.libraryExpandedId = null;
-        appState.libraryFilter = { channel: '', status: '', actorId: '', sort: 'timeline' };
+        appState.libraryFilter = { phase: '', cellId: '', channel: '', status: '', actorId: '', sort: 'timeline' };
         appState.llmState = makeDefaultLLMState();
         _fileHandle = null;
         saveLocal(false);

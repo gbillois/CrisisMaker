@@ -108,10 +108,23 @@ function agentStoryboardSummary() {
 }
 function agentConsistencyCheck() {
   const s = appState.scenario, issues = [];
+  // Scenario first: storyline and phases, cells and their objectives, attack path; then injects.
+  const storyboard = s.storyboard;
+  if (storyboard) sbStructuralChecks(storyboard, s).forEach(issue => issues.push(`Storyline: ${issue.message}`));
   if (!s.scenario.summary?.trim()) issues.push('Missing scenario summary.');
   if (!s.scenario.objectives?.trim()) issues.push('No explicit exercise objectives recorded.');
+  if (!s.scenario.attack_path?.trim()) issues.push('No attack path: technical phases and injects have no reference sequence.');
+  const beats = storyboard ? storyboard.blocks.flatMap(block => block.beats) : [];
+  for (const cell of s.cells || []) {
+    const count = beats.filter(beat => beat.cell_id === cell.id).length + s.stimuli.filter(item => item.cell_id === cell.id && !item.scenario_link?.beat_id).length;
+    if (!count) issues.push(`Cell "${cell.name}" receives no inject${cell.objectives ? ', so its learning objectives are never tested' : ''}.`);
+    if (!cell.objectives?.trim()) issues.push(`Cell "${cell.name}" has no learning objectives.`);
+  }
+  const unwritten = beats.filter(beat => !sbStimulusForBeat(s, beat.id)).length;
+  if (unwritten) issues.push(`${unwritten} planned inject(s) of the storyline are not written yet.`);
   if (!s.actors.length) issues.push('No actors.');
-  if (!s.stimuli.length) issues.push('No stimuli.');
+  if (!s.stimuli.length && !beats.length) issues.push('No inject planned or written yet.');
+  if (storyboard) getSortedStimuli().filter(item => !sbMainBlockAt(storyboard, item.timestamp_offset_minutes)).forEach(item => issues.push(`${item.id}: outside every phase of the main storyline.`));
   const phases = s.scenario.phases || [];
   const seen = new Map();
   getSortedStimuli().forEach((item, i, list) => {
@@ -124,7 +137,7 @@ function agentConsistencyCheck() {
     if (seen.has(body)) issues.push(`${item.id}: identical content to ${seen.get(body)}.`);
     seen.set(body, item.id);
   });
-  return { issues: issues.slice(0, 50), totalIssues: issues.length, note: 'Structural checks only. Review full content for objective coverage, decisions, disclosure, pressure, ambiguity, escalation and consequences.' };
+  return { issues: issues.slice(0, 60), totalIssues: issues.length, note: 'Structural checks only, scenario first. Review full content for objective coverage, decisions, disclosure, pressure, ambiguity, escalation and consequences.' };
 }
 function agentValidatePhases(phases) {
   const ordered = [...phases].sort((a, b) => a.start_minutes - b.start_minutes);

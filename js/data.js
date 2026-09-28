@@ -43,9 +43,9 @@
         const lang = currentLanguage();
         document.documentElement.lang = lang;
         document.title = tt(
-          'CrisisMaker by Wavestone - Crisis exercise studio',
-          'CrisisMaker by Wavestone - Studio d\'exercices de crise',
-          'CrisisMaker by Wavestone - Krisenübungs-Studio'
+          'CrisisMaker by Wavestone - Crisis exercise platform',
+          'CrisisMaker by Wavestone - Plateforme d\'exercices de crise',
+          'CrisisMaker by Wavestone - Krisenübungs-Plattform'
         );
       }
 
