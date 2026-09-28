@@ -832,7 +832,7 @@
           // Restore LLM prompt texts from saved data
           appState.llmState = makeDefaultLLMState();
           restoreLLMPrompts(data.llm_prompts);
-          appState.route = 'builder';
+          appState.route = 'scenario';
           appState.launchScreenOpen = false;
           saveLocal(false);
           App.render();

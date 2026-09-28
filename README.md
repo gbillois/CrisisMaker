@@ -84,10 +84,18 @@ iframe sub-app) and shows a placeholder instead; use the full app for it.
 - [MITRE ATT&CK / D3Fend threat and mitigation document](docs/mitre-attack-d3fend-threat-mitigation.md)
 - [Debrief generation and automation](docs/debrief-automation.md)
 
-## Scenario Builder
+## Scenario context and Phase Builder
 
-The **Scenario Builder** tab (first tab) is where an exercise starts. It storyboards
-the crisis on a multi-track timeline, in the spirit of a video editing suite:
+An exercise starts in **Scenario context** (first tab): pick a ready-made scenario
+from the library or generate a skeleton with AI, then frame the exercise (name,
+designer brief, synopsis, threat, objectives, narrative arc), the client, the threat
+and the actors.
+
+The **Phase Builder** (second tab) storyboards the crisis phases on a multi-track
+timeline, in the spirit of a video editing suite. Side panels (blocks, cast,
+inspector) fold into icon rails and the program monitor collapses to a single strip,
+so the timeline can use the whole screen on a laptop (`[`, `]` and `M` toggle them;
+the layout is remembered per browser):
 
 - **Timeline:** a *main storyline* of sequential crisis stages (trigger & detection,
   investigation, containment, eradication, business continuity, recovery, crisis
@@ -121,7 +129,7 @@ the crisis on a multi-track timeline, in the spirit of a video editing suite:
   blocks leave orphans to unlink or delete, and new planned injects are created.
   Locked injects are never modified. Injects moved by hand in the Timeline keep their
   time unless you choose otherwise. Link status also appears in the Injects tab.
-- **Library:** eight ready-made storyboards (ransomware with double extortion,
+- **Library** (in Scenario context): eight ready-made storyboards (ransomware with double extortion,
   personal data breach, software supply chain, DDoS & hacktivism, CEO fraud with
   deepfake, destructive wiper, insider threat, OT/industrial incident), each with
   objectives, cast, tracks and a complete inject plan. They can be previewed, used,

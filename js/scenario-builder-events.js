@@ -16,9 +16,9 @@ function sbSnap(minutes) {
 function sbSetZoom(value) {
   const ui = sbUI();
   const scroller = document.getElementById('sb-timeline-scroll');
-  const centerMinute = scroller ? (scroller.scrollLeft + Math.max(0, scroller.clientWidth - SB_HEADER_WIDTH) / 2) / ui.zoom : ui.playhead;
+  const centerMinute = scroller ? (scroller.scrollLeft + Math.max(0, scroller.clientWidth - sbHeaderWidth()) / 2) / ui.zoom : ui.playhead;
   ui.zoom = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, Math.round(value * 100) / 100));
-  if (scroller) ui.scrollLeft = Math.max(0, centerMinute * ui.zoom - Math.max(0, scroller.clientWidth - SB_HEADER_WIDTH) / 2);
+  if (scroller) ui.scrollLeft = Math.max(0, centerMinute * ui.zoom - Math.max(0, scroller.clientWidth - sbHeaderWidth()) / 2);
 }
 
 function sbFitZoom() {
@@ -26,12 +26,26 @@ function sbFitZoom() {
   if (!scroller || !scroller.clientWidth) return false;
   const ui = sbUI();
   const storyboard = sbStoryboard();
-  const available = scroller.clientWidth - SB_HEADER_WIDTH - 36;
+  const available = scroller.clientWidth - sbHeaderWidth() - 36;
   const next = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, Math.floor(100 * available / Math.max(60, storyboard.duration_minutes)) / 100));
   const changed = Math.abs(next - ui.zoom) > 0.01;
   ui.zoom = next;
   ui.scrollLeft = 0;
   return changed;
+}
+
+/* Selecting a block brings the inspector back if it was hidden. */
+function sbRevealInspector() {
+  sbPanels().right = true;
+}
+
+function sbTogglePanel(side, value = null) {
+  const panels = sbPanels();
+  if (side === 'left') panels.left = panels.left === (value || 'blocks') ? null : (value || 'blocks');
+  else if (side === 'right') panels.right = !panels.right;
+  else panels.monitor = panels.monitor === 'full' ? 'compact' : 'full';
+  sbSavePanels();
+  App.render();
 }
 
 function sbEnsureTrackFor(storyboard, type) {
@@ -61,6 +75,7 @@ function sbAddBlock(type, trackId = null, start = null) {
   ui.selected = [block.id];
   ui.inspector = 'brief';
   ui.scrollTo = block.id;
+  sbRevealInspector();
   sbCommitRender(`Add ${SB_BLOCK_TYPES[type]?.label || 'block'}`);
   return block;
 }
@@ -139,7 +154,7 @@ async function sbHandleAction(event) {
   const project = appState.scenario;
   const storyboard = sbStoryboard();
   const block = sbSelectedBlock();
-  const allowedWhileBusy = ['stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template'];
+  const allowedWhileBusy = ['toggle-left', 'toggle-right', 'toggle-monitor', 'stop-ai', 'stop-pipeline', 'close-modal', 'open-modal', 'set-bin', 'set-inspector', 'select-block', 'select-blocks', 'deselect', 'zoom-in', 'zoom-out', 'zoom-fit', 'dismiss-error', 'open-stimulus', 'library-category', 'preview-template', 'compare-version', 'generate-scope', 'open-library', 'export-template'];
   if (sbReadOnly() && !allowedWhileBusy.includes(action)) return;
   try {
     switch (action) {
@@ -181,9 +196,18 @@ async function sbHandleAction(event) {
         App.render();
         break;
       case 'open-library':
-        ui.bin = 'library';
         ui.modal = null;
+        appState.route = 'scenario';
         App.render();
+        break;
+      case 'toggle-left':
+        sbTogglePanel('left', element.dataset.sbValue);
+        break;
+      case 'toggle-right':
+        sbTogglePanel('right');
+        break;
+      case 'toggle-monitor':
+        sbTogglePanel('monitor');
         break;
       case 'set-inspector':
         ui.inspector = element.dataset.sbValue;
@@ -192,12 +216,14 @@ async function sbHandleAction(event) {
       case 'select-block':
         ui.selected = [element.dataset.sbBlock];
         ui.scrollTo = element.dataset.sbBlock;
+        sbRevealInspector();
         App.render();
         break;
       case 'select-blocks':
         ui.selected = element.dataset.sbBlocks.split(',').filter((id) => sbBlock(storyboard, id));
         ui.scrollTo = ui.selected[0];
         ui.modal = null;
+        sbRevealInspector();
         App.render();
         break;
       case 'deselect':
@@ -364,6 +390,7 @@ async function sbHandleAction(event) {
         ui.selected = [];
         ui.playhead = 0;
         if (mode === 'replace') ui.zoom = null;
+        appState.route = 'builder';
         pushToast(`"${template.name}" ${mode === 'insert' ? 'inserted' : 'loaded'}. Refine blocks, then generate injects.`, 'success');
         App.render();
         break;
@@ -382,6 +409,7 @@ async function sbHandleAction(event) {
           ui.modal = null;
           ui.selected = [];
           ui.zoom = null;
+          appState.route = 'builder';
           pushToast(`"${template.name}" adapted to your organisation.`, 'success');
         } catch (error) {
           pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
@@ -496,6 +524,7 @@ async function sbHandleAction(event) {
           ui.modal = null;
           ui.selected = [];
           ui.zoom = null;
+          appState.route = 'builder';
           pushToast('Skeleton generated. Deepen blocks layer by layer, then generate injects.', 'success');
         } catch (error) {
           pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), 'error');
@@ -816,7 +845,7 @@ function sbStartClipPointer(event, clip) {
   const handle = event.target.closest('[data-sb-resize]');
   const additive = event.shiftKey || event.metaKey || event.ctrlKey;
   if (additive) ui.selected = ui.selected.includes(id) ? ui.selected.filter((item) => item !== id) : [...ui.selected, id];
-  else if (!ui.selected.includes(id)) ui.selected = [id];
+  else if (!ui.selected.includes(id)) { ui.selected = [id]; sbRevealInspector(); }
   if (sbReadOnly() || additive) { App.render(); return; }
   event.preventDefault();
   const ppm = ui.zoom;
@@ -856,18 +885,18 @@ function sbStartClipPointer(event, clip) {
         targetLane = lane && lane.dataset.sbLane !== block.track_id ? lane.dataset.sbLane : null;
         if (targetLane) lane.classList.add('is-drop-target');
       }
-      sbDragTip(canvas, `${sbFormatOffset(original.start + delta)} → ${sbFormatOffset(original.start + delta + original.duration)}`, SB_HEADER_WIDTH + (original.start + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
+      sbDragTip(canvas, `${sbFormatOffset(original.start + delta)} → ${sbFormatOffset(original.start + delta + original.duration)}`, sbHeaderWidth() + (original.start + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
     } else if (mode === 'resize-right') {
       const end = sbSnapWithEdges(original.start + original.duration + raw, edges, ppm);
       delta = Math.max(5, end - original.start) - original.duration;
       clip.style.width = `${(original.duration + delta) * ppm}px`;
-      sbDragTip(canvas, `${sbFormatDuration(original.duration + delta)} · ends ${sbFormatOffset(original.start + original.duration + delta)}`, SB_HEADER_WIDTH + (original.start + original.duration + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
+      sbDragTip(canvas, `${sbFormatDuration(original.duration + delta)} · ends ${sbFormatOffset(original.start + original.duration + delta)}`, sbHeaderWidth() + (original.start + original.duration + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
     } else {
       const start = Math.max(0, sbSnapWithEdges(original.start + raw, edges, ppm));
       delta = Math.min(start, original.start + original.duration - 5) - original.start;
       clip.style.left = `${(original.start + delta) * ppm}px`;
       clip.style.width = `${(original.duration - delta) * ppm}px`;
-      sbDragTip(canvas, `starts ${sbFormatOffset(original.start + delta)} · ${sbFormatDuration(original.duration - delta)}`, SB_HEADER_WIDTH + (original.start + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
+      sbDragTip(canvas, `starts ${sbFormatOffset(original.start + delta)} · ${sbFormatDuration(original.duration - delta)}`, sbHeaderWidth() + (original.start + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
     }
   };
 
@@ -913,7 +942,7 @@ function sbStartScrub(event) {
     const rect = ruler.getBoundingClientRect();
     const minute = Math.max(0, Math.min(storyboard.duration_minutes, Math.round((clientX - rect.left) / ui.zoom)));
     ui.playhead = minute;
-    playhead.style.left = `${SB_HEADER_WIDTH + minute * ui.zoom}px`;
+    playhead.style.left = `${sbHeaderWidth() + minute * ui.zoom}px`;
     if (label) label.textContent = sbFormatOffset(minute);
   };
   update(event.clientX);
@@ -948,6 +977,7 @@ function sbBindTimeline(root) {
     clip.addEventListener('pointerdown', (event) => sbStartClipPointer(event, clip));
     clip.addEventListener('dblclick', () => {
       ui.selected = [clip.dataset.sbClip];
+      sbRevealInspector();
       ui.inspector = 'brief';
       ui.focus = { key: 'sbField', value: 'title', start: null, end: null };
       App.render();
@@ -993,7 +1023,7 @@ function sbBindTimeline(root) {
     const block = sbBlock(storyboard, ui.scrollTo);
     if (block) {
       const left = block.start_minutes * ui.zoom;
-      const visible = scroller.clientWidth - SB_HEADER_WIDTH;
+      const visible = scroller.clientWidth - sbHeaderWidth();
       if (left < scroller.scrollLeft || left > scroller.scrollLeft + visible - 60) scroller.scrollLeft = Math.max(0, left - 40);
       ui.scrollLeft = scroller.scrollLeft;
     }
@@ -1015,6 +1045,11 @@ function sbOnKeyDown(event) {
     return;
   }
   if (typing || ui.modal) return;
+  if (!mod && !event.altKey) {
+    if (event.key === '[') { event.preventDefault(); sbTogglePanel('left', sbPanels().left || 'blocks'); return; }
+    if (event.key === ']') { event.preventDefault(); sbTogglePanel('right'); return; }
+    if (key === 'm') { event.preventDefault(); sbTogglePanel('monitor'); return; }
+  }
   if (mod && (key === 'z' || key === 'y')) {
     event.preventDefault();
     if (sbReadOnly()) return;
@@ -1039,18 +1074,28 @@ function bindScenarioBuilderEvents() {
   if (typeof window !== 'undefined' && !window._sbKeysInstalled) {
     window._sbKeysInstalled = true;
     window.addEventListener('keydown', sbOnKeyDown);
+    let resizeTimer = null;
+    let compact = sbCompact();
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (appState.route === 'builder' && sbCompact() !== compact) { compact = sbCompact(); App.render(); }
+      }, 200);
+    });
   }
-  if (appState.route !== 'builder') return;
-  const root = document.querySelector('.sb-workspace');
-  if (!root) return;
+  if (!['builder', 'scenario'].includes(appState.route)) return;
+  const roots = [...document.querySelectorAll('[data-sb-scope]')];
+  if (!roots.length) return;
   const ui = sbUI();
-  root.querySelectorAll('[data-sb-action]').forEach((element) => element.addEventListener('click', sbHandleAction));
-  sbBindInputs(root);
-  sbBindTimeline(root);
-  if (sbReadOnly()) {
-    root.querySelectorAll('.sb-inspector input, .sb-inspector textarea, .sb-inspector select, .sb-bin input, .sb-bin select, .sb-bin textarea, [data-sb-duration], .sb-track-name').forEach((element) => { element.disabled = true; });
+  for (const root of roots) {
+    root.querySelectorAll('[data-sb-action]').forEach((element) => element.addEventListener('click', sbHandleAction));
+    sbBindInputs(root);
+    if (root.classList.contains('sb-workspace')) sbBindTimeline(root);
+    if (sbReadOnly()) {
+      root.querySelectorAll('.sb-inspector input, .sb-inspector textarea, .sb-inspector select, .sb-bin input, .sb-bin select, .sb-bin textarea, [data-sb-duration], .sb-track-name, .sb-framing input, .sb-framing textarea').forEach((element) => { element.disabled = true; });
+    }
   }
-  if (ui.needsFit) {
+  if (appState.route === 'builder' && ui.needsFit) {
     ui.needsFit = false;
     if (sbFitZoom()) { App.render(); return; }
   }

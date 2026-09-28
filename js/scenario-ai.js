@@ -145,7 +145,7 @@ const SbAI = {
   async request(label, userPayload, maxTokens, options = {}) {
     if (!isLLMAvailable()) throw new AgentValidationError('Configure an AI connection in Settings first.');
     const nested = options.nested === true;
-    if (!nested && (this.busy || SbPipeline.active)) throw new AgentValidationError('Another Scenario Builder operation is running.');
+    if (!nested && (this.busy || SbPipeline.active)) throw new AgentValidationError('Another Phase Builder operation is running.');
     if (!nested && (getCrisisAgent().active || getCrisisAgent().busy)) throw new AgentValidationError('Wait for the agent run to finish.');
     const project = appState.scenario;
     const controller = nested && options.signal ? null : new AbortController();
