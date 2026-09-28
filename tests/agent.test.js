@@ -486,3 +486,18 @@ test('almost-JSON from a model is repaired as a last resort: raw line breaks, qu
   assert.equal(h.run('parseLLMJson(quoted).text'), 'The CEO said "no payment" this morning');
   assert.throws(() => h.run('parseLLMJson("{\\"a\\": [1, 2")'), /malformed|not valid/i);
 });
+
+test('an inject created for AI writing carries no demo content of its template: sender from its actor, simulated date', async () => {
+  const h = harness();
+  h.run(`appState.scenario.scenario.start_date = '2026-11-27T08:00'; appState.scenario.client.name = 'Maison Aubray';`);
+  const actorId = h.run(`addActor({ name: 'Nadia Belkacem', role: 'internal', title: 'SOC duty analyst', organization: 'Maison Aubray' }, false).id`);
+  for (const channel of ['email_internal', 'email_external', 'sms_notification', 'internal_memo', 'breaking_news_tv', 'email_authority']) {
+    const created = await execute(h, 'createStimulus', { name: `Test ${channel}`, actor_id: actorId, timestamp_offset_minutes: 45, channel });
+    const fields = h.json(`getStimulus('${created.id}').fields`);
+    assert.doesNotMatch(JSON.stringify(fields), /StonaWave|Sophie Delacroix|PharmLeaks|MediChem|Jean-Luc Moreau|CVE-2026/i, channel);
+    if ('from_name' in fields) assert.match(fields.from_name, /Nadia Belkacem/);
+    if ('sender' in fields) assert.equal(fields.sender, 'Nadia Belkacem');
+    if ('time' in fields) assert.equal(fields.time, '08:45');
+    if ('date' in fields) assert.equal(fields.date, '27/11/2026 08:45');
+  }
+});

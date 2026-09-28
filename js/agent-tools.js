@@ -423,6 +423,8 @@ function createAgentToolRegistry() {
     requireItem(getActor, args.actor_id);
     const selection = agentResolveStimulusTemplate(args.channel, args.template_id, args.fields || {});
     const stimulus = makeStimulus(args.channel, args.actor_id, args.timestamp_offset_minutes, selection.templateId);
+    // No demo content of the template: the agent writes it, or generates it next.
+    sbBlankForGeneration(stimulus);
     const clean = agentCleanFields(stimulus, selection.fields);
     Object.assign(stimulus, agentPick(args, ['name', 'generation_prompt', 'status']));
     saveStimulus(stimulus, { ...stimulus.fields, ...clean }, 'Agent: created content');

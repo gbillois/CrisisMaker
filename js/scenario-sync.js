@@ -269,6 +269,39 @@ function sbLanguageName(project = appState.scenario) {
   return (typeof LANGUAGES !== 'undefined' && LANGUAGES.find((item) => item.value === code)?.label) || code;
 }
 
+/* The simulated date of a minute of play, when the exercise has a simulated start. */
+function sbSimulatedDate(project, minutes) {
+  const start = Date.parse(project?.scenario?.start_date || '');
+  return Number.isFinite(start) ? new Date(start + Math.round(Number(minutes) || 0) * 60000) : null;
+}
+
+/* A new inject written by AI starts from its template's layout, not from the template's demo
+   content (another company, other people, another date): text fields empty, the sender from its
+   actor, the date and time from the simulated clock. A field the AI leaves out stays empty
+   instead of carrying demo data. Style fields (colours, logo, device, forum style) are kept. */
+function sbBlankForGeneration(stimulus, project = appState.scenario) {
+  const fields = stimulus.fields || (stimulus.fields = {});
+  const actor = getActor(stimulus.actor_id);
+  const when = sbSimulatedDate(project, stimulus.timestamp_offset_minutes);
+  const pad = (value) => String(value).padStart(2, '0');
+  for (const field of getTemplateDefinition(stimulus)?.fields || []) {
+    if (!(field.key in fields) || !['text', 'textarea'].includes(field.type)) continue;
+    if (SB_MEDIA_FIELD.test(field.key) || /(color|colour|style|logo|avatar|icon|theme|variant|device)/.test(field.key)) continue;
+    fields[field.key] = '';
+  }
+  if (actor) {
+    if ('from_name' in fields) fields.from_name = stimulus.channel === 'internal_memo' && actor.title ? `${actor.name}, ${actor.title}` : actor.name;
+    if ('sender' in fields) fields.sender = actor.name;
+    if ('organization' in fields && stimulus.channel !== 'press_release') fields.organization = actor.organization || '';
+  }
+  if (stimulus.channel === 'press_release' && 'organization' in fields) fields.organization = project.client?.name || '';
+  if (when) {
+    if ('date' in fields) fields.date = formatLocalDateTime(when);
+    if ('time' in fields) fields.time = `${pad(when.getHours())}:${pad(when.getMinutes())}`;
+  }
+  return stimulus;
+}
+
 function sbPrimaryFieldKey(stimulus) {
   const keys = Object.keys(getTemplateDefinition(stimulus)?.defaults || stimulus.fields || {});
   return ['subject', 'headline', 'thread_title', 'title', 'text'].find((key) => keys.includes(key)) || null;
@@ -282,6 +315,13 @@ function sbGenerationBrief(project, block, beat, options = {}) {
   const lines = [
     'Exercise storyboard context (use it to write realistic content; never mention that this is an exercise or a storyboard):',
     `- Organisation: ${project.client.name || 'the organisation'}${project.client.sector ? ` (${project.client.sector})` : ''}.`,
+    (() => {
+      // The simulated date and time of this inject, so that dates, times and time zones in the content are right.
+      const when = sbSimulatedDate(project, beat ? sbBeatAbsolute(block, beat) : block.start_minutes);
+      if (!when) return '';
+      const pad = (value) => String(value).padStart(2, '0');
+      return `- Simulated date and time of this inject: ${when.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(when.getHours())}:${pad(when.getMinutes())}${project.scenario.timezone ? ` (${project.scenario.timezone})` : ''}. Every date and time in the content is consistent with it.`;
+    })(),
     storyboard.meta.synopsis ? `- Scenario synopsis: ${sbText(storyboard.meta.synopsis, 1600)}` : '',
     storyboard.meta.threat ? `- Threat: ${sbText(storyboard.meta.threat, 500)}` : '',
     previousBlock ? `- Previously: "${previousBlock.title}" - ${sbText(previousBlock.brief || previousBlock.narrative, 400)}` : '',
