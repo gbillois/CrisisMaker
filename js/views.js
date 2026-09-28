@@ -164,6 +164,7 @@
                   ${svgHome()}
                   <span>${tt('Home', 'Accueil', 'Startseite')}</span>
                 </button>
+                ${renderNavIconButton('builder', svgStoryboard(), 'Scenario Builder')}
                 ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
                 ${renderNavIconButton('scenario', svgTarget(), tt('Scenario', 'Scénario', 'Szenario'))}
                 ${renderNavIconButton('stimuli', svgPen(), tt('Timeline', 'Timeline', 'Zeitplan'))}
@@ -197,7 +198,7 @@
               </div>
             </div>
 
-            <main class="content ${appState.route === 'video-debrief' ? 'content-video-debrief' : ''}">
+            <main class="content ${appState.route === 'video-debrief' ? 'content-video-debrief' : ''} ${appState.route === 'builder' ? 'content-builder' : ''}">
               ${vc ? `<section class="topbar">
                 <div class="page-title">
                   <h2>${vc.title}</h2>
@@ -227,6 +228,7 @@
         </button>`;
       }
 
+      function svgStoryboard() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path><path d="M6 13h5"></path><path d="M9 16h8"></path><path d="M14 13h4"></path><path d="M7 4v5"></path><path d="M12 4v5"></path><path d="M17 4v5"></path></svg>'; }
       function svgFolder() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'; }
       function svgTarget() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'; }
       function svgPen() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'; }
@@ -270,6 +272,11 @@
                   <div class="welcome-block-title" style="margin-bottom:14px;">${tt('What you can do', 'Ce que vous pouvez faire', 'Was Sie tun können')}</div>
                   <div class="launch-features">
                     <div class="launch-feature-card">
+                      <div class="launch-feature-icon">${svgStoryboard()}</div>
+                      <strong>Scenario Builder</strong>
+                      <p>Storyboard the crisis on a multi-track timeline, start from the scenario library, refine it layer by layer with AI, then generate and keep actors and injects in sync.</p>
+                    </div>
+                    <div class="launch-feature-card">
                       <div class="launch-feature-icon">${svgFolder()}</div>
                       <strong>${tt('Project', 'Projet', 'Projekt')}</strong>
                       <p>${tt('Create, open, save and export your crisis exercise projects. Import existing Excel timelines with AI assistance.', 'Créez, ouvrez, sauvegardez et exportez vos projets. Importez des chronologies Excel existantes avec l\'aide de l\'IA.', 'Erstellen, öffnen, speichern und exportieren Sie Ihre Krisenübungsprojekte. Importieren Sie vorhandene Excel-Zeitpläne mit KI-Unterstützung.')}</p>
@@ -312,18 +319,22 @@
                   <div class="launch-tips">
                     <div class="launch-tip">
                       <div class="launch-tip-num">1</div>
-                      <span>${tt('<strong>Set up your scenario</strong> — define the client, crisis type and actors in the Scenario tab.', '<strong>Configurez votre scénario</strong> — définissez le client, le type de crise et les acteurs dans l\'onglet Scénario.', '<strong>Richten Sie Ihr Szenario ein</strong> — definieren Sie den Auftraggeber, den Krisentyp und die Akteure im Szenario-Tab.')}</span>
+                      <span><strong>Build the storyboard</strong> — in the Scenario Builder, load a scenario from the library or generate a skeleton, refine each block, then generate actors and injects.</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">2</div>
-                      <span>${tt('<strong>Create your injects</strong> — add messages, calls or social posts in the Timeline editor, with optional AI content generation.', '<strong>Créez vos injects</strong> — ajoutez des messages, appels ou posts dans l\'éditeur Timeline, avec génération de contenu IA en option.', '<strong>Erstellen Sie Ihre Injects</strong> — fügen Sie Nachrichten, Anrufe oder Social-Media-Beiträge im Zeitplan-Editor hinzu, mit optionaler KI-Inhaltsgenerierung.')}</span>
+                      <span>${tt('<strong>Set up your scenario</strong> — define the client, crisis type and actors in the Scenario tab.', '<strong>Configurez votre scénario</strong> — définissez le client, le type de crise et les acteurs dans l\'onglet Scénario.', '<strong>Richten Sie Ihr Szenario ein</strong> — definieren Sie den Auftraggeber, den Krisentyp und die Akteure im Szenario-Tab.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">3</div>
-                      <span>${tt('<strong>Export your deliverables</strong> — use the Injects view to preview everything, then export a ZIP with all styled injects ready for facilitation.', '<strong>Exportez vos livrables</strong> — utilisez la vue Injects pour tout prévisualiser, puis exportez un ZIP avec tous les injects prêts pour l\'animation.', '<strong>Exportieren Sie Ihre Lieferobjekte</strong> — verwenden Sie die Injects-Ansicht zur Vorschau, dann exportieren Sie ein ZIP mit allen gestalteten Injects für die Übungsleitung.')}</span>
+                      <span>${tt('<strong>Create your injects</strong> — add messages, calls or social posts in the Timeline editor, with optional AI content generation.', '<strong>Créez vos injects</strong> — ajoutez des messages, appels ou posts dans l\'éditeur Timeline, avec génération de contenu IA en option.', '<strong>Erstellen Sie Ihre Injects</strong> — fügen Sie Nachrichten, Anrufe oder Social-Media-Beiträge im Zeitplan-Editor hinzu, mit optionaler KI-Inhaltsgenerierung.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
+                      <span>${tt('<strong>Export your deliverables</strong> — use the Injects view to preview everything, then export a ZIP with all styled injects ready for facilitation.', '<strong>Exportez vos livrables</strong> — utilisez la vue Injects pour tout prévisualiser, puis exportez un ZIP avec tous les injects prêts pour l\'animation.', '<strong>Exportieren Sie Ihre Lieferobjekte</strong> — verwenden Sie die Injects-Ansicht zur Vorschau, dann exportieren Sie ein ZIP mit allen gestalteten Injects für die Übungsleitung.')}</span>
+                    </div>
+                    <div class="launch-tip">
+                      <div class="launch-tip-num">5</div>
                       <span>${tt('<strong>Build the debrief</strong> — reconstruct the hidden story as an interactive timeline or turn it into a documentary-style video.', '<strong>Construisez le débrief</strong> — reconstruisez l’histoire cachée dans une timeline interactive ou transformez-la en vidéo documentaire.', '<strong>Erstellen Sie das Debrief</strong> — rekonstruieren Sie die verborgene Geschichte als interaktiven Zeitplan oder verwandeln Sie sie in ein Dokumentarvideo.')}</span>
                     </div>
                     <div class="launch-tip">
@@ -387,6 +398,7 @@
       }
 
       function renderCurrentView() {
+        if (appState.route === 'builder') return renderScenarioBuilderView();
         if (appState.route === 'project') return renderProjectView();
         if (appState.route === 'scenario') return renderScenarioView();
         if (appState.route === 'stimuli') return renderStimuliView();
@@ -567,6 +579,14 @@
         `;
       }
 
+      function renderStoryboardLinkBadge(stimulus) {
+        if (typeof sbStimulusStatus !== 'function' || !appState.scenario.storyboard) return '';
+        const status = sbStimulusStatus(appState.scenario, stimulus);
+        if (!status) return '';
+        const block = status.block ? ` · ${status.block.title}` : '';
+        return ` <span class="sb-status is-${status.key}" title="${escapeAttribute(`Scenario Builder${block}`)}">${escapeHtml(status.label)}</span>`;
+      }
+
       function renderLibraryCard(stimulus) {
         const meta = CHANNEL_META[stimulus.channel] || CHANNEL_META.email_internal;
         const actor = getActor(stimulus.actor_id);
@@ -583,7 +603,7 @@
               <span class="library-card-time">H+${h}:${m}</span>
             </div>
             <div class="library-card-body">
-              <div class="library-card-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}</div>
+              <div class="library-card-actor">${escapeHtml(actor?.name || tt('No actor', 'Sans acteur', 'Kein Akteur'))}${renderStoryboardLinkBadge(stimulus)}</div>
               <div class="library-card-desc library-card-title-btn" data-action="expand-library-card" data-stimulus-id="${stimulus.id}" title="${tt('Click to preview', 'Cliquer pour prévisualiser', 'Klicken zur Vorschau')}">${escapeHtml(titleText.slice(0, 60))}${titleText.length > 60 ? '…' : ''} ${isExpanded ? '▲' : '▼'}</div>
             </div>
             ${isExpanded ? `

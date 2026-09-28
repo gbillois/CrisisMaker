@@ -76,9 +76,19 @@ const AgentContext = {
   build() {
     const s = agentScenario();
     s.scenario = Object.fromEntries(Object.entries(s.scenario).map(([k, v]) => [k, typeof v === 'string' ? agentExcerpt(v, 2500) : v]));
-    return { ...s, language: appState.scenario.settings.inject_language, actors: appState.scenario.actors.slice(0, 12).map(agentActor), timeline: getSortedStimuli().slice(0, 20).map(s => ({ id: s.id, at: s.timestamp_offset_minutes, name: agentExcerpt(s.name || s.fields.subject || s.fields.headline || s.fields.text, 100) })), note: 'Actor/timeline previews limited to 12/20. Use paginated list tools for remaining items.' };
+    return { ...s, language: appState.scenario.settings.inject_language, storyboard: agentStoryboardSummary(), actors: appState.scenario.actors.slice(0, 12).map(agentActor), timeline: getSortedStimuli().slice(0, 20).map(s => ({ id: s.id, at: s.timestamp_offset_minutes, name: agentExcerpt(s.name || s.fields.subject || s.fields.headline || s.fields.text, 100) })), note: 'Actor/timeline/storyboard previews are limited. Use paginated list tools and getStoryboard for details.' };
   }
 };
+/* Scenario Builder storyboard, compact: the designer's plan the injects should follow. */
+function agentStoryboardSummary() {
+  const storyboard = appState.scenario.storyboard;
+  if (!storyboard?.blocks?.length) return { blocks: [], note: 'No Scenario Builder storyboard yet.' };
+  return {
+    duration_minutes: storyboard.duration_minutes,
+    blocks: sbSortedBlocks(storyboard).slice(0, 24).map(block => ({ id: block.id, title: agentExcerpt(block.title, 120), track: sbTrack(storyboard, block.track_id)?.name || '', start: block.start_minutes, end: sbBlockEnd(block), injects: block.stimuli_target, planned: block.beats.length })),
+    note: 'Main storyline and workstream blocks from the Scenario Builder. Use getStoryboard for briefs and planned injects.'
+  };
+}
 function agentConsistencyCheck() {
   const s = appState.scenario, issues = [];
   if (!s.scenario.summary?.trim()) issues.push('Missing scenario summary.');
@@ -168,7 +178,33 @@ function createAgentToolRegistry() {
   add('updateExerciseObjectives', 'Set explicit objectives, including participant decisions to test.', { objectives: text }, ['objectives'], args => { appState.scenario.scenario.objectives = args.objectives; return args; }, 'write');
   add('getTimeline', 'Read timed phases and a paginated timeline.', page, [], args => ({ phases: appState.scenario.scenario.phases || [], ...paginate(getSortedStimuli(), args, s => agentPick(s, ['id', 'name', 'actor_id', 'channel', 'timestamp_offset_minutes'])) }));
   const phase = S.object({ name: S.text(200), start_minutes: S.minutes, end_minutes: S.minutes, purpose: S.text(1500) }, ['name', 'start_minutes', 'end_minutes', 'purpose']);
-  add('setPhases', 'Create or replace the timed exercise phases (not debrief phases).', { phases: S.array(phase, 20) }, ['phases'], args => { appState.scenario.scenario.phases = agentValidatePhases(args.phases); return args; }, 'broad');
+  add('setPhases', 'Create or replace the timed exercise phases (not debrief phases). Phases are the main storyline blocks of the Scenario Builder.', { phases: S.array(phase, 20) }, ['phases'], args => {
+    const phases = agentValidatePhases(args.phases);
+    StoryboardHistory.ensure(); StoryboardHistory.flush();
+    sbApplyPhases(appState.scenario.storyboard, phases);
+    StoryboardHistory.commit('Agent: set phases');
+    appState.scenario.scenario.phases = sbDerivePhases(appState.scenario.storyboard);
+    return args;
+  }, 'broad');
+  add('getStoryboard', 'Read the Scenario Builder storyboard: blocks (main storyline and workstreams) with briefs, narratives and planned injects.', {}, [], () => {
+    const storyboard = appState.scenario.storyboard;
+    return {
+      duration_minutes: storyboard.duration_minutes,
+      synopsis: agentExcerpt(storyboard.meta.synopsis, 2000),
+      tracks: storyboard.tracks.map(track => agentPick(track, ['id', 'name', 'kind'])),
+      cast: storyboard.cast.map(cast => ({ ...agentPick(cast, ['id', 'label', 'role', 'organization']), actor_id: cast.actor_id || null })),
+      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, track_id: block.track_id, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: sbBeatAbsolute(block, beat), channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })) }))
+    };
+  });
+  add('updateStoryboardBlock', 'Patch one Scenario Builder block (title, brief, narrative, timing, inject count, notes). Locked blocks are refused.', { ...id, patch: S.object({ title: S.text(200), brief: S.text(4000), narrative: S.text(8000), notes: S.text(4000), start_minutes: S.minutes, duration_minutes: { type: 'integer', minimum: 5, maximum: 525600 }, stimuli_target: { type: 'integer', minimum: 0, maximum: 24 } }) }, ['id', 'patch'], args => {
+    StoryboardHistory.ensure(); StoryboardHistory.flush();
+    const block = sbBlock(appState.scenario.storyboard, args.id);
+    if (!block) throw new AgentValidationError('Unknown item ID.');
+    if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
+    Object.assign(block, sbPickBlockPatch(args.patch));
+    StoryboardHistory.commit('Agent: edit block');
+    return { id: block.id, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target };
+  }, 'write');
   add('listActors', 'Read actors with pagination.', page, [], args => paginate(appState.scenario.actors, args, agentActor));
   add('getActor', 'Read a single actor.', id, ['id'], args => agentActor(requireItem(getActor, args.id)));
   add('createActor', 'Create an actor using the same defaults as the UI.', actorProps, ['name', 'role'], args => agentActor(addActor(args, false)), 'write');

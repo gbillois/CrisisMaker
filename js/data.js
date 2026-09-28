@@ -137,6 +137,21 @@
           makeStimulus('email_internal',    actors[0].id, 355)
         ];
         scenario.stimuli = samples;
+        scenario.scenario.objectives = [
+          'Decide whether and how to isolate manufacturing sites while the scope is still unclear',
+          'Decide on the response to the ransom and data-publication threat',
+          'Notify authorities, regulators and partners on time',
+          'Communicate to staff, partners and media without premature disclosure',
+          'Prioritise the recovery of critical production from trusted backups'
+        ].join('\n');
+        scenario.storyboard_versions = [];
+        if (storyboardModelLoaded()) {
+          scenario.storyboard = sbBuildExampleStoryboard(scenario);
+          const objectiveList = sbObjectivesList(scenario);
+          scenario.storyboard.blocks.forEach((block, index) => { block.objectives = [objectiveList[[0, 1, 0, 4, 4, 3, 3, 2][index] ?? 0]]; });
+          scenario.scenario.phases = sbDerivePhases(scenario.storyboard);
+          sbSealLinks(scenario);
+        }
         scenario.debrief = buildDebriefFromScenario(scenario);
         scenario.video_debrief = normalizeVideoDebrief(
           { source_material: scenario.scenario.summary },
@@ -145,16 +160,24 @@
         return scenario;
       }
 
+      // Storyboard helpers live in scenario-model.js; some tools load data.js alone.
+      function storyboardModelLoaded() {
+        return typeof normalizeStoryboard === 'function' && typeof sbSealLinks === 'function';
+      }
+
       function emptyScenario(settingsOverrides = {}) {
         const base = defaultScenario();
+        const { objectives: _objectives, narrative_arc: _arc, ...baseScenario } = base.scenario;
         return {
           ...base,
           id: uid('scenario'),
           name: '',
           client: { name: '', sector: base.client.sector, language: settingsOverrides.language || 'en', logo_url: '' },
-          scenario: { ...base.scenario, type: base.scenario.type, summary: '', detailed_context: '', start_date: '', timezone: base.scenario.timezone },
+          scenario: { ...baseScenario, type: base.scenario.type, summary: '', detailed_context: '', start_date: '', timezone: base.scenario.timezone, phases: [] },
           actors: [],
           stimuli: [],
+          storyboard: storyboardModelLoaded() ? sbEmptyStoryboard() : undefined,
+          storyboard_versions: [],
           debrief: makeEmptyDebrief({ ...base, client: { ...base.client, name: '' } }),
           video_debrief: normalizeVideoDebrief(null, settingsOverrides.inject_language || settingsOverrides.language || 'en'),
           settings: { ...base.settings, ...settingsOverrides }
@@ -244,8 +267,13 @@
             input.video_debrief,
             input.settings?.inject_language || input.client?.language || input.settings?.language || base.settings.inject_language
           ),
-          custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : []
+          custom_templates: Array.isArray(input.custom_templates) ? input.custom_templates : [],
+          storyboard: storyboardModelLoaded() ? normalizeStoryboard(input.storyboard, input.scenario?.phases) : input.storyboard,
+          storyboard_versions: storyboardModelLoaded() ? sbNormalizeVersions(input.storyboard_versions) : []
         };
+        // The storyboard owns the timed phases; keep the legacy field derived from it.
+        if (storyboardModelLoaded() && (merged.storyboard.blocks.length || !Array.isArray(input.scenario?.phases))) merged.scenario.phases = sbDerivePhases(merged.storyboard);
+        if (!input.scenario || !('objectives' in input.scenario)) delete merged.scenario.objectives;
         normalizeProviderSettingsInPlace(merged.settings);
         return merged;
       }
@@ -326,7 +354,8 @@
           generated_text: stimulus.generated_text || {},
           manual_overrides: stimulus.manual_overrides || {},
           watermark: stimulus.watermark || null,
-          history: stimulus.history || []
+          history: stimulus.history || [],
+          ...(stimulus.scenario_link && typeof sbNormalizeLink === 'function' ? { scenario_link: sbNormalizeLink(stimulus.scenario_link) } : {})
         };
       }
 
