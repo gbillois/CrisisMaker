@@ -166,6 +166,7 @@ function renderPhaseEditor(storyboard, block) {
       <span class="sb-clip-icon">${sbIcon((SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).icon, 16)}</span>
       <input class="be-title" data-sb-field="title" value="${escapeAttribute(block.title)}" aria-label="Phase title" ${readOnly}>
       <select data-sb-field="type" aria-label="Phase type" ${readOnly}>${slPhaseTypes(block.type).map(([key, value]) => sbOption(key, value.label, block.type)).join('')}</select>
+      <label class="be-inline be-stress" title="Stress level of the phase: it sets its colour and the intensity the AI gives its injects">Stress<select data-sb-field="stress" ${readOnly}>${sbOption(0, `Auto · ${sbStressLevel(SB_TYPE_STRESS[block.type] || 3).label}`, block.stress)}${SB_STRESS_LEVELS.map((item) => sbOption(item.level, item.label, block.stress)).join('')}</select></label>
       <label class="be-inline">Start · ${sbFormatOffset(block.start_minutes)}<input type="number" min="0" step="${sbSnapStep()}" data-sb-field="start_minutes" value="${block.start_minutes}" ${readOnly}></label>
       <label class="be-inline">Duration (min)<input type="number" min="5" step="${sbSnapStep()}" data-sb-field="duration_minutes" value="${block.duration_minutes}" ${readOnly}></label>
       <span class="be-actions">

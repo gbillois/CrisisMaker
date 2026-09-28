@@ -333,7 +333,7 @@ function renderSbClip(storyboard, block, top, height) {
   return `<div class="sb-clip ${selected ? 'is-selected' : ''} ${block.locked ? 'is-locked' : ''} ${widthPx < 90 ? 'is-narrow' : ''} ${aiFresh ? 'is-ai' : ''} is-${block.status}" data-sb-clip="${block.id}" tabindex="0" role="button" aria-pressed="${selected}" aria-label="${escapeAttribute(`${block.title}, ${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))}`)}"
       style="left:${(block.start_minutes * ppm).toFixed(1)}px;width:${Math.max(6, widthPx).toFixed(1)}px;top:${top}px;height:${height}px;--clip-color:${sbBlockColor(block, storyboard)}">
     <span class="sb-clip-handle is-left" data-sb-resize="left"></span>
-    <div class="sb-clip-body">
+    <div class="sb-clip-body" title="${escapeAttribute(`${block.title} · stress: ${sbStressLevel(sbBlockStress(block)).label}`)}">
       <div class="sb-clip-head"><span class="sb-clip-icon">${sbIcon(type.icon, 13)}</span><strong>${escapeHtml(block.title)}</strong></div>
       ${block.brief ? `<div class="sb-clip-brief">${escapeHtml(block.brief)}</div>` : ''}
       <div class="sb-clip-meta">

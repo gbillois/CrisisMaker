@@ -34,6 +34,23 @@ const SB_BLOCK_TYPES = {
   custom: { label: 'Custom block', group: 'custom', color: '#6d687e', track: 'main', duration: 30, stimuli: 2, icon: 'square', hint: 'Anything specific to your exercise.' }
 };
 
+/* The stress level of a phase sets its colour: pale green when the crisis calms down,
+   pale red at the peak. Each phase type has a default level; a phase can override it. */
+const SB_STRESS_LEVELS = [
+  { level: 1, label: 'Calm', color: '#2e9e5b' },
+  { level: 2, label: 'Low', color: '#7aa82a' },
+  { level: 3, label: 'Tension', color: '#d69e00' },
+  { level: 4, label: 'High', color: '#ea6a0c' },
+  { level: 5, label: 'Peak', color: '#dc2626' }
+];
+const SB_TYPE_STRESS = { trigger: 3, investigation: 3, containment: 4, eradication: 3, continuity: 4, recovery: 2, exit: 1, twist: 5, custom: 3 };
+function sbBlockStress(block) {
+  return block?.stress || SB_TYPE_STRESS[block?.type] || 3;
+}
+function sbStressLevel(level) {
+  return SB_STRESS_LEVELS.find((item) => item.level === level) || SB_STRESS_LEVELS[2];
+}
+
 const SB_ICON_PATHS = {
   bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
@@ -249,6 +266,8 @@ function sbNormalizeBlock(input = {}, storyboard = null) {
     status: ['draft', 'refined', 'validated'].includes(input.status) ? input.status : 'draft',
     locked: input.locked === true,
     color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : '',
+    // 0: the default of its type (SB_TYPE_STRESS); 1 to 5: set by the designer.
+    stress: sbInt(input.stress, 0, 0, 5),
     notes: sbText(input.notes, 4000),
     ai_rev: Number.isInteger(input.ai_rev) ? input.ai_rev : null,
     // Hash of what the phase said when its inject plan was made (see sbPlanSourceHash).
@@ -378,10 +397,8 @@ function sbSortedBlocks(storyboard, trackId = null) {
 function sbMainBlocks(storyboard) {
   return sbSortedBlocks(storyboard, sbMainTrack(storyboard)?.id);
 }
-function sbBlockColor(block, storyboard = null) {
-  if (block.color) return block.color;
-  if (block.type === 'custom' && storyboard) return sbTrack(storyboard, block.track_id)?.color || SB_BLOCK_TYPES.custom.color;
-  return (SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).color;
+function sbBlockColor(block) {
+  return sbStressLevel(sbBlockStress(block)).color;
 }
 function sbDetailLevel(block) {
   if (block.beats.length) return 3;
@@ -541,6 +558,7 @@ function sbTemplateToStoryboard(template, options = {}) {
       start_minutes: block.start ?? block.start_minutes,
       duration_minutes: block.duration ?? block.duration_minutes,
       stimuli_target: block.stimuli ?? block.stimuli_target ?? beats.length,
+      stress: block.stress,
       brief: block.brief,
       narrative: block.narrative,
       objectives: blockObjectives,
@@ -620,6 +638,7 @@ function sbStoryboardToTemplate(storyboard, project, name = '') {
       brief: block.brief,
       narrative: block.narrative,
       objectives: block.objectives.map((objective) => objectives.indexOf(objective)).filter((index) => index >= 0),
+      ...(block.stress ? { stress: block.stress } : {}),
       beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent, ...(beat.main ? { main: true, ...(sbIsAllCells(beat.cell_id) ? { cell_id: SB_ALL_CELLS } : {}) } : {}) }))
     })),
     created_at: new Date().toISOString()

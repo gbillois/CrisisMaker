@@ -523,6 +523,8 @@ function sbBindInputs(root) {
         if (sbTrack(storyboard, input.value)) block.track_id = input.value;
       } else if (field === 'status') {
         block.status = ['draft', 'refined', 'validated'].includes(input.value) ? input.value : 'draft';
+      } else if (field === 'stress') {
+        block.stress = sbInt(input.value, 0, 0, 5);
       }
       sbCommitRender(`Edit ${field.replace(/_/g, ' ')}`);
     });

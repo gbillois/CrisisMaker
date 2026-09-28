@@ -853,3 +853,16 @@ test('main stimuli: added in the phase editor, sent to all cells or one, kept by
   assert.equal(kept.main, true);
   assert.ok(after.some((item) => item.title === 'New planned inject'));
 });
+
+test('phase colour follows its stress level: from the type by default, or set in the phase editor', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  assert.equal(h.run(`sbBlockColor(sbMakeBlock('exit'))`), h.run('sbStressLevel(1).color'), 'exit: calm green');
+  assert.equal(h.run(`sbBlockColor(sbMakeBlock('twist'))`), h.run('sbStressLevel(5).color'), 'escalation: peak red');
+  const id = h.run('sbMainBlocks(sbStoryboard())[0].id');
+  h.run(`sbBlock(sbStoryboard(), '${id}').stress = 5; sbUI().selected = ['${id}']`);
+  assert.equal(h.run(`sbBlockColor(sbBlock(sbStoryboard(), '${id}'))`), h.run('sbStressLevel(5).color'));
+  assert.ok(h.run('renderStorylineView()').includes('data-sb-field="stress"'));
+  assert.equal(h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).storyboard.blocks.find((block) => block.id === '${id}').stress`), 5);
+  assert.equal(h.json(`sbAIContext(appState.scenario).storyboard.blocks.find((block) => block.id === '${id}').stress`), 'Peak');
+});
