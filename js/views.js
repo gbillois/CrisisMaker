@@ -435,7 +435,7 @@
           },
           'video-debrief': {
             title: tt('Video Debrief', 'Video Debrief', 'Video-Debrief'),
-            subtitle: tt('Turn the crisis story into a documentary video (local version with Python 3).', 'Transformez le récit de crise en vidéo documentaire (version locale avec Python 3).', 'Krisengeschichte als Dokumentarvideo (lokale Version mit Python 3).') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">' + tt('See an example', 'Voir un exemple', 'Beispiel ansehen') + '</a>'
+            subtitle: tt('Turn the crisis story into a documentary video, produced right in your browser.', 'Transformez le récit de crise en vidéo documentaire, produite directement dans votre navigateur.', 'Krisengeschichte als Dokumentarvideo, direkt im Browser produziert.') + ' <a href="https://www.youtube.com/watch?v=TOQqu7rdkPw" target="_blank" rel="noopener">' + tt('See an example', 'Voir un exemple', 'Beispiel ansehen') + '</a>'
           }
         };
         return map[appState.route] || null;

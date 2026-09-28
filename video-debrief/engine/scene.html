@@ -710,6 +710,147 @@ window.seek = function(t){
   $('fade').style.opacity = prg(t, TIMING.total-1.1, TIMING.total-0.15);
 };
 
+/* ───────────── browser production: one composited frame ─────────────
+   The studio renders the video in the browser: for each frame it seeks, then
+   composites the layers onto one canvas: background, map canvas, the scene
+   DOM rasterized through an SVG foreignObject (fonts embedded), grain,
+   vignette, optional subtitles and the final fade. */
+let CAPTURE = null;
+function bytesToBase64(buffer){
+  const bytes = new Uint8Array(buffer); let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+async function prepareCapture(){
+  if (CAPTURE && CAPTURE.preset === THEME) return CAPTURE;
+  // Only the font families of the current theme, embedded as data URLs.
+  const families = [THEME.fDisplay, THEME.fBody, THEME.fMono].map(f => f.split(',')[0].replace(/['"]/g, '').trim());
+  let fontCss = '';
+  try {
+    const css = await (await fetch('fonts/fonts-local.css')).text();
+    const blocks = css.match(/@font-face\s*{[^}]*}/g) || [];
+    const files = {};
+    for (const block of blocks) {
+      const family = (/font-family:\s*['"]?([^;'"]+)/.exec(block) || [])[1];
+      const file = (/url\(([^)]+)\)/.exec(block) || [])[1];
+      if (!family || !file || !families.includes(family.trim())) continue;
+      if (!files[file]) files[file] = 'data:font/woff2;base64,' + bytesToBase64(await (await fetch('fonts/' + file.replace(/['"]/g, ''))).arrayBuffer());
+      fontCss += block.replace(/url\([^)]+\)/, `url(${files[file]})`).replace(/font-display:[^;]*;/, '') + '\n';
+    }
+  } catch (e) { /* fonts fall back to the system ones */ }
+  try { await document.fonts.load(`500 40px ${THEME.fBody.split(',')[0]}`); } catch (e) { /* subtitles use a fallback font */ }
+  const style = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
+  const canvas = document.createElement('canvas');
+  canvas.width = 1920; canvas.height = 1080;
+  CAPTURE = { preset: THEME, css: fontCss + style, canvas, ctx: canvas.getContext('2d', { alpha: false }), serializer: new XMLSerializer() };
+  return CAPTURE;
+}
+function xmlEscape(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function loadImage(url){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('A frame could not be rasterized.'));
+    img.src = url;
+  });
+}
+/* Subtitle chunk of the scene speaking at t (text split evenly over its voice-over). */
+function subtitleAt(t){
+  for (const sc of SC){
+    const { voStart, voEnd } = sc.tw;
+    if (!sc.spec.vo || t < voStart || t > voEnd) continue;
+    // Sentences first, then each sentence in balanced pieces of at most ~84 characters.
+    const sentences = String(sc.spec.vo).replace(/\s+/g, ' ').trim().match(/[^.!?…]+[.!?…]*["»”)]*\s*/g) || [];
+    const chunks = [];
+    for (const sentence of sentences){
+      const words = sentence.trim().split(' ');
+      const pieces = Math.max(1, Math.ceil(sentence.trim().length / 84));
+      const size = Math.ceil(sentence.trim().length / pieces);
+      let line = '';
+      for (const w of words){
+        if (line && (line + ' ' + w).length > size + 12){ chunks.push(line); line = w; }
+        else line = line ? line + ' ' + w : w;
+      }
+      if (line) chunks.push(line);
+    }
+    const lengths = chunks.map(c => c.length + 8), sum = lengths.reduce((a, b) => a + b, 0);
+    let at = voStart;
+    for (let i = 0; i < chunks.length; i++){
+      const d = (voEnd - voStart) * lengths[i] / sum;
+      if (t <= at + d) return chunks[i];
+      at += d;
+    }
+  }
+  return '';
+}
+function wrapText(ctx, text, max){
+  const words = text.split(' '), lines = []; let line = '';
+  for (const w of words){
+    const next = line ? line + ' ' + w : w;
+    if (ctx.measureText(next).width > max && line){ lines.push(line); line = w; } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+window.captureFrame = async function(t, opts = {}){
+  const cap = await prepareCapture();
+  window.seek(t);
+  const ctx = cap.ctx;
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = THEME.bg; ctx.fillRect(0, 0, 1920, 1080);
+  ctx.drawImage($('map'), 0, 0);
+  const visible = SC.filter(sc => parseFloat(sc.el.style.opacity) > 0);
+  if (visible.length){
+    const html = visible.map(sc => cap.serializer.serializeToString(sc.el)).join('');
+    const vars = document.documentElement.style.cssText;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><foreignObject x="0" y="0" width="1920" height="1080">`
+      + `<div xmlns="http://www.w3.org/1999/xhtml" style="${xmlEscape(vars)};position:relative;width:1920px;height:1080px;overflow:hidden">`
+      + `<style>${xmlEscape(cap.css)}</style><div id="stage" style="background:transparent">${html}</div></div></foreignObject></svg>`;
+    const img = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+    ctx.drawImage(img, 0, 0);
+  }
+  ctx.save();
+  ctx.globalAlpha = 0.07; ctx.globalCompositeOperation = 'overlay';
+  ctx.drawImage($('grain'), 0, 0, 1920, 1080);
+  ctx.restore();
+  // Vignette: radial-gradient(130% 130% at 50% 42%, transparent 55%, rgba(0,0,0,.55) 100%).
+  ctx.save();
+  const rx = 1920 * 1.3, ry = 1080 * 1.3;
+  ctx.translate(960, 1080 * 0.42); ctx.scale(1, ry / rx);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+  g.addColorStop(0.55, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = g; ctx.fillRect(-rx, -rx, rx * 2, rx * 2);
+  ctx.restore();
+  if (opts.subtitles){
+    const text = subtitleAt(t);
+    if (text){
+      ctx.save();
+      ctx.font = `500 40px ${THEME.fBody.split(',')[0].replace(/'/g, '"')}, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const lines = wrapText(ctx, text, 1500), lh = 54;
+      const width = Math.max(...lines.map(l => ctx.measureText(l).width)) + 56;
+      const height = lines.length * lh + 26, top = 1080 - 70 - height;
+      ctx.fillStyle = 'rgba(0,0,0,0.62)';
+      ctx.fillRect(960 - width / 2, top, width, height);
+      ctx.fillStyle = '#fff';
+      lines.forEach((l, i) => ctx.fillText(l, 960, top + 13 + lh / 2 + i * lh));
+      ctx.restore();
+    }
+  }
+  const fade = parseFloat($('fade').style.opacity) || 0;
+  if (fade > 0){ ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, 1920, 1080); }
+  return cap.canvas;
+};
+/* Build for production: the real timing (from the recorded voice) replaces the estimate. */
+window.loadForCapture = async function(project, timing){
+  build(project, timing);
+  CAPTURE = null;
+  await loadFonts();
+  await prepareCapture();
+  return timing.total;
+};
+window.estimateTiming = estimateTiming;
+
 /* ───────────────────── boot ───────────────────── */
 function loadFonts(){
   const list = (THEME && THEME.fontsLoad) || [];

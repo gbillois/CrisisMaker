@@ -17,8 +17,8 @@
             lang: scenario.settings?.language || scenario.client?.language || 'en'
           },
           theme: {
-            preset: 'cyber-dark', bg: '#0d0b08', fg: '#e6dcc8', ink: '#f6f1e4', accent: '#dc3c28', panel: '#0a0907',
-            line: '#2a2620', muted: '#9a9283', fontTitle: 'Fraunces', fontBody: 'Inter', fontMono: 'JetBrains Mono', scale: 1
+            preset: 'wavestone', bg: '#F5F4F9', fg: '#3A3550', ink: '#16121F', accent: '#04F06A', panel: '#FFFFFF',
+            line: '#E6E4EE', muted: '#6B6580', fontTitle: 'Poppins', fontBody: 'Inter', fontMono: 'IBM Plex Mono', scale: 1
           },
           layout: { showMap: true, showEventList: true, showSeverity: true, showArtifacts: true, showPlayback: true, mapSide: 'right' },
           map: { mode: 'globe', label: 'Crisis footprint' },

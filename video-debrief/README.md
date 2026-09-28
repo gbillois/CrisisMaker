@@ -32,7 +32,18 @@ Pour autoriser une instance CrisisMaker hébergée, définissez explicitement
 2. **Adaptation** — éditez chaque scène (voix off, textes, photos),
    réordonnez ; l'aperçu live (scrubber + lecture) utilise le *même moteur*
    que le rendu final.
-3. **Production** — trois modes :
+3. **Production** — quatre modes :
+   - **Dans le navigateur** *(recommandé, autonome)* : tout se fait dans la page,
+     sans serveur ni clé. Le bouton **Charger la voix locale** télécharge une fois
+     le moteur vocal Piper (ONNX Runtime Web, phonétiseur espeak-ng) et la voix
+     choisie (≈ 20 à 63 Mo selon la voix), gardés ensuite dans le navigateur ;
+     rien n'est chargé tant qu'on ne clique pas. Puis : voix off locale, timing
+     réel (auto-ajustement du débit comme `build.py`), musique synthétisée
+     (portage JS de `make_music.py`), mixage avec ducking, rendu des images par
+     le même moteur que l'aperçu, encodage WebCodecs (H.264 + AAC, sinon VP9)
+     et MP4 assemblé dans la page. Sans voix chargée, la vidéo sort avec la
+     musique et des sous-titres incrustés (option disponible dans tous les cas).
+     Chrome ou Edge récents recommandés ; ~1 min de rendu par 30 s de vidéo.
    - **Cloud GitHub** *(recommandé)* : le studio pousse le projet dans
      `video-debrief/requests/`, le workflow [produce-video](../.github/workflows/produce-video.yml)
      fabrique le MP4 (~12 min) et le publie dans la release
@@ -84,6 +95,9 @@ uniformément si absentes). `coords` = `[longitude, latitude]`.
 video-debrief/
 ├── index.html            ← le studio intégré / server.py
 ├── engine/scene.html     ← moteur de rendu déterministe (aperçu ET rendu final)
+├── browser/              ← production dans le navigateur : voice.js (Piper local),
+│                           music.js, produce.js (timing, mixage, rendu), encode.js
+│                           (WebCodecs), mp4.js (multiplexeur MP4)
 ├── pipeline/
 │   ├── build.py          ← VO → timing → frames → musique → mix → MP4
 │   ├── server.py         ← serveur local (production en un clic)

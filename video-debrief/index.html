@@ -126,6 +126,15 @@
   .log-box { font-family: var(--mono); font-size: 0.7rem; background: #211248; color: #d7ceeb;
              border-radius: 0; padding: 10px; max-height: 180px; overflow-y: auto;
              white-space: pre-wrap; margin-top: 10px; }
+  .vd-box { border: 1px solid var(--border); border-left: 3px solid var(--primary); background: #fff; padding: 12px 14px; margin-bottom: 12px; }
+  .vd-box.is-ready { border-left-color: var(--accent); }
+  .vd-box .row2 { margin-bottom: 8px; }
+  .vd-status { font-size: 0.78rem; font-weight: 600; color: var(--primary-strong); padding: 10px 0 0; }
+  .vd-box.is-ready .vd-status { color: #116539; }
+  .vd-check { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin: 4px 0 12px; cursor: pointer; }
+  .vd-check input { width: auto; margin: 0; }
+  .vd-result video { width: 100%; margin-top: 10px; background: #000; }
+  .vd-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .step-view { display: none; }
   .step-view.active { display: block; }
 
@@ -349,6 +358,35 @@
 
       <!-- ════════ STEP 3 — PRODUCTION ════════ -->
       <div class="step-view" id="view-3">
+        <h3>Produire dans le navigateur <span class="badge">recommandé</span></h3>
+        <div class="hint" id="browser-production-help">Tout se fait <b>dans ce navigateur</b> : voix neurale locale, rendu 1080p24, musique synthétisée, mixage et encodage MP4. Aucun serveur, aucune clé, aucun cloud.</div>
+        <div class="vd-box" id="local-voice-box">
+          <div class="row2">
+            <div class="field"><label>Voix locale</label>
+              <select id="local-voice"></select></div>
+            <div class="field"><label>Statut</label>
+              <div class="vd-status" id="local-voice-status">Non chargée</div></div>
+          </div>
+          <div class="row2">
+            <button class="btn btn-primary" id="btn-local-voice">⬇ Charger la voix locale</button>
+            <button class="btn" id="btn-local-voice-test" disabled>▶ Écouter</button>
+          </div>
+          <div class="progress-wrap" id="local-voice-progress" style="display:none"><div class="progress-bar" id="local-voice-bar"></div></div>
+          <div class="hint" id="local-voice-note" style="margin-bottom:0">Chargée seulement sur demande : le moteur et la voix se téléchargent une fois, puis restent dans ce navigateur.</div>
+        </div>
+        <label class="vd-check"><input type="checkbox" id="browser-subtitles"> <span>Sous-titres incrustés</span></label>
+        <button class="btn btn-accent" id="btn-browser-produce" style="width:100%">▶ Produire la vidéo</button>
+        <div style="margin:14px 0 6px"><div class="progress-wrap"><div class="progress-bar" id="browser-bar"></div></div></div>
+        <div class="hint" id="browser-stage"></div>
+        <div class="vd-result" id="browser-done" style="display:none">
+          <div class="vd-actions">
+            <a class="btn btn-primary" id="browser-link" href="#" download style="text-decoration:none; display:inline-block">⬇ Télécharger la vidéo</a>
+          </div>
+          <video id="browser-video" controls playsinline></video>
+        </div>
+        <div class="vd-actions"><button class="btn btn-danger" id="btn-browser-cancel" style="display:none">✕ Annuler</button></div>
+
+        <div class="divider"></div>
         <h3>Produire en local</h3>
         <div class="hint" id="local-production-help">La production tourne <b>en local</b> (voix neurale, rendu
           1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.</div>
@@ -404,6 +442,11 @@ python3 server.py</div>
   </div>
 </div>
 
+<script src="browser/mp4.js"></script>
+<script src="browser/encode.js"></script>
+<script src="browser/music.js"></script>
+<script src="browser/voice.js"></script>
+<script src="browser/produce.js"></script>
 <script>
 /* ═══════════════════════ state ═══════════════════════ */
 const $ = id => document.getElementById(id);
@@ -447,7 +490,13 @@ const UI_TEXT = {
     'Repo (owner/nom)': 'Repository (owner/name)',
     'Token GitHub (conservé pour cette session)': 'GitHub token (kept for this session)',
     '☁ Produire via GitHub Actions': '☁ Produce via GitHub Actions', 'Voir le run': 'View run',
-    'Auto (selon langue)': 'Auto (based on language)', 'Aucun': 'None'
+    'Auto (selon langue)': 'Auto (based on language)', 'Aucun': 'None',
+    'Produire dans le navigateur': 'Produce in your browser', 'recommandé': 'recommended',
+    'Voix locale': 'Local voice', 'Statut': 'Status', 'Non chargée': 'Not loaded',
+    '⬇ Charger la voix locale': '⬇ Load the local voice', '▶ Écouter': '▶ Listen',
+    'Chargée seulement sur demande : le moteur et la voix se téléchargent une fois, puis restent dans ce navigateur.': 'Loaded only when you ask: the engine and the voice download once, then stay in this browser.',
+    'Sous-titres incrustés': 'Burned-in subtitles', '▶ Produire la vidéo': '▶ Produce the video',
+    '⬇ Télécharger la vidéo': '⬇ Download the video', '✕ Annuler': '✕ Cancel'
   },
   de: {
     '1 · Scénario': '1 · Szenario', '2 · Adaptation': '2 · Bearbeitung', '3 · Production': '3 · Produktion',
@@ -480,7 +529,13 @@ const UI_TEXT = {
     'Repo (owner/nom)': 'Repository (Owner/Name)',
     'Token GitHub (conservé pour cette session)': 'GitHub-Token (nur für diese Sitzung gespeichert)',
     '☁ Produire via GitHub Actions': '☁ Über GitHub Actions produzieren', 'Voir le run': 'Run anzeigen',
-    'Auto (selon langue)': 'Auto (je nach Sprache)', 'Aucun': 'Keiner'
+    'Auto (selon langue)': 'Auto (je nach Sprache)', 'Aucun': 'Keiner',
+    'Produire dans le navigateur': 'Im Browser produzieren', 'recommandé': 'empfohlen',
+    'Voix locale': 'Lokale Stimme', 'Statut': 'Status', 'Non chargée': 'Nicht geladen',
+    '⬇ Charger la voix locale': '⬇ Lokale Stimme laden', '▶ Écouter': '▶ Anhören',
+    'Chargée seulement sur demande : le moteur et la voix se téléchargent une fois, puis restent dans ce navigateur.': 'Nur auf Anfrage geladen: Engine und Stimme werden einmal heruntergeladen und bleiben dann in diesem Browser.',
+    'Sous-titres incrustés': 'Eingebrannte Untertitel', '▶ Produire la vidéo': '▶ Video produzieren',
+    '⬇ Télécharger la vidéo': '⬇ Video herunterladen', '✕ Annuler': '✕ Abbrechen'
   }
 };
 const originalInterfaceText = new WeakMap();
@@ -507,22 +562,26 @@ function applyInterfaceLanguage(language){
   const richText = {
     fr: {
       generation: 'L’IA n’est utilisée <b>que pour cette étape</b> (rédaction du brouillon). Le gabarit sans IA construit la structure depuis votre timeline ; vous rédigez ensuite la voix off vous-même.',
+      browser: 'Tout se fait <b>dans ce navigateur</b> : voix neurale locale, rendu 1080p24, musique synthétisée, mixage et encodage MP4. Aucun serveur, aucune clé, aucun cloud.',
       local: 'La production tourne <b>en local</b> (voix neurale, rendu 1080p24, musique synthétisée, mixage, H.264) — aucune IA, aucun cloud.',
       github: 'Production sur <b>GitHub Actions</b> (~12 min) : le projet est poussé dans <code>video-debrief/requests/</code>, le workflow produit le MP4 et le publie dans la release <code>videos</code>. Token : <i>fine-grained PAT</i> du repo avec permissions <b>Contents (read/write)</b> et <b>Actions (read)</b>.'
     },
     en: {
       generation: 'AI is used <b>only for this step</b> (draft writing). The no-AI template builds the structure from your timeline; you then write the voice-over yourself.',
+      browser: 'Everything happens <b>in this browser</b>: local neural voice, 1080p24 rendering, synthesized music, mixing and MP4 encoding. No server, no key, no cloud.',
       local: 'Production runs <b>locally</b> (neural voice, 1080p24 rendering, synthesized music, mixing, H.264) — no AI, no cloud.',
       github: 'Production through <b>GitHub Actions</b> (~12 min): the project is pushed to <code>video-debrief/requests/</code>, the workflow produces the MP4 and publishes it in the <code>videos</code> release. Token: repository <i>fine-grained PAT</i> with <b>Contents (read/write)</b> and <b>Actions (read)</b> permissions.'
     },
     de: {
       generation: 'KI wird <b>nur für diesen Schritt</b> verwendet. Die Vorlage ohne KI erstellt die Struktur aus Ihrem Zeitplan; den Sprechertext schreiben Sie anschließend selbst.',
+      browser: 'Alles geschieht <b>in diesem Browser</b>: lokale neuronale Stimme, 1080p24-Rendering, synthetisierte Musik, Mischung und MP4-Kodierung. Kein Server, kein Schlüssel, keine Cloud.',
       local: 'Die Produktion läuft <b>lokal</b> (neuronale Stimme, 1080p24-Rendering, synthetisierte Musik, Mischung, H.264) — ohne KI und ohne Cloud.',
       github: 'Produktion über <b>GitHub Actions</b> (~12 Min.): Das Projekt wird nach <code>video-debrief/requests/</code> übertragen, der Workflow erstellt die MP4-Datei und veröffentlicht sie im Release <code>videos</code>. Token: <i>Fine-grained PAT</i> des Repositorys mit den Berechtigungen <b>Contents (read/write)</b> und <b>Actions (read)</b>.'
     }
   }[interfaceLanguage];
   $('generation-help').innerHTML = richText.generation;
   $('local-production-help').innerHTML = richText.local;
+  $('browser-production-help').innerHTML = richText.browser;
   $('github-production-help').innerHTML = richText.github;
   $('src-material').placeholder = interfaceLanguage === 'fr'
     ? '[{"title": "…", "headline": "…", …}] ou texte libre'
@@ -531,6 +590,7 @@ function applyInterfaceLanguage(language){
       : '[{"title": "…", "headline": "…", …}] or free text';
   fillVoices();
   checkServer();
+  if (typeof refreshLocalVoice === 'function') refreshLocalVoice();
 }
 
 function videoDebriefState(){
@@ -1064,6 +1124,7 @@ function applyProject(p){
   renderSceneCards();
   pushProject();
   notifyCrisisMakerProjectChange();
+  refreshLocalVoice();
 }
 function commit(){
   $('json-editor').value = JSON.stringify(project, null, 2);
@@ -1316,6 +1377,137 @@ $('btn-gh-produce').addEventListener('click', async () => {
     btn.disabled = false;
   }
 });
+
+/* ═══════════════ production in the browser (no server) ═══════════════ */
+const PROGRESS_TEXT = {
+  fr: [['Loading the speech engine…', 'Chargement du moteur vocal…'], ['Downloading the phonemizer…', 'Téléchargement du phonétiseur…'],
+       ['Downloading the voice', 'Téléchargement de la voix'], ['Preparing the voice…', 'Préparation de la voix…'],
+       ['Recording the voice: scene', 'Enregistrement de la voix : scène'], ['Voice recorded.', 'Voix enregistrée.'], ['to fit', 'pour tenir'],
+       ['Composing the music…', 'Composition de la musique…'], ['Preparing the images…', 'Préparation des images…'],
+       ['Rendering the images:', 'Rendu des images :'], ['about', 'environ'], [' left', ' restantes'], ['Encoding the sound…', 'Encodage du son…'],
+       ['Assembling the file…', 'Assemblage du fichier…'], ['Video ready.', 'Vidéo prête.'], ['Production cancelled.', 'Production annulée.']],
+  de: [['Loading the speech engine…', 'Sprach-Engine wird geladen…'], ['Downloading the phonemizer…', 'Phonemizer wird heruntergeladen…'],
+       ['Downloading the voice', 'Stimme wird heruntergeladen'], ['Preparing the voice…', 'Stimme wird vorbereitet…'],
+       ['Recording the voice: scene', 'Stimme wird aufgenommen: Szene'], ['Voice recorded.', 'Stimme aufgenommen.'], ['to fit', 'für'],
+       ['Composing the music…', 'Musik wird komponiert…'], ['Preparing the images…', 'Bilder werden vorbereitet…'],
+       ['Rendering the images:', 'Bilder werden gerendert:'], ['about', 'etwa'], [' left', ' übrig'], ['Encoding the sound…', 'Ton wird kodiert…'],
+       ['Assembling the file…', 'Datei wird zusammengesetzt…'], ['Video ready.', 'Video fertig.'], ['Production cancelled.', 'Produktion abgebrochen.']],
+};
+function progressText(label){
+  let out = String(label || '');
+  for (const [en, local] of (PROGRESS_TEXT[interfaceLanguage] || [])) out = out.split(en).join(local);
+  return out;
+}
+function videoLang(){ return (project && project.meta && project.meta.lang) || $('set-lang').value || 'fr'; }
+function localVoiceId(){ return $('local-voice').value || VDB.defaultLocalVoice(videoLang()); }
+function fillLocalVoices(){
+  const lang = videoLang(), sel = $('local-voice');
+  let saved = null;
+  try { saved = localStorage.getItem('vd-local-voice-' + lang); } catch (e) {}
+  sel.replaceChildren(...(VDB.LOCAL_VOICES[lang] || VDB.LOCAL_VOICES.en).map(([id, label, mb]) => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = `${label} · ≈ ${mb} ${uiText('Mo', 'MB', 'MB')}`;
+    return o;
+  }));
+  if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
+}
+let voiceBusy = false, subtitlesTouched = false, produceCancelled = false, producing = false, lastVideoUrl = null;
+async function refreshLocalVoice(){
+  if (typeof VDB === 'undefined' || !VDB.LOCAL_VOICES) return;
+  if (!$('local-voice').options.length || ![...$('local-voice').options].some(o => o.value === $('local-voice').value && VDB.localVoiceInfo(o.value)?.id.startsWith(videoLang()))) fillLocalVoices();
+  const id = localVoiceId(), info = VDB.localVoiceInfo(id);
+  const ready = VDB.isLocalVoiceReady(id), stored = ready || await VDB.isLocalVoiceStored(id);
+  $('local-voice-box').classList.toggle('is-ready', ready);
+  $('local-voice-status').textContent = ready ? uiText('Prête', 'Ready', 'Bereit')
+    : stored ? uiText('Téléchargée dans ce navigateur', 'Downloaded in this browser', 'In diesem Browser gespeichert')
+      : uiText('Non chargée', 'Not loaded', 'Nicht geladen');
+  $('btn-local-voice').disabled = voiceBusy || ready || producing;
+  $('btn-local-voice').textContent = ready ? uiText('✓ Voix chargée', '✓ Voice loaded', '✓ Stimme geladen')
+    : stored ? uiText('▶ Activer la voix', '▶ Activate the voice', '▶ Stimme aktivieren')
+      : uiText(`⬇ Charger la voix locale (≈ ${(info ? info.mb : 60) + 28} Mo)`, `⬇ Load the local voice (≈ ${(info ? info.mb : 60) + 28} MB)`, `⬇ Lokale Stimme laden (≈ ${(info ? info.mb : 60) + 28} MB)`);
+  $('btn-local-voice-test').disabled = !ready || voiceBusy || producing;
+  if (!subtitlesTouched) $('browser-subtitles').checked = !ready && !stored;
+  $('btn-browser-produce').textContent = ready || stored
+    ? uiText('▶ Produire la vidéo', '▶ Produce the video', '▶ Video produzieren')
+    : uiText('▶ Produire sans voix (musique et sous-titres)', '▶ Produce without voice (music and subtitles)', '▶ Ohne Stimme produzieren (Musik und Untertitel)');
+}
+$('local-voice').addEventListener('change', () => {
+  try { localStorage.setItem('vd-local-voice-' + videoLang(), $('local-voice').value); } catch (e) {}
+  refreshLocalVoice();
+});
+$('set-lang').addEventListener('change', () => { fillLocalVoices(); refreshLocalVoice(); });
+$('browser-subtitles').addEventListener('change', () => { subtitlesTouched = true; });
+$('btn-local-voice').addEventListener('click', async () => {
+  const id = localVoiceId();
+  voiceBusy = true; refreshLocalVoice();
+  $('local-voice-progress').style.display = 'block';
+  try {
+    await VDB.loadLocalVoice(id, (stage, ratio, label) => {
+      $('local-voice-bar').style.width = Math.round((stage === 'engine' ? 0.3 * ratio : 0.3 + 0.7 * ratio) * 100) + '%';
+      $('local-voice-status').textContent = progressText(label);
+    });
+    $('local-voice-bar').style.width = '100%';
+  } catch (e) {
+    $('local-voice-status').textContent = uiText('Échec : ', 'Failed: ', 'Fehler: ') + (e.message || e);
+    voiceBusy = false;
+    $('btn-local-voice').disabled = false;
+    return;
+  }
+  voiceBusy = false;
+  setTimeout(() => { $('local-voice-progress').style.display = 'none'; }, 800);
+  refreshLocalVoice();
+});
+$('btn-local-voice-test').addEventListener('click', async () => {
+  const id = localVoiceId();
+  const first = (project?.scenes || []).map(s => String(s.vo || '').trim()).find(Boolean) || '';
+  const sample = VDB.splitSentences(first)[0] || uiText('Voici la voix locale de votre vidéo de débrief.', 'This is the local voice of your debrief video.', 'Das ist die lokale Stimme Ihres Debrief-Videos.');
+  $('btn-local-voice-test').disabled = true;
+  try { await VDB.previewLocalVoice(id, sample, parseInt(String(project?.audio?.rate || '+6').replace(/[^\-\d]/g, ''), 10) || 6); }
+  catch (e) { $('local-voice-status').textContent = uiText('Échec : ', 'Failed: ', 'Fehler: ') + (e.message || e); }
+  $('btn-local-voice-test').disabled = false;
+});
+$('btn-browser-produce').addEventListener('click', async () => {
+  if (!project) return alert(uiText('Pas de projet.', 'No project yet.', 'Noch kein Projekt.'));
+  const id = localVoiceId();
+  const withVoice = VDB.isLocalVoiceReady(id) || await VDB.isLocalVoiceStored(id);
+  producing = true; produceCancelled = false;
+  $('btn-browser-produce').disabled = true;
+  $('btn-browser-cancel').style.display = 'inline-block';
+  $('browser-done').style.display = 'none';
+  refreshLocalVoice();
+  const started = performance.now();
+  try {
+    const result = await VDB.produceInBrowser({
+      project, voiceId: withVoice ? id : null, subtitles: $('browser-subtitles').checked,
+      engineUrl: 'engine/scene.html?preview=1&capture=1',
+      isCancelled: () => produceCancelled,
+      onProgress: (ratio, label) => {
+        $('browser-bar').style.width = Math.round(ratio * 100) + '%';
+        $('browser-stage').textContent = progressText(label);
+      },
+    });
+    if (lastVideoUrl) URL.revokeObjectURL(lastVideoUrl);
+    lastVideoUrl = URL.createObjectURL(result.blob);
+    const name = ((project.meta && project.meta.slug) || 'debrief-video') + '.' + result.extension;
+    $('browser-link').href = lastVideoUrl;
+    $('browser-link').download = name;
+    $('browser-video').src = lastVideoUrl;
+    $('browser-done').style.display = 'block';
+    const minutes = ((performance.now() - started) / 60000).toFixed(1);
+    $('browser-stage').textContent = uiText(
+      `Vidéo prête : ${name}, ${Math.round(result.duration)} s, ${(result.blob.size / 1048576).toFixed(1)} Mo, produite en ${minutes} min${result.voiced ? '' : ', sans voix'}.`,
+      `Video ready: ${name}, ${Math.round(result.duration)} s, ${(result.blob.size / 1048576).toFixed(1)} MB, produced in ${minutes} min${result.voiced ? '' : ', without voice'}.`,
+      `Video fertig: ${name}, ${Math.round(result.duration)} s, ${(result.blob.size / 1048576).toFixed(1)} MB, in ${minutes} Min. produziert${result.voiced ? '' : ', ohne Stimme'}.`);
+  } catch (e) {
+    $('browser-stage').textContent = produceCancelled ? progressText('Production cancelled.') : uiText('Échec : ', 'Failed: ', 'Fehler: ') + (e.message || e);
+  } finally {
+    producing = false;
+    $('btn-browser-produce').disabled = false;
+    $('btn-browser-cancel').style.display = 'none';
+    refreshLocalVoice();
+  }
+});
+$('btn-browser-cancel').addEventListener('click', () => { produceCancelled = true; });
 
 /* boot */
 applyInterfaceLanguage((navigator.language || 'en').toLowerCase().slice(0, 2));
