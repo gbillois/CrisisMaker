@@ -300,6 +300,27 @@
       function svgSave() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>'; }
       function svgHome() { return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>'; }
 
+      /* One card per tab, in the order of the nav; a click opens that tab. */
+      function renderLaunchFeatureCards() {
+        const cards = [
+          ['project', svgFolder(), tt('Project', 'Projet', 'Projekt'), tt('The exercise at a glance, projects to open, save and export, and a library of ready-made scenarios to start from.', 'L’exercice en un coup d’œil, les projets à ouvrir, sauvegarder et exporter, et une bibliothèque de scénarios prêts à l’emploi pour démarrer.', 'Die Übung auf einen Blick, Projekte zum Öffnen, Speichern und Exportieren sowie eine Bibliothek fertiger Szenarien als Ausgangspunkt.')],
+          ['scenario', svgTarget(), tt('Context', 'Contexte', 'Kontext'), tt('Set the client, duration, simulated dates, cells, players and languages, describe your objectives and ideas, and let the AI agent build the exercise with you.', 'Renseignez le client, la durée, les dates simulées, les cellules, les joueurs et les langues, décrivez vos objectifs et vos idées, et laissez l’agent IA construire l’exercice avec vous.', 'Auftraggeber, Dauer, simulierte Daten, Zellen, Spieler und Sprachen festlegen, Ziele und Ideen beschreiben und die Übung gemeinsam mit dem KI-Agenten aufbauen.')],
+          ['storyline', svgStoryboard(), 'Main storyline', tt('Lay out the phases of the crisis on a single timeline and write what happens in each one, by hand or with AI.', 'Disposez les phases de la crise sur une timeline unique et décrivez ce qui se passe dans chacune, à la main ou avec l’IA.', 'Die Phasen der Krise auf einer einzigen Zeitachse anordnen und beschreiben, was in jeder passiert, von Hand oder mit KI.')],
+          ['cells', svgUsers(), 'Cells & actors', tt('Create the player cells and their participants, and the simulated actors who send injects: attackers, press, authorities.', 'Créez les cellules de joueurs et leurs participants, et les acteurs simulés qui envoient les injects : attaquants, presse, autorités.', 'Spielerzellen und ihre Teilnehmer anlegen sowie die simulierten Akteure, die Injects senden: Angreifer, Presse, Behörden.')],
+          ['detailed', svgPen(), 'Detailed storyline', tt('Pick a cell and plan its injects under the main storyline, then write them with AI and keep them in sync.', 'Choisissez une cellule et planifiez ses injects sous la storyline principale, puis rédigez-les avec l’IA et gardez-les synchronisés.', 'Eine Zelle wählen und ihre Injects unter der Haupt-Storyline planen, dann mit KI schreiben und synchron halten.')],
+          ['library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'), tt('Every inject of the scenario, gathered by phase and filterable by cell: preview them for facilitation and export them as styled images or a ZIP.', 'Tous les injects du scénario, regroupés par phase et filtrables par cellule : prévisualisez-les pour l’animation et exportez-les en images stylées ou en ZIP.', 'Alle Injects des Szenarios, nach Phase gruppiert und nach Zelle filterbar: für die Moderation ansehen und als gestaltete Bilder oder ZIP exportieren.')],
+          ['summary', svgShieldCheck(), 'Check & Challenge', tt('Know whether the exercise is ready to play: live consistency checks, the load of each cell by phase, one AI challenge on coverage, pacing and realism, and a ready-to-play checklist.', 'Sachez si l’exercice est prêt à être joué : contrôles de cohérence en continu, charge de chaque cellule par phase, un challenge IA sur la couverture, le rythme et le réalisme, et une checklist « Prêt à jouer ».', 'Wissen, ob die Übung spielbereit ist: laufende Konsistenzprüfungen, Last jeder Zelle pro Phase, eine KI-Challenge zu Abdeckung, Tempo und Realismus und eine Spielbereit-Checkliste.')],
+          ['play', svgBroadcast(), 'Play', tt('Run the exercise live: a permanent control bar with the clock, current phase and next inject, a vertical chronogram to send each inject on time, and an exercise log.', 'Animez l’exercice en direct : un bandeau de pilotage avec l’horloge, la phase en cours et le prochain inject, un chronogramme vertical pour envoyer chaque inject à temps, et un journal de l’exercice.', 'Übung live durchführen: Steuerleiste mit Uhr, aktueller Phase und nächstem Inject, vertikales Chronogramm zum pünktlichen Senden und ein Übungsprotokoll.')],
+          ['evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung'), tt('Assess the players against each objective and inject: marks and observations per criterion, completed with AI when you wish.', 'Évaluez les joueurs sur chaque objectif et chaque inject : notes et observations par critère, complétées avec l’IA si vous le souhaitez.', 'Die Spieler anhand jedes Ziels und Injects bewerten: Noten und Beobachtungen pro Kriterium, auf Wunsch mit KI ergänzt.')],
+          ['debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'), tt('Three ways to debrief: Slide debrief, a PowerPoint deck with the timeline and key messages; Story debrief, an interactive page revealing the hidden scenario; Video debrief, a documentary MP4 produced in your browser.', 'Trois façons de débriefer : Slide debrief, un deck PowerPoint avec la timeline et les messages clés ; Story debrief, une page interactive qui révèle le scénario caché ; Video debrief, un MP4 documentaire produit dans votre navigateur.', 'Drei Arten der Nachbesprechung: Slide debrief, ein PowerPoint-Deck mit Zeitachse und Kernbotschaften; Story debrief, eine interaktive Seite, die das verborgene Szenario zeigt; Video debrief, ein dokumentarisches MP4, im Browser erstellt.')]
+        ];
+        return cards.map(([route, icon, title, text]) => `<button type="button" class="launch-feature-card" data-action="launch-open-route" data-launch-route="${route}" title="${escapeAttribute(tt(`Open ${title}`, `Ouvrir ${title}`, `${title} öffnen`))}">
+                      <div class="launch-feature-icon">${icon}</div>
+                      <strong>${escapeHtml(title)}</strong>
+                      <p>${escapeHtml(text)}</p>
+                    </button>`).join('');
+      }
+
       function renderLaunchScreen() {
         const llmAvailable = isLLMAvailable();
         return `
@@ -335,56 +356,7 @@
                 <div>
                   <div class="welcome-block-title" style="margin-bottom:14px;">${tt('What you can do', 'Ce que vous pouvez faire', 'Was Sie tun können')}</div>
                   <div class="launch-features">
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgFolder()}</div>
-                      <strong>Project</strong>
-                      <p>The exercise at a glance, projects to open, save and export, and a library of ready-made scenarios to start from.</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgTarget()}</div>
-                      <strong>Context</strong>
-                      <p>Set the client, duration, simulated dates, cells, players and languages, describe your objectives and ideas, and let the AI agent build the exercise with you.</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgStoryboard()}</div>
-                      <strong>Main storyline</strong>
-                      <p>Lay out the phases of the crisis on a single timeline and write what happens in each one, by hand or with AI.</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgUsers()}</div>
-                      <strong>Cells &amp; actors</strong>
-                      <p>Create the player cells and their participants, and the simulated actors who send injects: attackers, press, authorities.</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgPen()}</div>
-                      <strong>Detailed storyline</strong>
-                      <p>Pick a cell and plan its injects under the main storyline, then write them with AI and keep them in sync.</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgShieldCheck()}</div>
-                      <strong>Check &amp; Challenge</strong>
-                      <p>${tt('Know whether the exercise is ready to play: live consistency checks, one AI challenge on coverage, pacing and realism, a readiness checklist and a cell-by-cell rehearsal.', 'Sachez si l’exercice est prêt à être joué : contrôles de cohérence en continu, un challenge IA sur la couverture, le rythme et le réalisme, une checklist de préparation et une répétition cellule par cellule.', 'Wissen, ob die Übung spielbereit ist: laufende Konsistenzprüfungen, eine KI-Challenge zu Abdeckung, Tempo und Realismus, eine Bereitschafts-Checkliste und eine Probe Zelle für Zelle.')}</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgBroadcast()}</div>
-                      <strong>Play</strong>
-                      <p>${tt('Run the exercise live: a permanent control bar with the clock, current phase and next inject, a vertical chronogram to send each inject on time, and an exercise log.', 'Animez l’exercice en direct : un bandeau de pilotage avec l’horloge, la phase en cours et le prochain inject, un chronogramme vertical pour envoyer chaque inject à temps, et un journal de l’exercice.', 'Übung live durchführen: Steuerleiste mit Uhr, aktueller Phase und nächstem Inject, vertikales Chronogramm zum pünktlichen Senden und ein Übungsprotokoll.')}</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgGrid()}</div>
-                      <strong>${tt('Injects', 'Injects', 'Injects')}</strong>
-                      <p>${tt('Every inject of the scenario, gathered by phase and filterable by cell: preview them for facilitation and export them as styled images or a ZIP.', 'Tous les injects du scénario, regroupés par phase et filtrables par cellule : prévisualisez-les pour l’animation et exportez-les en images stylées ou en ZIP.', 'Alle Injects des Szenarios, nach Phase gruppiert und nach Zelle filterbar: für die Moderation ansehen und als gestaltete Bilder oder ZIP exportieren.')}</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgDebrief()}</div>
-                      <strong>${tt('Debrief', 'Debrief', 'Debrief')}</strong>
-                      <p>${tt('Reconstruct the complete hidden scenario story without AI or generate an editable reconstruction with AI, then reveal it through an interactive timeline.', 'Reconstruisez toute l’histoire cachée du scénario sans IA ou générez une reconstruction éditable avec l’IA, puis révélez-la dans une timeline interactive.', 'Rekonstruieren Sie die vollständige verborgene Szenario-Handlung ohne KI oder erstellen Sie eine bearbeitbare Rekonstruktion mit KI und zeigen Sie sie in einem interaktiven Zeitplan.')}</p>
-                    </div>
-                    <div class="launch-feature-card">
-                      <div class="launch-feature-icon">${svgVideo()}</div>
-                      <strong>${tt('Video Debrief', 'Video Debrief', 'Video-Debrief')}</strong>
-                      <p>${tt('Turn the crisis story into an editable documentary video, preview every scene, then produce the MP4 right in your browser.', 'Transformez le récit de crise en vidéo documentaire éditable, prévisualisez chaque scène puis produisez le MP4 directement dans votre navigateur.', 'Verwandeln Sie die Krisengeschichte in ein bearbeitbares Dokumentarvideo, sehen Sie jede Szene vorab und erstellen Sie die MP4-Datei direkt im Browser.')}</p>
-                    </div>
+                    ${renderLaunchFeatureCards()}
                   </div>
                 </div>
 
@@ -405,11 +377,11 @@
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">4</div>
-                      <span>${tt('<strong>Run the exercise</strong> — in Play, start the clock and send each numbered inject on time; the exercise log records everything and can be saved.', '<strong>Animez l’exercice</strong> — dans Play, lancez l’horloge et envoyez chaque inject numéroté à temps ; le journal de l’exercice consigne tout et peut être enregistré.', '<strong>Übung durchführen</strong> — in Play die Uhr starten und jeden nummerierten Inject pünktlich senden; das Übungsprotokoll hält alles fest und kann gespeichert werden.')}</span>
+                      <span>${tt('<strong>Run the exercise</strong>: in Play, start the clock and send each numbered inject on time; the exercise log records everything and can be saved.', '<strong>Animez l’exercice</strong> : dans Play, lancez l’horloge et envoyez chaque inject numéroté à temps ; le journal de l’exercice consigne tout et peut être enregistré.', '<strong>Übung durchführen</strong>: in Play die Uhr starten und jeden nummerierten Inject pünktlich senden; das Übungsprotokoll hält alles fest und kann gespeichert werden.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">5</div>
-                      <span>${tt('<strong>Build the debrief</strong> — reconstruct the hidden story as an interactive timeline or turn it into a documentary-style video.', '<strong>Construisez le débrief</strong> — reconstruisez l’histoire cachée dans une timeline interactive ou transformez-la en vidéo documentaire.', '<strong>Erstellen Sie das Debrief</strong> — rekonstruieren Sie die verborgene Geschichte als interaktiven Zeitplan oder verwandeln Sie sie in ein Dokumentarvideo.')}</span>
+                      <span>${tt('<strong>Evaluate and debrief</strong>: mark the players in Evaluation, then debrief with a slide deck, an interactive story page or a documentary video.', '<strong>Évaluez et débriefez</strong> : notez les joueurs dans Évaluation, puis débriefez avec un deck de slides, une page interactive qui raconte l’histoire ou une vidéo documentaire.', '<strong>Bewerten und nachbesprechen</strong>: die Spieler in Bewertung benoten, dann mit einem Foliensatz, einer interaktiven Story-Seite oder einem Dokumentarvideo nachbesprechen.')}</span>
                     </div>
                     <div class="launch-tip">
                       <div class="launch-tip-num">${sbUiIcon('star', 13)}</div>
@@ -615,8 +587,9 @@
               </div>
             </div>
             ${renderSbStatusBar()}
+            ${sbUI().libraryIntent === 'new' ? `<p class="cx-template pj-library-intent">${sbUiIcon('book', 14)} ${tt('Pick a scenario and select Load: it starts a new project.', 'Choisissez un scénario et cliquez sur Charger : il démarre un nouveau projet.', 'Wählen Sie ein Szenario und dann Laden: es startet ein neues Projekt.')} <button class="btn btn-ghost btn-xs" data-sb-action="library-intent-clear">${tt('Cancel', 'Annuler', 'Abbrechen')}</button></p>` : ''}
             ${renderSbLibrary()}
-            ${sbUI().modal === 'preview' ? renderSbPreviewModal() : ''}
+            ${sbUI().modal === 'preview' ? renderSbPreviewModal() : sbUI().modal === 'load-choice' ? renderSbLoadChoiceModal() : ''}
           </article>`;
       }
 

@@ -366,7 +366,8 @@ const SbAI = {
     const project = appState.scenario;
     const storyboard = project.storyboard;
     const rules = sbStructuralChecks(storyboard, project);
-    const report = { score: sbScore(rules), summary: '', checked_rev: storyboard.rev, checked_at: new Date().toISOString(), issues: rules };
+    // An empty storyboard has nothing to score.
+    const report = { score: storyboard.blocks.length ? sbScore(rules) : null, summary: '', checked_rev: storyboard.rev, checked_at: new Date().toISOString(), issues: rules };
     if (ai && isLLMAvailable() && storyboard.blocks.length) {
       const payload = {
         task: 'Critically review the whole storyboard for global coherence and exercise quality. Be specific and cite block ids.',

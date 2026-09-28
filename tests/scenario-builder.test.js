@@ -661,11 +661,11 @@ test('check & challenge: one readiness verdict, the checker merged into Summary,
   h.run(`checkerSwitchMode('file')`);
   assert.equal(h.run('appState.checkerState.analysisResult.summary'), 'file result');
 
-  // Removing the file keeps the checklist and the scenario challenge.
-  h.run(`appState.checkerState.checklist = { checked: { a_0: true } }; checkerClearFile()`);
+  // Removing the file keeps the checklist (the project's) and the scenario challenge.
+  h.run(`appState.scenario.checklist = { checked: { a_0: true }, customItems: {} }; checkerClearFile()`);
   assert.equal(h.run('appState.checkerState.mode'), 'scenario');
   assert.equal(h.run('appState.checkerState.parsedData'), null);
-  assert.equal(h.run('appState.checkerState.checklist.checked.a_0'), true);
+  assert.equal(h.run('checkerChecklist().checked.a_0'), true);
   assert.equal(h.run('appState.checkerState.analysisResult.axes.length'), 2);
 });
 
@@ -1142,4 +1142,75 @@ test('actors: deleting an actor asks first, leaves its injects without sender, u
   assert.equal(h.run('appState.scenario.actors.length'), count);
   assert.deepEqual(senders(), actor.sent.map(() => actor.id));
   assert.equal(castActor(), actor.id);
+});
+
+test('check & challenge: the ready-to-play checklist is saved with each project, the old shared one migrates once', () => {
+  const h = harness();
+  h.run(`saveLocal = () => {}; appState.scenario = defaultScenario(); StoryboardHistory.ensure()`);
+  const key = h.run('checkerLegacyChecklistKey()');
+  h.storage.set(key, JSON.stringify({ checked: { playability_0: true, bogus: 'yes' }, customItems: { playability: ['Book the room', ''] } }));
+  assert.equal(h.run('checkerLoadChecklist()'), true);
+  assert.equal(h.storage.has(key), false, 'the shared key is gone');
+  assert.deepEqual(h.json('appState.scenario.checklist'), { checked: { playability_0: true }, customItems: { playability: ['Book the room'] } });
+  assert.equal(h.run('checkerLoadChecklist()'), false, 'only once');
+  // Ticks live in the project: they survive a reload and travel in the project file.
+  h.run(`checkerChecklist().checked.playability_1 = true; checkerSaveChecklist()`);
+  const reloaded = h.json('mergeScenario(migrateScenario(JSON.parse(JSON.stringify(buildProjectFileData({ forFile: true }))))).checklist');
+  assert.deepEqual(reloaded.checked, { playability_0: true, playability_1: true });
+  assert.equal(h.run('ccChecklistProgress().done'), 2);
+  // Another project starts with its own, empty checklist.
+  h.run(`appState.scenario = emptyScenario({})`);
+  assert.equal(h.run('ccChecklistProgress().done'), 0);
+  assert.deepEqual(h.json('mergeScenario({ scenario: {}, stimuli: [] }).checklist'), { checked: {}, customItems: {} });
+});
+
+test('check & challenge: an empty project has nothing to check, not a near-perfect score', () => {
+  const h = harness();
+  h.run(`appState.scenario = emptyScenario({}); StoryboardHistory.ensure()`);
+  const readiness = h.json(`ccReadiness(appState.scenario, ccRuleIssues(appState.scenario), tabUI('summary'))`);
+  assert.equal(readiness.structure, null);
+  assert.equal(readiness.overall, null);
+  assert.equal(readiness.verdict, 'empty');
+  const view = h.run('renderSummaryView()');
+  assert.ok(view.includes('Nothing to check yet') && !view.includes('Almost ready') && !view.includes('Ready to play</strong>'));
+  // Ticking the checklist does not make an empty exercise ready.
+  h.run(`checkerChecklist().checked = Object.fromEntries(checkerGetChecklistCategories().flatMap((c) => c.items.map((_, i) => [c.key + '_' + i, true])))`);
+  assert.equal(h.json(`ccReadiness(appState.scenario, ccRuleIssues(appState.scenario), tabUI('summary'))`).verdict, 'empty');
+  // A storyline without any inject is scored, and the missing injects weigh as a warning.
+  assert.deepEqual(h.json(`sbExerciseChecks(appState.scenario).map((i) => i.severity)`), ['warning']);
+  assert.ok(h.run('sbScore(sbStructuralChecks(sbStoryboard(), appState.scenario))') <= 94, 'an empty storyboard is a warning');
+});
+
+test('project: New, demo and library loads ask before replacing a project with content', () => {
+  const h = harness();
+  h.run(`appState.scenario = emptyScenario({}); StoryboardHistory.ensure()`);
+  assert.equal(h.run('projectHasContent(appState.scenario)'), false);
+  assert.equal(h.run('confirmReplaceProject("new")'), true, 'nothing to lose: no question');
+  h.run(`appState.scenario.client.name = 'Acme'`);
+  assert.equal(h.run('projectHasContent(appState.scenario)'), true);
+  assert.equal(h.run('projectHasContent(defaultScenario())'), true);
+  h.run(`globalThis.asked = []; window.confirm = (text) => { asked.push(text); return false; }`);
+  assert.equal(h.run('confirmReplaceProject("demo")'), false);
+  assert.ok(h.run('asked[0]').includes('replaced'));
+  // Loading a library scenario over it offers a new project or the storyline only.
+  h.run(`sbHandleAction({ currentTarget: { dataset: { sbAction: 'select-template', sbTemplate: 'ransomware-double-extortion' } } })`);
+  assert.equal(h.run('sbUI().modal'), 'load-choice');
+  const view = h.run('renderProjectView()');
+  assert.ok(view.includes('data-sb-load="new"') && view.includes('data-sb-load="storyline"'));
+  h.run(`sbHandleAction({ currentTarget: { dataset: { sbAction: 'select-template', sbTemplate: 'ransomware-double-extortion', sbLoad: 'new' } } })`);
+  assert.equal(h.run('appState.scenario.client.name'), '', 'a fresh project');
+  assert.equal(h.run('sbStoryboard().meta.library_id'), 'ransomware-double-extortion');
+  assert.equal(h.run('appState.route'), 'scenario');
+});
+
+test('library: the search query survives a category change and says when nothing matches', () => {
+  const h = harness();
+  h.run(`appState.scenario = emptyScenario({}); StoryboardHistory.ensure(); sbUI().libraryQuery = 'zzz-no-match'`);
+  let html = h.run('renderSbLibrary()');
+  assert.ok(html.includes('value="zzz-no-match"'));
+  assert.ok(/data-sb-library-empty >No scenario matches/.test(html));
+  h.run(`sbUI().libraryQuery = 'ransomware'; sbUI().libraryCategory = sbLibraryEntries()[0].category`);
+  html = h.run('renderSbLibrary()');
+  assert.ok(html.includes('value="ransomware"') && /data-sb-library-empty hidden/.test(html));
+  assert.ok(/<article class="sb-template-card[^"]*" data-sb-search="[^"]*ransomware[^"]*" >/.test(html), 'a matching card is shown');
 });

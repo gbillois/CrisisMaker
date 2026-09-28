@@ -91,7 +91,11 @@ function answerFor(system, user) {
   // Load selects the scenario and opens Context; nothing replaces the storyline yet.
   assert.equal(await page.isDisabled('[data-cx-load-basic]').catch(() => null), null);
   await page.click('.sb-modal-foot [data-sb-action="select-template"]');
+  // The project already has a client: Load asks for a new project or the storyline only.
+  assert.ok(await page.isVisible('[data-sb-load="new"]'), 'load choice offered');
+  await page.click('[data-sb-load="storyline"]');
   assert.equal(await page.evaluate(() => appState.route), 'scenario');
+  assert.equal(await page.evaluate(() => appState.scenario.client.name), 'Northwind Hospitals', 'the project is kept');
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
   assert.ok((await page.locator('.cx-brief').innerText()).includes('Ransomware with double extortion'));
   await page.click('[data-cx-load-basic]');

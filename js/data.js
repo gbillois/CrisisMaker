@@ -235,6 +235,32 @@
         };
       }
 
+      /* Ready-to-play checklist of the project: ticked item keys and custom items per category. */
+      function normalizeChecklist(value) {
+        const input = value && typeof value === 'object' ? value : {};
+        const checked = {};
+        const customItems = {};
+        for (const [key, on] of Object.entries(input.checked && typeof input.checked === 'object' ? input.checked : {})) {
+          if (on === true) checked[String(key).slice(0, 80)] = true;
+        }
+        for (const [key, list] of Object.entries(input.customItems && typeof input.customItems === 'object' ? input.customItems : {})) {
+          if (!Array.isArray(list)) continue;
+          customItems[String(key).slice(0, 80)] = list.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim().slice(0, 500)).slice(0, 50);
+        }
+        return { checked, customItems };
+      }
+
+      /* True when replacing the project would lose work: a name, a client, a storyline,
+         players in cells or injects. */
+      function projectHasContent(project) {
+        if (!project || typeof project !== 'object') return false;
+        return !!(String(project.name || '').trim()
+          || String(project.client?.name || '').trim()
+          || project.storyboard?.blocks?.length
+          || (project.cells || []).some((cell) => (cell.players || []).length)
+          || (project.stimuli || []).length);
+      }
+
       function makeStimulus(channel, actorId, offsetMinutes, templateId = null) {
         const template = channel === 'article_press'
           ? (ARTICLE_TEMPLATE_LIBRARY[templateId] || ARTICLE_TEMPLATE_LIBRARY[TEMPLATE_LIBRARY.article_press.template_id] || ARTICLE_TEMPLATE_LIBRARY.nyt)
@@ -336,7 +362,8 @@
           storyboard: storyboardModelLoaded() ? normalizeStoryboard(input.storyboard, input.scenario?.phases) : input.storyboard,
           storyboard_versions: storyboardModelLoaded() ? sbNormalizeVersions(input.storyboard_versions) : [],
           cells: storyboardModelLoaded() ? sbNormalizeCells(input.cells) : [],
-          exercise: storyboardModelLoaded() ? sbNormalizeExercise(input.exercise) : { players_count: '', cells_count: '' }
+          exercise: storyboardModelLoaded() ? sbNormalizeExercise(input.exercise) : { players_count: '', cells_count: '' },
+          checklist: normalizeChecklist(input.checklist)
         };
         // Recipient cells are only assigned when migrating a project from before cells: in a
         // project with cells, an inject without recipient stays so (the checks flag it).
