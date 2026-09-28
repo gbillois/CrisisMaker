@@ -23,6 +23,20 @@ function sbComputeStimulusContentHash(stimulus) {
 function sbBeatSourceHash(block, beat) {
   return sbHash({ block: [block.title, block.brief, block.narrative, block.objectives], beat: beat ? [beat.title, beat.intent, beat.channel, beat.template_id, beat.cast_id, beat.cell_id] : null });
 }
+/* What a phase says, as far as its inject plan is concerned: its title and what happens. */
+function sbPlanSourceHash(block) {
+  return sbHash({ title: block.title, brief: block.brief });
+}
+function sbMarkPlanned(block) {
+  if (block) block.plan_hash = sbPlanSourceHash(block);
+}
+/* A phase whose "what happens" changed since its injects were planned. */
+function sbNeedsReplan(block) {
+  return !!(block && block.beats.length && block.plan_hash && block.plan_hash !== sbPlanSourceHash(block));
+}
+function sbCellContentHash(cell) {
+  return sbHash({ name: cell.name, description: cell.description, objectives: cell.objectives || '' });
+}
 function sbActorContentHash(actor) {
   return sbHash({ name: actor.name, role: actor.role, organization: actor.organization, title: actor.title, language: actor.language });
 }
@@ -53,9 +67,11 @@ function sbIsManuallyEdited(stimulus) {
 }
 
 /* Records that a stimulus now reflects the current block/beat. */
-function sbStampStimulus(stimulus, block, beat, storyboard) {
+function sbStampStimulus(stimulus, block, beat, storyboard, project = appState.scenario) {
   const previous = sbStimulusLink(stimulus);
   if (beat?.cell_id) stimulus.cell_id = beat.cell_id;
+  const actor = (project?.actors || []).find((item) => item.id === stimulus.actor_id);
+  const cell = (project?.cells || []).find((item) => item.id === stimulus.cell_id);
   stimulus.scenario_link = sbNormalizeLink({
     block_id: block.id,
     beat_id: beat?.id || '',
@@ -63,6 +79,8 @@ function sbStampStimulus(stimulus, block, beat, storyboard) {
     at: stimulus.timestamp_offset_minutes,
     source_hash: sbBeatSourceHash(block, beat),
     content_hash: sbStimulusContentHash(stimulus),
+    actor_hash: actor ? sbActorContentHash(actor) : '',
+    cell_hash: cell ? sbCellContentHash(cell) : '',
     rev: storyboard.rev,
     locked: previous?.locked === true
   });
@@ -75,12 +93,19 @@ function sbSealLinks(project) {
   if (!storyboard) return;
   for (const stimulus of project.stimuli) {
     const link = sbStimulusLink(stimulus);
-    if (!link || link.source_hash) continue;
-    const block = sbBlock(storyboard, link.block_id);
-    if (!block) continue;
-    const beat = link.beat_id ? block.beats.find((item) => item.id === link.beat_id) : null;
-    sbStampStimulus(stimulus, block, beat, storyboard);
+    if (!link) continue;
+    if (!link.source_hash) {
+      const block = sbBlock(storyboard, link.block_id);
+      if (!block) continue;
+      const beat = link.beat_id ? block.beats.find((item) => item.id === link.beat_id) : null;
+      sbStampStimulus(stimulus, block, beat, storyboard, project);
+      continue;
+    }
+    // Older links: record the current sender and cell as the baseline.
+    if (!link.actor_hash) { const actor = (project.actors || []).find((item) => item.id === stimulus.actor_id); if (actor) link.actor_hash = sbActorContentHash(actor); }
+    if (!link.cell_hash) { const cell = (project.cells || []).find((item) => item.id === stimulus.cell_id); if (cell) link.cell_hash = sbCellContentHash(cell); }
   }
+  for (const block of storyboard.blocks) if (block.beats.length && !block.plan_hash) sbMarkPlanned(block);
   for (const cast of storyboard.cast) {
     const actor = cast.actor_id ? project.actors.find((item) => item.id === cast.actor_id) : null;
     if (actor && !actor.scenario_link) actor.scenario_link = { cast_id: cast.id, source_hash: sbCastSourceHash(cast), content_hash: sbActorContentHash(actor), locked: false };
@@ -134,6 +159,14 @@ function sbComputeImpacts(project = appState.scenario) {
   const storyboard = project.storyboard;
   const impacts = [];
   const add = (impact) => impacts.push({ id: `impact_${impacts.length + 1}`, ...impact });
+  const ai = isLLMAvailable();
+  // 1. Phases whose "what happens" changed: their inject plan follows the old text.
+  for (const block of storyboard.blocks) {
+    if (block.locked || !sbNeedsReplan(block)) continue;
+    const written = block.beats.filter((beat) => sbStimulusForBeat(project, beat.id)).length;
+    add({ kind: 'replan', target: 'block', block_id: block.id, label: block.title, detail: `What happens changed since its ${block.beats.length} inject(s) were planned${written ? ` (${written} written)` : ''}. The AI updates the plan, then the injects follow.`, options: ai ? ['replan', 'accept', 'skip'] : ['accept', 'skip'], action: ai ? 'replan' : 'skip' });
+  }
+  const replanning = new Set(impacts.map((impact) => impact.block_id));
   for (const stimulus of project.stimuli) {
     const link = sbStimulusLink(stimulus);
     if (!link) continue;
@@ -151,15 +184,24 @@ function sbComputeImpacts(project = appState.scenario) {
       const movedByHand = link.at !== null && link.at !== stimulus.timestamp_offset_minutes;
       add({ kind: 'retime', target: 'stimulus', stimulus_id: stimulus.id, block_id: block.id, beat_id: beat?.id || '', label, detail: `${sbFormatOffset(stimulus.timestamp_offset_minutes)} → ${sbFormatOffset(expected)}${movedByHand ? ' (moved by hand in the timeline)' : ''}`, from: stimulus.timestamp_offset_minutes, to: expected, manual: movedByHand, options: ['apply', 'skip'], action: movedByHand ? 'skip' : 'apply' });
     }
-    if (link.source_hash && sbBeatSourceHash(block, beat) !== link.source_hash) {
-      add({ kind: 'outdated', target: 'stimulus', stimulus_id: stimulus.id, block_id: block.id, beat_id: beat?.id || '', label, detail: manual ? 'Scenario changed; content was edited by hand.' : 'Scenario changed since this inject was written.', manual, options: manual ? ['adapt', 'regenerate', 'accept', 'skip'] : ['regenerate', 'adapt', 'accept', 'skip'], action: manual ? 'adapt' : 'regenerate' });
+    // Injects of a phase being re-planned are handled after the new plan.
+    if (replanning.has(block.id)) continue;
+    const reasons = [];
+    if (link.source_hash && sbBeatSourceHash(block, beat) !== link.source_hash) reasons.push('the storyline changed');
+    const actor = project.actors.find((item) => item.id === stimulus.actor_id);
+    if (link.actor_hash && actor && sbActorContentHash(actor) !== link.actor_hash) reasons.push(`its sender changed (${actor.name})`);
+    const cell = (project.cells || []).find((item) => item.id === stimulus.cell_id);
+    if (link.cell_hash && cell && sbCellContentHash(cell) !== link.cell_hash) reasons.push(`its recipient cell changed (${cell.name})`);
+    if (reasons.length) {
+      const storyline = reasons[0] === 'the storyline changed';
+      add({ kind: storyline ? 'outdated' : 'people', target: 'stimulus', stimulus_id: stimulus.id, block_id: block.id, beat_id: beat?.id || '', label, detail: `Since it was written, ${reasons.join(', ')}.${manual ? ' Its content was edited by hand.' : ''}`, manual, options: manual || !storyline ? ['adapt', 'regenerate', 'accept', 'skip'] : ['regenerate', 'adapt', 'accept', 'skip'], action: manual || !storyline ? 'adapt' : 'regenerate' });
     }
   }
   // New planned injects are proposed only in blocks that were already generated;
   // blocks never generated are handled by "Generate injects".
   const generatedBlocks = new Set(project.stimuli.map((stimulus) => sbStimulusLink(stimulus)?.block_id).filter(Boolean));
   for (const block of storyboard.blocks) {
-    if (!generatedBlocks.has(block.id)) continue;
+    if (!generatedBlocks.has(block.id) || replanning.has(block.id)) continue;
     for (const beat of block.beats) {
       if (sbStimulusForBeat(project, beat.id)) continue;
       add({ kind: 'missing', target: 'beat', block_id: block.id, beat_id: beat.id, label: beat.title || channelLabel(beat.channel), detail: `${block.title} · ${sbFormatOffset(sbBeatAbsolute(block, beat))}`, options: ['create', 'skip'], action: 'create' });
@@ -187,7 +229,8 @@ function sbStimulusLabel(stimulus) {
 }
 
 function sbPendingSyncCount(project = appState.scenario) {
-  return sbComputeImpacts(project).filter((impact) => impact.kind !== 'missing' && impact.action !== 'skip').length;
+  // A changed phase always counts, even without AI to re-plan it.
+  return sbComputeImpacts(project).filter((impact) => impact.kind !== 'missing' && (impact.action !== 'skip' || impact.kind === 'replan')).length;
 }
 
 // ── Content generation with storyboard context ───────────────────────────────
@@ -453,14 +496,15 @@ const SbPipeline = {
     return { created, written };
   },
 
-  /* Applies the selected sync actions (impact.action) with one checkpoint. */
+  /* Applies the selected update actions (impact.action) with one checkpoint, in cascade:
+     changed phases are re-planned first, then the consequences of the new plans (timing,
+     content, orphans, new injects) are computed again and applied with the other changes. */
   async applyImpacts(impacts) {
     if (this.active || SbAI.busy) throw new AgentValidationError('Another storyline operation is running.');
     const project = appState.scenario;
     const storyboard = project.storyboard;
     const selected = impacts.filter((impact) => impact.action && impact.action !== 'skip');
     if (!selected.length) return { applied: 0 };
-    const aiNeeded = selected.some((impact) => ['regenerate', 'adapt'].includes(impact.action) || (impact.kind === 'missing' && impact.action === 'create'));
     this.controller = new AbortController();
     const controller = this.controller;
     const assertActive = () => { if (controller.signal.aborted || appState.scenario !== project) throw new DOMException('Stopped', 'AbortError'); };
@@ -468,11 +512,58 @@ const SbPipeline = {
     this.log = [];
     this.step = 0;
     this.total = selected.length;
-    this.saveCheckpoint('synchronisation');
+    this.saveCheckpoint('update');
     let applied = 0;
     const missingBlocks = new Set();
+    let queue = selected.filter((impact) => impact.kind !== 'replan');
     try {
-      for (const impact of selected) {
+      // 1. Re-plan the phases whose "what happens" changed.
+      const replans = selected.filter((impact) => impact.kind === 'replan');
+      if (replans.length) {
+        StoryboardHistory.flush();
+        StoryboardHistory.snapshot('Before update', 'generation');
+        const replanned = new Set();
+        for (const impact of replans) {
+          assertActive();
+          this.step++;
+          const block = sbBlock(storyboard, impact.block_id);
+          if (!block) continue;
+          this.label = `Re-planning ${block.title}`;
+          sbNotify();
+          if (impact.action === 'accept') { sbMarkPlanned(block); applied++; continue; }
+          try {
+            const keep = { title: block.title, brief: block.brief, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes };
+            await SbAI.rewrite(block.id, SB_REPLAN_INSTRUCTION, { nested: true, signal: controller.signal });
+            assertActive();
+            // The designer's text and timing stay exactly as written.
+            Object.assign(block, keep);
+            block.beats.forEach((beat) => { beat.offset_minutes = Math.min(beat.offset_minutes, Math.max(0, block.duration_minutes - 1)); });
+            sbMarkPlanned(block);
+            replanned.add(block.id);
+            applied++;
+            this.note('success', `Inject plan updated: ${block.title} (${block.beats.length} inject(s)).`);
+          } catch (error) {
+            if (error?.name === 'AbortError' || controller.signal.aborted) throw error;
+            this.note('warning', `${block.title}: ${sbErrorMessage(error)}`);
+          }
+        }
+        StoryboardHistory.commit('Update: re-plan phases');
+        sbAfterStoryboardChange(project, { save: true });
+        // 2. The consequences of the new plans, keeping the choices made in the dialog.
+        const key = (impact) => [impact.kind, impact.stimulus_id, impact.beat_id, impact.cast_id, impact.block_id].join(':');
+        const chosen = new Map(impacts.filter((impact) => impact.kind !== 'replan').map((impact) => [key(impact), impact.action]));
+        queue = sbComputeImpacts(project).filter((impact) => impact.kind !== 'replan').map((impact) => {
+          if (chosen.has(key(impact))) return { ...impact, action: chosen.get(key(impact)) };
+          const stimulus = impact.stimulus_id ? getStimulus(impact.stimulus_id) : null;
+          // Injects of a dropped planned item: removed, unless edited by hand.
+          if (impact.kind === 'orphan' && stimulus && replanned.has(sbStimulusLink(stimulus)?.block_id) && !impact.manual) return { ...impact, action: 'delete' };
+          return impact;
+        }).filter((impact) => impact.action && impact.action !== 'skip');
+        this.total = this.step + queue.length;
+        if (queue.length) this.note('info', `Then ${queue.length} consequence(s): timing, content and injects of the new plans.`);
+      }
+      // 3. Timing, content, orphans, actors and new injects.
+      for (const impact of queue) {
         assertActive();
         this.step++;
         this.label = `${impact.kind}: ${impact.label}`;
@@ -488,12 +579,12 @@ const SbPipeline = {
             stimulus.timestamp_offset_minutes = impact.to;
             stimulus.scenario_link.at = impact.to;
             stimulus.updated_at = new Date().toISOString();
-          } else if (impact.kind === 'outdated' && stimulus && block) {
-            if (impact.action === 'accept') sbStampStimulus(stimulus, block, beat, storyboard);
+          } else if (['outdated', 'people'].includes(impact.kind) && stimulus && block) {
+            if (impact.action === 'accept') sbStampStimulus(stimulus, block, beat, storyboard, project);
             else {
               if (!isLLMAvailable()) throw new AgentValidationError('AI is not configured.');
               await sbGenerateStimulusContent(stimulus, block, beat, { signal: controller.signal, assertActive, preserve: impact.action === 'adapt' });
-              sbStampStimulus(stimulus, block, beat, storyboard);
+              sbStampStimulus(stimulus, block, beat, storyboard, project);
             }
           } else if (impact.kind === 'missing' && block) {
             missingBlocks.add(block.id);
@@ -522,7 +613,7 @@ const SbPipeline = {
       }
       sortStimuli();
       this.status = 'idle';
-      this.note('success', `Synchronisation applied: ${applied} change(s).`);
+      this.note('success', `Update applied: ${applied} change(s).`);
     } catch (error) {
       if (controller.signal.aborted || error?.name === 'AbortError') this.status = 'stopped';
       else { this.status = 'failed'; this.note('error', sbErrorMessage(error)); }
@@ -533,11 +624,13 @@ const SbPipeline = {
       sbNotify();
     }
     if (missingBlocks.size && this.status === 'idle') {
-      await this.run({ blockIds: [...missingBlocks], plan: false, cast: true, write: aiNeeded && isLLMAvailable(), keepCheckpoint: true });
+      await this.run({ blockIds: [...missingBlocks], plan: false, cast: true, write: isLLMAvailable(), keepCheckpoint: true });
     }
     return { applied };
   }
 };
+
+const SB_REPLAN_INSTRUCTION = 'The designer rewrote what happens during this phase (its brief). Update the inject plan so that every inject reflects the new description: adjust titles, intents, channels, senders and timing where needed, drop injects that no longer fit and add ones the new events need. Keep the id of every inject that remains relevant, keep the recipient cells and about the same number of injects per cell. Do not change the phase title, brief or duration.';
 
 // ── Whole-exercise view: every planned or written inject ─────────────────────
 /* Planned injects (beats, with their stimulus when generated) plus stimuli that are

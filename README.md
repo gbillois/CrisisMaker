@@ -118,12 +118,20 @@ The menu follows the design workflow, from left to right:
    line (trigger & detection, investigation, containment, eradication, business
    continuity, recovery, crisis exit, twists). They are moved and resized with the
    mouse (snap, ripple, zoom), duplicated and locked. Selecting a phase opens its
-   editor **at the bottom of the screen**: what happens during the phase, the
-   objectives it tests, hidden details and facilitation notes, and AI rewrite.
+   editor **at the bottom of the screen**: **what happens during the phase**, in plain
+   text (the main field), then its planned injects per cell, the hidden story and
+   facilitation notes (folded), and AI rewrite.
 4. **Cells & actors**: the player cells (decision, operational, communication, IT,
    legal, business continuity, HR, or your own) with their players, and the simulated
    actors who send injects, grouped by type (attackers, press, authorities, customers,
    partners, experts, internal senders). Storyline roles are linked to actors here.
+   **Update** (on Main storyline, Cells & actors and Detailed storyline) reflects every
+   change in cascade in one dialog: a phase whose "what happens" changed is re-planned
+   with AI (its inject plan follows the new text, the designer's text is kept), then
+   its injects follow (timing, rewritten content, new injects, removed ones); an actor
+   or a cell edited in Cells & actors adapts the injects it sends or receives; roles
+   update their actors. Manual edits are adapted, never overwritten; locked injects
+   are untouched; one undo restores everything.
 5. **Detailed storyline**: the main storyline stays on top; below it, one row of
    injects per cell. Pick a cell to work on its injects: drag a card to change its
    time or its recipient cell, plan new injects for the cell with AI, create and

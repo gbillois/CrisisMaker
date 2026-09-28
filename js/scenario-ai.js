@@ -245,6 +245,7 @@ const SbAI = {
             .sort((a, b) => a.offset_minutes - b.offset_minutes);
           if (!block.stimuli_target) block.stimuli_target = block.beats.length;
           block.key_cast = [...new Set([...block.key_cast, ...block.beats.map((beat) => beat.cast_id).filter(Boolean)])];
+          sbMarkPlanned(block);
         }
         if (block.status === 'draft') block.status = 'refined';
         block.ai_rev = nextRev;
@@ -255,7 +256,7 @@ const SbAI = {
     return changed;
   },
 
-  async rewrite(blockId, instruction) {
+  async rewrite(blockId, instruction, options = {}) {
     const project = appState.scenario;
     const storyboard = project.storyboard;
     const block = sbBlock(storyboard, blockId);
@@ -268,7 +269,7 @@ const SbAI = {
       response_format: { block: { title: 'optional', brief: 'optional', narrative: 'optional', duration: 'optional minutes', stimuli: 'optional count', beats: [{ id: 'existing beat id to keep or edit (omit for a new beat)', at: 0, channel: 'channel', template_id: 'optional', cast: 'cast id or new key', title: 'title', intent: 'intent' }] }, cast: [{ key: 'new role key', label: 'label', role: 'role', organization: 'organisation', description: 'description' }] },
       rules: ['Return only the fields you change. If you return beats, return the complete new list (beats you omit are removed).']
     };
-    const result = await this.request('Rewriting block', payload, 6000);
+    const result = await this.request('Rewriting block', payload, 6000, options);
     const patch = result.block && typeof result.block === 'object' ? result.block : null;
     if (!patch) throw new AgentValidationError('The AI returned no block changes.');
     const castMap = sbMergeCastFromAI(storyboard, result.cast);
@@ -283,6 +284,7 @@ const SbAI = {
       }).map((beat) => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, Math.max(0, block.duration_minutes - 1)) }))
         .sort((a, b) => a.offset_minutes - b.offset_minutes);
       block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
+      sbMarkPlanned(block);
     }
     block.ai_rev = storyboard.rev + 1;
     if (block.status === 'draft') block.status = 'refined';
@@ -314,6 +316,7 @@ const SbAI = {
     block.beats = [...block.beats, ...added].sort((a, b) => a.offset_minutes - b.offset_minutes);
     block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
     block.ai_rev = storyboard.rev + 1;
+    sbMarkPlanned(block);
     return added;
   },
 

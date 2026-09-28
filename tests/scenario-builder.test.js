@@ -422,7 +422,8 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   assert.ok(!storyline.includes('sb-inspector') && !storyline.includes('sb-bin'), 'no side columns');
   h.run(`sbUI().selected = [sbStoryboard().blocks[1].id]`);
   const phase = h.run('renderStorylineView()');
-  for (const marker of ['bottom-editor-head', 'data-sb-field="brief"', 'data-sb-objective', 'data-tab-action="open-detailed"', 'rewrite-block']) assert.ok(phase.includes(marker), marker);
+  for (const marker of ['bottom-editor-head', 'data-sb-field="brief"', 'What happens during this phase', 'data-tab-action="open-detailed"', 'rewrite-block', 'data-sb-modal="sync"']) assert.ok(phase.includes(marker), marker);
+  assert.ok(!phase.includes('data-sb-objective'), 'objectives are not edited in the phase editor');
   for (const modal of ['versions', 'coherence', 'generate', 'sync']) {
     h.run(`sbUI().modal = '${modal}'`);
     assert.ok(h.run('renderStorylineView()').includes('sb-modal'), modal);
@@ -620,4 +621,64 @@ test('check & challenge: one readiness verdict, the checker merged into Summary,
   assert.equal(h.run('appState.checkerState.parsedData'), null);
   assert.equal(h.run('appState.checkerState.checklist.checked.a_0'), true);
   assert.equal(h.run('appState.checkerState.analysisResult.axes.length'), 2);
+});
+
+test('update: a changed phase is re-planned, then its injects follow in cascade; actor and cell edits adapt the injects', async () => {
+  const h = harness();
+  h.run(`isLLMAvailable = () => true;
+    { const project = appState.scenario; const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
+      if (!project.cells.length) project.cells = sbNormalizeCells([{ name: 'Decision cell' }]);
+      const cell = project.cells[0].id;
+      sb.cast.push(sbMakeCast({ id: 'cast_ciso', label: 'CISO' }));
+      sb.blocks.push(sbMakeBlock('trigger', { id: 'b1', track_id: main, start_minutes: 0, duration_minutes: 60, stimuli_target: 3, brief: 'EDR alerts on two servers', beats: [
+        { id: 'k1', offset_minutes: 10, channel: 'email_internal', cast_id: 'cast_ciso', cell_id: cell, title: 'One' },
+        { id: 'k2', offset_minutes: 20, channel: 'email_internal', cast_id: 'cast_ciso', cell_id: cell, title: 'Two' },
+        { id: 'k3', offset_minutes: 30, channel: 'email_internal', cast_id: 'cast_ciso', cell_id: cell, title: 'Three' }] }, sb));
+      StoryboardHistory.ensure(); }`);
+  h.run(`AITextGenerator.generateForStimulus = async (stimulus, field, guided) => ({ subject: guided.includes('edited by hand') ? 'Adapted' : 'Fresh ' + (stimulus.name || ''), body: '<p>Body</p>' });`);
+  await h.run(`SbPipeline.run({ plan: false, cast: true, write: true })`);
+  h.run(`sbSealLinks(appState.scenario)`);
+  assert.deepEqual(h.json('sbComputeImpacts(appState.scenario).map(i => i.kind)'), [], 'up to date after generation');
+  assert.equal(h.run('sbPendingSyncCount(appState.scenario)'), 0);
+
+  // The designer rewrites what happens: the phase needs a new plan, its injects wait for it.
+  h.run(`sbBlock(sbStoryboard(), 'b1').brief = 'Ransomware encrypts the file servers; the attacker calls the CEO'; StoryboardHistory.commit('Rewrite phase');`);
+  const impacts = h.json('sbComputeImpacts(appState.scenario)');
+  assert.deepEqual(impacts.map(i => [i.kind, i.action]), [['replan', 'replan']]);
+  assert.equal(h.run('sbPendingSyncCount(appState.scenario)'), 1);
+  const phaseEditor = h.run(`sbUI().selected = ['b1']; renderStorylineView()`);
+  assert.ok(phaseEditor.includes('sl-replan') && phaseEditor.includes('still follow the previous version'));
+  const [s1, s2, s3] = h.json('getSortedStimuli().map(s => s.id)');
+  const calls = mockAI(h, [payload => ({ block: { brief: 'The AI must not change this', beats: [
+    { id: 'k1', at: 5, channel: 'email_internal', cast: 'cast_ciso', title: 'Encrypted shares', intent: 'Files unreadable' },
+    { id: 'k2', at: 20, channel: 'email_internal', cast: 'cast_ciso', title: 'Two' },
+    { at: 40, channel: 'email_internal', cast: 'cast_ciso', cell: payload.context?.cells?.[0]?.id, title: 'Call from the attacker', intent: 'Pressure on the CEO' }] } })]);
+  await h.run(`SbPipeline.applyImpacts(sbComputeImpacts(appState.scenario))`);
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].payload.instruction.includes('rewrote what happens'));
+  const block = h.json(`sbBlock(sbStoryboard(), 'b1')`);
+  assert.equal(block.brief, 'Ransomware encrypts the file servers; the attacker calls the CEO', 'the designer text stays');
+  assert.deepEqual(block.beats.map(b => b.title), ['Encrypted shares', 'Two', 'Call from the attacker']);
+  const after = h.json('Object.fromEntries(appState.scenario.stimuli.map(s => [s.id, { at: s.timestamp_offset_minutes, subject: s.fields.subject, beat: s.scenario_link?.beat_id }]))');
+  assert.equal(after[s1].at, 5, 'retimed by the new plan');
+  assert.match(after[s1].subject, /^Fresh/, 'rewritten from the new plan');
+  assert.ok(!after[s3], 'the inject of a dropped planned item is removed');
+  assert.ok(after[s2], 'unchanged planned inject kept');
+  const newBeat = block.beats.find(b => b.title === 'Call from the attacker').id;
+  assert.ok(Object.values(after).some(item => item.beat === newBeat), 'the new planned inject is created and written');
+  assert.deepEqual(h.json('sbComputeImpacts(appState.scenario).map(i => i.kind)'), [], 'everything up to date after the cascade');
+
+  // Cells & actors: an actor renamed and a cell renamed adapt the injects concerned.
+  h.run(`{ const s = getStimulus('${s2}'); getActor(s.actor_id).name = 'Dana Scully'; }`);
+  let people = h.json('sbComputeImpacts(appState.scenario)');
+  assert.ok(people.length >= 1 && people.every(i => i.kind === 'people' && i.action === 'adapt'));
+  assert.match(people[0].detail, /sender changed \(Dana Scully\)/);
+  h.run(`appState.scenario.cells[0].name = 'Executive crisis cell'`);
+  people = h.json('sbComputeImpacts(appState.scenario)');
+  assert.ok(people.some(i => /recipient cell changed \(Executive crisis cell\)/.test(i.detail)));
+  const cells = h.run('renderCellsView()');
+  assert.ok(cells.includes('ce-update has-changes') && cells.includes('data-sb-modal="sync"'), 'Update on Cells & actors');
+  await h.run(`SbPipeline.applyImpacts(sbComputeImpacts(appState.scenario))`);
+  assert.deepEqual(h.json('sbComputeImpacts(appState.scenario).map(i => i.kind)'), []);
+  assert.ok(h.run('renderDetailedView()').includes('data-sb-modal="sync"'), 'Update on Detailed storyline');
 });

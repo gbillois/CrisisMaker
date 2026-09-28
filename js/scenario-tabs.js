@@ -35,6 +35,12 @@ function tabEmptyNote(text, route, label) {
   return `<div class="tab-empty"><p>${escapeHtml(text)}</p>${route ? `<button class="btn btn-primary btn-sm" data-route="${route}">${escapeHtml(label)}</button>` : ''}</div>`;
 }
 
+/* The Update button of the Main storyline, Cells & actors and Detailed storyline tabs:
+   one dialog that reflects every change in cascade (phases → plans → actors → injects). */
+function renderUpdateButton(project, pending = sbPendingSyncCount(project)) {
+  return `<button class="sb-tool sb-tool-label sb-update ${pending ? 'has-changes' : ''}" data-sb-action="open-modal" data-sb-modal="sync" title="${escapeAttribute(pending ? `${pending} change(s) to reflect in cascade: phases → inject plans → actors → injects` : 'Everything is up to date. Open to check.')}">${sbUiIcon('sync')}<span>Update</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>`;
+}
+
 // ═══ Main storyline ═════════════════════════════════════════════════════════
 function renderStorylineView() {
   return sbWithRenderMemo(() => {
@@ -61,6 +67,7 @@ function renderStorylineView() {
           <button class="sb-tool sb-tool-label" data-sb-action="deepen-all" ${ai && storyboard.blocks.length && !readOnly ? '' : 'disabled'} title="Write the details of every phase with AI">${sbUiIcon('layers')}<span>Detail with AI</span></button>
           <button class="sb-tool sb-tool-label" data-route="scenario" title="Start again: generate with AI in Context, or pick a scenario in the Project library.">${sbUiIcon('wand')}<span>Start from…</span></button>
         </div>
+        <div class="sb-tb-group sb-tb-output">${renderUpdateButton(project)}</div>
       </header>
       ${renderSbStatusBar()}
       <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'scenario', 'Context')}</div>
@@ -76,7 +83,6 @@ function renderPhaseEditor(storyboard, block) {
   const project = appState.scenario;
   const readOnly = sbReadOnly() || block.locked ? 'disabled' : '';
   const ui = sbUI();
-  const objectives = sbObjectivesList(project);
   const counts = new Map();
   block.beats.forEach((beat) => counts.set(beat.cell_id, (counts.get(beat.cell_id) || 0) + 1));
   const ai = isLLMAvailable();
@@ -95,12 +101,12 @@ function renderPhaseEditor(storyboard, block) {
     </div>
     <div class="bottom-editor-body sl-editor-body">
       <label class="sb-mini-field sl-what">What happens during this phase
-        <textarea data-sb-field="brief" rows="4" placeholder="${escapeAttribute((SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
+        <textarea data-sb-field="brief" rows="7" placeholder="${escapeAttribute(`In plain words, what happens during this phase: the events, what the players discover, the pressure they face. ${(SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint}`)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
       </label>
       <div class="sl-side">
-        ${objectives.length ? `<div class="sb-mini-field">Objectives tested<div class="chip-toggles">${objectives.map((objective) => `<label class="chip-toggle"><input type="checkbox" data-sb-objective="${escapeAttribute(objective)}" ${block.objectives.includes(objective) ? 'checked' : ''} ${readOnly}><span>${escapeHtml(objective)}</span></label>`).join('')}</div></div>` : ''}
+        ${sbNeedsReplan(block) ? `<div class="sl-replan">${sbUiIcon('alert', 14)}<span>What happens changed: the ${block.beats.length} planned inject(s) still follow the previous version.</span>${renderUpdateButton(project)}</div>` : ''}
         <div class="sl-injects">${block.beats.length ? `<b>${block.beats.length}</b> injects planned · ${(project.cells || []).filter((cell) => counts.get(cell.id)).map((cell) => `<span class="cell-dot" style="--cell-color:${cell.color}"></span>${escapeHtml(cell.name)} ${counts.get(cell.id)}`).join(' · ')}` : 'No inject planned in this phase yet.'} <button class="btn btn-ghost btn-xs" data-tab-action="open-detailed" data-tab-value="${block.id}">Detailed storyline →</button></div>
-        <details class="sl-details"><summary>Details: hidden story, dilemmas, notes</summary>
+        <details class="sl-details"><summary>Behind the scenes: hidden story, dilemmas, facilitation notes</summary>
           <textarea data-sb-field="narrative" rows="4" placeholder="What really happens, what players know and do not know, decisions and dilemmas" ${readOnly}>${escapeHtml(block.narrative)}</textarea>
           <textarea data-sb-field="notes" rows="2" placeholder="Facilitation notes" ${readOnly}>${escapeHtml(block.notes)}</textarea>
         </details>
@@ -123,7 +129,12 @@ function renderCellsView() {
     const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
     const missingPresets = SB_CELL_PRESETS.filter((preset) => !project.cells.some((cell) => cell.key === preset.key));
     const actorsPlaceholder = 'Ex: "Journalists from a national daily and a TV channel, the national cyber agency, the data protection authority, an angry B2C customer on social media and the ransomware group."';
+    const pending = sbPendingSyncCount(project);
     return `<section class="tab-page ce-page" data-sb-scope>
+      <div class="ce-update ${pending ? 'has-changes' : ''}">
+        <span>${pending ? `${sbUiIcon('alert', 14)} <b>${pending}</b> change(s) not yet reflected in the injects.` : `${sbUiIcon('checkCircle', 14)} Injects are up to date with the cells and actors.`} <span class="subtle">Renamed a cell, changed its mission or edited an actor? Update adapts the injects concerned.</span></span>
+        ${renderUpdateButton(project, pending)}
+      </div>
       <article class="card">
         <div class="section-header">
           <div><h3>Player cells</h3><p class="subtle">Groups of participants who receive injects. ${players} player(s) listed${project.exercise.players_count ? ` of ${escapeHtml(project.exercise.players_count)} expected` : ''}.</p></div>
@@ -183,6 +194,7 @@ function renderCellsView() {
         <div class="section-header"><div><h3>Storyline roles</h3><p class="subtle">Roles used as senders in the storyline, and the actor who plays each of them.</p></div></div>
         <div class="ce-roles">${renderSbCast(storyboard)}</div>
       </article>
+      ${renderSbModal(storyboard)}
     </section>`;
   });
 }
@@ -232,7 +244,7 @@ function renderDetailedView() {
           <span class="ds-plan"><input type="number" min="1" max="10" data-tab-ui="planCount" value="${state.planCount}" aria-label="Number of injects to plan" ${cellScope ? '' : 'disabled'}><button class="sb-tool sb-tool-label" data-tab-action="ds-plan" ${ai && cellScope && !readOnly ? '' : 'disabled'} title="${cellScope ? `Plan injects for the ${escapeAttribute(cellScope.name)} in the phase at the playhead` : 'Select a cell first'}">${sbUiIcon('wand')}<span>Plan with AI</span></button></span>
         </div>
         <div class="sb-tb-group sb-tb-output">
-          <button class="sb-tool sb-tool-label" data-sb-action="open-modal" data-sb-modal="sync" title="Propagate storyline changes">${sbUiIcon('sync')}<span>Sync</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>
+          ${renderUpdateButton(project, pending)}
           <button class="btn btn-primary btn-sm" data-tab-action="ds-generate" ${readOnly ? 'disabled' : ''}>${sbUiIcon('play', 13)} Generate${missing ? ` <span class="sb-count sb-count-light">${missing}</span>` : ''}</button>
         </div>
       </header>
@@ -835,6 +847,7 @@ function dsAddInject(project) {
   const beat = sbMakeBeat({ offset_minutes: Math.max(0, Math.min(state.playhead - block.start_minutes, block.duration_minutes - 1)), channel, cell_id: cellId, title: 'New inject' });
   block.beats.push(beat);
   block.beats.sort((a, b) => a.offset_minutes - b.offset_minutes);
+  if (!block.plan_hash) sbMarkPlanned(block);
   block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
   StoryboardHistory.commit('Add inject');
   state.selected = `beat:${beat.id}`;

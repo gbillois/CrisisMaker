@@ -233,7 +233,9 @@ function sbNormalizeBlock(input = {}, storyboard = null) {
     locked: input.locked === true,
     color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : '',
     notes: sbText(input.notes, 4000),
-    ai_rev: Number.isInteger(input.ai_rev) ? input.ai_rev : null
+    ai_rev: Number.isInteger(input.ai_rev) ? input.ai_rev : null,
+    // Hash of what the phase said when its inject plan was made (see sbPlanSourceHash).
+    plan_hash: sbText(input.plan_hash, 40)
   };
 }
 
@@ -324,6 +326,9 @@ function sbNormalizeLink(link) {
     at: Number.isFinite(Number(link.at)) ? Number(link.at) : null,
     source_hash: sbText(link.source_hash, 40),
     content_hash: sbText(link.content_hash, 40),
+    // Sender and recipient cell as they were when the inject was written.
+    actor_hash: sbText(link.actor_hash, 40),
+    cell_hash: sbText(link.cell_hash, 40),
     rev: sbInt(link.rev, 0, 0, Number.MAX_SAFE_INTEGER),
     locked: link.locked === true
   };

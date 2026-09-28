@@ -3670,6 +3670,7 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sb-tb-name { display: block; font-size: 1.02rem; color: var(--primary-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; }
 .sb-workspace.is-compact .sb-toolbar { padding: 6px 10px; gap: 8px; }
 .sb-workspace.is-compact .sb-tool-label span { display: none; }
+.sb-workspace .sb-update span:not(.sb-count) { display: inline !important; }
 .sb-workspace.is-compact .sb-tb-title { min-width: 140px; flex-basis: 180px; }
 .sb-workspace.is-compact .sb-tb-name { font-size: 0.92rem; max-width: 240px; }
 .sb-workspace.is-compact .sb-eyebrow { font-size: 0.6rem; }
@@ -3753,7 +3754,17 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sb-workspace .sl-add select { width: auto; min-height: 30px; padding: 3px 6px; border: none; background: transparent; font-weight: 700; }
 .sl-editor-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; }
 .sl-what { grid-template-rows: auto minmax(0, 1fr); align-content: stretch; }
-.sl-what textarea { min-height: 110px; height: 100%; resize: vertical; }
+.sl-what textarea { min-height: 150px; height: 100%; resize: vertical; font-size: 0.95rem; line-height: 1.55; }
+.sl-replan { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; background: #fff7e8; border-left: 3px solid var(--warning); font-size: 0.82rem; color: var(--primary-strong); }
+.sl-replan > span { flex: 1; min-width: 180px; }
+.sl-replan .sb-update { height: 32px; }
+.sb-update { display: inline-flex; align-items: center; gap: 6px; }
+.sb-update.has-changes { border-color: var(--warning) !important; }
+.sb-cascade { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; background: var(--indigo-tint); border-left: 3px solid var(--indigo); }
+.ce-update { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px; background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--green); font-size: 0.86rem; }
+.ce-update.has-changes { border-left-color: var(--warning); }
+.ce-update .subtle { display: block; font-size: 0.78rem; margin-top: 2px; }
+.ce-update .sb-update { height: 36px; padding: 0 12px; background: var(--sb-panel-alt); border: 1px solid var(--sb-line); cursor: pointer; font: inherit; font-weight: 600; color: var(--primary-strong); }
 .sl-side { display: grid; gap: 10px; align-content: start; }
 .chip-toggles { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 0; border: 1px solid var(--sb-line); background: var(--sb-panel-alt); font-size: 0.74rem; font-weight: 500; color: var(--text); cursor: pointer; }

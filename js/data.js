@@ -300,6 +300,8 @@
         if (storyboardModelLoaded() && (merged.storyboard.blocks.length || !Array.isArray(input.scenario?.phases))) merged.scenario.phases = sbDerivePhases(merged.storyboard);
         if (!input.scenario || !('objectives' in input.scenario)) delete merged.scenario.objectives;
         normalizeProviderSettingsInPlace(merged.settings);
+        // Baselines for change tracking (inject plans, senders, cells) on older projects.
+        if (storyboardModelLoaded() && typeof sbSealLinks === 'function') sbSealLinks(merged);
         return merged;
       }
 

@@ -625,7 +625,11 @@ function sbBindInputs(root) {
           if (title) title.textContent = input.value;
         }
       });
-      input.addEventListener('change', () => StoryboardHistory.flush());
+      input.addEventListener('change', () => {
+        StoryboardHistory.flush();
+        // Title and "what happens" feed the inject plan: refresh the timeline and the Update count.
+        if (['title', 'brief'].includes(field)) App.render();
+      });
       return;
     }
     input.addEventListener('change', () => {

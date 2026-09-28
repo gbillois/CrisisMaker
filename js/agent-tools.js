@@ -286,7 +286,7 @@ function createAgentToolRegistry() {
     (args.cast || []).forEach(item => { const cast = project.storyboard.cast.find(entry => entry.label === item.label); if (cast) castMap.set(item.key, cast.id); });
     sbMainBlocks(project.storyboard).forEach((block, index) => {
       const beats = args.phases[index]?.beats || [];
-      if (beats.length) { block.beats = sbBeatsFromAI(project.storyboard, beats, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) })); block.stimuli_target = Math.max(block.stimuli_target, block.beats.length); }
+      if (beats.length) { block.beats = sbBeatsFromAI(project.storyboard, beats, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) })); block.stimuli_target = Math.max(block.stimuli_target, block.beats.length); sbMarkPlanned(block); }
     });
     if (!cells.length) sbAssignMissingCells(project);
     StoryboardHistory.ensure(project, 'Agent: main storyline');
@@ -348,6 +348,7 @@ function createAgentToolRegistry() {
     const planned = sbBeatsFromAI(project.storyboard, args.injects, castMap, project).map(beat => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, block.duration_minutes - 1) }));
     const kept = args.replace ? block.beats.filter(beat => sbStimulusForBeat(project, beat.id)) : block.beats;
     block.beats = [...kept, ...planned].slice(0, SB_MAX_BEATS).sort((a, b) => a.offset_minutes - b.offset_minutes);
+    sbMarkPlanned(block);
     block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
     block.key_cast = [...new Set(block.beats.map(beat => beat.cast_id).filter(Boolean))];
     StoryboardHistory.commit('Agent: plan injects');

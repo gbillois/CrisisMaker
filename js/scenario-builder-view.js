@@ -509,16 +509,21 @@ function renderSbSyncModal(storyboard) {
   const ui = sbUI();
   if (!ui.impacts) ui.impacts = sbComputeImpacts(appState.scenario);
   const impacts = ui.impacts;
+  // In cascade order: phases, then actors, then the injects.
   const kinds = [
-    ['retime', 'Timing', 'Blocks or planned injects moved: injects are rescheduled; content is untouched.'],
-    ['outdated', 'Content', 'Brief, narrative or inject plan changed after the inject was written. Manual edits are adapted, not overwritten.'],
-    ['orphan', 'Orphans', 'Injects whose block or planned item was removed.'],
-    ['missing', 'New injects', 'Planned injects without a stimulus yet.'],
+    ['replan', 'Phases', 'What happens changed: the AI updates the inject plan of the phase, then its injects follow (timing, content, new and removed injects).'],
     ['actor_missing', 'Missing actors', 'Roles used by planned injects without an actor.'],
-    ['actor_outdated', 'Actors', 'Roles changed since their actor was created.']
+    ['actor_outdated', 'Actors', 'Roles changed since their actor was created.'],
+    ['retime', 'Timing', 'Phases or planned injects moved: injects are rescheduled; content is untouched.'],
+    ['outdated', 'Content', 'The storyline or the inject plan changed after the inject was written. Manual edits are adapted, not overwritten.'],
+    ['people', 'Senders and cells', 'An actor or a cell was edited in Cells & actors after the inject was written: names, signatures and tone are adapted.'],
+    ['orphan', 'Orphans', 'Injects whose phase or planned item was removed.'],
+    ['missing', 'New injects', 'Planned injects without a stimulus yet.']
   ];
-  const actionLabels = { apply: 'Apply', skip: 'Skip', unlink: 'Keep, unlink', delete: 'Delete inject', regenerate: 'Regenerate', adapt: 'Adapt, keep manual edits', accept: 'Keep as is', create: 'Create', update: 'Update actor' };
-  const body = `${impacts.length ? kinds.map(([kind, title, help]) => {
+  const actionLabels = { apply: 'Apply', skip: 'Skip', unlink: 'Keep, unlink', delete: 'Delete inject', regenerate: 'Regenerate', adapt: 'Adapt, keep manual edits', accept: 'Keep as is', create: 'Create', update: 'Update actor', replan: 'Re-plan with AI' };
+  const body = `<p class="sb-help sb-cascade">${sbUiIcon('sync', 13)} Changes flow down in cascade: <b>phases</b> → <b>inject plan</b> → <b>actors</b> → <b>timing and content of the injects</b>. One undo restores everything.</p>
+    ${!isLLMAvailable() && impacts.some((impact) => ['replan', 'outdated', 'people'].includes(impact.kind)) ? '<p class="agent-warning">AI is not configured: re-planning a phase and rewriting injects need an AI connection (Settings). Timing, orphans and actors can still be updated.</p>' : ''}
+    ${impacts.length ? kinds.map(([kind, title, help]) => {
       const list = impacts.filter((impact) => impact.kind === kind);
       if (!list.length) return '';
       return `<section class="sb-sync-group"><h4>${escapeHtml(title)} · ${list.length}</h4><p class="sb-help">${escapeHtml(help)}</p>
@@ -526,13 +531,13 @@ function renderSbSyncModal(storyboard) {
           <span class="sb-sync-label">${escapeHtml(impact.label)}${impact.manual ? ' <span class="sb-status is-manual">manual</span>' : ''}<small>${escapeHtml(impact.detail || '')}</small></span>
           <select data-sb-impact="${impact.id}" ${SbPipeline.active ? 'disabled' : ''}>${impact.options.map((option) => sbOption(option, actionLabels[option] || option, impact.action)).join('')}</select>
         </li>`).join('')}</ul></section>`;
-    }).join('') : '<p class="sb-empty">Everything is in sync: injects and actors match the storyboard.</p>'}
+    }).join('') : '<p class="sb-empty">Everything is up to date: the inject plans, actors and injects match the storyline, the cells and the actors.</p>'}
     ${SbPipeline.log.length ? `<ol class="agent-log sb-log">${SbPipeline.log.slice(-12).map((entry) => `<li class="agent-log-${entry.kind === 'error' ? 'error' : entry.kind === 'warning' ? 'warning' : 'success'}"><span>${escapeHtml(entry.message)}</span></li>`).join('')}</ol>` : ''}`;
   const count = impacts.filter((impact) => impact.action !== 'skip').length;
   const footer = `${SbPipeline.checkpoint && SbPipeline.checkpoint.projectId === appState.scenario.id && !SbPipeline.active ? `<button class="btn btn-ghost btn-sm" data-sb-action="undo-generation">${sbUiIcon('undo', 13)} Undo ${escapeHtml(SbPipeline.checkpoint.label)}</button>` : ''}
     <button class="btn btn-secondary btn-sm" data-sb-action="refresh-sync" ${SbPipeline.active ? 'disabled' : ''}>${sbUiIcon('sync', 13)} Refresh</button>
-    ${SbPipeline.active ? `<button class="btn btn-secondary btn-sm" data-sb-action="stop-pipeline">${sbUiIcon('stop', 13)} Stop</button>` : `<button class="btn btn-primary btn-sm" data-sb-action="apply-sync" ${count && !sbReadOnly() ? '' : 'disabled'}>Apply ${count} change(s)</button>`}`;
-  return sbModalShell('Synchronise actors and injects', body, footer, 'sb-modal-wide');
+    ${SbPipeline.active ? `<button class="btn btn-secondary btn-sm" data-sb-action="stop-pipeline">${sbUiIcon('stop', 13)} Stop</button>` : `<button class="btn btn-primary btn-sm" data-sb-action="apply-sync" ${count && !sbReadOnly() ? '' : 'disabled'}>${sbUiIcon('sync', 13)} Update ${count} change(s)</button>`}`;
+  return sbModalShell('Update the exercise', body, footer, 'sb-modal-wide');
 }
 
 function renderSbPreviewModal() {
