@@ -4456,3 +4456,18 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .ev-injects summary { cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--primary-strong); }
 .ev-injects ol { margin: 8px 0 0; padding-left: 20px; font-size: 0.82rem; display: grid; gap: 3px; }
 @media (max-width: 900px) { .ev-table, .ev-table tbody, .ev-table tr, .ev-table td { display: block; width: 100% !important; } .ev-table thead { display: none; } .ev-table tr { border-bottom: 1px solid var(--line); padding: 6px 0; } }
+
+/* Phones: every tab icon fits the bar; the storyline timelines keep a usable height. */
+@media (max-width: 768px) {
+  .nav-topbar { padding: 0 4px; }
+  .nav-topbar-left { overflow: visible; }
+  .nav-topbar-left .nav-icon-btn { flex: 1 1 0; min-width: 0; padding: 0 2px; justify-content: center; }
+  .nav-topbar-left .nav-icon-btn svg { width: 18px; height: 18px; }
+}
+@media (max-width: 900px) {
+  .sl-workspace .sl-timeline { overflow: visible; min-height: 0; }
+  .sl-workspace .sl-timeline > .sb-timeline-panel { flex: none; }
+  .sl-workspace .sl-timeline .sb-timeline-scroll, .ds-workspace .ds-scroll { flex: none; max-height: 60vh; }
+  .sl-workspace .sl-timeline, .ds-workspace .ds-timeline { flex: none; min-height: 0; }
+  .sl-workspace .bottom-editor, .ds-workspace .bottom-editor { flex: none; }
+}
