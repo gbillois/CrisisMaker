@@ -1100,7 +1100,7 @@ INSTRUCTIONS:
 - body explains what actually happened with concrete technical and business detail
 - Use exactly these phase ids: prelude, detonation, fallout
 - Severity is an integer from 1 to 5
-- Give each event a meaningful time label such as J-21, H0, H+2, Day +5, or Week +6
+- Give each event a meaningful time label in ${languageName}, such as ${{ French: 'J-21, H0, H+2, J+5 or S+6', German: 'T-21, H0, H+2, Tag +5 or Woche +6' }[languageName] || 'D-21, H0, H+2, Day +5 or Week +6'}
 - Add a real-world location and [latitude, longitude] coordinates whenever relevant, so the interactive globe can tell the story
 - Include impacts, costs, and evidence when relevant
 - Write all generated text in ${languageName}
@@ -1117,7 +1117,7 @@ Return this structure:
   "events": [
     {
       "phase": "prelude | detonation | fallout",
-      "dateLabel": "J-21 | H0 | Day +5",
+      "dateLabel": "${{ French: 'J-21 | H0 | J+5', German: 'T-21 | H0 | Tag +5' }[languageName] || 'D-21 | H0 | Day +5'}",
       "title": "What really happened",
       "location": "City, country or meaningful global location",
       "coords": [48.86, 2.35],
