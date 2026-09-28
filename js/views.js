@@ -627,6 +627,7 @@
 
         return `
           <section class="grid">
+            ${renderPlayGenerate(playReadiness(appState.scenario))}
             <div class="library-filter-bar">
               <select data-library-filter="phase">
                 <option value="">${tt('All phases', 'Toutes les phases', 'Alle Phasen')}</option>
@@ -660,7 +661,6 @@
               </select>
               <span style="color:var(--muted); font-size:0.85rem; margin-left:auto;">${filtered.length}/${allStimuli.length} ${tt('injects', 'injects', 'Injects')}</span>
               <button class="btn btn-primary" data-action="add-stimulus">${tt('+ Add inject', '+ Ajouter un inject', '+ Inject hinzufügen')}</button>
-              <button class="btn btn-secondary" data-action="export-all" ${appState.ui?.actionLoading?.['export-all'] ? 'disabled' : ''}>${exportAllProgressLabel(tt('Export ZIP', 'Exporter ZIP', 'ZIP exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>
               <button class="btn btn-secondary" data-action="import-custom-template">${tt('Import template', 'Importer un template', 'Vorlage importieren')}</button>
             </div>
             ${(appState.scenario.custom_templates || []).length ? `

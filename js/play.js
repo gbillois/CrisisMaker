@@ -195,7 +195,6 @@ function renderPlayView() {
   const visible = playSort(playFilter(items, ui, now), ui.sort);
   const phases = project.storyboard ? sbMainBlocks(project.storyboard) : [];
   return `<section class="tab-page play-page ${ui.logOpen ? 'has-log' : ''}" data-play-root>
-    ${renderPlayGenerate(counts)}
     ${renderPlayBar(project, play, ui, items, now, counts, phases)}
     <div class="play-main">
     <article class="card play-chrono">
@@ -208,11 +207,19 @@ function renderPlayView() {
   </section>`;
 }
 
+/* The injects written and still to write, as the Play tab counts them. */
+function playReadiness(project) {
+  const items = playItems(project);
+  const written = items.filter((item) => item.stimulus);
+  return { total: written.length, sent: written.filter((i) => i.status === 'sent').length, ready: written.filter((i) => i.status === 'ready').length, draft: written.filter((i) => i.status === 'draft').length, planned: items.length - written.length };
+}
+
+/* Download every stimulus (shown in the Injects library). */
 function renderPlayGenerate(counts) {
   const exporting = !!appState.ui?.actionLoading?.['export-all'];
   return `<article class="card play-generate">
     <div class="play-generate-text">
-      <h3>${sbUiIcon('archive', 18)} ${tt('Generate all stimuli', 'Générer tous les stimuli', 'Alle Stimuli erzeugen')}</h3>
+      <h3>${sbUiIcon('archive', 18)} ${tt('Download all stimuli', 'Télécharger tous les stimuli', 'Alle Stimuli herunterladen')}</h3>
       <p class="subtle">${tt(`A ZIP with the ${counts.total} stimuli numbered in play order (#01 first), rendered as images, plus the chronogram (CSV for Excel) and the project file.`, `Un ZIP avec les ${counts.total} stimuli numérotés dans l’ordre de jeu (#01 en premier), en images, plus le chronogramme (CSV pour Excel) et le fichier projet.`, `Ein ZIP mit den ${counts.total} Stimuli in Spielreihenfolge nummeriert (#01 zuerst), als Bilder, plus Chronogramm (CSV für Excel) und Projektdatei.`)}</p>
       <div class="play-readiness">
         <span class="play-chip is-ready">${counts.ready} ${playStatusLabel('ready')}</span>
@@ -221,7 +228,7 @@ function renderPlayGenerate(counts) {
         ${counts.planned ? `<span class="play-chip is-planned">${counts.planned} ${tt('planned, not written', 'prévus non rédigés', 'geplant, nicht geschrieben')}</span><button class="btn btn-ghost btn-xs" data-route="detailed">${tt('Write them', 'Les rédiger', 'Schreiben')} ${sbUiIcon('chevronRight', 12)}</button>` : ''}
       </div>
     </div>
-    <button class="btn btn-primary play-generate-btn" data-action="export-all" ${counts.total && !exporting ? '' : 'disabled'}>${sbUiIcon(exporting ? 'clock' : 'download', 16)} ${exportAllProgressLabel(tt('Generate all stimuli (.zip)', 'Générer tous les stimuli (.zip)', 'Alle Stimuli erzeugen (.zip)'), tt('Generating…', 'Génération…', 'Wird erzeugt…'))}</button>
+    <button class="btn btn-primary play-generate-btn" data-action="export-all" ${counts.total && !exporting ? '' : 'disabled'}>${sbUiIcon(exporting ? 'clock' : 'download', 16)} ${exportAllProgressLabel(tt('Download all stimuli (.zip)', 'Télécharger tous les stimuli (.zip)', 'Alle Stimuli herunterladen (.zip)'), tt('Generating…', 'Génération…', 'Wird erzeugt…'))}</button>
   </article>`;
 }
 

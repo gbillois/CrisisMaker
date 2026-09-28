@@ -13,8 +13,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await page.click('.launch-hero-close');
   await page.click('.nav-icon-btn[data-route="play"]');
 
-  // Generate block, permanent bar, chronogram by phase, log panel.
-  assert.ok(await page.isVisible('.play-generate [data-action="export-all"]'));
+  // Permanent bar, chronogram by phase, log panel; the download of every stimulus is in the Injects library.
+  assert.equal(await page.locator('.play-generate').count(), 0);
   assert.ok(await page.isVisible('[data-play-bar] [data-play="toggle"]'));
   assert.equal(await page.locator('.play-phase-group').count(), await page.evaluate(() => sbMainBlocks(sbStoryboard()).length));
   // The log is hidden in a pane, opened from the control bar.

@@ -249,16 +249,23 @@ function renderRecipientPicker(project, itemKey, cellId, readOnly) {
   </div>`;
 }
 
-/* Opens the full editor of a key stimulus, creating its inject first (empty, without AI)
-   when it is still only planned; its phase is selected in the timeline. */
+/* Opens the full editor of a key stimulus; its phase is selected in the timeline. */
 async function slOpenKeyEditor(project, beatId) {
   const found = slFindBeat(project.storyboard, beatId);
   if (!found) return;
   sbUI().selected = [found.block.id];
-  let stimulus = sbStimulusForBeat(project, beatId);
-  if (!stimulus && !sbReadOnly()) {
-    await SbPipeline.run({ blockIds: [found.block.id], beatIds: [beatId], plan: false, cast: true, write: false });
-    stimulus = sbStimulusForBeat(project, beatId);
+  await openItemEditor(project, `beat:${beatId}`);
+}
+
+/* Opens the full inject editor of an item, creating its inject first (empty, without AI)
+   when it is still only planned. */
+async function openItemEditor(project, key) {
+  const item = tabItemByKey(project, key);
+  if (!item) return;
+  let stimulus = item.stimulus;
+  if (!stimulus && item.kind === 'beat' && !sbReadOnly()) {
+    await SbPipeline.run({ blockIds: [item.block.id], beatIds: [item.beat.id], plan: false, cast: true, write: false });
+    stimulus = sbStimulusForBeat(project, item.beat.id);
   }
   if (!stimulus) return;
   appState.selectedStimulusId = stimulus.id;
@@ -1544,6 +1551,16 @@ function dsBindTimeline(root) {
     card.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
       const key = card.dataset.dsItem;
+      // Double-click (two presses on the same inject): the full inject editor. Detected here:
+      // the first click re-renders the card, so the browser never sees a dblclick.
+      const now = Date.now();
+      if (dsLastPress.key === key && now - dsLastPress.at < 400) {
+        dsLastPress = { key: '', at: 0 };
+        event.preventDefault();
+        openItemEditor(project, key).catch((error) => pushToast(sbErrorMessage(error), 'error')).finally(() => App.render());
+        return;
+      }
+      dsLastPress = { key, at: now };
       state.selected = key;
       if (sbReadOnly()) { App.render(); return; }
       event.preventDefault();
@@ -1590,6 +1607,8 @@ function dsBindTimeline(root) {
     });
   });
 }
+
+let dsLastPress = { key: '', at: 0 };
 
 function bindScenarioTabsEvents() {
   if (!['scenario', 'storyline', 'cells', 'detailed', 'summary'].includes(appState.route)) {
