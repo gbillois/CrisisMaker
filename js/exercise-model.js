@@ -64,13 +64,14 @@ const ExerciseModel = {
     const phases = storyboard ? sbMainBlocks(storyboard) : [];
     const numbers = this.numbers(project);
     const total = numbers.size;
-    const injects = (storyboard ? sbExerciseItems(project) : this.stimuliOnly(project)).map((item) => {
+    // Sync statuses cost hashing: computed only when a view reads inject.sync.
+    const injects = (storyboard ? sbExerciseItems(project, { status: false }) : this.stimuliOnly(project)).map((item) => {
       const stimulus = item.stimulus || null;
       const phase = stimulus ? this.phaseOfStimulus(project, stimulus) : this.phaseOfPlanned(project, item.block, item.time);
       const cell = sbCell(project, stimulus?.cell_id || item.cell_id) || null;
       const actor = stimulus ? (project.actors || []).find((entry) => entry.id === stimulus.actor_id) || null : null;
       const number = stimulus ? numbers.get(stimulus.id) || null : null;
-      return {
+      const inject = {
         key: item.key,
         stimulus, beat: item.beat || null, block: item.block || null,
         phase, phase_id: phase?.id || '',
@@ -81,9 +82,17 @@ const ExerciseModel = {
         channel: stimulus?.channel || item.channel,
         title: item.title, intent: item.intent,
         run: this.runStatus(stimulus),
-        sync: stimulus ? (sbStimulusLink(stimulus) ? item.status : 'unlinked') : 'planned',
         number, numberLabel: number ? this.numberLabel(number, total) : ''
       };
+      let sync;
+      Object.defineProperty(inject, 'sync', {
+        enumerable: true,
+        get() {
+          if (sync === undefined) sync = !stimulus ? 'planned' : !sbStimulusLink(stimulus) ? 'unlinked' : (storyboard ? sbStimulusStatus(project, stimulus)?.key : null) || 'unlinked';
+          return sync;
+        }
+      });
+      return inject;
     });
     return {
       project, storyboard, phases,

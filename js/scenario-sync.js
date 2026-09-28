@@ -16,12 +16,31 @@ function sbStimulusContentHash(stimulus) {
   sbRenderMemo?.hashes.set(stimulus, hash);
   return hash;
 }
+/* Hashes are reused while the values they cover are the same (compared with ===), so
+   renders and the Update count do not re-hash long texts. The hash itself is unchanged. */
+const SB_HASH_CACHE = new WeakMap();
+function sbCachedHash(owner, slot, parts, compute) {
+  if (!owner || typeof owner !== 'object') return compute();
+  let entry = SB_HASH_CACHE.get(owner);
+  if (!entry) { entry = {}; SB_HASH_CACHE.set(owner, entry); }
+  const cached = entry[slot];
+  if (cached && cached.parts.length === parts.length && cached.parts.every((value, index) => value === parts[index])) return cached.hash;
+  const hash = compute();
+  entry[slot] = { parts, hash };
+  return hash;
+}
 function sbComputeStimulusContentHash(stimulus) {
-  const fields = Object.fromEntries(Object.entries(stimulus.fields || {}).filter(([key]) => !SB_MEDIA_FIELD.test(key)));
-  return sbHash({ fields, name: stimulus.name || '', actor_id: stimulus.actor_id, channel: stimulus.channel, template_id: stimulus.template_id });
+  const entries = Object.entries(stimulus.fields || {}).filter(([key]) => !SB_MEDIA_FIELD.test(key));
+  const compute = () => sbHash({ fields: Object.fromEntries(entries), name: stimulus.name || '', actor_id: stimulus.actor_id, channel: stimulus.channel, template_id: stimulus.template_id });
+  // Nested values (lists) can change in place: only flat fields are cached.
+  if (entries.some(([, value]) => value !== null && typeof value === 'object')) return compute();
+  return sbCachedHash(stimulus, 'content', [stimulus.name, stimulus.actor_id, stimulus.channel, stimulus.template_id, ...entries.flat()], compute);
 }
 function sbBeatSourceHash(block, beat) {
-  return sbHash({ block: [block.title, block.brief, block.narrative, block.objectives], beat: beat ? [beat.title, beat.intent, beat.channel, beat.template_id, beat.cast_id, beat.cell_id] : null });
+  const compute = () => sbHash({ block: [block.title, block.brief, block.narrative, block.objectives], beat: beat ? [beat.title, beat.intent, beat.channel, beat.template_id, beat.cast_id, beat.cell_id] : null });
+  const parts = [block.title, block.brief, block.narrative, ...(block.objectives || []), (block.objectives || []).length];
+  if (beat) parts.push(beat.title, beat.intent, beat.channel, beat.template_id, beat.cast_id, beat.cell_id);
+  return sbCachedHash(beat || block, beat ? 'source' : 'block-source', beat ? [block, ...parts] : parts, compute);
 }
 /* What a phase says, as far as its inject plan is concerned: its title and what happens. */
 function sbPlanSourceHash(block) {
@@ -635,7 +654,7 @@ const SB_REPLAN_INSTRUCTION = 'The designer rewrote what happens during this pha
 // ── Whole-exercise view: every planned or written inject ─────────────────────
 /* Planned injects (beats, with their stimulus when generated) plus stimuli that are
    not attached to a planned inject (manual, imported or orphan). Sorted by time. */
-function sbExerciseItems(project = appState.scenario) {
+function sbExerciseItems(project = appState.scenario, { status: withStatus = true } = {}) {
   const storyboard = project.storyboard;
   const items = [];
   const beatIds = new Set();
@@ -643,7 +662,7 @@ function sbExerciseItems(project = appState.scenario) {
     for (const beat of block.beats) {
       beatIds.add(beat.id);
       const stimulus = sbStimulusForBeat(project, beat.id);
-      const status = stimulus ? sbStimulusStatus(project, stimulus) : null;
+      const status = stimulus && withStatus ? sbStimulusStatus(project, stimulus) : null;
       items.push({
         key: `beat:${beat.id}`, kind: 'beat', block, beat, stimulus,
         time: stimulus ? stimulus.timestamp_offset_minutes : sbBeatAbsolute(block, beat),
@@ -658,7 +677,7 @@ function sbExerciseItems(project = appState.scenario) {
   for (const stimulus of project.stimuli || []) {
     const beatId = sbStimulusLink(stimulus)?.beat_id;
     if (beatId && beatIds.has(beatId)) continue;
-    const status = sbStimulusStatus(project, stimulus);
+    const status = withStatus ? sbStimulusStatus(project, stimulus) : null;
     items.push({
       key: `stim:${stimulus.id}`, kind: 'stimulus', block: storyboard ? sbMainBlockAt(storyboard, stimulus.timestamp_offset_minutes) : null, beat: null, stimulus,
       time: stimulus.timestamp_offset_minutes, cell_id: stimulus.cell_id || '', channel: stimulus.channel,
