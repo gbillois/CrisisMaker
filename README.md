@@ -182,7 +182,10 @@ Under the hood:
   storyline, detail every phase or one phase, rewrite a phase from an instruction,
   plan injects for one cell, suggest roles, and review the whole exercise. Every AI
   operation saves a version first and is a single undo step.
-- **History**: undo/redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z), automatic versions (before
+- **History**: undo/redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, on Main storyline, Cells & actors
+  and Detailed storyline; a text field keeps its own undo). An edit that also changes cells,
+  actors or written injects (moving or deleting an inject, adding or deleting a cell,
+  deleting an actor) is one undo step for all of them. Automatic versions (before
   AI operations, generations and restores, and every five minutes while editing, kept
   in the browser's IndexedDB), named and "validated" versions saved with the project,
   and a diff before restoring.

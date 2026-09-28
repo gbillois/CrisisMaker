@@ -174,6 +174,41 @@ function answerFor(system, user) {
   assert.ok(stimuli.every(s => s.cell === firstCell && s.linked), 'only the selected cell was generated');
   await page.click('[data-sb-action="close-modal"]');
 
+  // Drag a written inject onto another cell's row: its recipient changes (the tip says so), Ctrl+Z undoes it.
+  await page.click('[data-tab-action="ds-cell"][data-tab-value="all"]');
+  const secondCell = await page.evaluate(() => appState.scenario.cells[1].id);
+  const dragged = await page.evaluate((cell) => sbExerciseItems(appState.scenario).find((item) => item.stimulus && item.cell_id === cell)?.key, firstCell);
+  const card = await page.locator(`[data-ds-lane="${firstCell}"] [data-ds-item="${dragged}"]`).boundingBox();
+  const row = await page.locator(`[data-ds-lane="${secondCell}"]`).boundingBox();
+  await page.mouse.move(card.x + 20, card.y + card.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(card.x + 20, row.y + row.height / 2, { steps: 8 });
+  const tip = await page.locator('.sb-drag-tip').innerText();
+  assert.ok(tip.includes('→') && tip.includes(await page.evaluate((id) => sbCell(appState.scenario, id).name, secondCell)), `drag tip names the new cell (${tip})`);
+  await page.mouse.up();
+  const recipientOf = (key) => page.evaluate((key) => { const item = tabItemByKey(appState.scenario, key); return [item.cell_id, item.stimulus.cell_id]; }, key);
+  assert.deepEqual(await recipientOf(dragged), [secondCell, secondCell], 'dropped on another row: the recipient changes');
+  await page.keyboard.press('Control+z');
+  assert.deepEqual(await recipientOf(dragged), [firstCell, firstCell], 'Ctrl+Z restores the planned and the written inject');
+
+  // Cells & actors: deleting a cell is undone and redone from the keyboard, and stays deleted after a reload.
+  await page.click('.nav-icon-btn[data-route="cells"]');
+  const cellIds = await page.evaluate(() => appState.scenario.cells.map((cell) => cell.id));
+  await page.click(`[data-tab-action="delete-cell"][data-tab-value="${secondCell}"]`);
+  assert.equal(await page.evaluate(() => appState.scenario.cells.length), cellIds.length - 1);
+  await page.keyboard.press('Control+z');
+  assert.deepEqual(await page.evaluate(() => appState.scenario.cells.map((cell) => cell.id)), cellIds);
+  await page.keyboard.press('Control+Shift+z');
+  assert.deepEqual(await page.evaluate(() => appState.scenario.cells.map((cell) => cell.id)), cellIds.filter((id) => id !== secondCell));
+  // Undo inside a text field stays the field's own.
+  await page.fill(playerInput, 'Dr Ana Ruiz-Lopez');
+  await page.focus(playerInput);
+  await page.keyboard.press('Control+z');
+  assert.equal(await page.evaluate(() => appState.scenario.cells.length), cellIds.length - 1, 'Ctrl+Z in a field does not undo the storyline');
+  await page.fill(playerInput, 'Dr Ana Ruiz');
+  await page.dispatchEvent(playerInput, 'change');
+  await page.click('.nav-icon-btn[data-route="detailed"]');
+
   // 5. Check & Challenge: readiness, live checks, one AI challenge launched from its gauge.
   assert.equal(await page.evaluate(() => document.querySelector('.nav-icon-btn[data-route="checker"]')), null, 'no separate Checker tab');
   await page.click('.nav-icon-btn[data-route="summary"]');
@@ -204,6 +239,7 @@ function answerFor(system, user) {
   assert.equal(await page.evaluate(() => appState.scenario.storyboard.blocks.length), 3);
   assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
   assert.ok(await page.evaluate(() => appState.scenario.stimuli.every(s => s.cell_id)));
+  assert.deepEqual(await page.evaluate(() => appState.scenario.cells.map((cell) => cell.id)), cellIds.filter((id) => id !== secondCell), 'a deleted cell is not recreated on load');
   assert.deepEqual(errors, []);
   await browser.close();
   console.log('Scenario tabs browser smoke passed.');

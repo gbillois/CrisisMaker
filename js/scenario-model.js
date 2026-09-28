@@ -954,8 +954,10 @@ function sbMainBlockAt(storyboard, minute) {
 }
 
 /* Cells replace parallel workstreams: their injects move into the main phase covering
-   their time, addressed to the matching cell; the workstream blocks are removed. */
-function sbFlattenWorkstreams(project) {
+   their time, addressed to the matching cell; the workstream blocks are removed.
+   options.assignCells: false leaves injects without recipient as they are (a project that
+   already has cells: the designer may have removed a cell on purpose). */
+function sbFlattenWorkstreams(project, options = {}) {
   const storyboard = project.storyboard;
   if (!storyboard) return project;
   if (!Array.isArray(project.cells)) project.cells = [];
@@ -1000,7 +1002,7 @@ function sbFlattenWorkstreams(project) {
     storyboard.blocks = storyboard.blocks.filter((block) => block.track_id === main.id);
   }
   storyboard.tracks = [main];
-  sbAssignMissingCells(project);
+  if (options.assignCells !== false || workstreams.length) sbAssignMissingCells(project);
   if (project.cells.length !== cellsBefore) sbSortCells(project);
   return project;
 }

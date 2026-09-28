@@ -1042,3 +1042,104 @@ test('debrief: one tab with three parts; the slide deck shows the timeline, the 
   assert.equal(saved.sections.phases, false);
   assert.ok(saved.recommendations.includes('GDPR'));
 });
+
+test('cells: a deleted cell stays deleted after reload, injects for several cells keep the others, undo brings it back', async () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); var lastConfirm = ''; window.confirm = (text) => { lastConfirm = text; return true; };`);
+  const cells = h.json('appState.scenario.cells.map((cell) => cell.id)');
+  const [first, target] = cells;
+  // One written inject goes to the first cell and to the cell deleted below.
+  const multi = h.json(`(() => { const item = sbExerciseItems(appState.scenario).find((entry) => entry.kind === 'beat' && entry.stimulus && entry.cell_id === '${first}'); dsMoveItem(appState.scenario, item, item.time, sbJoinRecipients(appState.scenario, ['${first}', '${target}'])); return { beat: item.beat.id, stimulus: item.stimulus.id }; })()`);
+  const alone = h.json(`sbExerciseItems(appState.scenario).filter((item) => item.cell_id === '${target}').map((item) => item.key)`);
+  assert.ok(alone.length > 0);
+  const recipients = () => h.json(`[...appState.scenario.storyboard.blocks.flatMap((block) => block.beats.map((beat) => beat.cell_id)), ...appState.scenario.stimuli.map((stimulus) => stimulus.cell_id)]`);
+  const beatCell = (id) => h.run(`appState.scenario.storyboard.blocks.flatMap((block) => block.beats).find((beat) => beat.id === '${id}').cell_id`);
+  const before = recipients();
+  await h.run(`tabHandleAction({ currentTarget: { dataset: { tabAction: 'delete-cell', tabValue: '${target}' } } })`);
+  const message = h.run('lastConfirm');
+  assert.ok(message.includes(`It receives ${alone.length + 1} inject(s)`), message);
+  assert.ok(message.includes(`${alone.length} become unassigned`) && message.includes('1 keep their other recipient cells'), message);
+  assert.deepEqual(h.json('appState.scenario.cells.map((cell) => cell.id)'), cells.filter((id) => id !== target));
+  assert.ok(!recipients().some((value) => value.split('+').includes(target)), 'no reference to the deleted cell is left');
+  assert.equal(beatCell(multi.beat), first);
+  assert.equal(h.run(`getStimulus('${multi.stimulus}').cell_id`), first);
+  const flagged = h.json(`sbExerciseChecks(appState.scenario).filter((issue) => issue.code === 'no_cell').map((issue) => issue.item_key)`);
+  for (const key of alone) assert.ok(flagged.includes(key), `${key} is flagged without recipient`);
+  // Reloaded: the cell is not recreated, the cells keep their order, unassigned injects stay so.
+  const unassigned = h.run(`appState.scenario.storyboard.blocks.flatMap((block) => block.beats).filter((beat) => !beat.cell_id).length`);
+  assert.ok(unassigned > 0);
+  const reloaded = h.json(`(() => { const p = mergeScenario(JSON.parse(JSON.stringify(appState.scenario))); return { cells: p.cells.map((cell) => cell.id), unassigned: p.storyboard.blocks.flatMap((block) => block.beats).filter((beat) => !beat.cell_id).length }; })()`);
+  assert.deepEqual(reloaded, { cells: cells.filter((id) => id !== target), unassigned });
+  // One undo restores the cell (in its place) and every recipient; redo deletes it again.
+  assert.equal(h.run('StoryboardHistory.undo()'), 'Delete cell');
+  assert.deepEqual(h.json('appState.scenario.cells.map((cell) => cell.id)'), cells);
+  assert.equal(h.run('appState.scenario.exercise.cells_count'), cells.length);
+  assert.deepEqual(recipients(), before);
+  assert.equal(h.run('StoryboardHistory.redo()'), 'Delete cell');
+  assert.deepEqual(h.json('appState.scenario.cells.map((cell) => cell.id)'), cells.filter((id) => id !== target));
+  assert.equal(h.run(`getStimulus('${multi.stimulus}').cell_id`), first);
+  // A project from before cells still gets its recipients on load.
+  const legacy = h.json(`mergeScenario({ name: 'Old', storyboard: { blocks: [{ id: 'a', type: 'trigger', start_minutes: 0, duration_minutes: 60, beats: [{ id: 'x', offset_minutes: 5, channel: 'article_press', title: 'Press' }] }] }, actors: [], stimuli: [] })`);
+  assert.equal(legacy.storyboard.blocks[0].beats[0].cell_id, legacy.cells.find((cell) => cell.key === 'communication').id);
+});
+
+test('history: moving or deleting an inject undoes its written inject too, keeping only what changed', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); window.confirm = () => true;`);
+  const item = h.json(`(() => { const item = sbExerciseItems(appState.scenario).find((entry) => entry.kind === 'beat' && entry.stimulus); return { key: item.key, time: item.time, stimulus: item.stimulus.id }; })()`);
+  const stimulusJson = () => h.run(`JSON.stringify(getStimulus('${item.stimulus}'))`);
+  const original = stimulusJson();
+  h.run(`dsMoveItem(appState.scenario, tabItemByKey(appState.scenario, '${item.key}'), ${item.time + 20}, undefined)`);
+  assert.equal(h.run(`getStimulus('${item.stimulus}').timestamp_offset_minutes`), item.time + 20);
+  const side = h.json('StoryboardHistory.undoStack[StoryboardHistory.undoStack.length - 1].side');
+  assert.deepEqual(Object.keys(side), ['stimuli']);
+  assert.equal(side.stimuli.changed.length, 1, 'only the moved inject is kept in the undo step');
+  assert.equal(h.run('StoryboardHistory.undo()'), 'Move inject');
+  assert.equal(h.run(`getStimulus('${item.stimulus}').timestamp_offset_minutes`), item.time);
+  assert.equal(h.run(`tabItemByKey(appState.scenario, '${item.key}').time`), item.time);
+  assert.equal(stimulusJson(), original);
+  assert.equal(h.run('StoryboardHistory.redo()'), 'Move inject');
+  assert.equal(h.run(`getStimulus('${item.stimulus}').timestamp_offset_minutes`), item.time + 20);
+  h.run('StoryboardHistory.undo()');
+  // Deleting the planned inject deletes its written inject: one undo brings both back.
+  const count = h.run('appState.scenario.stimuli.length');
+  h.run(`tabUI('detailed').selected = '${item.key}'; dsDeleteSelected(appState.scenario);`);
+  assert.equal(h.run('appState.scenario.stimuli.length'), count - 1);
+  assert.equal(h.run(`!!tabItemByKey(appState.scenario, '${item.key}')`), false);
+  assert.equal(h.run('StoryboardHistory.undo()'), 'Delete inject');
+  assert.equal(h.run('appState.scenario.stimuli.length'), count);
+  assert.equal(stimulusJson(), original);
+  assert.equal(h.run(`tabItemByKey(appState.scenario, '${item.key}').stimulus.id`), item.stimulus);
+  // An inject edited outside the history is not reverted by undoing another step.
+  const other = h.run(`appState.scenario.stimuli.find((stimulus) => stimulus.id !== '${item.stimulus}').id`);
+  h.run(`dsMoveItem(appState.scenario, tabItemByKey(appState.scenario, '${item.key}'), ${item.time + 5}, undefined); getStimulus('${other}').name = 'Kept';`);
+  h.run('StoryboardHistory.undo()');
+  assert.equal(h.run(`getStimulus('${other}').name`), 'Kept');
+});
+
+test('actors: deleting an actor asks first, leaves its injects without sender, unlinks its roles and is undoable', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); var lastConfirm = ''; var answer = false; window.confirm = (text) => { lastConfirm = text; return answer; };`);
+  const actor = h.json(`(() => { const cast = appState.scenario.storyboard.cast.find((item) => item.actor_id && appState.scenario.stimuli.some((s) => s.actor_id === item.actor_id)); return { id: cast.actor_id, cast: cast.id, sent: appState.scenario.stimuli.filter((s) => s.actor_id === cast.actor_id).map((s) => s.id) }; })()`);
+  const count = h.run('appState.scenario.actors.length');
+  const senders = () => h.json(`${JSON.stringify(actor.sent)}.map((id) => getStimulus(id).actor_id)`);
+  const castActor = () => h.run(`appState.scenario.storyboard.cast.find((item) => item.id === '${actor.cast}').actor_id`);
+  h.run(`deleteActor('${actor.id}')`);
+  assert.equal(h.run('appState.scenario.actors.length'), count, 'declined: nothing changes');
+  assert.ok(h.run('lastConfirm').includes(`${actor.sent.length} inject(s) it sends will have no sender`), h.run('lastConfirm'));
+  h.run(`answer = true; deleteActor('${actor.id}')`);
+  assert.equal(h.run('appState.scenario.actors.length'), count - 1);
+  assert.deepEqual(senders(), actor.sent.map(() => ''));
+  assert.equal(castActor(), '');
+  // Views and checks cope with injects without sender; a reload keeps them without sender.
+  h.run(`renderCellsView(); tabUI('detailed').cell = 'all'; renderDetailedView();`);
+  assert.ok(Array.isArray(h.json('sbExerciseChecks(appState.scenario)')));
+  assert.ok(h.run('ExerciseModel.build(appState.scenario).injects.length') > 0);
+  assert.ok(h.run('ExportEngine.chronogramCsv(appState.scenario.stimuli)').includes('Sender'));
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).stimuli.filter((s) => ${JSON.stringify(actor.sent)}.includes(s.id)).map((s) => s.actor_id)`);
+  assert.deepEqual(reloaded, actor.sent.map(() => ''));
+  assert.equal(h.run('StoryboardHistory.undo()'), 'Delete actor');
+  assert.equal(h.run('appState.scenario.actors.length'), count);
+  assert.deepEqual(senders(), actor.sent.map(() => actor.id));
+  assert.equal(castActor(), actor.id);
+});

@@ -1464,12 +1464,28 @@
         App.render();
       }
 
+      /* The injects it sent are left without sender and the storyline roles it played lose
+         their actor (nothing is reassigned). One undo step when the storyboard history is loaded. */
       function deleteActor(actorId) {
-        if (appState.scenario.actors.length === 1) throw new Error(tt('At least one actor is required.', 'Au moins un acteur est requis.', 'Mindestens ein Akteur ist erforderlich.'));
-        appState.scenario.actors = appState.scenario.actors.filter((actor) => actor.id !== actorId);
-        appState.scenario.stimuli.forEach((stimulus) => {
-          if (stimulus.actor_id === actorId) stimulus.actor_id = appState.scenario.actors[0].id;
-        });
+        const project = appState.scenario;
+        const actor = getActor(actorId);
+        if (!actor) return;
+        if (project.actors.length === 1) throw new Error(tt('At least one actor is required.', 'Au moins un acteur est requis.', 'Mindestens ein Akteur ist erforderlich.'));
+        const sent = project.stimuli.filter((stimulus) => stimulus.actor_id === actorId).length;
+        const roles = (project.storyboard?.cast || []).filter((cast) => cast.actor_id === actorId).length;
+        const name = actor.name || tt('this actor', 'cet acteur', 'diesen Akteur');
+        const details = [
+          sent ? tt(`${sent} inject(s) it sends will have no sender.`, `${sent} inject(s) envoyé(s) par cet acteur n'auront plus d'expéditeur.`, `${sent} von diesem Akteur gesendete(r) Inject(s) haben keinen Absender mehr.`) : '',
+          roles ? tt(`${roles} storyline role(s) will no longer be played by it.`, `${roles} rôle(s) du scénario ne seront plus joués par cet acteur.`, `${roles} Rolle(n) im Drehbuch werden nicht mehr von diesem Akteur gespielt.`) : ''
+        ].filter(Boolean).join(' ');
+        if (!window.confirm(`${tt(`Delete "${name}"?`, `Supprimer « ${name} » ?`, `"${name}" löschen?`)}${details ? ` ${details}` : ''}`)) return;
+        const history = typeof StoryboardHistory !== 'undefined' && project.storyboard ? StoryboardHistory : null;
+        history?.track();
+        project.actors = project.actors.filter((item) => item.id !== actorId);
+        project.stimuli.forEach((stimulus) => { if (stimulus.actor_id === actorId) stimulus.actor_id = ''; });
+        (project.storyboard?.cast || []).forEach((cast) => { if (cast.actor_id === actorId) cast.actor_id = ''; });
+        history?.commit('Delete actor');
+        saveLocal(false);
         App.render();
       }
 

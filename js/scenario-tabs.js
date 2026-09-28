@@ -897,8 +897,9 @@ function tabItemByKey(project, key) {
 }
 
 /* Moves an inject in time and/or to another cell; a planned inject follows the phase
-   covering its new time, and its written stimulus moves with it. */
+   covering its new time, and its written stimulus moves with it (one undo step). */
 function dsMoveItem(project, item, time, cellId) {
+  StoryboardHistory.track();
   const storyboard = project.storyboard;
   const at = Math.max(0, Math.round(time));
   const cell = cellId === 'none' ? '' : cellId;
@@ -920,7 +921,6 @@ function dsMoveItem(project, item, time, cellId) {
       if (cell !== undefined) item.stimulus.cell_id = cell;
       item.stimulus.updated_at = new Date().toISOString();
     }
-    StoryboardHistory.commit('Move inject');
   } else {
     const stimulus = item.stimulus;
     stimulus.timestamp_offset_minutes = at;
@@ -931,7 +931,17 @@ function dsMoveItem(project, item, time, cellId) {
     stimulus.updated_at = new Date().toISOString();
   }
   sortStimuli();
-  saveLocal(false);
+  StoryboardHistory.commit('Move inject');
+}
+
+/* The recipient after dropping an inject from one cell row onto another: that cell takes
+   the place of the row it came from (an inject for several cells keeps the others), the
+   Unassigned row removes every recipient. undefined: no change (an inject for all cells
+   is already in every row). */
+function dsDropRecipient(project, item, fromRow, toRow) {
+  if (!toRow || toRow === fromRow || sbIsAllCells(item.cell_id)) return undefined;
+  if (toRow === 'none') return 'none';
+  return sbJoinRecipients(project, [...sbRecipientIds(item.cell_id).filter((id) => id !== fromRow), toRow]);
 }
 
 function dsAddInject(project) {
@@ -956,11 +966,10 @@ function dsDeleteSelected(project) {
   const item = dsSelectedItem(project);
   if (!item) return;
   if (!window.confirm(`Delete "${item.title}"?${item.stimulus ? ' Its written inject is deleted too.' : ''}`)) return;
-  if (item.kind === 'beat') {
-    item.block.beats = item.block.beats.filter((beat) => beat.id !== item.beat.id);
-    StoryboardHistory.commit('Delete inject');
-  }
+  StoryboardHistory.track();
+  if (item.kind === 'beat') item.block.beats = item.block.beats.filter((beat) => beat.id !== item.beat.id);
   if (item.stimulus) project.stimuli = project.stimuli.filter((stimulus) => stimulus.id !== item.stimulus.id);
+  StoryboardHistory.commit('Delete inject');
   state.selected = null;
   saveLocal(false);
 }
@@ -997,19 +1006,28 @@ async function tabHandleAction(event) {
       }
       case 'add-cell': {
         const cell = value === 'custom' ? sbMakeCell('custom', { name: `Cell ${project.cells.length + 1}` }) : sbMakeCell(value);
+        StoryboardHistory.track();
         project.cells.push(cell);
         project.exercise.cells_count = project.cells.length;
+        StoryboardHistory.commit('Add cell');
         saveLocal(false);
         break;
       }
       case 'delete-cell': {
         const cell = sbCell(project, value);
-        const used = sbExerciseItems(project).filter((item) => item.cell_id === value).length;
-        if (!cell || !window.confirm(`Delete the ${cell.name}?${used ? ` Its ${used} inject(s) become unassigned.` : ''}`)) return;
+        if (!cell) return;
+        // Injects for several cells lose this one only; those for it alone become unassigned.
+        const reached = sbExerciseItems(project).filter((item) => sbRecipientIds(item.cell_id).includes(value));
+        const alone = reached.filter((item) => sbRecipientIds(item.cell_id).length === 1).length;
+        const effects = [alone ? `${alone} become unassigned` : '', reached.length - alone ? `${reached.length - alone} keep their other recipient cells` : ''].filter(Boolean).join(', ');
+        if (!window.confirm(`Delete the ${cell.name}?${reached.length ? ` It receives ${reached.length} inject(s): ${effects}.` : ''}`)) return;
+        StoryboardHistory.track();
         project.cells = project.cells.filter((item) => item.id !== value);
-        storyboard.blocks.forEach((block) => block.beats.forEach((beat) => { if (beat.cell_id === value) beat.cell_id = ''; }));
-        project.stimuli.forEach((stimulus) => { if (stimulus.cell_id === value) stimulus.cell_id = ''; });
+        const without = (cellId) => (sbRecipientIds(cellId).includes(value) ? sbJoinRecipients(project, sbRecipientIds(cellId).filter((id) => id !== value)) : cellId);
+        storyboard.blocks.forEach((block) => block.beats.forEach((beat) => { beat.cell_id = without(beat.cell_id); }));
+        project.stimuli.forEach((stimulus) => { stimulus.cell_id = without(stimulus.cell_id); });
         project.exercise.cells_count = project.cells.length;
+        if (detailed.cell === value) { detailed.cell = 'all'; detailed.selected = null; }
         StoryboardHistory.commit('Delete cell');
         saveLocal(false);
         break;
@@ -1360,13 +1378,17 @@ function dsBindTimeline(root) {
         moved = true;
         document.body.classList.add('sb-dragging');
         const minutes = Math.max(0, sbSnap(item.time + dx / state.zoom));
+        const dy = moveEvent.clientY - startY;
         card.style.left = `${minutes * state.zoom}px`;
-        card.style.transform = `translateY(${moveEvent.clientY - startY}px)`;
-        const hovered = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)?.closest('[data-ds-lane]');
+        card.style.transform = `translateY(${dy}px)`;
+        // The dragged card sits under the pointer: the row is what lies beneath it.
+        const under = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY).find((node) => !card.contains(node));
+        const hovered = under?.closest('[data-ds-lane]');
         canvas.querySelectorAll('.sb-lane.is-drop-target').forEach((node) => node.classList.remove('is-drop-target'));
         lane = hovered ? hovered.dataset.dsLane : null;
-        if (hovered) hovered.classList.add('is-drop-target');
-        sbDragTip(canvas, `${sbFormatOffset(minutes)}${lane && lane !== originLane ? ` → ${sbCell(project, lane)?.name || 'Unassigned'}` : ''}`, sbHeaderWidth() + minutes * state.zoom, card.offsetTop + card.parentElement.offsetTop - 26);
+        const recipient = dsDropRecipient(project, item, originLane, lane);
+        if (hovered && recipient !== undefined) hovered.classList.add('is-drop-target');
+        sbDragTip(canvas, `${sbFormatOffset(minutes)}${recipient !== undefined ? ` → ${sbRecipientName(project, recipient) || 'Unassigned'}` : ''}`, sbHeaderWidth() + minutes * state.zoom, card.offsetTop + card.parentElement.offsetTop + dy - 26);
       };
       const up = (upEvent) => {
         window.removeEventListener('pointermove', move);
@@ -1375,7 +1397,7 @@ function dsBindTimeline(root) {
         canvas.querySelector('.sb-drag-tip')?.remove();
         if (moved) {
           const minutes = Math.max(0, sbSnap(item.time + (upEvent.clientX - startX) / state.zoom));
-          const cell = lane && lane !== originLane ? lane : undefined;
+          const cell = dsDropRecipient(project, item, originLane, lane);
           if (minutes !== item.time || cell !== undefined) dsMoveItem(project, item, minutes, cell);
           else card.style.left = `${originLeft}px`;
         }
