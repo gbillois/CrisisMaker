@@ -3878,6 +3878,15 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sl-ai-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--primary-strong); }
 .sl-ai .btn { justify-self: end; }
 .sb-workspace .sl-ai textarea { min-height: 56px; }
+/* Key stimuli row of the Main storyline timeline. */
+.sb-key-row .sb-track-head strong { display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; color: var(--primary-strong); }
+.sb-key-lane { background-color: rgba(214, 158, 0, 0.04); }
+.sb-key-card { position: absolute; z-index: 2; display: grid; gap: 1px; height: 38px; padding: 4px 8px 4px 9px; overflow: hidden; text-align: left; background: color-mix(in srgb, var(--clip-color) 8%, #fff); border: 1px dashed color-mix(in srgb, var(--beat-color) 60%, transparent); border-left: 4px solid var(--beat-color); box-shadow: 0 1px 3px rgba(33, 18, 72, 0.1); cursor: pointer; }
+.sb-key-card.is-written { border-style: solid; border-left-style: solid; }
+.sb-key-card:hover { box-shadow: 0 6px 14px rgba(33, 18, 72, 0.16); z-index: 3; }
+.sb-key-meta { display: flex; align-items: center; gap: 4px; font-size: 0.62rem; font-weight: 700; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sb-key-meta svg { color: var(--warning); flex-shrink: 0; }
+.sb-key-card strong { font-size: 0.74rem; color: var(--primary-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ds-card.is-main { border-width: 2px; border-left-width: 5px; }
 .ds-card.is-main .ds-card-meta svg { color: var(--warning); flex-shrink: 0; }
 .ds-editor-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 12px; align-items: start; }

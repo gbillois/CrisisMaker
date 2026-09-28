@@ -130,10 +130,12 @@ function answerFor(system, user) {
   // One AI button: empty prompt, it details the phase; the key stimuli are managed beside it.
   await page.click('.sl-editor [data-sb-action="modify-block"]');
   await page.waitForFunction(id => sbBlock(sbStoryboard(), id).narrative, id);
+  // Adding a key stimulus opens its full editor, on an inject sent to all cells.
   await page.click('.sl-editor [data-tab-action="sl-main-add"]');
-  await page.fill('.sl-main-item.is-open .sl-main-title', 'Ransom note on every screen');
-  await page.dispatchEvent('.sl-main-item.is-open .sl-main-title', 'input');
-  assert.ok(await page.evaluate(id => sbBlock(sbStoryboard(), id).beats.some(beat => beat.main && beat.title === 'Ransom note on every screen' && beat.cell_id === 'all'), id));
+  await page.waitForFunction(() => !!appState.stimulusModalId);
+  assert.ok(await page.evaluate(id => { const beat = sbBlock(sbStoryboard(), id).beats.find(item => item.main); return beat.cell_id === 'all' && getStimulus(appState.stimulusModalId).scenario_link?.beat_id === beat.id; }, id));
+  await page.evaluate(() => { appState.stimulusModalId = null; App.render(); });
+  assert.equal(await page.locator('.sb-key-card').count(), 1, 'shown under the phases');
 
   // Drag the containment phase 30 minutes later.
   const clip = await page.$(`[data-sb-clip="${id}"]`);

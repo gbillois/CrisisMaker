@@ -22,7 +22,7 @@
         const available = isLLMAvailable();
         const collapsed = state.collapsed;
         const loading = state.loading;
-        const title = options.title || tt('Configure with LLM', 'Configurer avec le LLM', 'Mit LLM konfigurieren');
+        const title = options.title || tt('Edit with AI', 'Modifier avec l’IA', 'Mit KI bearbeiten');
         const subtitle = options.subtitle || tt(
           'Describe what you want in natural language. If information is missing, the LLM will fill in the most likely values.',
           'Décrivez ce que vous voulez en langage naturel. Si des informations manquent, le LLM complétera avec les valeurs les plus probables.',

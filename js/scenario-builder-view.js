@@ -269,6 +269,7 @@ function renderSbTimeline(storyboard) {
           <div class="sb-ruler" data-sb-ruler style="width:${width}px">${renderSbRuler(storyboard, ppm)}</div>
         </div>
         ${storyboard.tracks.map((track, index) => renderSbTrack(storyboard, track, index, width)).join('')}
+        ${renderSbKeyRow(storyboard, width, ppm)}
         <div class="sb-end-zone" style="left:${sbHeaderWidth() + storyboard.duration_minutes * ppm}px"></div>
         <div class="sb-playhead" id="sb-playhead" style="left:${sbHeaderWidth() + ui.playhead * ppm}px"><span class="sb-playhead-handle" data-sb-playhead>${sbFormatOffset(ui.playhead)}</span></div>
       </div>
@@ -286,6 +287,28 @@ function renderSbRuler(storyboard, ppm) {
     marks.push(`<span class="sb-tick ${minute % 60 === 0 ? 'is-hour' : ''}" style="left:${minute * ppm}px"><b>${sbFormatOffset(minute)}</b>${clock ? `<small>${escapeHtml(clock.split(' ')[1])}</small>` : ''}</span>`);
   }
   return marks.join('');
+}
+
+/* The key stimuli of every phase, under the phases: click one to open its full editor. */
+const SB_KEY_CARD_WIDTH = 150;
+function renderSbKeyRow(storyboard, width, ppm) {
+  const project = appState.scenario;
+  const keys = sbMainBlocks(storyboard).flatMap((block) => block.beats.filter((beat) => beat.main).map((beat) => ({ block, beat, at: sbBeatAbsolute(block, beat) })));
+  const packing = sbPackTrack(keys.map(({ beat, at }) => ({ id: beat.id, start_minutes: at, duration_minutes: (SB_KEY_CARD_WIDTH + 6) / ppm })));
+  const height = Math.max(1, packing.rows) * 44 + 10;
+  return `<div class="sb-track-row sb-key-row">
+    <div class="sb-track-head" style="height:${height}px"><strong>${sbUiIcon('star', 12)} Key stimuli</strong><small>${keys.length ? `${keys.length} key stimul${keys.length > 1 ? 'i' : 'us'} · click to edit` : 'Add them in the phase editor'}</small></div>
+    <div class="sb-lane sb-key-lane" style="width:${width}px;height:${height}px">
+      ${keys.map(({ block, beat, at }) => {
+        const stimulus = sbStimulusForBeat(project, beat.id);
+        const title = beat.title || (stimulus ? sbStimulusLabel(stimulus) : 'Untitled key stimulus');
+        return `<button class="sb-key-card ${stimulus ? 'is-written' : ''}" data-tab-action="sl-main-edit" data-tab-value="${escapeAttribute(beat.id)}" style="left:${(at * ppm).toFixed(1)}px;top:${packing.placement.get(beat.id) * 44 + 5}px;width:${SB_KEY_CARD_WIDTH}px;--beat-color:${sbChannelColor(beat.channel)};--clip-color:${sbBlockColor(block)}" title="${escapeAttribute(`${sbFormatOffset(at)} · ${channelLabel(beat.channel)} → ${sbRecipientName(project, beat.cell_id) || 'no cell'}\n${title}\nClick to open the full editor`)}">
+          <span class="sb-key-meta">${sbUiIcon('star', 10)}${sbFormatOffset(at)} · ${escapeHtml(channelLabel(beat.channel))}</span>
+          <strong>${escapeHtml(title)}</strong>
+        </button>`;
+      }).join('')}
+    </div>
+  </div>`;
 }
 
 function renderSbTrack(storyboard, track, index, width) {

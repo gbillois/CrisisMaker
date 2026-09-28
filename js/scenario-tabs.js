@@ -209,13 +209,14 @@ function renderKeyStimuli(project, storyboard, block, readOnly) {
       const templates = beat.channel === 'article_press' ? Object.entries(ARTICLE_TEMPLATE_LIBRARY) : beat.channel === 'breaking_news_tv' ? Object.entries(TV_TEMPLATE_LIBRARY) : [];
       return `<div class="sl-main-item ${open ? 'is-open' : ''}" style="--beat-color:${sbChannelColor(beat.channel)}">
         <div class="sl-main-line">
-          <button class="sl-main-toggle" data-tab-action="sl-main-toggle" data-tab-value="${key}" aria-expanded="${open}" title="${open ? 'Close' : 'Edit'}">
+          <button class="sl-main-toggle" data-tab-action="sl-main-edit" data-tab-value="${key}" title="Open the full editor">
             <span class="sl-main-time">${sbFormatOffset(sbBeatAbsolute(block, beat))}</span>
-            <strong data-sl-main-label="${key}">${escapeHtml(beat.title || 'Untitled key stimulus')}</strong>
+            <strong data-sl-main-label="${key}">${escapeHtml(beat.title || (stimulus ? sbStimulusLabel(stimulus) : 'Untitled key stimulus'))}</strong>
             <span class="sl-main-meta">${escapeHtml(channelLabel(beat.channel))} · ${escapeHtml(sbRecipientName(project, beat.cell_id) || 'No cell')}${stimulus ? ` · ${escapeHtml(status?.label || 'Written')}` : ''}</span>
           </button>
           <span class="be-actions">
-            <button class="sb-icon-btn" data-tab-action="sl-main-open" data-tab-value="${key}" title="Open in the Detailed storyline">${sbUiIcon('open', 13)}</button>
+            <button class="btn btn-secondary btn-xs" data-tab-action="sl-main-edit" data-tab-value="${key}" title="Open the full editor">${sbUiIcon('edit', 12)} Edit</button>
+            <button class="sb-icon-btn ${open ? 'is-on' : ''}" data-tab-action="sl-main-toggle" data-tab-value="${key}" aria-expanded="${open}" title="${open ? 'Close the planning' : 'Planning: time, recipients, channel, sender'}">${sbUiIcon(open ? 'up' : 'down', 13)}</button>
             <button class="sb-icon-btn is-danger" data-tab-action="sl-main-delete" data-tab-value="${key}" title="Delete" ${readOnly}>${sbUiIcon('trash', 13)}</button>
           </span>
         </div>
@@ -246,6 +247,22 @@ function renderRecipientPicker(project, itemKey, cellId, readOnly) {
     <label class="chip-toggle rcpt-all"><input type="checkbox" value="${SB_ALL_CELLS}" ${all ? 'checked' : ''} ${readOnly}>All cells</label>
     ${project.cells.map((cell) => `<label class="chip-toggle" style="--cell-color:${cell.color}"><input type="checkbox" value="${escapeAttribute(cell.id)}" ${all || ids.includes(cell.id) ? 'checked' : ''} ${all || readOnly ? 'disabled' : ''}><span class="cell-dot"></span>${escapeHtml(cell.name)}</label>`).join('')}
   </div>`;
+}
+
+/* Opens the full editor of a key stimulus, creating its inject first (empty, without AI)
+   when it is still only planned; its phase is selected in the timeline. */
+async function slOpenKeyEditor(project, beatId) {
+  const found = slFindBeat(project.storyboard, beatId);
+  if (!found) return;
+  sbUI().selected = [found.block.id];
+  let stimulus = sbStimulusForBeat(project, beatId);
+  if (!stimulus && !sbReadOnly()) {
+    await SbPipeline.run({ blockIds: [found.block.id], beatIds: [beatId], plan: false, cast: true, write: false });
+    stimulus = sbStimulusForBeat(project, beatId);
+  }
+  if (!stimulus) return;
+  appState.selectedStimulusId = stimulus.id;
+  appState.stimulusModalId = stimulus.id;
 }
 
 /* The phase and planned inject of a beat id. */
@@ -1048,7 +1065,7 @@ async function tabHandleAction(event) {
   const storyboard = project.storyboard;
   const detailed = tabUI('detailed');
   const summary = tabUI('summary');
-  const readOnlyAllowed = ['sl-main-toggle', 'sl-main-open', 'ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
+  const readOnlyAllowed = ['sl-main-toggle', 'sl-main-open', 'sl-main-edit', 'ds-cell', 'ds-phase', 'ds-deselect', 'su-toggle', 'su-restart', 'su-goto', 'su-issue', 'open-detailed'];
   if (sbReadOnly() && !readOnlyAllowed.includes(action)) return;
   try {
     switch (action) {
@@ -1113,11 +1130,12 @@ async function tabHandleAction(event) {
         const block = sbBlock(storyboard, value);
         if (!block) break;
         const beat = slAddMainStimulus(project, block);
-        sbUI().keyOpen = beat.id;
-        App.render();
-        document.querySelector(`[data-sl-main="${beat.id}.title"]`)?.focus();
-        return;
+        await slOpenKeyEditor(project, beat.id);
+        break;
       }
+      case 'sl-main-edit':
+        await slOpenKeyEditor(project, value);
+        break;
       case 'sl-main-toggle':
         sbUI().keyOpen = sbUI().keyOpen === value ? null : value;
         break;
