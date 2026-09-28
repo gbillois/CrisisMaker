@@ -3498,6 +3498,8 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sb-beat.is-manual { border-radius: 0; }
 .sb-beat.is-outdated, .sb-beat.is-retime { background: var(--beat-color); box-shadow: 0 0 0 2px var(--warning); }
 .sb-beat.is-orphan { background: var(--sb-danger); border-color: var(--sb-danger); }
+.sb-beat.is-main { top: 0; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 0; border-width: 2px; transform: rotate(45deg); z-index: 1; box-shadow: 0 0 0 1.5px #fff; }
+.sb-flag.is-main { gap: 2px; color: var(--primary-strong); }
 .sb-clip-handle { position: absolute; top: 0; bottom: 0; width: 8px; z-index: 2; cursor: ew-resize; }
 .sb-clip-handle.is-left { left: -4px; }
 .sb-clip-handle.is-right { right: 0; }
@@ -3842,6 +3844,19 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .ds-card-meta { display: flex; align-items: center; gap: 5px; font-size: 0.62rem; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
 .ds-card-meta i { width: 7px; height: 7px; border-radius: 50%; background: var(--beat-color); flex-shrink: 0; }
 .ds-card strong { font-size: 0.74rem; color: var(--primary-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Main stimuli: the key injects of a phase, edited in the phase editor. */
+.sl-main { grid-column: 1 / -1; display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--sb-line); }
+.sl-main-head { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.sl-main-head strong { display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; color: var(--primary-strong); }
+.sl-main-head .helper { flex: 1 1 280px; font-size: 0.76rem; color: var(--muted); }
+.sl-main-item { display: grid; gap: 6px; padding: 8px 10px; background: #fff; border: 1px solid var(--sb-line); border-left: 4px solid var(--beat-color); }
+.sl-main-row { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.sb-workspace .sl-main-row select { width: auto; max-width: 220px; min-height: 30px; padding: 3px 6px; font-size: 0.8rem; }
+.sb-workspace .sl-main-row .be-inline input { width: 64px; min-height: 30px; padding: 3px 6px; }
+.sb-workspace .sl-main-title { font-weight: 700; }
+.sl-main-item textarea { min-height: 52px; }
+.ds-card.is-main { border-width: 2px; border-left-width: 5px; }
+.ds-card.is-main .ds-card-meta svg { color: var(--warning); flex-shrink: 0; }
 .ds-editor-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 12px; align-items: start; }
 .ds-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .ds-fields .ds-title { grid-column: 1 / -1; }

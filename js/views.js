@@ -594,7 +594,7 @@
         const cells = appState.scenario.cells || [];
         let filtered = allStimuli;
         if (f.phase) filtered = filtered.filter((s) => (libraryPhaseOf(s)?.id || 'none') === f.phase);
-        if (f.cellId) filtered = filtered.filter((s) => (s.cell_id || 'none') === f.cellId);
+        if (f.cellId) filtered = filtered.filter((s) => sbReaches(s.cell_id || 'none', f.cellId));
         if (f.channel) filtered = filtered.filter((s) => s.channel === f.channel);
         if (f.status) filtered = filtered.filter((s) => s.status === f.status);
         if (f.actorId) filtered = filtered.filter((s) => s.actor_id === f.actorId);

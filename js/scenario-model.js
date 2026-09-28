@@ -206,7 +206,9 @@ function sbNormalizeBeat(input = {}) {
     cast_id: sbSafeId(input.cast_id),
     cell_id: sbSafeId(input.cell_id),
     title: sbText(input.title, 300),
-    intent: sbText(input.intent, 2000)
+    intent: sbText(input.intent, 2000),
+    // A main stimulus frames the whole story: set by the designer, kept by every AI re-plan.
+    main: input.main === true
   };
 }
 
@@ -530,7 +532,8 @@ function sbTemplateToStoryboard(template, options = {}) {
       cast_id: castIds.get(String(beat.cast ?? beat.cast_id ?? '')) || '',
       cell_id: beat.cell_id || '',
       title: beat.title,
-      intent: beat.intent
+      intent: beat.intent,
+      main: beat.main === true
     }));
     return sbMakeBlock(type, {
       title: block.title,
@@ -617,7 +620,7 @@ function sbStoryboardToTemplate(storyboard, project, name = '') {
       brief: block.brief,
       narrative: block.narrative,
       objectives: block.objectives.map((objective) => objectives.indexOf(objective)).filter((index) => index >= 0),
-      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent }))
+      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent, ...(beat.main ? { main: true, ...(sbIsAllCells(beat.cell_id) ? { cell_id: SB_ALL_CELLS } : {}) } : {}) }))
     })),
     created_at: new Date().toISOString()
   };
@@ -822,6 +825,24 @@ function sbMakeCell(key = 'custom', values = {}) {
   return sbNormalizeCell({ id: uid('cell'), key, name: preset?.name, description: preset?.description, color: preset?.color, ...values });
 }
 
+/* An inject can go to every cell (a main stimulus such as the ransom note or a TV flash):
+   its cell_id is SB_ALL_CELLS instead of one cell's id. */
+const SB_ALL_CELLS = 'all';
+function sbIsAllCells(cellId) {
+  return cellId === SB_ALL_CELLS;
+}
+/* Does an inject addressed to cellId reach the cell targetId? */
+function sbReaches(cellId, targetId) {
+  return cellId === targetId || (sbIsAllCells(cellId) && !!targetId && targetId !== 'none');
+}
+/* A known cell, or every cell. */
+function sbHasRecipient(project, cellId) {
+  return sbIsAllCells(cellId) || !!sbCell(project, cellId);
+}
+function sbRecipientName(project, cellId) {
+  return sbIsAllCells(cellId) ? 'All cells' : sbCell(project, cellId)?.name || '';
+}
+
 function sbCell(project, id) {
   return (project.cells || []).find((cell) => cell.id === id) || null;
 }
@@ -936,14 +957,14 @@ function sbAssignMissingCells(project) {
   const beatCells = new Map();
   for (const block of storyboard?.blocks || []) {
     for (const beat of block.beats) {
-      if (!beat.cell_id || !sbCell(project, beat.cell_id)) beat.cell_id = cellFor(beat.channel);
+      if (!sbHasRecipient(project, beat.cell_id)) beat.cell_id = cellFor(beat.channel);
       beatCells.set(beat.id, beat.cell_id);
     }
   }
   for (const stimulus of project.stimuli || []) {
     const fromBeat = beatCells.get(stimulus.scenario_link?.beat_id);
     if (fromBeat) stimulus.cell_id = fromBeat;
-    else if (!stimulus.cell_id || !sbCell(project, stimulus.cell_id)) stimulus.cell_id = cellFor(stimulus.channel);
+    else if (!sbHasRecipient(project, stimulus.cell_id)) stimulus.cell_id = cellFor(stimulus.channel);
   }
   if (project.cells.length !== before) sbSortCells(project);
   return project;

@@ -68,7 +68,7 @@ const ExerciseModel = {
     const injects = (storyboard ? sbExerciseItems(project, { status: false }) : this.stimuliOnly(project)).map((item) => {
       const stimulus = item.stimulus || null;
       const phase = stimulus ? this.phaseOfStimulus(project, stimulus) : this.phaseOfPlanned(project, item.block, item.time);
-      const cell = sbCell(project, stimulus?.cell_id || item.cell_id) || null;
+      const cell = this.cellById(project, stimulus?.cell_id || item.cell_id);
       const actor = stimulus ? (project.actors || []).find((entry) => entry.id === stimulus.actor_id) || null : null;
       const number = stimulus ? numbers.get(stimulus.id) || null : null;
       const inject = {
@@ -153,6 +153,12 @@ const ExerciseModel = {
   },
 
   cell(project, stimulus) {
-    return sbCell(project, stimulus?.cell_id) || null;
+    return this.cellById(project, stimulus?.cell_id);
+  },
+
+  /* A cell, or "All cells" for an inject every cell receives (a main stimulus). */
+  cellById(project, id) {
+    if (sbIsAllCells(id)) return { id: SB_ALL_CELLS, name: 'All cells', color: '#451dc7', description: '', players: [] };
+    return sbCell(project, id) || null;
   }
 };

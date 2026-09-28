@@ -192,7 +192,67 @@ function renderPhaseEditor(storyboard, block) {
           ${renderDetailAllButton(storyboard, ai, sbReadOnly())}
         </div>
       </div>
+      ${renderMainStimuli(project, storyboard, block, readOnly)}
     </div>`;
+}
+
+/* The main stimuli of a phase: the key injects that frame the whole story (the ransom note,
+   the TV flash, the regulator's letter). Planned injects marked main, sent to every cell or
+   to one; the AI plans the other injects around them and never changes them. */
+function renderMainStimuli(project, storyboard, block, readOnly) {
+  const mains = block.beats.filter((beat) => beat.main);
+  const cellOptions = (beat) => `${sbOption(SB_ALL_CELLS, 'All cells', beat.cell_id)}${project.cells.map((cell) => sbOption(cell.id, cell.name, beat.cell_id)).join('')}${sbHasRecipient(project, beat.cell_id) ? '' : sbOption('', 'No cell', beat.cell_id)}`;
+  return `<section class="sl-main" aria-label="Main stimuli">
+    <div class="sl-main-head">
+      <strong>${sbUiIcon('star', 14)} Main stimuli</strong>
+      <span class="helper">The key injects that frame the story of this phase. The AI plans the other injects of every cell around them and never changes them.</span>
+      <button class="btn btn-secondary btn-sm" data-tab-action="sl-main-add" data-tab-value="${block.id}" ${readOnly}>${sbUiIcon('plus', 13)} Main stimulus</button>
+    </div>
+    ${mains.map((beat) => {
+      const stimulus = sbStimulusForBeat(project, beat.id);
+      const status = stimulus ? sbStimulusStatus(project, stimulus) : null;
+      const templates = beat.channel === 'article_press' ? Object.entries(ARTICLE_TEMPLATE_LIBRARY) : beat.channel === 'breaking_news_tv' ? Object.entries(TV_TEMPLATE_LIBRARY) : [];
+      const key = escapeAttribute(beat.id);
+      return `<div class="sl-main-item" style="--beat-color:${sbChannelColor(beat.channel)}">
+        <div class="sl-main-row">
+          <label class="be-inline">At · ${sbFormatOffset(sbBeatAbsolute(block, beat))}<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-main="${key}.at" value="${beat.offset_minutes}" aria-label="Minutes from the phase start" ${readOnly}></label>
+          <select data-sl-main="${key}.channel" aria-label="Channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select>
+          ${templates.length ? `<select data-sl-main="${key}.template_id" aria-label="Outlet" ${readOnly}>${sbOption('', 'Default outlet', beat.template_id)}${templates.map(([id, value]) => sbOption(id, value.label || id, beat.template_id)).join('')}</select>` : ''}
+          <label class="be-inline">To<select data-sl-main="${key}.cell_id" aria-label="Recipient" ${readOnly}>${cellOptions(beat)}</select></label>
+          <label class="be-inline">From<select data-sl-main="${key}.cast_id" aria-label="Sender role" ${readOnly}>${sbOption('', '- Sender role -', beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, cast.label, beat.cast_id)).join('')}</select></label>
+          <span class="sb-status is-${stimulus ? status?.key || 'synced' : 'planned'}">${escapeHtml(status?.label || 'Planned')}</span>
+          <span class="be-actions">
+            <button class="sb-icon-btn" data-tab-action="sl-main-open" data-tab-value="${key}" title="Open in the Detailed storyline">${sbUiIcon('open', 14)}</button>
+            <button class="sb-icon-btn" data-tab-action="sl-main-unmark" data-tab-value="${key}" title="No longer a main stimulus (it stays a planned inject)" ${readOnly}>${sbUiIcon('close', 14)}</button>
+            <button class="sb-icon-btn is-danger" data-tab-action="sl-main-delete" data-tab-value="${key}" title="Delete" ${readOnly}>${sbUiIcon('trash', 14)}</button>
+          </span>
+        </div>
+        <input type="text" class="sl-main-title" data-sl-main="${key}.title" value="${escapeAttribute(beat.title)}" placeholder="Title, e.g. Ransom note on every screen" aria-label="Title" ${readOnly}>
+        <textarea data-sl-main="${key}.intent" rows="2" placeholder="What it says and the reaction or decision it should trigger" aria-label="What it says" ${readOnly}>${escapeHtml(beat.intent)}</textarea>
+      </div>`;
+    }).join('') || '<p class="sb-empty">No main stimulus yet. Add the key moments of this phase (the ransom note, a TV flash, the regulator\'s call): they frame the story for every cell.</p>'}
+  </section>`;
+}
+
+/* The phase and planned inject of a beat id. */
+function slFindBeat(storyboard, beatId) {
+  for (const block of storyboard.blocks) {
+    const beat = block.beats.find((item) => item.id === beatId);
+    if (beat) return { block, beat };
+  }
+  return null;
+}
+
+function slAddMainStimulus(project, block) {
+  if (block.locked) throw new AgentValidationError('This phase is locked.');
+  const last = block.beats.filter((beat) => beat.main).reduce((max, beat) => Math.max(max, beat.offset_minutes), -1);
+  const beat = sbMakeBeat({ main: true, cell_id: SB_ALL_CELLS, channel: 'breaking_news_tv', offset_minutes: Math.min(Math.max(0, block.duration_minutes - 1), last < 0 ? 0 : last + 10), title: '' });
+  block.beats.push(beat);
+  block.beats.sort((a, b) => a.offset_minutes - b.offset_minutes);
+  if (!block.plan_hash) sbMarkPlanned(block);
+  block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
+  StoryboardHistory.commit('Add main stimulus');
+  return beat;
 }
 
 // ═══ Cells & actors ═════════════════════════════════════════════════════════
@@ -299,9 +359,13 @@ function renderDetailedView() {
     const ai = isLLMAvailable();
     const pending = sbPendingSyncCount(project);
     const counts = new Map();
-    items.forEach((item) => counts.set(item.cell_id || 'none', (counts.get(item.cell_id || 'none') || 0) + 1));
+    // An inject for all cells counts in every cell.
+    items.forEach((item) => {
+      const keys = sbIsAllCells(item.cell_id) ? project.cells.map((cell) => cell.id) : [sbHasRecipient(project, item.cell_id) ? item.cell_id : 'none'];
+      keys.forEach((key) => counts.set(key, (counts.get(key) || 0) + 1));
+    });
     const cellScope = state.cell !== 'all' && state.cell !== 'none' ? sbCell(project, state.cell) : null;
-    const missing = items.filter((item) => item.kind === 'beat' && !item.stimulus && (!cellScope || item.cell_id === cellScope.id)).length;
+    const missing = items.filter((item) => item.kind === 'beat' && !item.stimulus && (!cellScope || sbReaches(item.cell_id, cellScope.id))).length;
     return `<section class="sb-workspace ds-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="Detailed storyline">
       <header class="sb-toolbar ds-toolbar">
         <div class="sb-tb-title"><span class="sb-eyebrow">Detailed storyline</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong></div></div>
@@ -338,7 +402,7 @@ function dsRows(project, items) {
   if (state.cell === 'none') return [{ id: 'none', name: 'Unassigned', color: '#6d687e' }];
   if (state.cell !== 'all') return project.cells.filter((cell) => cell.id === state.cell);
   const rows = [...project.cells];
-  if (items.some((item) => !item.cell_id || !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
+  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
   return rows;
 }
 
@@ -363,7 +427,7 @@ function renderDetailedTimeline(project, items) {
           ${phases.map((block) => `<button class="ds-phase" data-tab-action="ds-phase" data-tab-value="${block.id}" style="left:${block.start_minutes * ppm}px;width:${Math.max(4, block.duration_minutes * ppm - 2)}px;--clip-color:${sbBlockColor(block, storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}: ${block.brief}`)}"><strong>${escapeHtml(block.title)}</strong><span>${escapeHtml(block.brief)}</span></button>`).join('')}
         </div>
       </div>
-      ${rows.map((row) => renderDetailedRow(project, row, items.filter((item) => (row.id === 'none' ? !item.cell_id || !sbCell(project, item.cell_id) : item.cell_id === row.id)), width, ppm)).join('')}
+      ${rows.map((row) => renderDetailedRow(project, row, items.filter((item) => (row.id === 'none' ? !sbHasRecipient(project, item.cell_id) : sbReaches(item.cell_id, row.id))), width, ppm)).join('')}
       <div class="sb-end-zone" style="left:${header + storyboard.duration_minutes * ppm}px"></div>
       <div class="sb-playhead" id="ds-playhead" style="left:${header + state.playhead * ppm}px"><span class="sb-playhead-handle" data-ds-playhead>${sbFormatOffset(state.playhead)}</span></div>
     </div>
@@ -381,8 +445,8 @@ function renderDetailedRow(project, row, items, width, ppm) {
     <div class="sb-lane" data-ds-lane="${escapeAttribute(row.id)}" style="width:${width}px;height:${height}px">
       ${items.map((item) => {
         const color = sbChannelColor(item.channel);
-        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || 'no sender'}\n${item.title}\n${item.intent || ''}`)}">
-          <span class="ds-card-meta"><i></i>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}</span>
+        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''} ${item.beat?.main ? 'is-main' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || 'no sender'}\n${item.title}\n${item.intent || ''}`)}">
+          <span class="ds-card-meta">${item.beat?.main ? sbUiIcon('star', 10) : '<i></i>'}${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}${sbIsAllCells(item.cell_id) ? ' · all cells' : ''}</span>
           <strong>${escapeHtml(item.title)}</strong>
         </div>`;
       }).join('')}
@@ -397,13 +461,14 @@ function renderInjectEditor(project, item) {
   const ai = isLLMAvailable();
   const status = item.stimulus ? sbStimulusStatus(project, item.stimulus) : null;
   const phase = sbMainBlockAt(storyboard, item.time);
-  const cellSelect = `<select data-ds-cell aria-label="Recipient cell" ${readOnly}>${sbOption('', 'Unassigned', item.cell_id)}${project.cells.map((cell) => sbOption(cell.id, cell.name, item.cell_id)).join('')}</select>`;
+  const cellSelect = `<select data-ds-cell aria-label="Recipient cell" ${readOnly}>${sbOption('', 'Unassigned', item.cell_id)}${sbOption(SB_ALL_CELLS, 'All cells', item.cell_id)}${project.cells.map((cell) => sbOption(cell.id, cell.name, item.cell_id)).join('')}</select>`;
   const head = `<div class="bottom-editor-head" style="--clip-color:${sbChannelColor(item.channel)}">
       <span class="sb-status is-${item.status}">${escapeHtml(status?.label || (item.kind === 'beat' ? 'Planned' : 'Manual'))}</span>
       <label class="be-inline">Time (min) · ${sbFormatOffset(item.time)}<input type="number" min="0" step="1" data-ds-time value="${item.time}" ${readOnly}></label>
       <span class="be-phase">Phase: <b>${escapeHtml(phase?.title || '-')}</b></span>
       <label class="be-inline">To ${cellSelect}</label>
       <span class="be-actions">
+        ${item.kind === 'beat' ? `<button class="sb-icon-btn ${item.beat.main ? 'is-on' : ''}" data-tab-action="ds-main" title="${item.beat.main ? 'Main stimulus: it frames the story (click to unmark)' : 'Mark as a main stimulus that frames the story'}" ${readOnly}>${sbUiIcon('star', 15)}</button>` : ''}
         ${item.stimulus ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} Full editor</button>` : ''}
         ${item.stimulus?.scenario_link ? `<button class="sb-icon-btn ${item.stimulus.scenario_link.locked ? 'is-on' : ''}" data-sb-action="lock-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}" title="${item.stimulus.scenario_link.locked ? 'Unlock' : 'Lock: never modified by sync'}" ${readOnly}>${sbUiIcon(item.stimulus.scenario_link.locked ? 'lock' : 'unlock', 15)}</button>` : ''}
         <button class="sb-icon-btn is-danger" data-tab-action="ds-delete" title="Delete (Del)" ${readOnly}>${sbUiIcon('trash', 15)}</button>
@@ -618,17 +683,18 @@ function renderSummaryView() {
 
 function renderSummaryOverview(project, items, phases, duration) {
   const rows = [...project.cells];
-  if (items.some((item) => !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
+  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
   // The phase of each inject comes from the exercise model: its linked phase, else the phase at its time.
   const phaseOf = new Map(ExerciseModel.of(project).injects.map((inject) => [inject.key, inject.phase_id]));
   const inPhase = (item, block) => phaseOf.get(item.key) === block.id;
-  const max = Math.max(1, ...rows.flatMap((row) => phases.map((block) => items.filter((item) => (row.id === 'none' ? !sbCell(project, item.cell_id) : item.cell_id === row.id) && inPhase(item, block)).length)));
+  const reaches = (item, row) => (row.id === 'none' ? !sbHasRecipient(project, item.cell_id) : sbReaches(item.cell_id, row.id));
+  const max = Math.max(1, ...rows.flatMap((row) => phases.map((block) => items.filter((item) => reaches(item, row) && inPhase(item, block)).length)));
   const buckets = Math.max(1, Math.ceil(duration / 30));
   return `<div class="su-band">${phases.map((block) => `<span style="flex:${block.duration_minutes};--clip-color:${sbBlockColor(block, project.storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}">${escapeHtml(block.title)}</span>`).join('') || '<span class="sb-empty">No phase</span>'}</div>
     <div class="su-heat-wrap"><table class="su-heat">
       <thead><tr><th>Cell</th>${phases.map((block) => `<th title="${escapeAttribute(block.title)}">${escapeHtml(sbFormatOffset(block.start_minutes))}</th>`).join('')}<th>Total</th><th>Load (per 30 min)</th></tr></thead>
       <tbody>${rows.map((row) => {
-        const own = items.filter((item) => (row.id === 'none' ? !sbCell(project, item.cell_id) : item.cell_id === row.id));
+        const own = items.filter((item) => reaches(item, row));
         const load = Array.from({ length: buckets }, (_, index) => own.filter((item) => Math.floor(item.time / 30) === index).length);
         const peak = Math.max(1, ...load);
         return `<tr>
@@ -644,10 +710,10 @@ function renderSummaryOverview(project, items, phases, duration) {
 function renderSummaryColumns(project, items) {
   const state = tabUI('summary');
   const rows = [...project.cells];
-  if (items.some((item) => !sbCell(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
+  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
   if (!rows.length) return '<p class="sb-empty">No cell yet.</p>';
   return rows.map((row) => {
-    const own = items.filter((item) => (row.id === 'none' ? !sbCell(project, item.cell_id) : item.cell_id === row.id) && item.time <= state.time).reverse();
+    const own = items.filter((item) => (row.id === 'none' ? !sbHasRecipient(project, item.cell_id) : sbReaches(item.cell_id, row.id)) && item.time <= state.time).reverse();
     return `<div class="su-col" style="--cell-color:${row.color}">
       <div class="su-col-head"><span class="cell-dot"></span>${escapeHtml(row.name)}<b>${own.length}</b></div>
       <ol>${own.slice(0, 30).map((item) => `<li class="${state.time - item.time < 3 ? 'is-new' : ''} ${state.preview === item.key ? 'is-selected' : ''}" data-su-item="${escapeAttribute(item.key)}" style="--beat-color:${sbChannelColor(item.channel)}"><span>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}</span><strong>${escapeHtml(item.title)}</strong></li>`).join('') || '<li class="is-waiting">Waiting…</li>'}</ol>
@@ -1028,6 +1094,44 @@ async function tabHandleAction(event) {
       case 'ds-add':
         dsAddInject(project);
         break;
+      case 'sl-main-add': {
+        const block = sbBlock(storyboard, value);
+        if (!block) break;
+        const beat = slAddMainStimulus(project, block);
+        App.render();
+        document.querySelector(`[data-sl-main="${beat.id}.title"]`)?.focus();
+        return;
+      }
+      case 'sl-main-unmark':
+      case 'sl-main-delete': {
+        const found = slFindBeat(storyboard, value);
+        if (!found) break;
+        if (action === 'sl-main-unmark') { found.beat.main = false; StoryboardHistory.commit('Unmark main stimulus'); break; }
+        const stimulus = sbStimulusForBeat(project, found.beat.id);
+        if (!window.confirm(`Delete the main stimulus "${found.beat.title || 'Untitled'}"?${stimulus ? ' Its written inject is deleted too.' : ''}`)) break;
+        found.block.beats = found.block.beats.filter((beat) => beat.id !== found.beat.id);
+        if (stimulus) project.stimuli = project.stimuli.filter((item) => item.id !== stimulus.id);
+        StoryboardHistory.commit('Delete main stimulus');
+        saveLocal(false);
+        break;
+      }
+      case 'sl-main-open': {
+        const found = slFindBeat(storyboard, value);
+        if (!found) break;
+        detailed.cell = 'all';
+        detailed.selected = `beat:${found.beat.id}`;
+        detailed.playhead = sbBeatAbsolute(found.block, found.beat);
+        detailed.focusTime = detailed.playhead;
+        appState.route = 'detailed';
+        break;
+      }
+      case 'ds-main': {
+        const item = dsSelectedItem(project);
+        if (item?.kind !== 'beat') break;
+        item.beat.main = !item.beat.main;
+        StoryboardHistory.commit(item.beat.main ? 'Mark main stimulus' : 'Unmark main stimulus');
+        break;
+      }
       case 'ds-delete':
         dsDeleteSelected(project);
         break;
@@ -1226,6 +1330,32 @@ function tabBindInputs(root) {
     });
     if (isText) input.addEventListener('change', () => StoryboardHistory.flush());
   });
+  // Main stimuli, edited in the phase editor of the Main storyline.
+  root.querySelectorAll('[data-sl-main]').forEach((input) => {
+    const [beatId, field] = input.dataset.slMain.split('.');
+    const isText = field === 'title' || field === 'intent';
+    input.addEventListener(isText ? 'input' : 'change', () => {
+      const found = slFindBeat(storyboard, beatId);
+      if (!found) return;
+      const { block, beat } = found;
+      if (isText) {
+        beat[field] = sbText(input.value, field === 'title' ? 300 : 2000);
+        StoryboardHistory.commit('Edit main stimulus', { debounce: true });
+        return;
+      }
+      const item = tabItemByKey(project, `beat:${beat.id}`);
+      if (field === 'at' && item) dsMoveItem(project, item, block.start_minutes + sbInt(input.value, beat.offset_minutes, 0, Math.max(0, block.duration_minutes - 1)), undefined);
+      else if (field === 'cell_id' && item) dsMoveItem(project, item, item.time, input.value || 'none');
+      else {
+        if (field === 'channel') { beat.channel = sbValidChannel(input.value); beat.template_id = ''; }
+        else if (field === 'template_id') beat.template_id = sbValidTemplateId(beat.channel, input.value);
+        else if (field === 'cast_id') beat.cast_id = storyboard.cast.some((cast) => cast.id === input.value) ? input.value : '';
+        StoryboardHistory.commit('Edit main stimulus');
+      }
+      App.render();
+    });
+    if (isText) input.addEventListener('change', () => StoryboardHistory.flush());
+  });
   root.querySelectorAll('[data-ds-time]').forEach((input) => input.addEventListener('change', () => {
     const item = selected();
     if (!item) return;
@@ -1335,6 +1465,8 @@ function dsBindTimeline(root) {
       const startX = event.clientX;
       const startY = event.clientY;
       const originLeft = parseFloat(card.style.left) || 0;
+      // The row it is dragged from: an inject for all cells shows in every cell row.
+      const originLane = card.closest('[data-ds-lane]')?.dataset.dsLane || (item.cell_id || 'none');
       let moved = false;
       let lane = null;
       try { card.setPointerCapture(event.pointerId); } catch (_) { /* Older browsers. */ }
@@ -1350,7 +1482,7 @@ function dsBindTimeline(root) {
         canvas.querySelectorAll('.sb-lane.is-drop-target').forEach((node) => node.classList.remove('is-drop-target'));
         lane = hovered ? hovered.dataset.dsLane : null;
         if (hovered) hovered.classList.add('is-drop-target');
-        sbDragTip(canvas, `${sbFormatOffset(minutes)}${lane && lane !== (item.cell_id || 'none') ? ` → ${sbCell(project, lane)?.name || 'Unassigned'}` : ''}`, sbHeaderWidth() + minutes * state.zoom, card.offsetTop + card.parentElement.offsetTop - 26);
+        sbDragTip(canvas, `${sbFormatOffset(minutes)}${lane && lane !== originLane ? ` → ${sbCell(project, lane)?.name || 'Unassigned'}` : ''}`, sbHeaderWidth() + minutes * state.zoom, card.offsetTop + card.parentElement.offsetTop - 26);
       };
       const up = (upEvent) => {
         window.removeEventListener('pointermove', move);
@@ -1359,7 +1491,7 @@ function dsBindTimeline(root) {
         canvas.querySelector('.sb-drag-tip')?.remove();
         if (moved) {
           const minutes = Math.max(0, sbSnap(item.time + (upEvent.clientX - startX) / state.zoom));
-          const cell = lane && lane !== (item.cell_id || 'none') ? lane : undefined;
+          const cell = lane && lane !== originLane ? lane : undefined;
           if (minutes !== item.time || cell !== undefined) dsMoveItem(project, item, minutes, cell);
           else card.style.left = `${originLeft}px`;
         }

@@ -165,7 +165,7 @@ function playFilter(items, ui, now) {
     if (!ui.planned && item.status === 'planned') return false;
     if (!playMatchesQuick(item, ui.quick, now)) return false;
     if (ui.phase && (item.phase?.id || 'none') !== ui.phase) return false;
-    if (ui.cell && (item.cell?.id || 'none') !== ui.cell) return false;
+    if (ui.cell && !sbReaches(item.cell?.id || 'none', ui.cell)) return false;
     if (ui.channel && item.channel !== ui.channel) return false;
     if (ui.sender && item.sender !== ui.sender) return false;
     if (q && ![item.title, item.sender, item.intent, item.cell?.name, item.phase?.title, channelLabel(item.channel), item.numberLabel].join(' ').toLowerCase().includes(q)) return false;
@@ -381,7 +381,7 @@ function playSetStatus(stimulus, status) {
   const number = playNumbers(project).get(stimulus.id);
   const title = sbStimulusLabel(stimulus);
   const label = `${playNumberLabel(number, (project.stimuli || []).length)} ${title.length > 80 ? `${title.slice(0, 79)}…` : title}`;
-  const cell = sbCell(project, stimulus.cell_id);
+  const cell = ExerciseModel.cell(project, stimulus);
   if (status === 'sent') {
     const delay = Math.round(playNow(project) - stimulus.timestamp_offset_minutes);
     const timing = delay > PLAY_LATE_MINUTES ? ` (${delay} min ${tt('late', 'de retard', 'verspätet')})` : delay < -PLAY_LATE_MINUTES ? ` (${-delay} min ${tt('early', 'd’avance', 'früh')})` : '';

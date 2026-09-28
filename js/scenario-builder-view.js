@@ -323,7 +323,7 @@ function renderSbClip(storyboard, block, top, height) {
   const beats = block.beats.map((beat) => {
     const stimulus = sbStimulusForBeat(project, beat.id);
     const status = stimulus ? sbStimulusStatus(project, stimulus)?.key : 'planned';
-    return `<i class="sb-beat is-${status}" style="left:${(100 * Math.min(beat.offset_minutes, block.duration_minutes - 1) / block.duration_minutes).toFixed(2)}%;--beat-color:${sbChannelColor(beat.channel)}" title="${escapeAttribute(`${sbFormatOffset(sbBeatAbsolute(block, beat))} · ${channelLabel(beat.channel)} · ${beat.title}`)}"></i>`;
+    return `<i class="sb-beat is-${status} ${beat.main ? 'is-main' : ''}" style="left:${(100 * Math.min(beat.offset_minutes, block.duration_minutes - 1) / block.duration_minutes).toFixed(2)}%;--beat-color:${sbChannelColor(beat.channel)}" title="${escapeAttribute(`${beat.main ? 'Main stimulus · ' : ''}${sbFormatOffset(sbBeatAbsolute(block, beat))} · ${channelLabel(beat.channel)} · ${beat.title}`)}"></i>`;
   }).join('');
   return `<div class="sb-clip ${selected ? 'is-selected' : ''} ${block.locked ? 'is-locked' : ''} ${widthPx < 90 ? 'is-narrow' : ''} ${aiFresh ? 'is-ai' : ''} is-${block.status}" data-sb-clip="${block.id}" tabindex="0" role="button" aria-pressed="${selected}" aria-label="${escapeAttribute(`${block.title}, ${sbFormatOffset(block.start_minutes)} to ${sbFormatOffset(sbBlockEnd(block))}`)}"
       style="left:${(block.start_minutes * ppm).toFixed(1)}px;width:${Math.max(6, widthPx).toFixed(1)}px;top:${top}px;height:${height}px;--clip-color:${sbBlockColor(block, storyboard)}">
@@ -336,6 +336,7 @@ function renderSbClip(storyboard, block, top, height) {
       <span class="sb-clip-flags">
         <span class="sb-level-pips" title="Level of detail: ${['structure', 'narrative', 'inject plan'][level - 1]}">${[1, 2, 3].map((index) => `<i class="${index <= level ? 'on' : ''}"></i>`).join('')}</span>
         ${block.status === 'validated' ? `<span class="sb-flag is-ok" title="Validated">${sbUiIcon('check', 11)}</span>` : ''}
+        ${block.beats.some((beat) => beat.main) ? `<span class="sb-flag is-main" title="${escapeAttribute(`Main stimuli: ${block.beats.filter((beat) => beat.main).map((beat) => beat.title || 'Untitled').join(', ')}`)}">${sbUiIcon('star', 10)}${block.beats.filter((beat) => beat.main).length}</span>` : ''}
         ${block.locked ? `<span class="sb-flag" title="Locked">${sbUiIcon('lock', 11)}</span>` : ''}
         ${aiFresh ? '<span class="sb-flag is-ai" title="Updated by AI">AI</span>' : ''}
         ${outdated ? `<span class="sb-flag is-warn" title="${outdated} inject(s) need sync">${outdated}</span>` : ''}
@@ -453,7 +454,7 @@ function renderSbGenerateModal(storyboard) {
   const cell = options.scope === 'cell' ? sbCell(project, options.cellId) : null;
   const scope = sbSortedBlocks(storyboard);
   const toPlan = cell ? [] : scope.filter((block) => !block.locked && block.beats.length < block.stimuli_target);
-  const missing = scope.reduce((sum, block) => sum + block.beats.filter((beat) => !sbStimulusForBeat(project, beat.id) && (!cell || beat.cell_id === cell.id)).length, 0);
+  const missing = scope.reduce((sum, block) => sum + block.beats.filter((beat) => !sbStimulusForBeat(project, beat.id) && (!cell || sbReaches(beat.cell_id, cell.id))).length, 0);
   const toPlanCount = toPlan.reduce((sum, block) => sum + block.stimuli_target - block.beats.length, 0);
   const castMissing = storyboard.cast.filter((cast) => !sbFindActorForCast(project, cast)).length;
   const running = SbPipeline.active;

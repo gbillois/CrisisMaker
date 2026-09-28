@@ -289,7 +289,11 @@ function sbGenerationBrief(project, block, beat, options = {}) {
     block.narrative ? `- What is happening: ${sbText(block.narrative, 1600)}` : '',
     block.objectives.length ? `- Objectives tested: ${block.objectives.join('; ')}` : '',
     beat ? `- THIS INJECT (${channelLabel(beat.channel)} at ${sbFormatOffset(sbBeatAbsolute(block, beat))}): "${beat.title}". ${beat.intent}` : '',
-    (() => { const cell = sbCell(project, beat?.cell_id || options.cellId); return cell ? `- Recipient: the ${cell.name}${cell.description ? ` (${cell.description})` : ''}. Address the inject to them.` : ''; })(),
+    (() => {
+      if (sbIsAllCells(beat?.cell_id)) return `- Recipient: every player cell (${(project.cells || []).map((cell) => cell.name).join(', ') || 'all players'}). A main stimulus that frames the story: address it to all of them.`;
+      const cell = sbCell(project, beat?.cell_id || options.cellId);
+      return cell ? `- Recipient: the ${cell.name}${cell.description ? ` (${cell.description})` : ''}. Address the inject to them.` : '';
+    })(),
     actor ? `- Sender: ${actor.name}, ${actor.title || ''} at ${actor.organization || ''}.` : '',
     neighbours.length ? `- Other injects in this phase (stay consistent, do not repeat them): ${neighbours.join(' | ')}` : '',
     `- Write in ${sbLanguageName(project)} unless the channel has its own language. Replace every example or placeholder value of the template (names, dates, organisations) with content consistent with this scenario.`
@@ -431,7 +435,7 @@ const SbPipeline = {
         }
       }
       const beats = blocks.flatMap((block) => block.beats.map((beat) => ({ block, beat })))
-        .filter(({ beat }) => !sbStimulusForBeat(project, beat.id) && (!beatIds || beatIds.includes(beat.id)) && (!cellIds || cellIds.includes(beat.cell_id)));
+        .filter(({ beat }) => !sbStimulusForBeat(project, beat.id) && (!beatIds || beatIds.includes(beat.id)) && (!cellIds || cellIds.some((id) => sbReaches(beat.cell_id, id))));
       this.total = beats.length;
       if (!beats.length) this.note('info', 'Every planned inject already has a stimulus. Use Sync to update existing ones.');
       // 2. Actors for the roles used by these beats.
@@ -742,7 +746,7 @@ function sbExerciseChecks(project = appState.scenario) {
   if (!items.length) { add('info', 'empty', 'No inject yet: plan injects in the Detailed storyline.'); return issues; }
   if (!cells.length) add('warning', 'no_cells', 'No player cell: create cells in Cells & actors.');
   for (const cell of cells) {
-    const times = items.filter((item) => item.cell_id === cell.id).map((item) => item.time).sort((a, b) => a - b);
+    const times = items.filter((item) => sbReaches(item.cell_id, cell.id)).map((item) => item.time).sort((a, b) => a - b);
     if (!times.length) { add('warning', 'cell_idle', `The ${cell.name} receives no inject.`, { cell_id: cell.id }); continue; }
     const marks = [0, ...times, duration];
     // Dead time is judged against the cell's own rhythm: a quiet cell is not flagged for every half hour.
@@ -760,7 +764,7 @@ function sbExerciseChecks(project = appState.scenario) {
     if (!items.some((item) => item.time >= block.start_minutes && item.time < sbBlockEnd(block))) add('warning', 'phase_empty', `Phase "${block.title}" has no inject.`, { at: block.start_minutes });
   }
   for (const item of items) {
-    if (!item.cell_id || !cells.some((cell) => cell.id === item.cell_id)) add('warning', 'no_cell', `"${item.title}" has no recipient cell.`, { at: item.time, item_key: item.key });
+    if (!sbHasRecipient(project, item.cell_id)) add('warning', 'no_cell', `"${item.title}" has no recipient cell.`, { at: item.time, item_key: item.key });
     if (!item.sender) add('info', 'no_sender', `"${item.title}" has no sender.`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
     if (item.status === 'orphan') add('warning', 'orphan', `"${item.title}" no longer matches the storyline (orphan).`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
     if (item.time > duration) add('error', 'after_end', `"${item.title}" is scheduled after the end of the exercise.`, { at: item.time, cell_id: item.cell_id, item_key: item.key });

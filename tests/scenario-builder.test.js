@@ -818,3 +818,38 @@ test('Context duration reads h:min, minutes or hours', () => {
   assert.equal(h.run('sbFormatHoursMinutes(45)'), '0:45');
   assert.equal(h.run('sbFormatHoursMinutes(180)'), '3:00');
 });
+
+test('main stimuli: added in the phase editor, sent to all cells or one, kept by AI re-plans', async () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'storyline';`);
+  const blockId = h.run('sbMainBlocks(sbStoryboard())[1].id');
+  const beat = h.json(`slAddMainStimulus(appState.scenario, sbBlock(sbStoryboard(), '${blockId}'))`);
+  assert.equal(beat.main, true);
+  assert.equal(beat.cell_id, 'all');
+  h.run(`(() => { const beat = slFindBeat(sbStoryboard(), '${beat.id}').beat; beat.title = 'Ransom note on every screen'; beat.intent = 'Everyone sees it.'; })()`);
+  // The phase editor lists it, with "All cells" as its recipient.
+  h.run(`sbUI().selected = ['${blockId}']`);
+  const view = h.run('renderStorylineView()');
+  assert.ok(view.includes('Main stimuli') && view.includes(`data-sl-main="${beat.id}.title"`) && view.includes('Ransom note on every screen'));
+  assert.ok(view.includes('sb-beat is-planned is-main') || view.includes('is-main'), 'marked on the timeline');
+  // Every cell receives it: no "no recipient" warning, it counts in every cell row.
+  const issues = h.json('sbExerciseChecks(appState.scenario)');
+  assert.ok(!issues.some((issue) => issue.code === 'no_cell' && issue.message.includes('Ransom note')));
+  const cells = h.json('appState.scenario.cells.map((cell) => cell.id)');
+  assert.ok(cells.every((id) => h.run(`sbReaches('all', '${id}')`)));
+  const detailed = h.run(`(() => { tabUI('detailed').cell = 'all'; return renderDetailedView(); })()`);
+  assert.equal((detailed.match(new RegExp(`data-ds-item="beat:${beat.id}"`, 'g')) || []).length, cells.length, 'one card per cell row');
+  // Saved and reloaded: still main, still for all cells.
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).storyboard.blocks.find((block) => block.id === '${blockId}').beats.find((item) => item.id === '${beat.id}')`);
+  assert.equal(reloaded.main, true);
+  assert.equal(reloaded.cell_id, 'all');
+  // An AI re-plan that returns a new list keeps the main stimulus unchanged.
+  mockAI(h, [{ block: { beats: [{ at: 3, channel: 'email_internal', cast: '', title: 'New planned inject', intent: 'x' }, { id: beat.id, at: 9, channel: 'sms', title: 'Rewritten', intent: 'y' }] } }]);
+  h.run(`Object.assign(appState.scenario.settings, { ai_provider: 'openai', ai_api_key: 'TEST', ai_model: 'gpt-test' })`);
+  await h.run(`SbAI.rewrite('${blockId}', 'Replan')`);
+  const after = h.json(`sbBlock(sbStoryboard(), '${blockId}').beats`);
+  const kept = after.find((item) => item.id === beat.id);
+  assert.equal(kept.title, 'Ransom note on every screen');
+  assert.equal(kept.main, true);
+  assert.ok(after.some((item) => item.title === 'New planned inject'));
+});
