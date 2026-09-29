@@ -52,7 +52,7 @@ Update cascade, "Rewrite with AI" of one inject, Suggest roles, the reviewer age
 agent console → Challenge my exercise), Excel chronogram import with AI (a client-style .xlsx with
 French headers), and Check & Challenge of an external exercise file.
 
-## What was found and fixed (29 fix commits on `claude/bold-hawking-sjakgb`)
+## What was found and fixed (on `claude/bold-hawking-sjakgb`)
 
 ### Running on GLM 5.3 / Ollama Cloud
 - **Every agent call failed at first.** Non-streamed Ollama calls stay silent for a minute or more,
@@ -140,6 +140,13 @@ English, French and German at three widths (no AI). What they found, now fixed:
   dates in US format under FR/DE, a few leftover labels; the library says "injects" like the rest.
 - Story debrief: the timeline stayed blank with no message when unpkg.com is unreachable (it loads
   React from there); it now says why.
+- The demo project contradicted itself: five email images were identical (Thomas Bergmann's
+  emails signed by Sophie Delacroix), every email carried the real clock instead of the simulated
+  one, the attacker sent the internal crisis-bridge SMS. Each demo inject now has its own sender,
+  time and content.
+- Narrow screens and long labels: Cells & actors and the library cards overflowed at phone width,
+  the Main storyline squeezed six phases into 15 px slivers (it now scrolls inside the timeline),
+  French labels were cut in the storyline toolbar and the main events row.
 
 ## Tests
 
