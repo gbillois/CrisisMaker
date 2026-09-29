@@ -33,6 +33,11 @@
         return en;
       }
 
+      /* Locale for dates shown in the UI, following the app language. */
+      function uiLocale() {
+        return tt('en-GB', 'fr-FR', 'de-DE');
+      }
+
       function setDocumentLanguage() {
         const lang = currentLanguage();
         document.documentElement.lang = lang;
@@ -560,7 +565,7 @@
       function restoreVersion(stimulus, versionIndex) {
         const version = stimulus.history[versionIndex];
         if (!version) return;
-        saveStimulus(stimulus, version.fields, tt(`Restore version from ${new Date(version.saved_at).toLocaleDateString()}`, `Restauration de la version du ${new Date(version.saved_at).toLocaleDateString()}`, `Version vom ${new Date(version.saved_at).toLocaleDateString()} wiederherstellen`));
+        saveStimulus(stimulus, version.fields, tt(`Restore version from ${new Date(version.saved_at).toLocaleDateString(uiLocale())}`, `Restauration de la version du ${new Date(version.saved_at).toLocaleDateString(uiLocale())}`, `Version vom ${new Date(version.saved_at).toLocaleDateString(uiLocale())} wiederherstellen`));
       }
 
       function getTemplateDefinition(stimulus) {

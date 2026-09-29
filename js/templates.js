@@ -1286,7 +1286,7 @@
           return `
             <div class="external-email hd">
               <div class="outlook-hd-ribbon">
-                <div class="outlook-hd-ribbon-tabs"><span class="active">Home</span><span>Send / Receive</span><span>Folder</span><span>View</span></div>
+                <div class="outlook-hd-ribbon-tabs"><span class="active">${tt('Home', 'Accueil', 'Start')}</span><span>${tt('Send / Receive', 'Envoi/réception', 'Senden/Empfangen')}</span><span>${tt('Folder', 'Dossier', 'Ordner')}</span><span>${tt('View', 'Affichage', 'Ansicht')}</span></div>
                 <div class="outlook-hd-ribbon-actions">
                   <div class="outlook-hd-ribbon-group">
                     <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre', 'Antworten')}</div>
@@ -1359,7 +1359,7 @@
           return `
             <div class="outlook-email hd">
               <div class="outlook-hd-ribbon">
-                <div class="outlook-hd-ribbon-tabs"><span class="active">Home</span><span>Send / Receive</span><span>Folder</span><span>View</span></div>
+                <div class="outlook-hd-ribbon-tabs"><span class="active">${tt('Home', 'Accueil', 'Start')}</span><span>${tt('Send / Receive', 'Envoi/réception', 'Senden/Empfangen')}</span><span>${tt('Folder', 'Dossier', 'Ordner')}</span><span>${tt('View', 'Affichage', 'Ansicht')}</span></div>
                 <div class="outlook-hd-ribbon-actions">
                   <div class="outlook-hd-ribbon-group">
                     <div class="outlook-hd-ribbon-btn primary">${iconReply()} ${tt('Reply', 'Répondre', 'Antworten')}</div>

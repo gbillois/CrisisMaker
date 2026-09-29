@@ -569,7 +569,7 @@ test('play: clock, numbering, timing, statuses both ways with the log, on-the-fl
   h.run('playUI().logOpen = true');
   const view = h.run('renderPlayView()');
   assert.ok(!view.includes('play-generate'), 'the download block moved to the Injects library');
-  assert.ok(h.run('renderLibraryView()').includes('Download all stimuli'));
+  assert.ok(h.run('renderLibraryView()').includes('Download all injects'));
   for (const marker of ['data-play-bar', 'data-play="toggle"', 'data-play="reset-all"', 'data-play="add"', 'data-play-quick="now"', 'data-play-filter="cell"', 'data-play-now', 'play-phase-group', 'data-play-set="sent"', 'data-action="open-stimulus-modal"', 'Exercise log', 'data-play="save-log"', 'data-play-note']) assert.ok(view.includes(marker), marker);
   // Statuses go both ways, each change is logged, a re-send is counted.
   const id = h.run(`getSortedStimuli()[3].id`);

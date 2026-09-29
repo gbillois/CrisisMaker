@@ -216,7 +216,7 @@
             <div class="settings-drawer ${appState.settingsDrawerOpen ? 'open' : ''}" role="dialog" aria-modal="true" aria-label="${tt('Settings', 'Paramètres', 'Einstellungen')}" aria-hidden="${appState.settingsDrawerOpen ? 'false' : 'true'}" ${appState.settingsDrawerOpen ? '' : 'inert'}>
               <div class="settings-drawer-header">
                 <h3>${tt('Settings', 'Paramètres', 'Einstellungen')}</h3>
-                <button class="btn btn-secondary" data-action="toggle-settings-drawer" aria-label="Close">${sbUiIcon('close', 16)}</button>
+                <button class="btn btn-secondary" data-action="toggle-settings-drawer" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="settings-drawer-body">
                 <article class="card settings-agent-card">
@@ -254,7 +254,7 @@
             <div class="modal-box tech-log-box" role="dialog" aria-modal="true" aria-label="Technical log">
               <div class="modal-header">
                 <h3>${tt('Technical log', 'Journal technique', 'Technisches Protokoll')} <small>${entries.length} ${tt('entries', 'entrées', 'Einträge')}${failed ? ` · ${failed} ${tt('failed', 'en échec', 'fehlgeschlagen')}` : ''}</small></h3>
-                <button class="btn btn-secondary" data-action="tech-log-close" aria-label="Close">${sbUiIcon('close', 16)}</button>
+                <button class="btn btn-secondary" data-action="tech-log-close" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="modal-body">
                 <p class="helper">${tt('Every AI call of this session (provider, model, size of the request, duration, HTTP status, stop reason, attempt, start of the reply) and every error, newest first. API keys are masked and prompts are never recorded, but replies may contain exercise content. Kept in memory only: a reload clears it.', 'Chaque appel IA de la session (fournisseur, modèle, taille de la requête, durée, statut HTTP, raison d’arrêt, tentative, début de la réponse) et chaque erreur, du plus récent au plus ancien. Les clés API sont masquées et les prompts ne sont jamais enregistrés, mais les réponses peuvent contenir du contenu de l’exercice. En mémoire seulement : un rechargement l’efface.', 'Jeder KI-Aufruf dieser Sitzung (Anbieter, Modell, Anfragegröße, Dauer, HTTP-Status, Stoppgrund, Versuch, Anfang der Antwort) und jeder Fehler, neueste zuerst. API-Schlüssel sind maskiert, Prompts werden nie gespeichert, Antworten können aber Übungsinhalte enthalten. Nur im Speicher: Neuladen löscht es.')}</p>
@@ -515,7 +515,7 @@
         const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
         const configured = project.stimuli.length || project.client.name || project.scenario.summary || storyboard.blocks.length;
         const lastSaved = project.updated_at
-          ? new Date(project.updated_at).toLocaleString()
+          ? new Date(project.updated_at).toLocaleString(uiLocale())
           : tt('Not saved yet', 'Pas encore sauvegardé', 'Noch nicht gespeichert');
         const facts = [
           [tt('Client', 'Client', 'Auftraggeber'), project.client.name],
@@ -845,7 +845,7 @@
                   ${(!isOllama || isOllamaCloud) ? `<label class="field" style="grid-column: 1 / -1;">${isOllamaCloud ? tt('Ollama Cloud API key', 'Clé API Ollama Cloud', 'Ollama-Cloud-API-Schlüssel') : isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
                       <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
-                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="Show or hide the key">${sbUiIcon('eye', 16)}</button>
+                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="${escapeAttribute(tt('Show or hide the key', 'Afficher ou masquer la clé', 'Schlüssel ein- oder ausblenden'))}">${sbUiIcon('eye', 16)}</button>
                     </div>
                     <p class="helper">${tt('Kept for this browser session only and never saved in project files: enter it again after closing the browser.', 'Conservée pour cette session du navigateur uniquement, jamais enregistrée dans les fichiers projet : saisissez-la de nouveau après avoir fermé le navigateur.', 'Nur für diese Browsersitzung gespeichert, nie in Projektdateien: nach dem Schließen des Browsers erneut eingeben.')}</p>
                   </label>` : ''}
@@ -866,7 +866,7 @@
                   <label class="field" style="grid-column: 1 / -1;">${tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel')}
                     <div style="display:flex; gap:10px;">
                       <input id="api-key-input" type="password" data-bind="settings.azure_api_key" value="${escapeAttribute(settings.azure_api_key || '')}" placeholder="Azure API key">
-                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="Show or hide the key">${sbUiIcon('eye', 16)}</button>
+                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="${escapeAttribute(tt('Show or hide the key', 'Afficher ou masquer la clé', 'Schlüssel ein- oder ausblenden'))}">${sbUiIcon('eye', 16)}</button>
                     </div>
                   </label>
                 ` : ''}
@@ -971,7 +971,7 @@
                 <label class="field">${tt('Azure Speech API key', 'Clé API Azure Speech', 'Azure Speech API-Schlüssel')}
                   <div style="display:flex; gap:10px;">
                     <input id="azure-speech-key-input" type="password" data-bind="settings.azure_speech_key" value="${escapeAttribute(settings.azure_speech_key || '')}" placeholder="${tt('Enter your Azure Speech key', 'Entrez votre clé Azure Speech', 'Geben Sie Ihren Azure Speech-Schlüssel ein')}">
-                    <button class="btn btn-secondary" data-action="toggle-azure-speech-key" aria-label="Show or hide the key">${sbUiIcon('eye', 16)}</button>
+                    <button class="btn btn-secondary" data-action="toggle-azure-speech-key" aria-label="${escapeAttribute(tt('Show or hide the key', 'Afficher ou masquer la clé', 'Schlüssel ein- oder ausblenden'))}">${sbUiIcon('eye', 16)}</button>
                   </div>
                 </label>
                 <label class="field">${tt('Azure region', 'Région Azure', 'Azure-Region')}
@@ -1025,7 +1025,7 @@
             <label class="field">${tt('Source actor', 'Acteur émetteur', 'Absender-Akteur')}
               <select data-stimulus-bind="${stimulus.id}.actor_id">${actorOptions}</select>
             </label>
-            <label class="field">${tt('Timeline (minutes)', 'Timeline (minutes)', 'Zeitplan (Minuten)')}
+            <label class="field">${tt('Timeline (minutes)', 'Minute de l\'exercice', 'Übungsminute')}
               <input type="number" min="0" step="5" data-stimulus-bind="${stimulus.id}.timestamp_offset_minutes" value="${stimulus.timestamp_offset_minutes}">
             </label>
             ${typeof renderStimulusLinks === 'function' ? renderStimulusLinks(appState.scenario, stimulus) : ''}
@@ -1302,7 +1302,7 @@
                   <button class="btn btn-secondary mobile-preview-toggle" data-action="toggle-mobile-preview">${appState.ui?.mobilePreviewVisible ? tt('Editor', 'Éditeur', 'Editor') : tt('Preview', 'Aperçu', 'Vorschau')}</button>
                   ${(stimulus.history?.length > 0) ? `<button class="btn btn-secondary" data-action="show-history" data-stimulus-id="${stimulus.id}">${tt('History', 'Historique', 'Verlauf')} (${stimulus.history.length})</button>` : ''}
                   <button class="btn btn-secondary" data-action="duplicate-stimulus" data-stimulus-id="${stimulus.id}">${tt('Duplicate', 'Dupliquer', 'Duplizieren')}</button>
-                  <button class="btn btn-secondary" data-action="close-stimulus-modal" aria-label="Close">${sbUiIcon('close', 16)}</button>
+                  <button class="btn btn-secondary" data-action="close-stimulus-modal" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
                 </div>
               </div>
               <div class="modal-body-stimulus${appState.ui?.mobilePreviewVisible ? ' mobile-preview-active' : ''}" data-stimulus-modal-body style="--stimulus-modal-editor-width:${editorWidth}%; --stimulus-modal-preview-width:${100 - editorWidth}%;">
@@ -1339,6 +1339,57 @@
         `;
       }
 
+      /* Template field labels are declared in English in config.js; translate them at render time. */
+      const FIELD_LABEL_TEXT = {
+        'Headline': ['Titre', 'Schlagzeile'], 'Subheadline': ['Sous-titre', 'Unterzeile'], 'Standfirst': ['Chapô', 'Vorspann'],
+        'Kicker': ['Surtitre', 'Dachzeile'], 'Author': ['Auteur', 'Autor'], 'Date': ['Date', 'Datum'], 'Time': ['Heure', 'Uhrzeit'],
+        'Relative date': ['Date relative', 'Relatives Datum'], 'Update time': ['Heure de mise à jour', 'Aktualisierungszeit'],
+        'Category': ['Rubrique', 'Kategorie'], 'Section': ['Rubrique', 'Ressort'], 'Location': ['Lieu', 'Ort'],
+        'Read time': ['Temps de lecture', 'Lesezeit'], 'Premium article': ['Article premium', 'Premium-Artikel'], 'Premium': ['Premium', 'Premium'],
+        'F+ article': ['Article F+', 'F+-Artikel'], 'Content type': ['Type de contenu', 'Inhaltstyp'],
+        'Show photo': ['Afficher la photo', 'Foto anzeigen'], 'Photo': ['Photo', 'Foto'], 'Image caption': ['Légende de l\'image', 'Bildunterschrift'],
+        'Tags': ['Tags', 'Tags'], 'Tags (タグ, comma-separated)': ['Tags (タグ, séparés par des virgules)', 'Tags (タグ, durch Kommas getrennt)'],
+        'HTML body': ['Corps HTML', 'HTML-Text'], 'Sender': ['Expéditeur', 'Absender'], 'Sender name': ['Nom de l\'expéditeur', 'Name des Absenders'],
+        'Sender email': ['E-mail de l\'expéditeur', 'E-Mail des Absenders'], 'From': ['De', 'Von'], 'To': ['À', 'An'], 'Cc': ['Cc', 'Cc'],
+        'Recipient': ['Destinataire', 'Empfänger'], 'Subject': ['Objet', 'Betreff'], 'Importance': ['Importance', 'Wichtigkeit'],
+        'Attachment': ['Pièce jointe', 'Anhang'], 'Attachment name': ['Nom de la pièce jointe', 'Name des Anhangs'],
+        'Classification': ['Classification', 'Einstufung'], 'Reference': ['Référence', 'Referenz'], 'Severity': ['Gravité', 'Schweregrad'],
+        'Display name': ['Nom affiché', 'Anzeigename'], 'Handle': ['Pseudo', 'Handle'], 'Verified account': ['Compte vérifié', 'Verifiziertes Konto'],
+        'Badge type': ['Type de badge', 'Abzeichen-Typ'], 'Avatar initials': ['Initiales de l\'avatar', 'Avatar-Initialen'],
+        'Avatar color': ['Couleur de l\'avatar', 'Avatar-Farbe'], 'Text': ['Texte', 'Text'], 'Title': ['Titre', 'Titel'],
+        'Reposts': ['Republications', 'Reposts'], 'Quotes': ['Citations', 'Zitate'], 'Likes': ['J\'aime', 'Likes'], 'Views': ['Vues', 'Aufrufe'],
+        'Replies': ['Réponses', 'Antworten'], 'Reactions': ['Réactions', 'Reaktionen'], 'Reactions (JSON array)': ['Réactions (tableau JSON)', 'Reaktionen (JSON-Array)'],
+        'Comments': ['Commentaires', 'Kommentare'], 'Subreddit': ['Subreddit', 'Subreddit'], 'Subreddit icon color': ['Couleur de l\'icône du subreddit', 'Farbe des Subreddit-Symbols'],
+        'Author flair': ['Flair de l\'auteur', 'Autor-Flair'], 'Author flair color': ['Couleur du flair de l\'auteur', 'Farbe des Autor-Flairs'],
+        'Post flair': ['Flair du post', 'Beitrags-Flair'], 'Post flair color': ['Couleur du flair du post', 'Farbe des Beitrags-Flairs'],
+        'Link URL': ['URL du lien', 'Link-URL'], 'Link domain': ['Domaine du lien', 'Link-Domain'], 'Upvotes': ['Votes positifs', 'Upvotes'],
+        'Upvote ratio': ['Ratio de votes positifs', 'Upvote-Anteil'], 'Awards (JSON array)': ['Récompenses (tableau JSON)', 'Auszeichnungen (JSON-Array)'],
+        'Pinned post': ['Post épinglé', 'Angehefteter Beitrag'], 'Top comment (JSON object)': ['Commentaire principal (objet JSON)', 'Top-Kommentar (JSON-Objekt)'],
+        'Visual style': ['Style visuel', 'Visueller Stil'], 'Forum name': ['Nom du forum', 'Forumname'], 'Forum tagline': ['Slogan du forum', 'Forum-Slogan'],
+        'Breadcrumb / subdread': ['Fil d\'Ariane / subdread', 'Brotkrumen / Subdread'], 'Thread prefix': ['Préfixe du fil', 'Thread-Präfix'],
+        'Thread title': ['Titre du fil', 'Thread-Titel'], 'User rank': ['Rang de l\'utilisateur', 'Benutzerrang'], 'Status': ['Statut', 'Status'],
+        'Join date': ['Date d\'inscription', 'Beitrittsdatum'], 'Posts': ['Messages', 'Beiträge'], 'Reputation / score': ['Réputation / score', 'Reputation / Punktzahl'],
+        'Credits': ['Crédits', 'Credits'], 'Post date': ['Date du message', 'Beitragsdatum'], 'Message content (HTML)': ['Contenu du message (HTML)', 'Nachrichteninhalt (HTML)'],
+        'Victim organization': ['Organisation victime', 'Betroffene Organisation'], 'Victim domain': ['Domaine de la victime', 'Domain des Opfers'],
+        'Breach date': ['Date de la fuite', 'Datum des Datenlecks'], 'Records': ['Enregistrements', 'Datensätze'], 'Data size': ['Volume de données', 'Datenmenge'],
+        'Price': ['Prix', 'Preis'], 'Escrow': ['Séquestre', 'Treuhand'], 'Sample status': ['Statut de l\'échantillon', 'Status der Probe'],
+        'Sample URL': ['URL de l\'échantillon', 'URL der Probe'], 'Onion mirror': ['Miroir onion', 'Onion-Spiegel'], 'Files (JSON array)': ['Fichiers (tableau JSON)', 'Dateien (JSON-Array)'],
+        'Last activity': ['Dernière activité', 'Letzte Aktivität'], 'Ticker': ['Bandeau défilant', 'Laufband'], 'Organization': ['Organisation', 'Organisation'],
+        'Logo text': ['Texte du logo', 'Logo-Text'], 'Logo color': ['Couleur du logo', 'Logo-Farbe'], 'Use logo image': ['Utiliser une image de logo', 'Logo-Bild verwenden'],
+        'Logo image': ['Image du logo', 'Logo-Bild'], 'Contact': ['Contact', 'Kontakt'], 'Contact email': ['E-mail de contact', 'Kontakt-E-Mail'],
+        'Phone': ['Téléphone', 'Telefon'], 'Device': ['Appareil', 'Gerät'], 'Audio title': ['Titre de l\'audio', 'Audio-Titel']
+      };
+
+      function fieldLabel(spec) {
+        const label = String(spec?.label ?? spec?.key ?? '');
+        const exact = FIELD_LABEL_TEXT[label];
+        if (exact) return tt(label, exact[0], exact[1]);
+        // Labels such as "Headline (見出し)" keep their hint and translate the base.
+        const match = label.match(/^(.+?) \((.+)\)$/);
+        const base = match && FIELD_LABEL_TEXT[match[1]];
+        return base ? `${tt(match[1], base[0], base[1])} (${match[2]})` : label;
+      }
+
       function renderFieldControl(stimulus, spec) {
         const value = stimulus.fields[spec.key];
         const bind = `data-stimulus-field="${stimulus.id}.${spec.key}"`;
@@ -1348,7 +1399,7 @@
         if (spec.type === 'textarea') {
           const content = Array.isArray(value) ? JSON.stringify(value) : String(value ?? '');
           return `
-            <label class="field">${escapeHtml(spec.label)}
+            <label class="field">${escapeHtml(fieldLabel(spec))}
               <textarea ${bind}>${escapeHtml(content)}</textarea>
               ${genBtn}
             </label>
@@ -1362,7 +1413,7 @@
             : '';
           const providerLabels = isProviderField ? { browser: tt('Browser (built-in)', 'Navigateur (intégré)', 'Browser (eingebaut)'), azure_speech: 'Azure Speech (Neural)' } : {};
           return `
-            <label class="field">${escapeHtml(spec.label)}
+            <label class="field">${escapeHtml(fieldLabel(spec))}
               <select ${bind}>
                 ${(spec.options || []).map((option) => `<option value="${option}" ${String(value) === String(option) ? 'selected' : ''}>${isProviderField ? (providerLabels[option] || option) : option}</option>`).join('')}
               </select>
@@ -1374,7 +1425,7 @@
         if (spec.type === 'tts_language_select') {
           const effectiveLang = value || (() => { const l = appState.scenario.settings.inject_language || appState.scenario.settings.language || 'en'; if (l === 'fr') return 'fr-FR'; if (l === 'de') return 'de-DE'; return 'en-US'; })();
           return `
-            <label class="field">${escapeHtml(spec.label)}
+            <label class="field">${escapeHtml(fieldLabel(spec))}
               <select ${bind}>
                 <option value="" ${!value ? 'selected' : ''}>${tt('Auto (from interface language)', 'Auto (depuis la langue de l\'interface)', 'Auto (von der Oberflächensprache)')}</option>
                 ${TTS_LANGUAGES.map(l => `<option value="${l.value}" ${String(value) === l.value ? 'selected' : ''}>${l.label}</option>`).join('')}
@@ -1395,7 +1446,7 @@
             stimulus.fields.azure_voice = voices[0].value;
           }
           return `
-            <label class="field">${escapeHtml(spec.label)}
+            <label class="field">${escapeHtml(fieldLabel(spec))}
               <select ${bind}>
                 ${voices.map(v => `<option value="${v.value}" ${String(stimulus.fields.azure_voice || value) === v.value ? 'selected' : ''}>${v.label} — ${v.value}</option>`).join('')}
               </select>
@@ -1406,7 +1457,7 @@
           if (stimulus.fields.voice_type !== 'cybercriminal') return '';
           const uiLang = appState.scenario.settings.language || 'en';
           return `
-            <label class="field">${escapeHtml(spec.label)}
+            <label class="field">${escapeHtml(fieldLabel(spec))}
               <select ${bind}>
                 ${Object.entries(ATTACKER_VOICE_PRESETS).map(([k, preset]) => {
                   const label = preset.label[uiLang] || preset.label.en;
@@ -1418,7 +1469,7 @@
         }
         if (spec.type === 'checkbox') {
           return `
-            <label class="field">${escapeHtml(spec.label)}
+            <label class="field">${escapeHtml(fieldLabel(spec))}
               <select ${bind}><option value="true" ${value ? 'selected' : ''}>${tt('Yes', 'Oui', 'Ja')}</option><option value="false" ${!value ? 'selected' : ''}>${tt('No', 'Non', 'Nein')}</option></select>
             </label>
           `;
@@ -1427,7 +1478,7 @@
           const hasImage = value && String(value).startsWith('data:');
           return `
             <div class="field" style="grid-column:1/-1;">
-              <span style="display:block; margin-bottom:6px; font-size:0.85rem; color:var(--text-muted, #6b7280);">${escapeHtml(spec.label)}</span>
+              <span style="display:block; margin-bottom:6px; font-size:0.85rem; color:var(--text-muted, #6b7280);">${escapeHtml(fieldLabel(spec))}</span>
               ${hasImage ? `<img src="${escapeAttribute(value)}" style="width:100%; max-height:180px; object-fit:cover; border-radius:6px; margin-bottom:8px; display:block;" alt="">` : ''}
               <div style="display:flex; gap:8px; align-items:center;">
                 <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
@@ -1440,7 +1491,7 @@
           `;
         }
         return `
-          <label class="field">${escapeHtml(spec.label)}
+          <label class="field">${escapeHtml(fieldLabel(spec))}
             <input type="${spec.type}" ${bind} value="${escapeAttribute(value ?? '')}">
             ${genBtn}
           </label>
@@ -1503,7 +1554,7 @@
             <div class="modal-box">
               <div class="modal-header">
                 <h3>${tt('Version history', 'Historique des versions', 'Versionsverlauf')} — ${escapeHtml(channelLabel(stimulus.channel))}</h3>
-                <button class="btn btn-secondary" data-action="close-history" aria-label="Close">${sbUiIcon('close', 16)}</button>
+                <button class="btn btn-secondary" data-action="close-history" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="modal-body">
                 ${history.length === 0
@@ -1512,7 +1563,7 @@
                     <div class="history-entry">
                       <div class="history-entry-meta">
                         <strong>v${history.length - index}</strong>
-                        <span class="subtle">${new Date(version.saved_at).toLocaleString()}</span>
+                        <span class="subtle">${new Date(version.saved_at).toLocaleString(uiLocale())}</span>
                         <span>${escapeHtml(version.change_summary || '')}</span>
                         <button class="btn btn-xs btn-secondary" data-action="restore-version" data-stimulus-id="${stimulus.id}" data-version-index="${index}">${tt('Restore', 'Restaurer', 'Wiederherstellen')}</button>
                       </div>

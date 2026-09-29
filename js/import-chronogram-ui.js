@@ -28,7 +28,7 @@
             <div class="modal-box chronogram-modal" >
               <div class="modal-header">
                 <h3>${tt('AI Import - Chronogram', 'Import IA - Chronogramme', 'KI-Import - Chronogramm')}</h3>
-                <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="Close">${sbUiIcon('close', 16)}</button>
+                <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="chronogram-modal-body">
                 <div class="chronogram-info-grid">
@@ -223,7 +223,7 @@
                 <h3>${state.error
                   ? tt('AI Import failed', 'Import IA échoué', 'KI-Import fehlgeschlagen')
                   : tt('AI Import complete', 'Import IA terminé', 'KI-Import abgeschlossen')}</h3>
-                <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="Close">${sbUiIcon('close', 16)}</button>
+                <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="chronogram-modal-body">
                 ${state.error ? `<div class="chronogram-error-banner">${escapeHtml(state.error)}</div>` : ''}
@@ -289,7 +289,7 @@
               <div class="modal-box chronogram-modal" >
                 <div class="modal-header">
                   <h3>${tt('Validation complete', 'Validation terminée', 'Validierung abgeschlossen')}</h3>
-                  <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="Close">${sbUiIcon('close', 16)}</button>
+                  <button class="btn btn-secondary" data-action="chronogram-cancel" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
                 </div>
                 <div class="chronogram-modal-body">
                   <p>${tt(

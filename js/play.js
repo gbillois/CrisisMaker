@@ -21,14 +21,14 @@ function playLogTypeLabel(type) {
 
 function playWallClock(iso) {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString(uiLocale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 /* CSV for Excel: one line per log entry, oldest first. */
 function playLogCsv(project = appState.scenario) {
   const play = playState(project);
   const quote = csvCell;
-  const rows = play.log.map((entry) => [sbFormatOffset(Math.floor(entry.t)), entry.at ? new Date(entry.at).toLocaleString() : '', project.scenario.start_date ? sbClockTime(entry.t, project.scenario.start_date) : '', playLogTypeLabel(entry.type), entry.text]);
+  const rows = play.log.map((entry) => [sbFormatOffset(Math.floor(entry.t)), entry.at ? new Date(entry.at).toLocaleString(uiLocale()) : '', project.scenario.start_date ? sbClockTime(entry.t, project.scenario.start_date) : '', playLogTypeLabel(entry.type), entry.text]);
   return '\ufeff' + [[tt('Exercise time', 'Temps d’exercice', 'Übungszeit'), tt('Wall clock', 'Heure réelle', 'Echtzeit'), tt('Simulated time', 'Heure simulée', 'Simulierte Zeit'), tt('Type', 'Type', 'Typ'), tt('Event', 'Événement', 'Ereignis')], ...rows].map((row) => row.map(quote).join(';')).join('\r\n');
 }
 
@@ -237,13 +237,13 @@ function playReadiness(project) {
   return { total: written.length, sent: written.filter((i) => i.status === 'sent').length, ready: written.filter((i) => i.status === 'ready').length, draft: written.filter((i) => i.status === 'draft').length, planned: items.length - written.length };
 }
 
-/* Download every stimulus (shown in the Injects library). */
+/* Download every inject (shown in the Injects library). */
 function renderPlayGenerate(counts) {
   const exporting = !!appState.ui?.actionLoading?.['export-all'];
   return `<article class="card play-generate">
     <div class="play-generate-text">
-      <h3>${sbUiIcon('archive', 18)} ${tt('Download all stimuli', 'Télécharger tous les stimuli', 'Alle Stimuli herunterladen')}</h3>
-      <p class="subtle">${tt(`A ZIP with the ${counts.total} stimuli numbered in play order (#01 first), rendered as images, plus the chronogram (CSV for Excel) and the project file.`, `Un ZIP avec les ${counts.total} stimuli numérotés dans l’ordre de jeu (#01 en premier), en images, plus le chronogramme (CSV pour Excel) et le fichier projet.`, `Ein ZIP mit den ${counts.total} Stimuli in Spielreihenfolge nummeriert (#01 zuerst), als Bilder, plus Chronogramm (CSV für Excel) und Projektdatei.`)}</p>
+      <h3>${sbUiIcon('archive', 18)} ${tt('Download all injects', 'Télécharger tous les injects', 'Alle Injects herunterladen')}</h3>
+      <p class="subtle">${tt(`A ZIP with the ${counts.total} injects numbered in play order (#01 first), rendered as images, plus the chronogram (CSV for Excel) and the project file.`, `Un ZIP avec les ${counts.total} injects numérotés dans l’ordre de jeu (#01 en premier), en images, plus le chronogramme (CSV pour Excel) et le fichier projet.`, `Ein ZIP mit den ${counts.total} Injects in Spielreihenfolge nummeriert (#01 zuerst), als Bilder, plus Chronogramm (CSV für Excel) und Projektdatei.`)}</p>
       <div class="play-readiness">
         <span class="play-chip is-ready">${counts.ready} ${playStatusLabel('ready')}</span>
         <span class="play-chip is-draft">${counts.draft} ${playStatusLabel('draft')}</span>
@@ -251,7 +251,7 @@ function renderPlayGenerate(counts) {
         ${counts.planned ? `<span class="play-chip is-planned">${counts.planned} ${tt('planned, not written', 'prévus non rédigés', 'geplant, nicht geschrieben')}</span><button class="btn btn-ghost btn-xs" data-route="detailed">${tt('Write them', 'Les rédiger', 'Schreiben')} ${sbUiIcon('chevronRight', 12)}</button>` : ''}
       </div>
     </div>
-    <button class="btn btn-primary play-generate-btn" data-action="export-all" ${counts.total && !exporting ? '' : 'disabled'}>${sbUiIcon(exporting ? 'clock' : 'download', 16)} ${exportAllProgressLabel(tt('Download all stimuli (.zip)', 'Télécharger tous les stimuli (.zip)', 'Alle Stimuli herunterladen (.zip)'), tt('Generating…', 'Génération…', 'Wird erzeugt…'))}</button>
+    <button class="btn btn-primary play-generate-btn" data-action="export-all" ${counts.total && !exporting ? '' : 'disabled'}>${sbUiIcon(exporting ? 'clock' : 'download', 16)} ${exportAllProgressLabel(tt('Download all injects (.zip)', 'Télécharger tous les injects (.zip)', 'Alle Injects herunterladen (.zip)'), tt('Generating…', 'Génération…', 'Wird erzeugt…'))}</button>
   </article>`;
 }
 
