@@ -31,10 +31,23 @@ function agentNormalizeResponse(value, registry = null) {
   // Harmless slips of a model, fixed before the strict check (the tool's own schema still checks
   // every argument): a tool argument written next to "arguments", other names for "arguments",
   // a reason or summary too long, a final answer without its lists, a single question as text.
+  // Several calls in one reply (an array, or a list under "tool_calls"): the first one runs, the next ones come in later steps.
+  if (Array.isArray(value) && value[0] && typeof value[0] === 'object') value = value[0];
+  const batch = value && typeof value === 'object' && !value.type && [value.tool_calls, value.calls].find((list) => Array.isArray(list) && list[0] && typeof list[0] === 'object');
+  if (batch) value = { type: 'tool_call', ...batch[0] };
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     value = { ...value };
-    // A reply without its "type" (seen with GPT models): inferred from its keys.
-    if (value.type === undefined) value.type = typeof value.tool === 'string' ? 'tool_call' : value.questions !== undefined ? 'question' : typeof value.summary === 'string' ? 'final' : undefined;
+    if (typeof value.tool !== 'string' && typeof value.name === 'string' && (value.type === 'tool_call' || value.arguments)) { value.tool = value.name; delete value.name; }
+    // A reply without its "type", or with another name for it (seen with GPT and Claude models): inferred from its keys.
+    if (!['tool_call', 'question', 'final'].includes(value.type)) {
+      // Only the keys of that kind of reply: tool arguments picked out of a cut reply are never read as a final answer.
+      const only = (keys) => Object.keys(value).every((key) => key === 'type' || keys.includes(key));
+      const inferred = typeof value.tool === 'string' ? 'tool_call'
+        : value.questions !== undefined && only(['questions', 'reason']) ? 'question'
+        : typeof value.summary === 'string' && only(['summary', 'issues', 'changes']) ? 'final' : '';
+      if (!inferred) throw new AgentValidationError('Invalid response: "type" must be "tool_call", "question" or "final".');
+      value.type = inferred;
+    }
     const clip = (text, max) => (typeof text === 'string' && text.length > max ? `${text.slice(0, max - 1)}…` : text);
     if (value.type === 'tool_call') {
       if (!value.arguments || typeof value.arguments !== 'object') {

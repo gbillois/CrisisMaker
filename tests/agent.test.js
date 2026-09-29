@@ -651,7 +651,7 @@ test('nudges and closing phase: planned by the agent tools, reported by the cons
 test('validation errors say what to correct, so the model can fix its retry', () => {
   const h = harness();
   assert.throws(() => h.run(`agentNormalizeResponse({ type: 'tool_call', tool: 'getScenario', arguments: {}, javascript: 'alert(1)' }, createAgentToolRegistry())`), /unexpected key "javascript"/);
-  assert.throws(() => h.run(`agentNormalizeResponse([{ type: 'final' }])`), /not an array/);
+  assert.throws(() => h.run(`ToolValidator.validate([{}], AgentSchema.object())`), /not an array/);
   assert.throws(() => h.run(`ToolValidator.validate({}, AgentSchema.object({ id: AgentSchema.id }, ['id']))`), /missing "id"/);
 });
 
@@ -684,4 +684,16 @@ test('stage 1 framing: a final before the phases are built is sent back, twice a
   assert.equal(r.status, 'complete');
   assert.equal(requests, 3, 'two refusals, then the final is accepted');
   assert.ok(r.log.some((entry) => /stopped before building the phases/.test(entry.message)));
+});
+
+test('several calls in one reply: the first one runs', () => {
+  const h = harness();
+  assert.equal(h.run(`agentNormalizeResponse([{ type: 'tool_call', tool: 'getScenario', arguments: {} }, { type: 'final', summary: 'x' }]).tool`), 'getScenario');
+  assert.equal(h.run(`agentNormalizeResponse({ tool_calls: [{ name: 'getStoryboard', arguments: {} }] }).tool`), 'getStoryboard');
+  assert.throws(() => h.run(`agentNormalizeResponse({ type: 'plan', steps: [] })`), /must be "tool_call", "question" or "final"/);
+});
+
+test('tool arguments alone are not read as a final answer', () => {
+  const h = harness();
+  assert.throws(() => h.run(`agentNormalizeResponse({ summary: 'Scenario summary', type_label: 'ransomware', start_date: '2026-11-27T08:00' })`), /must be "tool_call"/);
 });
