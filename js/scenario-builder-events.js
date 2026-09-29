@@ -114,14 +114,14 @@ function sbNudgeSelected(delta) {
 }
 
 /* Wraps an AI storyboard operation: version before, one undo step, feedback. */
-async function sbRunAI(label, task) {
+async function sbRunAI(label, task, describe = null) {
   if (sbReadOnly()) return null;
   StoryboardHistory.ensure();
   StoryboardHistory.flush();
   StoryboardHistory.snapshot(`Before ${label.toLowerCase()}`, 'ai');
   try {
     const result = await task();
-    pushToast(`${label}: done. Undo is available.`, 'success');
+    pushToast(describe ? describe(result) : `${label}: done. Undo is available.`, 'success');
     return result;
   } catch (error) {
     pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), error?.name === 'AbortError' ? 'info' : 'error');
@@ -390,7 +390,7 @@ async function sbHandleAction(event) {
         break;
       }
       case 'plan-cast':
-        await sbRunAI('Suggest roles', () => SbAI.planCast());
+        await sbRunAI('Suggest roles', () => SbAI.planCast(), (added) => added ? `${added} role(s) added. Undo is available.` : 'No role missing: every sender the storyline needs already has one.');
         break;
       case 'create-actors': {
         const missing = storyboard.cast.filter((cast) => !sbFindActorForCast(project, cast));
