@@ -120,12 +120,33 @@ French headers), and Check & Challenge of an external exercise file.
   lists the real tabs and opens them; blank projects no longer start as "Pharmaceutical /
   Ransomware / New York".
 
+### Second pass: code review and a regression sweep of the merged app
+After the fixes above, a review agent read the night's diff and a QA agent replayed every tab in
+English, French and German at three widths (no AI). What they found, now fixed:
+- **Security**: the plain-text clean-up of AI fields had opened a path for HTML in social post
+  bodies; post bodies and reaction labels are sanitized again.
+- **Undo** restored whole injects, so undoing a move also undid a later text edit of the same
+  inject; it now puts back only what the step changed (and keeps images by reference, not copies).
+  Adding or deleting a player and adding an actor were not undoable at all, and Ctrl+Z undid an
+  earlier change instead.
+- **Open**: Chrome refused the file picker (the `.crisismaker.json` extension is too long for it),
+  so the app never kept the opened file; opening a file switched the interface to the file's
+  language; Open replaced the project without asking.
+- AI writing of an inject: the history kept the new date instead of the previous one, and a failed
+  call left a changed date (checked again with GLM 5.3: history 08:02, new version 08:32).
+- The saved AI challenge was kept after the exercise changed; the Excel import target could change
+  during the import; an event text naming another day ("D+1 09:30") was placed on the day played.
+- Translation: template field labels in the inject editor, the Outlook ribbon of email previews,
+  dates in US format under FR/DE, a few leftover labels; the library says "injects" like the rest.
+- Story debrief: the timeline stayed blank with no message when unpkg.com is unreachable (it loads
+  React from there); it now says why.
+
 ## Tests
 
-- `node --test tests/*.test.js`: 98 pass (80 at the start of the night; the new ones cover the fixes).
+- `node --test tests/*.test.js`: 102 pass (80 at the start of the night; the new ones cover the fixes).
 - Browser smoke tests (`tests/*-browser-smoke.cjs`): agent, play, scenario builder and video pass;
   several were extended (stable numbers, live filters, exercise end, drag to another cell, undo of
-  a deleted cell).
+  a deleted cell, undo of an added player).
 
 ## Left open
 
