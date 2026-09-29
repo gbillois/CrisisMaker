@@ -390,7 +390,7 @@ function createAgentToolRegistry() {
         if (existing) {
           const other = storyboard.cast.find(item => item.id !== cast.id && item.actor_id === existing.id);
           if (sbRoleValue(existing.role) !== sbRoleValue(cast.role) || (other && sbRoleValue(other.role) !== sbRoleValue(cast.role))) {
-            throw new AgentValidationError(`"${existing.name}" is a ${existing.role} actor${other ? ` who already plays "${other.label}"` : ''}: role "${cast.label}" (${cast.role}) needs its own actor with a distinct name.`);
+            throw new AgentValidationError(`"${existing.name}" is ${/^[aeiou]/i.test(existing.role || '') ? 'an' : 'a'} ${existing.role} actor${other ? ` who already plays "${other.label}"` : ''}: role "${cast.label}" (${cast.role}) needs its own actor with a distinct name.`);
           }
         }
         const actor = existing || sbCreateActorForCast(project, cast, { ...input.actor, role: cast.role });

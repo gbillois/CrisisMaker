@@ -1173,7 +1173,7 @@ Return this structure:
         if (!error || error.name === 'AbortError' || error.code === 'timeout' || error.code === 'truncated') return false;
         const text = `${error.message || ''} ${error.code || ''} ${error.detail || ''}`;
         if (/insufficient_quota|billing|credit balance|exceeded your current quota|can only afford|payment required/i.test(text)) return false;
-        if ([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529].includes(Number(error.status))) return true;
+        if ([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529].includes(Number(error.status)) || error.code === 'invalid_body') return true;
         return !error.status && /network error|failed to fetch|networkerror|load failed|overloaded|econnreset|socket hang up|stream error/i.test(text);
       }
 

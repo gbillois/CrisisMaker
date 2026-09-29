@@ -113,10 +113,12 @@
             });
           }
           if (payload.json !== undefined) return payload.json;
+          // A success status with a cut or empty body (connection reset, proxy): a transient failure, retried.
           throw create(tt('The server returned a non-JSON response.', 'Le serveur a renvoyé une réponse non JSON.', 'Der Server hat eine Nicht-JSON-Antwort zurückgegeben.'), {
             ...details,
             status: response.status,
             statusText: response.statusText || '',
+            code: 'invalid_body',
             detail: payload.raw
           });
         }

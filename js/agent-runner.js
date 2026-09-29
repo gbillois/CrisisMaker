@@ -97,6 +97,7 @@ function agentFailureText(error) {
   if (agentTruncated(error)) return 'The AI reply was cut off at its length limit. Ask for a smaller change, for example one inject at a time.';
   if (error instanceof SyntaxError) return 'The AI reply was not valid JSON. Retry, or choose a more capable model in Settings.';
   const reason = agentProviderReason(error);
+  if (error?.code === 'invalid_body') return 'The AI provider sent an unreadable or cut reply (connection reset?), even after retries. Retry in a moment. Completed edits are recoverable with Undo.';
   if (error?.status) return `The AI provider refused the request (HTTP ${error.status})${reason ? `: ${reason}` : '.'} Completed edits are recoverable with Undo.`;
   if (/failed to fetch|network|load failed/i.test(reason)) return 'The AI provider could not be reached (network or connection settings). Completed edits are recoverable with Undo.';
   return `AI request or tool failed${reason ? `: ${reason}` : '.'} Check the AI connection settings and retry. Completed edits are recoverable with Undo.`;
@@ -235,11 +236,16 @@ class AgentRunner {
             continue;
           }
           if (call.type === 'final') {
-            // Stage 1 ends with phases: a model that stops before building them is sent back (twice at most).
-            if (this.scope === 'framing' && typeof sbMainBlocks === 'function' && !sbMainBlocks(appState.scenario.storyboard).length && refusedFinals < 2) {
+            // Stage 1 ends with phases that all have main events: a model that stops before is sent back (twice at most).
+            const phases = this.scope === 'framing' && typeof sbMainBlocks === 'function' ? sbMainBlocks(appState.scenario.storyboard) : null;
+            const bare = phases ? phases.filter((block) => !(block.events || []).length) : [];
+            if (phases && (!phases.length || bare.length) && refusedFinals < 2) {
               refusedFinals++;
-              this.history.push({ finalRefused: call.summary, instruction: 'The framing is not built yet: the storyboard has no phase. Do not stop: build the phases and main events now (buildMainStoryline), then the cells and the cast, and only then give the final answer.' }); this.history = this.history.slice(-8);
-              AgentLog.append(this, 'warning', 'The agent stopped before building the phases: asked to continue.');
+              const instruction = !phases.length
+                ? 'The framing is not built yet: the storyboard has no phase. Do not stop: build the phases and main events now (buildMainStoryline), then the cells and the cast, and only then give the final answer.'
+                : `The framing is not finished: these phases have no main event yet: ${bare.map((block) => `"${block.title}" (${block.id})`).join(', ')}. Do not stop: set their main events (setMainEvents), then give the final answer.`;
+              this.history.push({ finalRefused: call.summary, instruction }); this.history = this.history.slice(-8);
+              AgentLog.append(this, 'warning', !phases.length ? 'The agent stopped before building the phases: asked to continue.' : 'The agent stopped with phases lacking main events: asked to continue.');
               continue;
             }
             this.final = { summary: call.summary, issues: call.issues, changes: call.changes };

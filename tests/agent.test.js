@@ -661,3 +661,27 @@ test('a reply without its type is read from its keys', () => {
   assert.equal(h.run(`agentNormalizeResponse({ tool: 'getScenario', arguments: {} }).type`), 'tool_call');
   assert.equal(h.run(`agentNormalizeResponse({ questions: ['Which cell?'] }).type`), 'question');
 });
+
+test('reliability: a success status with a cut, non-JSON body is retried', async () => {
+  const h = harness();
+  h.run(`llmRetryDelay = () => 0; Object.assign(appState.scenario.settings, { ai_provider: 'openrouter', ai_api_key: 'sk-or-v1-SECRETSECRET', ai_model: 'anthropic/claude-sonnet-5.5' });`);
+  const cut = { ok: true, status: 200, statusText: '', headers: { get: () => null }, clone() { return this; }, text: async () => '{"choices":[{"mess', json: async () => { throw new SyntaxError('cut'); } };
+  const good = { ok: true, status: 200, statusText: '', headers: { get: () => null }, clone() { return this; }, text: async () => JSON.stringify({ choices: [{ message: { content: '{"summary":"ok"}' }, finish_reason: 'stop' }] }), json: async () => ({ choices: [{ message: { content: '{"summary":"ok"}' }, finish_reason: 'stop' }] }) };
+  let calls = 0;
+  h.context.fetch = async () => (calls++ ? good : cut);
+  const result = await h.run(`AITextGenerator.generate('agent', 'system', 'user', true, 2000, {})`);
+  assert.equal(result.summary, 'ok');
+  assert.equal(calls, 2);
+});
+
+test('stage 1 framing: a final before the phases are built is sent back, twice at most', async () => {
+  const h = harness();
+  let requests = 0;
+  const r = runner(h, [final]);
+  const request = h.context.request; h.context.request = async (...args) => { requests++; return request(...args); };
+  h.run('runner.request = request');
+  await r.start({ kind: 'builder', mode: 'agent', objective: 'Frame', scope: 'framing' });
+  assert.equal(r.status, 'complete');
+  assert.equal(requests, 3, 'two refusals, then the final is accepted');
+  assert.ok(r.log.some((entry) => /stopped before building the phases/.test(entry.message)));
+});
