@@ -228,10 +228,6 @@
                 <button class="btn btn-secondary" data-action="toggle-settings-drawer" aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
               </div>
               <div class="settings-drawer-body">
-                <article class="card settings-agent-card">
-                  <div class="section-header"><div><h3>${sbUiIcon('bot', 16)} ${tt('AI agent', 'Agent IA', 'KI-Agent')}</h3><p class="subtle">${tt('The agent builds and updates the exercise from any tab. Its console lets you run it directly, review every step and undo a run.', 'L\'agent construit et met à jour l\'exercice depuis chaque onglet. Sa console permet de le lancer directement, de suivre chaque étape et d\'annuler une exécution.', 'Der Agent erstellt und aktualisiert die Übung aus jedem Tab. In seiner Konsole starten Sie ihn direkt, prüfen jeden Schritt und machen einen Lauf rückgängig.')}</p></div></div>
-                  <button class="btn btn-secondary" data-agent-action="open-console">${sbUiIcon('open', 14)} ${tt('Open the agent console', 'Ouvrir la console de l\'agent', 'Agent-Konsole öffnen')}</button>
-                </article>
                 ${renderSettingsView()}
               </div>
             </div>
@@ -490,7 +486,7 @@
           },
           agent: {
             title: 'Agent',
-            subtitle: tt('Build and challenge the exercise with controlled AI tools.', 'Construisez et challengez l\'exercice avec des outils IA contrôlés.', 'Übung mit kontrollierten KI-Werkzeugen erstellen und hinterfragen.')
+            subtitle: tt('Run the agent with controlled AI tools, and read the technical log.', 'Lancez l\'agent avec des outils IA contrôlés, et consultez le journal technique.', 'Den Agenten mit kontrollierten KI-Werkzeugen starten und das technische Protokoll lesen.')
           },
           debrief: {
             title: 'Debrief',
@@ -829,128 +825,119 @@
         };
         const statusTone = connectionStatusColors[connectionTest.status];
         const checkedAt = connectionTest.checkedAt ? formatLocalDateTime(connectionTest.checkedAt) : '';
+        const wavestoneKey = `<p class="st-note">${sbUiIcon('info', 13)} <span>Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener">aicybmaker</a></span></p>`;
+        const keyField = (label, bind, value, placeholder, helper = '') => `<label class="field">${label}
+            <div class="st-inline">
+              <input id="api-key-input" type="password" autocomplete="off" data-bind="${bind}" value="${escapeAttribute(value || '')}" placeholder="${escapeAttribute(placeholder)}">
+              <button class="btn btn-secondary st-icon-btn" data-action="toggle-api-key" aria-label="${escapeAttribute(tt('Show or hide the key', 'Afficher ou masquer la clé', 'Schlüssel ein- oder ausblenden'))}">${sbUiIcon('eye', 16)}</button>
+            </div>
+            ${helper ? `<p class="helper">${helper}</p>` : ''}
+          </label>`;
+        const keyHelper = tt('Kept for this browser session only and never saved in project files: enter it again after closing the browser.', 'Conservée pour cette session du navigateur uniquement, jamais enregistrée dans les fichiers projet : saisissez-la de nouveau après avoir fermé le navigateur.', 'Nur für diese Browsersitzung gespeichert und nie in Projektdateien abgelegt: Geben Sie ihn nach dem Schließen des Browsers erneut ein.');
+        const statusPill = !isLLMAvailable()
+          ? `<span class="st-pill is-off">${tt('Not configured', 'Non configurée', 'Nicht eingerichtet')}</span>`
+          : connectionTest.status === 'success' && connectionTest.provider === settings.ai_provider ? `<span class="st-pill is-ok">${tt('Connected', 'Connectée', 'Verbunden')}</span>`
+          : connectionTest.status === 'error' && connectionTest.provider === settings.ai_provider ? `<span class="st-pill is-error">${tt('Unreachable', 'Injoignable', 'Nicht erreichbar')}</span>`
+          : `<span class="st-pill">${tt('Not tested yet', 'Pas encore testée', 'Noch nicht getestet')}</span>`;
+        const locked = !settings.confidentiality_acknowledged;
         return `
-          <section class="grid cols-2">
-            <article class="card">
-              <div class="section-header"><h3>${tt('AI connection', 'Connexion IA', 'KI-Verbindung')}</h3></div>
-              ${!isLLMAvailable() ? `<div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#78350F;">${tt('AI provider configuration is incomplete. AI generation features are disabled.', 'La configuration du fournisseur IA est incomplète. Les fonctionnalités de génération par IA sont désactivées.', 'Die Konfiguration des KI-Anbieters ist unvollständig. KI-Generierungsfunktionen sind deaktiviert.')}</div>` : ''}
-              <div style="background:#FEF2F2;border:2px solid #DC2626;border-radius:8px;padding:14px 16px;margin-bottom:16px;color:#991B1B;">
-                <div style="font-weight:700;font-size:14px;margin-bottom:8px;">${sbUiIcon('alert', 15)} ${tt('Confidentiality warning', 'Avertissement de confidentialité des données', 'Vertraulichkeitswarnung')}</div>
-                <div style="font-size:13px;line-height:1.5;margin-bottom:10px;">
-                  ${tt(
-                    'For confidentiality reasons, the use of AI and the provider used must be explicitly approved by the organization for which the exercise is being conducted.',
-                    "Pour des raisons de confidentialité, l'usage de l'IA et le fournisseur utilisé doivent être approuvés explicitement par la structure pour laquelle l'exercice est réalisé.",
-                    'Aus Vertraulichkeitsgründen müssen der Einsatz von KI und der verwendete Anbieter ausdrücklich von der Organisation genehmigt werden, für die die Übung durchgeführt wird.'
-                  )}
-                </div>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
-                  <input type="checkbox" data-action="toggle-confidentiality-acknowledged" ${settings.confidentiality_acknowledged ? 'checked' : ''} style="width:18px;height:18px;accent-color:#DC2626;cursor:pointer;">
-                  ${tt("I have written approval", "Je dispose d'une validation écrite", "Ich verfüge über eine schriftliche Genehmigung")}
-                </label>
-              </div>
-              <div class="field-grid cols-2" ${!settings.confidentiality_acknowledged ? 'style="opacity:0.4;pointer-events:none;"' : ''}>
-                <label class="field">${tt('AI provider', 'Fournisseur IA', 'KI-Anbieter')}
-                  <select data-bind="settings.ai_provider">
-                    <option value="anthropic" ${settings.ai_provider === 'anthropic' ? 'selected' : ''}>Anthropic</option>
-                    <option value="openai" ${settings.ai_provider === 'openai' ? 'selected' : ''}>OpenAI</option>
-                    <option value="openrouter" ${settings.ai_provider === 'openrouter' ? 'selected' : ''}>OpenRouter</option>
-                    <option value="azure_openai" ${settings.ai_provider === 'azure_openai' ? 'selected' : ''}>Azure OpenAI</option>
-                    <option value="google_gemini" ${settings.ai_provider === 'google_gemini' ? 'selected' : ''}>Google Gemini</option>
-                    <option value="mistral" ${settings.ai_provider === 'mistral' ? 'selected' : ''}>Mistral</option>
-                    <option value="ollama" ${settings.ai_provider === 'ollama' ? 'selected' : ''}>Ollama</option>
-                  </select>
-                </label>
-                ${(isAnthropic || isOpenAI || isOpenRouter || isGemini || isMistral || isOllama) ? `
-                  <label class="field">${tt('Model', 'Modèle', 'Modell')}
-                    <div style="display:flex;gap:8px;">
-                      <select data-bind="settings.ai_model" style="min-width:0;">
-                        ${models.map((model) => `<option value="${escapeAttribute(model)}" ${settings.ai_model === model ? 'selected' : ''}>${escapeHtml(model)}</option>`).join('')}
-                      </select>
-                      <button class="btn btn-secondary" data-action="refresh-ai-models" title="${tt('Refresh model list', 'Actualiser la liste des modèles', 'Modellliste aktualisieren')}" ${modelCatalogStatus === 'loading' ? 'disabled' : ''}>⟳</button>
-                    </div>
-                    <p class="helper">${escapeHtml(modelCatalogMessage)}</p>
+          <section class="st-stack">
+            <article class="card st-card">
+              <div class="st-head"><h3>${sbUiIcon('sparkles', 16)} ${tt('AI connection', 'Connexion IA', 'KI-Verbindung')}</h3>${statusPill}</div>
+              <label class="st-approval ${locked ? 'is-required' : 'is-given'}">
+                <input type="checkbox" data-action="toggle-confidentiality-acknowledged" ${settings.confidentiality_acknowledged ? 'checked' : ''}>
+                <span><strong>${tt('I have written approval to use AI', "Je dispose d'une validation écrite pour utiliser l'IA", 'Ich habe eine schriftliche Genehmigung für den KI-Einsatz')}</strong>
+                <small>${tt('For confidentiality reasons, the use of AI and the provider used must be explicitly approved by the organization for which the exercise is being conducted.', "Pour des raisons de confidentialité, l'usage de l'IA et le fournisseur utilisé doivent être approuvés explicitement par la structure pour laquelle l'exercice est réalisé.", 'Aus Vertraulichkeitsgründen müssen der Einsatz von KI und der verwendete Anbieter ausdrücklich von der Organisation genehmigt werden, für die die Übung durchgeführt wird.')}</small></span>
+              </label>
+              <div class="st-fields ${locked ? 'is-locked' : ''}" ${locked ? 'inert' : ''}>
+                <div class="st-row">
+                  <label class="field">${tt('AI provider', 'Fournisseur IA', 'KI-Anbieter')}
+                    <select data-bind="settings.ai_provider">
+                      ${[['anthropic', 'Anthropic'], ['openai', 'OpenAI'], ['openrouter', 'OpenRouter'], ['azure_openai', 'Azure OpenAI'], ['google_gemini', 'Google Gemini'], ['mistral', 'Mistral'], ['ollama', 'Ollama']].map(([value, label]) => `<option value="${value}" ${settings.ai_provider === value ? 'selected' : ''}>${label}</option>`).join('')}
+                    </select>
                   </label>
-                  ${!isOllama ? `<div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>` : ''}
-                  ${isOllama ? `
-                    <label class="field" style="grid-column: 1 / -1;">${tt('Ollama service', 'Service Ollama', 'Ollama-Dienst')}
-                      <select data-bind="settings.ollama_mode">
-                        <option value="local" ${!isOllamaCloud ? 'selected' : ''}>${tt('Local models', 'Modèles locaux', 'Lokale Modelle')}</option>
-                        <option value="cloud" ${isOllamaCloud ? 'selected' : ''}>Ollama Cloud</option>
-                      </select>
-                    </label>
-                    ${!isOllamaCloud ? `<label class="field" style="grid-column: 1 / -1;">${tt('Local Ollama server URL', 'URL du serveur Ollama local', 'Lokale Ollama-Server-URL')}
-                      <input type="url" data-bind="settings.ollama_endpoint" value="${escapeAttribute(settings.ollama_endpoint || 'http://localhost:11434')}" placeholder="http://localhost:11434">
-                    </label>` : ''}
-                  ` : ''}
-                  ${(!isOllama || isOllamaCloud) ? `<label class="field" style="grid-column: 1 / -1;">${isOllamaCloud ? tt('Ollama Cloud API key', 'Clé API Ollama Cloud', 'Ollama-Cloud-API-Schlüssel') : isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel')}
-                    <div style="display:flex; gap:10px;">
-                      <input id="api-key-input" type="password" data-bind="settings.ai_api_key" value="${escapeAttribute(settings.ai_api_key)}" placeholder="${isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...'}">
-                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="${escapeAttribute(tt('Show or hide the key', 'Afficher ou masquer la clé', 'Schlüssel ein- oder ausblenden'))}">${sbUiIcon('eye', 16)}</button>
-                    </div>
-                    <p class="helper">${tt('Kept for this browser session only and never saved in project files: enter it again after closing the browser.', 'Conservée pour cette session du navigateur uniquement, jamais enregistrée dans les fichiers projet : saisissez-la de nouveau après avoir fermé le navigateur.', 'Nur für diese Browsersitzung gespeichert, nie in Projektdateien: nach dem Schließen des Browsers erneut eingeben.')}</p>
+                  ${isOllama ? `<label class="field">${tt('Ollama service', 'Service Ollama', 'Ollama-Dienst')}
+                    <select data-bind="settings.ollama_mode">
+                      <option value="local" ${!isOllamaCloud ? 'selected' : ''}>${tt('Local models', 'Modèles locaux', 'Lokale Modelle')}</option>
+                      <option value="cloud" ${isOllamaCloud ? 'selected' : ''}>Ollama Cloud</option>
+                    </select>
                   </label>` : ''}
-                ` : ''}
+                </div>
+                ${isOllama && !isOllamaCloud ? `<label class="field">${tt('Local Ollama server URL', 'URL du serveur Ollama local', 'Lokale Ollama-Server-URL')}
+                  <input type="url" data-bind="settings.ollama_endpoint" value="${escapeAttribute(settings.ollama_endpoint || 'http://localhost:11434')}" placeholder="http://localhost:11434">
+                </label>` : ''}
+                ${!isAzure && (!isOllama || isOllamaCloud) ? keyField(isOllamaCloud ? tt('Ollama Cloud API key', 'Clé API Ollama Cloud', 'Ollama-Cloud-API-Schlüssel') : isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel'), 'settings.ai_api_key', settings.ai_api_key, isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...', keyHelper) : ''}
+                ${!isAzure ? `<label class="field">${tt('Model', 'Modèle', 'Modell')}
+                  <div class="st-inline">
+                    <select data-bind="settings.ai_model">
+                      ${models.map((model) => `<option value="${escapeAttribute(model)}" ${settings.ai_model === model ? 'selected' : ''}>${escapeHtml(model)}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-secondary st-icon-btn" data-action="refresh-ai-models" title="${tt('Refresh model list', 'Actualiser la liste des modèles', 'Modellliste aktualisieren')}" aria-label="${escapeAttribute(tt('Refresh model list', 'Actualiser la liste des modèles', 'Modellliste aktualisieren'))}" ${modelCatalogStatus === 'loading' ? 'disabled' : ''}>${sbUiIcon('refresh', 15)}</button>
+                  </div>
+                  <p class="helper">${escapeHtml(modelCatalogMessage)}</p>
+                </label>` : ''}
                 ${isAzure ? `
                   <label class="field">${tt('Azure endpoint', 'Endpoint Azure', 'Azure-Endpunkt')}
                     <input type="url" data-bind="settings.azure_endpoint" value="${escapeAttribute(settings.azure_endpoint || '')}" placeholder="https://<resource>.openai.azure.com/openai/v1">
                   </label>
-                  <label class="field">${tt('Deployment name', 'Nom du déploiement', 'Bereitstellungsname')}
-                    <input type="text" data-bind="settings.azure_deployment" value="${escapeAttribute(settings.azure_deployment || '')}" placeholder="gpt-4o">
-                  </label>
-                  <label class="field">${tt('API version', 'Version de l\'API', 'API-Version')}
-                    <input type="text" data-bind="settings.azure_api_version" value="${escapeAttribute(settings.azure_api_version || DEFAULT_AZURE_API_VERSION)}" placeholder="${DEFAULT_AZURE_API_VERSION}">
-                    <p class="helper">${tt('Used for resource-root endpoints. Foundry endpoints and URLs ending in /openai/v1 use v1 without a date. No separate region is needed; use the endpoint and deployment from the same Azure resource.', 'Utilisée pour les endpoints racine. Les endpoints Foundry et les URL se terminant par /openai/v1 utilisent v1 sans date. Aucune région séparée : utilisez l’endpoint et le déploiement de la même ressource Azure.', 'Gilt für Ressourcen-Stammendpunkte. Foundry-Endpunkte und URLs mit /openai/v1 verwenden v1 ohne Datum. Keine separate Region nötig; Endpunkt und Bereitstellung müssen zur selben Azure-Ressource gehören.')}</p>
-                    <p class="helper">${tt('If the browser blocks a direct Azure request, it is retried through the DeckSeeder Cloudflare relay, including the API key and prompt.', 'Si le navigateur bloque une requête Azure directe, elle est réessayée via le relais Cloudflare DeckSeeder, avec la clé API et le prompt.', 'Blockiert der Browser eine direkte Azure-Anfrage, wird sie über das DeckSeeder-Cloudflare-Relay einschließlich API-Schlüssel und Prompt erneut gesendet.')}</p>
-                  </label>
-                  <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
-                  <label class="field" style="grid-column: 1 / -1;">${tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel')}
-                    <div style="display:flex; gap:10px;">
-                      <input id="api-key-input" type="password" data-bind="settings.azure_api_key" value="${escapeAttribute(settings.azure_api_key || '')}" placeholder="Azure API key">
-                      <button class="btn btn-secondary" data-action="toggle-api-key" aria-label="${escapeAttribute(tt('Show or hide the key', 'Afficher ou masquer la clé', 'Schlüssel ein- oder ausblenden'))}">${sbUiIcon('eye', 16)}</button>
-                    </div>
-                  </label>
-                ` : ''}
-              </div>
-              <div class="field-grid cols-2">
-                <label class="field">${tt("Application language", "Langue de l'application", 'Anwendungssprache')}
-                  <select data-bind="settings.language">
-                    <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
-                    <option value="fr" ${settings.language === 'fr' ? 'selected' : ''}>Français</option>
-                    <option value="de" ${settings.language === 'de' ? 'selected' : ''}>Deutsch</option>
-                  </select>
-                  <p class="helper">${tt('Auto-detected from your browser on first load.', 'Détectée automatiquement depuis votre navigateur au premier chargement.', 'Beim ersten Laden automatisch aus Ihrem Browser erkannt.')}</p>
-                </label>
-                <label class="field">${tt('Template rendering', 'Rendu des templates', 'Vorlagen-Rendering')}
-                  <select data-bind="settings.template_quality">
-                    <option value="basic" ${settings.template_quality === 'basic' ? 'selected' : ''}>Basic — ${tt('Fast, lightweight', 'Léger, rapide', 'Schnell, leichtgewichtig')}</option>
-                    <option value="hd" ${settings.template_quality === 'hd' ? 'selected' : ''}>HD — ${tt('High fidelity, realistic', 'Haute fidélité, réaliste', 'Hochauflösend, realistisch')}</option>
-                  </select>
-                </label>
-              </div>
-              <div class="actions" style="margin-top:18px;">
-                <button class="btn btn-primary" data-action="test-connection" ${connectionTest.status === 'testing' ? 'disabled' : ''}>${connectionTest.status === 'testing' ? `<span class="ai-spinner"></span>${tt('Testing…', 'Test en cours…', 'Wird getestet…')}` : tt('Test connection', 'Tester la connexion', 'Verbindung testen')}</button>
-                <button class="btn btn-secondary" data-action="save-local">${tt('Save locally', 'Sauvegarder localement', 'Lokal speichern')}</button>
-                <button class="btn btn-ghost" data-action="tech-log-open" title="${tt('Every AI call and error of this session, to investigate a failure', 'Chaque appel IA et chaque erreur de la session, pour analyser un échec', 'Jeder KI-Aufruf und jeder Fehler dieser Sitzung, zur Fehleranalyse')}">${sbUiIcon('sheet', 14)} ${tt('Technical log', 'Journal technique', 'Technisches Protokoll')}${typeof CrisisTechLog !== 'undefined' && CrisisTechLog.entries.length ? ` (${CrisisTechLog.entries.length})` : ''}</button>
-              </div>
-              ${statusTone ? `
-                <div style="margin-top:14px;padding:12px 14px;border-radius:8px;border:1px solid ${statusTone.border};background:${statusTone.background};color:${statusTone.text};">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                    <strong>${connectionStatusLabels[connectionTest.status]}</strong>
-                    ${checkedAt ? `<span style="font-size:12px;opacity:0.8;">${tt('Checked at', 'Vérifié à', 'Geprüft um')} ${checkedAt}</span>` : ''}
+                  <div class="st-row">
+                    <label class="field">${tt('Deployment name', 'Nom du déploiement', 'Bereitstellungsname')}
+                      <input type="text" data-bind="settings.azure_deployment" value="${escapeAttribute(settings.azure_deployment || '')}" placeholder="gpt-4o">
+                    </label>
+                    <label class="field">${tt('API version', 'Version de l\'API', 'API-Version')}
+                      <input type="text" data-bind="settings.azure_api_version" value="${escapeAttribute(settings.azure_api_version || DEFAULT_AZURE_API_VERSION)}" placeholder="${DEFAULT_AZURE_API_VERSION}">
+                    </label>
                   </div>
-                  <div style="margin-top:6px;font-size:13px;line-height:1.4;">${escapeHtml(connectionTest.message)}</div>
-                </div>
-              ` : ''}
-              <p class="helper" style="margin-top:14px;">${tt(`The ${providerLabel} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${providerLabel} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`, `Die ${providerLabel}-Einstellungen verbleiben in Ihrem Browser und werden nur an den ausgewählten Anbieter übermittelt.`)}</p>
+                  <p class="helper">${tt('The API version is used for resource-root endpoints; Foundry endpoints and URLs ending in /openai/v1 use v1. If the browser blocks a direct Azure request, it is retried through the DeckSeeder Cloudflare relay, including the API key and prompt.', 'La version de l\'API sert aux endpoints racine ; les endpoints Foundry et les URL finissant par /openai/v1 utilisent v1. Si le navigateur bloque une requête Azure directe, elle est réessayée via le relais Cloudflare DeckSeeder, avec la clé API et le prompt.', 'Die API-Version gilt für Ressourcen-Endpunkte; Foundry-Endpunkte und URLs mit /openai/v1 verwenden v1. Blockiert der Browser eine direkte Azure-Anfrage, wird sie über das DeckSeeder-Cloudflare-Relay wiederholt, samt API-Schlüssel und Prompt.')}</p>
+                  ${keyField(tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel'), 'settings.azure_api_key', settings.azure_api_key, 'Azure API key', keyHelper)}
+                ` : ''}
+                ${!isOllama ? wavestoneKey : ''}
+              </div>
+              <div class="st-actions">
+                <button class="btn btn-primary" data-action="test-connection" ${connectionTest.status === 'testing' || locked ? 'disabled' : ''}>${connectionTest.status === 'testing' ? `<span class="ai-spinner"></span>${tt('Testing…', 'Test en cours…', 'Wird getestet…')}` : `${sbUiIcon('checkCircle', 15)} ${tt('Test connection', 'Tester la connexion', 'Verbindung testen')}`}</button>
+              </div>
+              ${statusTone ? `<div class="st-result is-${connectionTest.status}">
+                <div><strong>${connectionStatusLabels[connectionTest.status]}</strong>${checkedAt ? `<span>${tt('Checked at', 'Vérifié à', 'Geprüft um')} ${checkedAt}</span>` : ''}</div>
+                <p>${escapeHtml(connectionTest.message)}</p>
+              </div>` : ''}
+              <div class="st-hints">
+              <p class="helper">${tt(`The ${providerLabel} settings stay in your browser and are only sent to the selected provider.`, `Les paramètres ${providerLabel} restent dans votre navigateur et ne sont transmis qu'au fournisseur sélectionné.`, `Die ${providerLabel}-Einstellungen verbleiben in Ihrem Browser und werden nur an den ausgewählten Anbieter übermittelt.`)}</p>
               ${isAzure ? `<p class="helper">${tt('Azure OpenAI uses your deployment name; availability depends on your Azure resource and region.', 'Azure OpenAI utilise le nom de votre déploiement ; la disponibilité dépend de votre ressource Azure et de votre région.', 'Azure OpenAI verwendet Ihren Bereitstellungsnamen; die Verfügbarkeit hängt von Ihrer Azure-Ressource und Region ab.')}</p>` : ''}
               ${isGemini ? `<p class="helper">${tt('Get your Gemini API key from Google AI Studio (aistudio.google.com).', 'Obtenez votre clé API Gemini depuis Google AI Studio (aistudio.google.com).', 'Holen Sie sich Ihren Gemini-API-Schlüssel von Google AI Studio (aistudio.google.com).')}</p>` : ''}
               ${isMistral ? `<p class="helper">${tt('Get your Mistral API key from La Plateforme / Mistral AI Console.', 'Obtenez votre clé API Mistral depuis La Plateforme / la console Mistral AI.', 'Holen Sie sich Ihren Mistral-API-Schlüssel über La Plateforme / die Mistral AI Console.')}</p>` : ''}
               ${isOllama ? `<p class="helper">${isOllamaCloud
                 ? tt('Create an API key at ollama.com/settings/keys. Cloud requests use the same Cloudflare relay as DeckSeeder.', 'Créez une clé API sur ollama.com/settings/keys. Les requêtes Cloud utilisent le même relais Cloudflare que DeckSeeder.', 'Erstellen Sie einen API-Schlüssel unter ollama.com/settings/keys. Cloud-Anfragen verwenden denselben Cloudflare-Relay wie DeckSeeder.')
                 : `${tt('Local Ollama does not require an API key. Start Ollama, pull a model, then refresh the model list.', 'Ollama local ne nécessite pas de clé API. Démarrez Ollama, téléchargez un modèle, puis actualisez la liste.', 'Lokales Ollama benötigt keinen API-Schlüssel. Starten Sie Ollama, laden Sie ein Modell herunter und aktualisieren Sie dann die Modellliste.')} ${tt('For GitHub Pages, allow OLLAMA_ORIGINS=https://gbillois.github.io in Ollama.', 'Pour GitHub Pages, autorisez OLLAMA_ORIGINS=https://gbillois.github.io dans Ollama.', 'Für GitHub Pages muss OLLAMA_ORIGINS=https://gbillois.github.io in Ollama erlaubt sein.')}`}</p>` : ''}
+              </div>
+              <div class="st-sub">
+                <h4>${tt('Preferences', 'Préférences', 'Einstellungen')}</h4>
+                <div class="st-row">
+                  <label class="field">${tt("Application language", "Langue de l'application", 'Anwendungssprache')}
+                    <select data-bind="settings.language">
+                      <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
+                      <option value="fr" ${settings.language === 'fr' ? 'selected' : ''}>Français</option>
+                      <option value="de" ${settings.language === 'de' ? 'selected' : ''}>Deutsch</option>
+                    </select>
+                  </label>
+                  <label class="field">${tt('Template rendering', 'Rendu des templates', 'Vorlagen-Rendering')}
+                    <select data-bind="settings.template_quality">
+                      <option value="basic" ${settings.template_quality === 'basic' ? 'selected' : ''}>Basic, ${tt('fast and light', 'léger et rapide', 'schnell und leicht')}</option>
+                      <option value="hd" ${settings.template_quality === 'hd' ? 'selected' : ''}>HD, ${tt('high fidelity', 'haute fidélité', 'hohe Detailtreue')}</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
             </article>
-            <article class="card">
-              <div class="section-header"><h3>${tt('Export watermark', 'Filigrane d\'export', 'Export-Wasserzeichen')}</h3></div>
+            <article class="card st-card">
+              <div class="st-head"><h3>${sbUiIcon('bot', 16)} ${tt('AI agent and log', 'Agent IA et journal', 'KI-Agent und Protokoll')}</h3></div>
+              <p class="helper">${tt('The agent builds and updates the exercise from any tab. Its console runs it directly, shows every step and undoes a run; it also holds the technical log of every AI call and error of the session.', 'L\'agent construit et met à jour l\'exercice depuis chaque onglet. Sa console le lance directement, montre chaque étape et annule une exécution ; elle contient aussi le journal technique de chaque appel IA et de chaque erreur de la session.', 'Der Agent erstellt und aktualisiert die Übung aus jedem Tab. Seine Konsole startet ihn direkt, zeigt jeden Schritt und macht einen Lauf rückgängig; sie enthält auch das technische Protokoll aller KI-Aufrufe und Fehler der Sitzung.')}</p>
+              <div class="st-actions">
+                <button class="btn btn-secondary" data-agent-action="open-console">${sbUiIcon('open', 14)} ${tt('Open the agent console', 'Ouvrir la console de l\'agent', 'Agent-Konsole öffnen')}</button>
+                <button class="btn btn-ghost" data-action="tech-log-open">${sbUiIcon('sheet', 14)} ${tt('Technical log', 'Journal technique', 'Technisches Protokoll')}</button>
+              </div>
+            </article>
+            <article class="card st-card">
+              <div class="st-head"><h3>${sbUiIcon('image', 16)} ${tt('Export watermark', 'Filigrane d\'export', 'Export-Wasserzeichen')}</h3></div>
               <div class="field-grid cols-2">
                 <label class="field">${tt('Watermark enabled', 'Filigrane activé', 'Wasserzeichen aktiviert')}
                   <select data-bind="settings.watermark_enabled">
@@ -993,39 +980,13 @@
               </div>
               <label class="field">${tt('Audio watermark', 'Filigrane audio', 'Audio-Wasserzeichen')}
                   <select data-bind="settings.watermark_audio_enabled">
-                    <option value="true" ${settings.watermark_audio_enabled !== false ? 'selected' : ''}>${tt('Yes — prepend spoken "Exercise" warning', 'Oui — ajouter un avertissement vocal "Exercice"', 'Ja — gesprochene "Übung"-Warnung voranstellen')}</option>
+                    <option value="true" ${settings.watermark_audio_enabled !== false ? 'selected' : ''}>${tt('Yes, a spoken "Exercise" warning first', 'Oui, un avertissement vocal "Exercice" avant', 'Ja, zuerst eine gesprochene "Übung"-Warnung')}</option>
                     <option value="false" ${settings.watermark_audio_enabled === false ? 'selected' : ''}>${tt('No', 'Non', 'Nein')}</option>
                   </select>
                 </label>
-              <p class="helper" style="margin-top:14px;">${tt('The watermark is overlaid on all exported injects. Each inject can override these defaults. The audio watermark prepends a spoken warning before generated audio.', 'Le filigrane est superposé sur tous les stimuli exportés. Chaque stimulus peut personnaliser ces réglages. Le filigrane audio ajoute un avertissement vocal avant l\'audio généré.', 'Das Wasserzeichen wird über alle exportierten Injects gelegt. Jeder Inject kann diese Standardeinstellungen überschreiben. Das Audio-Wasserzeichen stellt eine gesprochene Warnung vor das generierte Audio.')}</p>
-            </article>
-            <article class="card">
-              <div class="section-header"><h3>${tt('Azure Speech TTS', 'Azure Speech TTS', 'Azure Speech TTS')}</h3></div>
-              <p style="margin:0 0 12px; font-size:0.82rem; color:var(--text-muted, #6b7280);">${tt(
-                'Azure Cognitive Services Speech provides high-quality neural voices for audio message generation. Configure your API key here, then select "Azure Speech" as TTS provider in each audio inject.',
-                'Azure Cognitive Services Speech fournit des voix neuronales de haute qualité pour la génération de messages audio. Configurez votre clé API ici, puis sélectionnez "Azure Speech" comme fournisseur TTS dans chaque inject audio.',
-                'Azure Cognitive Services Speech bietet hochwertige neuronale Stimmen für die Audio-Nachrichtengenerierung. Konfigurieren Sie Ihren API-Schlüssel hier und wählen Sie dann "Azure Speech" als TTS-Anbieter in jedem Audio-Inject.'
-              )}</p>
-              <div class="field-grid cols-2">
-                <div style="grid-column: 1 / -1;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 12px;font-size:13px;color:#1D4ED8;">Demande de clé Wavestone : <a href="https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700;">https://cowork-website.cloudexperienceassets.com/api/files/aicybmaker.html#index.html</a></div>
-                <label class="field">${tt('Azure Speech API key', 'Clé API Azure Speech', 'Azure Speech API-Schlüssel')}
-                  <div style="display:flex; gap:10px;">
-                    <input id="azure-speech-key-input" type="password" data-bind="settings.azure_speech_key" value="${escapeAttribute(settings.azure_speech_key || '')}" placeholder="${tt('Enter your Azure Speech key', 'Entrez votre clé Azure Speech', 'Geben Sie Ihren Azure Speech-Schlüssel ein')}">
-                    <button class="btn btn-secondary" data-action="toggle-azure-speech-key" aria-label="${escapeAttribute(tt('Show or hide the key', 'Afficher ou masquer la clé', 'Schlüssel ein- oder ausblenden'))}">${sbUiIcon('eye', 16)}</button>
-                  </div>
-                </label>
-                <label class="field">${tt('Azure region', 'Région Azure', 'Azure-Region')}
-                  <select data-bind="settings.azure_speech_region">
-                    ${['westeurope', 'eastus', 'eastus2', 'westus', 'westus2', 'northeurope', 'southeastasia', 'eastasia', 'centralus', 'uksouth', 'francecentral', 'germanywestcentral', 'japaneast', 'australiaeast', 'canadacentral'].map(r => `<option value="${r}" ${(settings.azure_speech_region || 'westeurope') === r ? 'selected' : ''}>${r}</option>`).join('')}
-                  </select>
-                </label>
-              </div>
-              <p class="helper" style="margin-top:14px;">${tt('The Azure Speech key stays in your browser and is only sent to Microsoft Azure. Get your key from the Azure portal → Cognitive Services → Speech.', 'La clé Azure Speech reste dans votre navigateur et n\'est transmise qu\'à Microsoft Azure. Obtenez votre clé depuis le portail Azure → Cognitive Services → Speech.', 'Der Azure Speech-Schlüssel verbleibt in Ihrem Browser und wird nur an Microsoft Azure gesendet. Holen Sie sich Ihren Schlüssel im Azure-Portal → Cognitive Services → Speech.')}</p>
+              <p class="helper">${tt('The watermark is overlaid on all exported injects. Each inject can override these defaults. The audio watermark prepends a spoken warning before generated audio.', 'Le filigrane est superposé sur tous les injects exportés. Chaque stimulus peut personnaliser ces réglages. Le filigrane audio ajoute un avertissement vocal avant l\'audio généré.', 'Das Wasserzeichen wird über alle exportierten Injects gelegt. Jeder Inject kann diese Standardeinstellungen überschreiben. Das Audio-Wasserzeichen stellt eine gesprochene Warnung vor das generierte Audio.')}</p>
             </article>
           </section>
-          <div style="padding:18px 0 4px;">
-            <button class="btn btn-secondary" data-action="load-json" style="width:100%;">${tt('Open (.json or .zip)', 'Ouvrir (.json ou .zip)', 'Öffnen (.json oder .zip)')}</button>
-          </div>
         `;
       }
 
@@ -1187,7 +1148,7 @@
                   ${tt('0. Model', '0. Modèle', '0. Modell')}
                   <select data-stimulus-field="${stimulus.id}.tts_provider">
                     <option value="browser" ${provider === 'browser' ? 'selected' : ''}>${tt('Browser (built-in)', 'Navigateur (intégré)', 'Browser (eingebaut)')}</option>
-                    <option value="azure_speech" ${provider === 'azure_speech' ? 'selected' : ''}>Azure Speech (Neural)</option>
+                    ${provider === 'azure_speech' || appState.scenario.settings.azure_speech_key ? `<option value="azure_speech" ${provider === 'azure_speech' ? 'selected' : ''}>Azure Speech (Neural)</option>` : ''}
                   </select>
                   ${provider === 'azure_speech' && !azureKey ? `<p style="margin:4px 0 0; font-size:0.78rem; color:#b91c1c;">${sbUiIcon('alert', 13)} ${tt('Azure Speech requires an API key. Configure it in Settings.', 'Azure Speech nécessite une clé API. Configurez-la dans les Paramètres.', 'Azure Speech erfordert einen API-Schlüssel. Konfigurieren Sie ihn in den Einstellungen.')}</p>` : ''}
                 </label>
@@ -1455,7 +1416,7 @@
           return `
             <label class="field">${escapeHtml(fieldLabel(spec))}
               <select ${bind}>
-                ${(spec.options || []).map((option) => `<option value="${option}" ${String(value) === String(option) ? 'selected' : ''}>${isProviderField ? (providerLabels[option] || option) : option}</option>`).join('')}
+                ${(spec.options || []).filter((option) => !isProviderField || option !== 'azure_speech' || String(value) === 'azure_speech' || appState.scenario.settings.azure_speech_key).map((option) => `<option value="${option}" ${String(value) === String(option) ? 'selected' : ''}>${isProviderField ? (providerLabels[option] || option) : option}</option>`).join('')}
               </select>
               ${azureHint}
               ${genBtn}

@@ -41,7 +41,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   // The agent console lives in Settings, not in the tab bar.
   assert.equal(await page.locator('.nav-icon-btn[data-route="agent"]').count(), 0);
   await page.locator('.brand-actions .nav-gear-btn[data-action="toggle-settings-drawer"]').click();
-  await page.locator('.settings-agent-card [data-agent-action="open-console"]').click();
+  await page.locator('.settings-drawer [data-agent-action="open-console"]').click();
   await page.locator('#agent-mode').selectOption('auto');
   await page.locator('#agent-objective').fill('Build a 4-hour ransomware bank exercise testing executive decisions.');
   await page.locator('[data-agent-action="start"]').click();

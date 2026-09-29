@@ -42,13 +42,17 @@ function renderAgentPanel({ origin = '' } = {}) {
     <ol class="agent-log agent-panel-log" aria-live="polite">${recent.map(entry => `<li class="agent-log-${entry.kind}"><span>${sbUiIcon(entry.kind === 'success' ? 'check' : entry.kind === 'warning' || entry.kind === 'error' ? 'alert' : 'chevronRight', 13)} ${escapeHtml(entry.message)}</span></li>`).join('')}</ol>
   </div>`;
 }
-function renderExercisePlan() {
-  const s = appState.scenario.scenario;
-  return `<article class="card"><h3>${tt('Exercise plan', 'Plan de l’exercice', 'Übungsplan')}</h3>
-    <label class="field">${tt('Exercise objectives', 'Objectifs de l’exercice', 'Übungsziele')}<textarea data-bind="scenario.objectives" placeholder="${tt('Decisions and capabilities to test', 'Décisions et capacités à tester', 'Zu testende Entscheidungen und Fähigkeiten')}">${escapeHtml(s.objectives || '')}</textarea></label>
-    <label class="field">${tt('Narrative arc', 'Arc narratif', 'Handlungsbogen')}<textarea data-bind="scenario.narrative_arc">${escapeHtml(s.narrative_arc || '')}</textarea></label>
-    <p class="subtle">Timed phases come from the Main storyline. <button class="btn btn-ghost btn-xs" data-route="storyline">Main storyline →</button></p>
-    ${(s.phases || []).length ? `<div class="agent-phases">${s.phases.map(p => `<div><strong>T+${escapeHtml(p.start_minutes)}–${escapeHtml(p.end_minutes)} · ${escapeHtml(p.name)}</strong><p>${escapeHtml(p.purpose)}</p></div>`).join('')}</div>` : `<p class="subtle">${tt('The agent can organize timed phases from your brief.', 'L’agent peut organiser les phases à partir de votre brief.', 'Der Agent kann zeitliche Phasen aus Ihrem Briefing erstellen.')}</p>`}
+/* The technical log of the session, below the agent's activity: every AI call and error. */
+function renderAgentTechLog() {
+  const text = typeof CrisisTechLog !== 'undefined' ? CrisisTechLog.text() : '';
+  return `<article class="card agent-techlog"><div class="section-header"><div><h3>${sbUiIcon('sheet', 16)} ${tt('Technical log', 'Journal technique', 'Technisches Protokoll')}</h3><p class="subtle">${tt('Every AI call of this session (provider, model, size, duration, HTTP status, stop reason, attempt, start of the reply) and every error, newest first. API keys are masked and prompts are never recorded. Kept in memory only.', 'Chaque appel IA de la session (fournisseur, modèle, taille, durée, statut HTTP, raison d’arrêt, tentative, début de la réponse) et chaque erreur, du plus récent au plus ancien. Les clés API sont masquées et les prompts ne sont jamais enregistrés. En mémoire seulement.', 'Jeder KI-Aufruf dieser Sitzung (Anbieter, Modell, Größe, Dauer, HTTP-Status, Stoppgrund, Versuch, Anfang der Antwort) und jeder Fehler, neueste zuerst. API-Schlüssel sind maskiert, Prompts werden nie gespeichert. Nur im Speicher.')}</p></div>
+    <div class="actions">
+      <button class="btn btn-secondary btn-sm" data-action="tech-log-refresh">${sbUiIcon('refresh', 13)} ${tt('Refresh', 'Actualiser', 'Aktualisieren')}</button>
+      <button class="btn btn-secondary btn-sm" data-action="tech-log-copy">${tt('Copy', 'Copier', 'Kopieren')}</button>
+      <button class="btn btn-primary btn-sm" data-action="tech-log-download">${sbUiIcon('download', 13)} ${tt('Download (.txt)', 'Télécharger (.txt)', 'Herunterladen (.txt)')}</button>
+      <button class="btn btn-ghost btn-sm" data-action="tech-log-clear">${tt('Clear', 'Effacer', 'Leeren')}</button>
+    </div></div>
+    <pre class="tech-log-pre">${escapeHtml(text || tt('Nothing yet: AI calls and errors appear here.', 'Rien pour l’instant : les appels IA et les erreurs apparaissent ici.', 'Noch nichts: KI-Aufrufe und Fehler erscheinen hier.'))}</pre>
   </article>`;
 }
 function renderAgentView() {
@@ -69,7 +73,7 @@ function renderAgentView() {
     ${renderAgentQuestion(run)}
     ${run.pending ? `<article class="card agent-approval"><h3>${tt('Review proposed change', 'Vérifier la modification proposée', 'Vorgeschlagene Änderung prüfen')} · ${escapeHtml(run.pending.tool)}</h3><p>${escapeHtml(run.pending.reason || '')}</p><pre>${escapeHtml(agentRedact(run.pending.arguments))}</pre><details><summary>${tt('Current exercise context', 'Contexte actuel de l’exercice', 'Aktueller Übungskontext')}</summary><pre>${escapeHtml(agentRedact(run.pending.before))}</pre></details><div class="actions"><button class="btn btn-primary" data-agent-action="approve">${tt('Approve change', 'Valider la modification', 'Änderung freigeben')}</button><button class="btn btn-secondary" data-agent-action="reject">${tt('Reject', 'Refuser', 'Ablehnen')}</button></div></article>` : ''}
     <article class="card"><h3>${tt('Activity', 'Activité', 'Aktivität')}</h3><ol class="agent-log" aria-live="polite" aria-relevant="additions">${run.log.length ? run.log.map(entry => `<li class="agent-log-${entry.kind}"><span>${sbUiIcon(entry.kind === 'success' ? 'check' : entry.kind === 'warning' || entry.kind === 'error' ? 'alert' : 'chevronRight', 13)} ${entry.step} · ${escapeHtml(entry.message)}</span>${entry.detail ? `<details><summary>${tt('Inspect action / result', 'Inspecter l’action / le résultat', 'Aktion / Ergebnis ansehen')}</summary><pre>${escapeHtml(entry.detail)}</pre></details>` : ''}</li>`).join('') : `<li>${tt('Start a run to inspect and improve the current exercise.', 'Démarrez pour inspecter et améliorer l’exercice actuel.', 'Starten, um die aktuelle Übung zu prüfen und zu verbessern.')}</li>`}</ol></article>
-    ${renderExercisePlan()}
+    ${renderAgentTechLog()}
   </section>`;
 }
 function bindAgentEvents() {
