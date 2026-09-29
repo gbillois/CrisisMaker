@@ -566,6 +566,8 @@ test('main events with a clock time are placed at that simulated time; the frame
     { type: 'twist', title: 'Leak', start_minutes: 120, duration_minutes: 60, brief: 'x' }
   ] });
   const blocks = h.json('sbMainBlocks(appState.scenario.storyboard).map(b => ({ id: b.id, start: b.start_minutes }))');
+  // Before any main event, the consistency check lists the incident timeline events in play.
+  assert.match(JSON.stringify(h.json('agentConsistencyCheck()')), /incident timeline event at H\+1:30 .*not a main event yet/);
   // The text's clock wins over a wrong at; an event in another phase is refused with that phase.
   const set = await execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 5, text: '09:30 - The attacker emails the CEO' }] });
   assert.equal(set.key_events[0].exercise_minute, 90);

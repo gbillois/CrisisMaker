@@ -134,6 +134,13 @@ function agentConsistencyCheck() {
   const listedPlayers = (s.cells || []).reduce((sum, cell) => sum + cell.players.length, 0);
   if (expectedPlayers && listedPlayers && listedPlayers !== expectedPlayers) issues.push(`Cells: ${listedPlayers} players are listed but the exercise expects ${expectedPlayers}; adjust the players of the cells (upsertCells).`);
   if (expectedCells && (s.cells || []).length !== expectedCells) issues.push(`Cells: ${(s.cells || []).length} cells exist but the exercise expects ${expectedCells}.`);
+  // The incident timeline events that happen during play are main events of their phase.
+  if (storyboard) {
+    const placed = sbMainBlocks(storyboard).flatMap(block => (block.events || []).map(event => block.start_minutes + event.offset_minutes));
+    for (const item of agentExerciseFrame().incident_timeline_in_play || []) {
+      if (!placed.some(minute => Math.abs(minute - item.exercise_minute) <= 5)) issues.push(`Storyline: the incident timeline event at ${item.time} ("${agentExcerpt(item.text, 90)}") is not a main event yet: set it on its phase (setMainEvents), its text starting with its clock time.`);
+    }
+  }
   // One actor playing roles of different kinds (the SOC analyst also signing the ransom note).
   const byActor = new Map();
   for (const cast of storyboard?.cast || []) if (cast.actor_id) byActor.set(cast.actor_id, [...(byActor.get(cast.actor_id) || []), cast]);
