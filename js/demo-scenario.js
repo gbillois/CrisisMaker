@@ -167,7 +167,7 @@
           [16, 'internal_memo', null, 'hr', 'communication', 'HR note: staff arriving at the sites', 'Staff need instructions; the communication cell must take over internal messages.', {
             to: 'Communication cell', subject: 'Staff arriving at the sites without instructions',
             body: '<p>Site managers report that staff arriving for the 09:00 shift in Paris and Lyon have no instructions. Badges do not work in Lyon, rumours circulate on WhatsApp and some employees are posting pictures of the ransom note.</p><p>We need a first internal message within the hour: what to do, what not to post, who to call.</p>', classification: 'Internal' }],
-          [20, 'email_internal', null, 'soc', 'decision', 'Nudge: the crisis level is still not declared', 'Relaunches the executive committee if it has not declared the crisis level.', {
+          [20, 'email_internal', null, 'soc', 'decision', 'The crisis level is still not declared', 'Relaunches the executive committee if it has not declared the crisis level.', {
             from_email: 'karim.benali@stonawave.example', to: 'Claire Martin; Henri Dubreuil', cc: 'Sophie Delacroix',
             subject: 'Reminder - crisis level and incident response retainer still pending',
             body: '<p>Claire, Henri,</p><p>We still have no crisis level declared and no go to activate our incident response retainer with Delta Advisory. Every hour of delay leaves the attackers in the network. Can the executive committee decide now?</p><p>Karim</p>' }, true],
@@ -203,9 +203,9 @@
             subject: 'Policy NBC-7720 - Notice of claim and panel providers',
             body: '<p>Dear Ms Schmidt,</p><p>We saw the reports about StonaWave. Under policy NBC-7720, please send the notice of claim within 24 hours of discovery. Please do not engage with the threat actor or pay anything without our prior agreement, and use our panel for negotiation and forensics.</p><p>Our crisis line is open 24/7.</p><p>Aline Garnier<br>Cyber claims manager, Northbridge Cyber Insurance</p>' }],
           [55, 'email_internal', null, 'delta', 'decision+it', 'Go or no-go on isolating all sites', 'The key dilemma of the containment phase.', {
-            from_name: 'Thomas Bergmann', from_email: 'thomas.bergmann@stonawave.example', to: 'Executive committee', cc: 'Elise Warren (Delta Advisory)',
+            from_email: 'elise.warren@delta-advisory.example', to: 'Executive committee', cc: 'Sophie Delacroix; Thomas Bergmann',
             subject: 'DECISION BEFORE 10:00 - Isolate all sites and partner links',
-            body: '<p>All,</p><p>With Delta Advisory we propose to isolate now:</p><ul><li>Cut the links between Paris, Lyon, Frankfurt, New Jersey and Hyderabad</li><li>Close every partner connection, including the MediChem EDI</li><li>Switch to break-glass accounts and reset all domain admin accounts</li></ul><p><strong>Cost:</strong> no email, ERP or badges for 24 to 48 hours; orders by phone and paper. <strong>Risk if we wait:</strong> losing Hyderabad and the last clean backups.</p><p>We need a go or no-go before 10:00.</p><p>Thomas Bergmann<br>CIO</p>',
+            body: '<p>All,</p><p>With your IT team we recommend to isolate now:</p><ul><li>Cut the links between Paris, Lyon, Frankfurt, New Jersey and Hyderabad</li><li>Close every partner connection, including the MediChem EDI</li><li>Switch to break-glass accounts and reset all domain admin accounts</li></ul><p><strong>Cost:</strong> no email, ERP or badges for 24 to 48 hours; orders by phone and paper. <strong>Risk if we wait:</strong> losing Hyderabad and the last clean backups.</p><p>We need a go or no-go before 10:00.</p><p>Elise Warren<br>Incident response lead, Delta Advisory</p>',
             attachment_name: 'Isolation_options.pdf' }],
           [60, 'email_external', null, 'medichem', 'business', 'MediChem: EDI down, packaging slots at risk', 'A partner offers help but needs a decision.', {
             from_email: 'david.chen@medichem-mfg.example', to: 'james.carter@stonawave.example', cc: 'anika.patel@stonawave.example',
@@ -217,16 +217,16 @@
             date: '16 November 2026',
             body: '<p>Madam,</p><p>CERT-FR is aware of the attack claimed by PharmLeaks against StonaWave. Please find attached the indicators observed in this campaign against two other European healthcare companies.</p><p>As an essential entity under NIS2, StonaWave must send an early warning within 24 hours. We ask you to share your first findings and to tell us whether operators of vital importance are affected.</p><p>CERT-FR</p>',
             severity: 'critical' }],
-          [70, 'sms_notification', null, 'servicedesk', 'it', 'Nudge: Hyderabad still connected', 'Relaunches the IT cell if isolation has not been decided.', {
+          [70, 'sms_notification', null, 'servicedesk', 'it', 'Hyderabad still connected', 'Relaunches the IT cell if isolation has not been decided.', {
             sender: 'SW Service Desk', text: 'Hyderabad NOC: still connected to Paris over the WAN, backup vault online for replication at 10:00. Confirm isolation or we keep the schedule.', device: 'android' }, true],
           [75, 'article_press', 'lemonde', 'lemonde', 'communication', 'Le Monde: StonaWave paralysed', 'First national article; asks for a statement.', {
             headline: 'Le laboratoire StonaWave paralyse par une cyberattaque', subheadline: 'Le groupe pharmaceutique francais a arrete deux lignes de production. Des hopitaux s\'inquietent pour leurs livraisons.',
             author: 'Camille Vasseur', date: '16 novembre 2026 a 09h45', category: 'Pixels',
             body: '<p>Le groupe pharmaceutique StonaWave est victime depuis lundi matin d\'une attaque par rancongiciel revendiquee par le groupe PharmLeaks. Selon nos informations, les usines de Francfort et du New Jersey sont a l\'arret et le portail de commande des hopitaux est inaccessible.</p><p>Contacte par Le Monde, le groupe n\'a pas souhaite commenter. Les attaquants affirment detenir 1,9 teraoctet de donnees, dont des dossiers de patients.</p>' }],
-          [80, 'email_internal', null, 'plant', 'decision', 'Nudge: no ransom position yet', 'Relaunches the executive committee on the ransom position before the leak.', {
-            from_name: 'Henri Dubreuil', from_email: 'henri.dubreuil@stonawave.example', to: 'Claire Martin', cc: 'Laura Schmidt',
-            subject: 'We need a position on the ransom before the press asks',
-            body: '<p>Claire,</p><p>Journalists are already calling the plants. We have not decided whether we engage with PharmLeaks, even to buy time. Laura says the insurer must be involved first. Can we take a position at the next committee point?</p><p>Henri</p>' }, true],
+          [80, 'email_internal', null, 'plant', 'decision', 'No ransom position yet', 'Relaunches the executive committee on the ransom position before the leak.', {
+            from_email: 'greta.hoffmann@stonawave.example', to: 'Claire Martin; Henri Dubreuil', cc: '',
+            subject: 'Journalists at the plant gate ask whether we will pay',
+            body: '<p>Claire, Henri,</p><p>Two journalists are at the Frankfurt gate and ask whether StonaWave will pay the ransom. My staff ask the same question. What is the committee position, and what can I say?</p><p>Greta Hoffmann<br>Site director, Frankfurt</p>' }, true],
           [85, 'email_internal', null, 'hr', 'communication', 'Employees post the ransom note', 'Internal communication must handle staff behaviour online.', {
             from_email: 'nathalie.brunet@stonawave.example', to: 'Sofia Rossi; Julie Moreau', cc: '',
             subject: 'Ransom note pictures shared by staff on LinkedIn',
@@ -254,7 +254,7 @@
             display_name: 'Elise Warren', title: 'Incident response lead at Delta Advisory', avatar_initials: 'EW',
             text: 'Ransomware on a drugmaker is never only an IT problem. The first hours decide three things: whether patients keep getting their treatment, whether the backups are clean, and whether the company speaks first. Thinking of every team working through the night on incidents like this one.',
             date: '15m', reactions_count: 412, comments_count: 37, reposts_count: 21 }],
-          [116, 'email_internal', null, 'hr', 'communication', 'Nudge: no internal message yet', 'Relaunches the communication cell if staff are still without a message.', {
+          [116, 'email_internal', null, 'hr', 'communication', 'No internal message yet', 'Relaunches the communication cell if staff are still without a message.', {
             from_email: 'nathalie.brunet@stonawave.example', to: 'Sofia Rossi', cc: 'Claire Martin',
             subject: 'Still no message to staff - they learn from CNN',
             body: '<p>Sofia,</p><p>It is past 10:00 and employees learn about the leak from CNN. The unions ask for a meeting. Can we send the CEO message now, even short?</p><p>Nathalie</p>' }, true],
@@ -269,7 +269,7 @@
           [128, 'audio_message', null, 'attacker', 'decision', 'Voice message from the attacker', 'Psychological pressure on the executives; tests the rule of no direct contact.', {
             title: 'Voice message left on the CEO\'s mobile', tts_language: 'en-US',
             text: 'Hello Madame Martin. This is PharmLeaks. You saw the news: two thousand patients are online. Tomorrow at nine it will be twenty thousand, and your oncology trial results will be sent to your competitors. Log in to the chat before midnight. Only you. No lawyers, no police.' }],
-          [132, 'email_external', null, 'hospital', 'business', 'Nudge: hospital second request, patients rescheduled', 'Relaunches the business continuity cell if the hospital has had no answer.', {
+          [132, 'email_external', null, 'hospital', 'business', 'Hospital second request, patients rescheduled', 'Relaunches the business continuity cell if the hospital has had no answer.', {
             from_name: 'Dr. Isabelle Roux', from_email: 'i.roux@saint-aurele-hospital.example', to: 'elena.vogel@stonawave.example', cc: 'james.carter@stonawave.example',
             subject: 'Second request - we are rescheduling 12 patients',
             body: '<p>Ms Vogel,</p><p>Without an answer on our Wednesday delivery, we are rescheduling 12 patients this afternoon. Other hospitals in our network are in the same situation. Can you send us a named contact and an emergency ordering procedure?</p><p>Dr. Isabelle Roux</p>' }, true],
@@ -286,7 +286,7 @@
             headline: 'Cyberangriff legt StonaWave-Werk in Frankfurt lahm', subheadline: 'Zwei Produktionslinien fuer Krebsmedikamente stehen still. Die Belegschaft wartet auf Informationen.',
             author: 'Von Jonas Reinhardt, Frankfurt', date: '16.11.2026', time: clock(144),
             body: '<p>Im Frankfurter Werk des Pharmakonzerns StonaWave stehen seit Montagmorgen zwei Produktionslinien still. Mitarbeiter berichten von Erpresserbotschaften auf den Bildschirmen.</p><p>Eine Stellungnahme des Unternehmens lag bis zum Mittag nicht vor.</p>' }],
-          [152, 'email_internal', null, 'insurer', 'legal', 'Nudge: insurer still without notice of claim', 'Relaunches the legal cell on the insurance notification.', {
+          [152, 'email_internal', null, 'insurer', 'legal', 'Insurer still without notice of claim', 'Relaunches the legal cell on the insurance notification.', {
             from_name: 'Aline Garnier', from_email: 'a.garnier@northbridge-cyber.example', to: 'laura.schmidt@stonawave.example', cc: '',
             subject: 'Follow-up - notice of claim NBC-7720 not received',
             body: '<p>Dear Ms Schmidt,</p><p>We have not received your notice of claim yet. Our panel negotiator and forensic firm are on standby. Please confirm today, as costs incurred without our agreement may not be covered.</p><p>Aline Garnier</p>' }, true],
