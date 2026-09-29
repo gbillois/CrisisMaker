@@ -58,7 +58,7 @@ function sbSerialize(storyboard) {
 /* Cells, actors and written injects live beside the storyboard. An edit that changes them
    calls StoryboardHistory.track() first: its undo step then keeps only the items that
    changed (by id, before and after) and the order of each list, not full copies. */
-const SB_SIDE_LISTS = ['cells', 'actors', 'stimuli'];
+const SB_SIDE_LISTS = ['cells', 'actors', 'stimuli', 'player_pool', 'actor_categories'];
 const SB_SIDE_BIG = 4096;
 
 /* A long string (an image or a video as data URL) is not copied into the JSON of its item:

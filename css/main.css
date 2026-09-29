@@ -3909,15 +3909,6 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .ce-cell-head input[type="color"] { width: 30px; height: 30px; min-height: 0; padding: 0; border: none; background: none; }
 .ce-cell-name { flex: 1; font-weight: 800; }
 .ce-page textarea, .ce-page input[type="text"], .ce-page select { min-height: 34px; padding: 7px 10px; font-size: 0.86rem; border-radius: 0; }
-.ce-players { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.ce-players th { text-align: left; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 2px 4px; }
-.ce-players td { padding: 2px; }
-.ce-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(520px, 100%), 1fr)); gap: 12px; margin-top: 14px; align-items: start; }
-.ce-group { display: grid; gap: 6px; align-content: start; padding: 10px; border-radius: 0; border: 1px solid var(--sb-line); background: var(--sb-panel-alt); }
-.ce-group-head { display: flex; align-items: center; gap: 8px; }
-.ce-group-head .btn { margin-left: auto; }
-.ce-actor { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.8fr) auto; gap: 5px; align-items: center; }
-.ce-roles .sb-cast-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 10px; }
 
 /* Detailed storyline */
 .ds-workspace .ds-timeline { flex: 1 1 0; min-height: 80px; display: flex; flex-direction: column; background: var(--sb-panel); border: 1px solid var(--sb-line); border-radius: var(--sb-radius); overflow: hidden; }
@@ -4122,7 +4113,6 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
   .sc-ai-row, .sl-editor-body, .ds-editor-body { grid-template-columns: 1fr; }
   .su-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .card.cc-readiness, .cc-grid { grid-template-columns: 1fr; }
-  .ce-actor { grid-template-columns: 1fr 1fr; }
 }
 
 /* ═══ Project tab: summary, project data, scenario library ═══ */
@@ -4726,3 +4716,30 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .bf-bar.is-warn > svg { color: #d97706; }
 .bf-bar-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .bf-bar-actions .btn { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Cells & actors: players in the cells, then the Players and Simulated actors tables. */
+.ce-members { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.ce-members li { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 8px; background: var(--surface-alt); border-left: 3px solid var(--cell-color, var(--line)); font-size: 0.82rem; }
+.ce-members li.is-empty { color: var(--muted); border-left-color: var(--line); }
+.ce-add-player, .ce-add-actor { font-size: 0.8rem; max-width: 100%; }
+.ce-table-wrap { overflow-x: auto; margin-top: 10px; border: 1px solid var(--line); }
+.ce-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 720px; }
+.ce-table thead th { position: sticky; top: 0; background: #fff; text-align: left; font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 8px 6px; border-bottom: 1px solid var(--line); }
+.ce-table td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.ce-table td input, .ce-table td select { width: 100%; min-width: 0; }
+.ce-table tr:last-child td { border-bottom: 0; }
+.ce-table td:last-child { width: 1%; white-space: nowrap; }
+.ce-group-row th { text-align: left; background: var(--surface-alt); padding: 7px 8px; font-size: 0.8rem; border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); }
+.ce-group-row th > .cell-dot, .ce-group-row .cell-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--cell-color); margin-right: 6px; vertical-align: middle; }
+.ce-group-row .btn { margin-left: 8px; }
+.ce-group-title { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ce-category-name { font-weight: 600; min-width: 160px; }
+.ce-roles-cell { min-width: 150px; }
+.ce-role-chip { display: inline-flex; align-items: center; gap: 3px; margin: 1px 3px 1px 0; padding: 1px 3px 1px 7px; background: #efeafd; color: var(--indigo); font-size: 0.74rem; border: 1px solid #d9d0f7; }
+.ce-role-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 1px; display: inline-flex; }
+.ce-flag { display: inline-flex; align-items: center; gap: 3px; margin-top: 2px; font-size: 0.7rem; color: #b45309; }
+.ce-unlinked { margin-top: 12px; padding: 10px 12px; border: 1px solid #f3d9a4; background: #fff8eb; }
+.ce-unlinked > strong { display: flex; align-items: center; gap: 6px; color: #92400e; font-size: 0.86rem; }
+.ce-unlinked .ce-table { min-width: 640px; }
+.ce-row-actions { display: flex; gap: 6px; align-items: center; }
+.ce-cast-foot { margin-top: 8px; }

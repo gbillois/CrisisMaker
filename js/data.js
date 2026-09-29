@@ -425,6 +425,7 @@
           storyboard: storyboardModelLoaded() ? normalizeStoryboard(input.storyboard, input.scenario?.phases) : input.storyboard,
           storyboard_versions: storyboardModelLoaded() ? sbNormalizeVersions(input.storyboard_versions) : [],
           cells: storyboardModelLoaded() ? sbNormalizeCells(input.cells) : [],
+          player_pool: storyboardModelLoaded() && Array.isArray(input.player_pool) ? input.player_pool.slice(0, 500).map(sbNormalizePlayer) : [],
           exercise: storyboardModelLoaded() ? sbNormalizeExercise(input.exercise) : { players_count: '', cells_count: '' },
           checklist: normalizeChecklist(input.checklist)
         };

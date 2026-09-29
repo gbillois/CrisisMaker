@@ -832,7 +832,10 @@ const SB_CHANNEL_TO_CELL = {
 };
 
 function sbNormalizePlayer(input = {}) {
-  return { id: sbSafeId(input.id, 'player'), name: sbText(input.name, 200), role: sbText(input.role, 200), email: sbText(input.email, 200) };
+  const player = { id: sbSafeId(input.id, 'player'), name: sbText(input.name, 200), role: sbText(input.role, 200), email: sbText(input.email, 200) };
+  // The name, role and email the injects still show, until Update writes the new ones (people.js).
+  if (input.synced && typeof input.synced === 'object') player.synced = { name: sbText(input.synced.name, 200), role: sbText(input.synced.role, 200), email: sbText(input.synced.email, 200) };
+  return player;
 }
 
 function sbNormalizeCell(input = {}) {

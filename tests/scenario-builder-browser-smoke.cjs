@@ -168,23 +168,36 @@ function answerFor(system, user) {
   await page.mouse.up();
   assert.ok(await page.evaluate(id => sbBlock(sbStoryboard(), id).start_minutes, id) > 60);
 
-  // 3. Cells & actors: add a player.
+  // 3. Cells & actors: a player is added to the Players list, then picked into a cell.
   await page.click('.nav-icon-btn[data-route="cells"]');
   const firstCell = await page.evaluate(() => appState.scenario.cells[0].id);
-  await page.click(`[data-tab-action="add-player"][data-tab-value="${firstCell}"]`);
-  const playerInput = `[data-ce-player^="${firstCell}."][data-ce-player$=".name"]`;
-  await page.fill(playerInput, 'Dr Ana Ruiz');
-  await page.dispatchEvent(playerInput, 'change');
+  await page.click('.ce-people [data-tab-action="add-player"][data-tab-value=""], [data-tab-action="add-player"][data-tab-value=""]');
+  const newPlayer = await page.evaluate(() => appState.scenario.player_pool.at(-1).id);
+  const playerInput = `[data-ce-person="${newPlayer}.name"]`;
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset.cePerson), `${newPlayer}.name`, 'the new row takes the focus');
+  await page.fill(`[data-ce-person="${newPlayer}.name"]`, 'Dr Ana Ruiz');
+  await page.dispatchEvent(`[data-ce-person="${newPlayer}.name"]`, 'change');
+  assert.equal(await page.locator(`[data-ce-player]`).count(), 0, 'no player is typed inside a cell');
+  await page.selectOption(`[data-ce-cell-add="${firstCell}"]`, newPlayer);
   assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
+  assert.equal(await page.evaluate((id) => appState.scenario.player_pool.some((player) => player.id === id), newPlayer), false);
   // Ctrl+Z undoes the last player added, not an earlier change; the name typed before stays.
-  const playerCount = () => page.evaluate(() => appState.scenario.cells[0].players.length);
+  const playerCount = () => page.evaluate(() => appState.scenario.player_pool.length);
   const players = await playerCount();
-  await page.click(`[data-tab-action="add-player"][data-tab-value="${firstCell}"]`);
+  await page.click('[data-tab-action="add-player"][data-tab-value=""]');
   assert.equal(await playerCount(), players + 1);
   await page.evaluate(() => document.activeElement?.blur());
   await page.keyboard.press('Control+z');
   assert.equal(await playerCount(), players, 'Ctrl+Z removes the player just added');
   assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
+  // A category of simulated actors of the project's own, and an actor in it.
+  await page.click('[data-tab-action="add-category"]');
+  const category = await page.evaluate(() => appState.scenario.actor_categories.at(-1).id);
+  await page.fill(`[data-ce-category="${category}.label"]`, 'Insurers');
+  await page.dispatchEvent(`[data-ce-category="${category}.label"]`, 'change');
+  await page.click(`[data-tab-action="add-actor"][data-tab-value="cat:${category}"]`);
+  assert.equal(await page.evaluate((id) => appState.scenario.actors.filter((actor) => actor.category === id).length, category), 1);
+  assert.ok((await page.locator('.ce-group-row').allInnerTexts()).some((text) => text.includes('1')));
 
   // 4. Detailed storyline: pick a cell, add an inject, generate the cell (no "+ Cell", no "Plan with AI").
   assert.equal(await page.locator('.ds-cell-chip.is-add, [data-tab-action="ds-plan"]').count(), 0);

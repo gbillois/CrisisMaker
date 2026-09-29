@@ -354,60 +354,133 @@ function renderCellsView() {
           </div>
         </div>
         <div class="ce-grid">
-          ${project.cells.map((cell) => {
-            const count = items.filter((item) => sbReaches(item.cell_id, cell.id)).length;
-            return `<div class="ce-cell" style="--cell-color:${cell.color}">
-              <div class="ce-cell-head">
-                <input type="color" data-ce-cell="${cell.id}.color" value="${cell.color}" aria-label="${escapeAttribute(tt('Cell colour', 'Couleur de la cellule', 'Zellenfarbe'))}">
-                <input type="text" class="ce-cell-name" data-ce-cell="${cell.id}.name" value="${escapeAttribute(cell.name)}" aria-label="${escapeAttribute(tt('Cell name', 'Nom de la cellule', 'Zellenname'))}">
-                <span class="sb-chip">${count} ${escapeHtml(tt('inject(s)', 'inject(s)', 'Inject(s)'))}</span>
-                <button class="sb-icon-btn is-danger" data-tab-action="delete-cell" data-tab-value="${cell.id}" title="${escapeAttribute(tt('Delete cell', 'Supprimer la cellule', 'Zelle löschen'))}">${sbUiIcon('trash', 14)}</button>
-              </div>
-              <textarea data-ce-cell="${cell.id}.description" rows="2" placeholder="${escapeAttribute(tt('Mission of this cell', 'Mission de cette cellule', 'Auftrag dieser Zelle'))}">${escapeHtml(cell.description)}</textarea>
-              <table class="ce-players">
-                <thead><tr><th>${escapeHtml(tt('Player', 'Joueur', 'Spieler'))}</th><th>${escapeHtml(tt('Role', 'Rôle', 'Rolle'))}</th><th>${escapeHtml(tt('Email', 'E-mail', 'E-Mail'))}</th><th></th></tr></thead>
-                <tbody>${cell.players.map((player) => `<tr>
-                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.name" value="${escapeAttribute(player.name)}" placeholder="${escapeAttribute(tt('Name', 'Nom', 'Name'))}"></td>
-                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.role" value="${escapeAttribute(player.role)}" placeholder="${escapeAttribute(tt('Role', 'Rôle', 'Rolle'))}"></td>
-                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.email" value="${escapeAttribute(player.email)}" placeholder="${escapeAttribute(tt('Email', 'E-mail', 'E-Mail'))}"></td>
-                  <td><button class="sb-icon-btn" data-tab-action="delete-player" data-tab-value="${cell.id}.${player.id}" title="${escapeAttribute(tt('Remove', 'Retirer', 'Entfernen'))}">${sbUiIcon('close', 13)}</button></td>
-                </tr>`).join('')}</tbody>
-              </table>
-              <button class="btn btn-ghost btn-xs" data-tab-action="add-player" data-tab-value="${cell.id}">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Player', 'Joueur', 'Spieler'))}</button>
-            </div>`;
-          }).join('') || `<p class="sb-empty">${escapeHtml(tt('No cell yet. Add the cells playing the exercise (for example decision, operational and communication cells).', 'Aucune cellule pour l’instant. Ajoutez les cellules qui jouent l’exercice (par exemple cellules décisionnelle, opérationnelle et communication).', 'Noch keine Zelle. Fügen Sie die Zellen hinzu, die die Übung spielen (zum Beispiel Entscheidungs-, operative und Kommunikationszelle).'))}</p>`}
+          ${project.cells.map((cell) => renderCeCell(project, cell, items)).join('') || `<p class="sb-empty">${escapeHtml(tt('No cell yet. Add the cells playing the exercise (for example decision, operational and communication cells).', 'Aucune cellule pour l’instant. Ajoutez les cellules qui jouent l’exercice (par exemple cellules décisionnelle, opérationnelle et communication).', 'Noch keine Zelle. Fügen Sie die Zellen hinzu, die die Übung spielen (zum Beispiel Entscheidungs-, operative und Kommunikationszelle).'))}</p>`}
         </div>
       </article>
-      <article class="card">
-        <div class="section-header">
-          <div><h3>${escapeHtml(tt('Simulated actors', 'Acteurs simulés', 'Simulierte Akteure'))}</h3><p class="subtle">${escapeHtml(tt('People and organisations outside the exercise who send the injects, grouped by type.', 'Personnes et organisations extérieures à l’exercice qui envoient les injects, regroupées par type.', 'Personen und Organisationen außerhalb der Übung, die die Injects senden, nach Typ gruppiert.'))}</p></div>
-        </div>
-        ${renderLLMConfigBlock('actors', actorsPlaceholder)}
-        <div class="ce-groups">
-          ${CE_ACTOR_GROUPS.map(([role, en, fr, de]) => {
-            const label = tt(en, fr, de);
-            const actors = project.actors.filter((actor) => actor.role === role);
-            return `<div class="ce-group">
-              <div class="ce-group-head"><strong>${escapeHtml(label)}</strong><span class="sb-chip">${actors.length}</span><button class="btn btn-ghost btn-xs" data-tab-action="add-actor" data-tab-value="${role}">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Add', 'Ajouter', 'Hinzufügen'))}</button></div>
-              ${actors.map((actor) => `<div class="ce-actor">
-                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.name" value="${escapeAttribute(actor.name)}" aria-label="${escapeAttribute(tt('Name', 'Nom', 'Name'))}" placeholder="${escapeAttribute(tt('Name', 'Nom', 'Name'))}">
-                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.title" value="${escapeAttribute(actor.title)}" aria-label="${escapeAttribute(tt('Title', 'Fonction', 'Funktion'))}" placeholder="${escapeAttribute(tt('Title', 'Fonction', 'Funktion'))}">
-                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.organization" value="${escapeAttribute(actor.organization)}" aria-label="${escapeAttribute(tt('Organisation', 'Organisation', 'Organisation'))}" placeholder="${escapeAttribute(tt('Organisation', 'Organisation', 'Organisation'))}">
-                <select data-actor-bind="${escapeAttribute(actor.id)}.role" aria-label="${escapeAttribute(tt('Group', 'Groupe', 'Gruppe'))}">${ROLES.map((item) => sbOption(item.value, roleLabel(item.value), actor.role)).join('')}</select>
-                <select data-actor-bind="${escapeAttribute(actor.id)}.language" aria-label="${escapeAttribute(tt('Language', 'Langue', 'Sprache'))}">${LANGUAGES.map((item) => sbOption(item.value, item.label, actor.language || 'en')).join('')}</select>
-                <button class="sb-icon-btn is-danger" data-action="delete-actor" data-actor-id="${escapeAttribute(actor.id)}" title="${escapeAttribute(tt('Delete', 'Supprimer', 'Löschen'))}">${sbUiIcon('trash', 13)}</button>
-              </div>`).join('') || `<p class="sb-empty">${escapeHtml(tt('None.', 'Aucun.', 'Keine.'))}</p>`}
-            </div>`;
-          }).join('')}
-        </div>
-      </article>
-      <article class="card">
-        <div class="section-header"><div><h3>${escapeHtml(tt('Storyline roles', 'Rôles de la storyline', 'Rollen der Storyline'))}</h3><p class="subtle">${escapeHtml(tt('Roles used as senders in the storyline, and the actor who plays each of them.', 'Rôles utilisés comme émetteurs dans la storyline, et l’acteur qui joue chacun d’eux.', 'Rollen, die in der Storyline als Absender dienen, und der Akteur, der jede von ihnen spielt.'))}</p></div></div>
-        <div class="ce-roles">${renderSbCast(storyboard)}</div>
-      </article>
+      ${renderCePlayers(project)}
+      ${renderCeActors(project, storyboard, actorsPlaceholder)}
       ${renderSbModal(storyboard)}
     </section>`;
   });
+}
+
+/* A cell: its mission and its players, picked from the Players list (never typed here). */
+function renderCeCell(project, cell, items) {
+  const count = items.filter((item) => sbReaches(item.cell_id, cell.id)).length;
+  const pool = cePlayerPool(project);
+  const others = project.cells.filter((other) => other.id !== cell.id && other.players.length);
+  const label = (player) => [player.name, player.role].filter(Boolean).join(' · ') || tt('Unnamed player', 'Joueur sans nom', 'Spieler ohne Namen');
+  const picker = pool.length || others.length
+    ? `<select class="ce-add-player" data-ce-cell-add="${cell.id}" aria-label="${escapeAttribute(tt('Add a player to this cell', 'Ajouter un joueur à cette cellule', 'Einen Spieler zu dieser Zelle hinzufügen'))}">
+        <option value="">${escapeHtml(tt('+ Add a player from the list…', '+ Ajouter un joueur de la liste…', '+ Spieler aus der Liste hinzufügen…'))}</option>
+        ${pool.length ? `<optgroup label="${escapeAttribute(tt('Not in a cell', 'Sans cellule', 'Ohne Zelle'))}">${pool.map((player) => `<option value="${player.id}">${escapeHtml(label(player))}</option>`).join('')}</optgroup>` : ''}
+        ${others.map((other) => `<optgroup label="${escapeAttribute(tt(`Move from ${other.name}`, `Déplacer depuis ${other.name}`, `Verschieben aus ${other.name}`))}">${other.players.map((player) => `<option value="${player.id}">${escapeHtml(label(player))}</option>`).join('')}</optgroup>`).join('')}
+      </select>`
+    : `<p class="sb-help">${escapeHtml(tt('Add the players in the Players list below, then pick them here.', 'Ajoutez les joueurs dans la liste Joueurs ci-dessous, puis choisissez-les ici.', 'Fügen Sie die Spieler in der Spielerliste unten hinzu und wählen Sie sie dann hier aus.'))}</p>`;
+  return `<div class="ce-cell" style="--cell-color:${cell.color}">
+    <div class="ce-cell-head">
+      <input type="color" data-ce-cell="${cell.id}.color" value="${cell.color}" aria-label="${escapeAttribute(tt('Cell colour', 'Couleur de la cellule', 'Zellenfarbe'))}">
+      <input type="text" class="ce-cell-name" data-ce-cell="${cell.id}.name" value="${escapeAttribute(cell.name)}" aria-label="${escapeAttribute(tt('Cell name', 'Nom de la cellule', 'Zellenname'))}">
+      <span class="sb-chip">${count} ${escapeHtml(tt('inject(s)', 'inject(s)', 'Inject(s)'))}</span>
+      <button class="sb-icon-btn is-danger" data-tab-action="delete-cell" data-tab-value="${cell.id}" title="${escapeAttribute(tt('Delete cell', 'Supprimer la cellule', 'Zelle löschen'))}">${sbUiIcon('trash', 14)}</button>
+    </div>
+    <textarea data-ce-cell="${cell.id}.description" rows="2" placeholder="${escapeAttribute(tt('Mission of this cell', 'Mission de cette cellule', 'Auftrag dieser Zelle'))}">${escapeHtml(cell.description)}</textarea>
+    <ul class="ce-members">${cell.players.map((player) => `<li><span>${escapeHtml(label(player))}</span><button class="sb-icon-btn" data-tab-action="unassign-player" data-tab-value="${player.id}" title="${escapeAttribute(tt('Remove from this cell (the player stays in the list)', 'Retirer de cette cellule (le joueur reste dans la liste)', 'Aus dieser Zelle entfernen (der Spieler bleibt in der Liste)'))}">${sbUiIcon('close', 12)}</button></li>`).join('') || `<li class="is-empty">${escapeHtml(tt('No player yet.', 'Aucun joueur pour l’instant.', 'Noch kein Spieler.'))}</li>`}</ul>
+    ${picker}
+  </div>`;
+}
+
+/* The real participants, one table grouped by cell, like the simulated actors below. */
+function renderCePlayers(project) {
+  const all = ceAllPlayers(project);
+  const expected = Number(project.exercise.players_count) || 0;
+  const renamed = new Set(ceRenameImpacts(project).map((impact) => impact.player_id));
+  const groups = [...project.cells.map((cell) => ({ key: cell.id, name: cell.name, color: cell.color, players: cell.players })), { key: '', name: tt('Not in a cell', 'Sans cellule', 'Ohne Zelle'), color: '#b9b3c9', players: cePlayerPool(project) }];
+  const row = (player, cellId) => `<tr>
+      <td><input type="text" data-ce-person="${player.id}.name" value="${escapeAttribute(player.name)}" placeholder="${escapeAttribute(tt('Name', 'Nom', 'Name'))}" aria-label="${escapeAttribute(tt('Name', 'Nom', 'Name'))}">${renamed.has(player.id) ? `<span class="ce-flag" title="${escapeAttribute(tt('The injects still show the previous name: Update writes the new one.', 'Les injects montrent encore l’ancien nom : Mettre à jour écrit le nouveau.', 'Die Injects zeigen noch den alten Namen: Aktualisieren schreibt den neuen.'))}">${sbUiIcon('sync', 11)} ${escapeHtml(tt('to update', 'à mettre à jour', 'zu aktualisieren'))}</span>` : ''}</td>
+      <td><input type="text" data-ce-person="${player.id}.role" value="${escapeAttribute(player.role)}" placeholder="${escapeAttribute(tt('Role / title', 'Rôle / fonction', 'Rolle / Funktion'))}" aria-label="${escapeAttribute(tt('Role', 'Rôle', 'Rolle'))}"></td>
+      <td><input type="email" data-ce-person="${player.id}.email" value="${escapeAttribute(player.email)}" placeholder="${escapeAttribute(tt('Email', 'E-mail', 'E-Mail'))}" aria-label="${escapeAttribute(tt('Email', 'E-mail', 'E-Mail'))}"></td>
+      <td><select data-ce-assign="${player.id}" aria-label="${escapeAttribute(tt('Cell', 'Cellule', 'Zelle'))}">${sbOption('', tt('- No cell -', '- Aucune cellule -', '- Keine Zelle -'), cellId)}${project.cells.map((cell) => sbOption(cell.id, cell.name, cellId)).join('')}</select></td>
+      <td><button class="sb-icon-btn is-danger" data-tab-action="delete-player" data-tab-value="${player.id}" title="${escapeAttribute(tt('Delete the player', 'Supprimer le joueur', 'Spieler löschen'))}">${sbUiIcon('trash', 13)}</button></td>
+    </tr>`;
+  return `<article class="card">
+    <div class="section-header">
+      <div><h3>${escapeHtml(tt('Players', 'Joueurs', 'Spieler'))}</h3><p class="subtle">${escapeHtml(tt('The real people who play the exercise, placed in the cells. The AI may invent them when the exercise is built; write the real names when you know them: Update then replaces the old names and roles in the injects.', 'Les personnes réelles qui jouent l’exercice, placées dans les cellules. L’IA peut les inventer à la construction de l’exercice ; saisissez les vrais noms quand vous les connaissez : Mettre à jour remplace alors les anciens noms et rôles dans les injects.', 'Die realen Personen, die die Übung spielen, verteilt auf die Zellen. Die KI kann sie beim Aufbau der Übung erfinden; tragen Sie die echten Namen ein, sobald Sie sie kennen: Aktualisieren ersetzt dann die alten Namen und Rollen in den Injects.'))} <b>${escapeHtml(expected ? tt(`${all.length} player(s) of ${expected} expected.`, `${all.length} joueur(s) sur ${expected} attendu(s).`, `${all.length} Spieler von ${expected} erwarteten.`) : tt(`${all.length} player(s).`, `${all.length} joueur(s).`, `${all.length} Spieler.`))}</b></p></div>
+      <div class="actions"><button class="btn btn-primary btn-sm" data-tab-action="add-player" data-tab-value="">${sbUiIcon('plus', 13)} ${escapeHtml(tt('Player', 'Joueur', 'Spieler'))}</button></div>
+    </div>
+    <div class="ce-table-wrap"><table class="ce-table ce-people">
+      <thead><tr><th>${escapeHtml(tt('Name', 'Nom', 'Name'))}</th><th>${escapeHtml(tt('Role / title', 'Rôle / fonction', 'Rolle / Funktion'))}</th><th>${escapeHtml(tt('Email', 'E-mail', 'E-Mail'))}</th><th>${escapeHtml(tt('Cell', 'Cellule', 'Zelle'))}</th><th></th></tr></thead>
+      ${groups.filter((group) => group.players.length || group.key).map((group) => `<tbody>
+        <tr class="ce-group-row" style="--cell-color:${group.color}"><th colspan="5"><i class="cell-dot"></i>${escapeHtml(group.name)} <span class="sb-chip">${group.players.length}</span>${group.key ? `<button class="btn btn-ghost btn-xs" data-tab-action="add-player" data-tab-value="${group.key}">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Player', 'Joueur', 'Spieler'))}</button>` : ''}</th></tr>
+        ${group.players.map((player) => row(player, group.key)).join('')}
+      </tbody>`).join('')}
+    </table></div>
+  </article>`;
+}
+
+/* The simulated actors, one table grouped by category, with the storyline roles each plays. */
+function renderCeActors(project, storyboard, placeholder) {
+  const categories = ceActorCategories(project);
+  const groups = [
+    ...CE_ACTOR_GROUPS.map(([role, en, fr, de]) => ({ key: `role:${role}`, label: tt(en, fr, de), role, custom: null })),
+    ...categories.map((category) => ({ key: `cat:${category.id}`, label: category.label, role: category.role, custom: category }))
+  ];
+  const byGroup = new Map(groups.map((group) => [group.key, []]));
+  project.actors.forEach((actor) => byGroup.get(ceActorGroup(actor, categories))?.push(actor));
+  const usage = new Map();
+  storyboard.blocks.forEach((block) => block.beats.forEach((beat) => usage.set(beat.cast_id, (usage.get(beat.cast_id) || 0) + 1)));
+  const planned = (cast) => tt(`${usage.get(cast.id) || 0} planned inject(s)`, `${usage.get(cast.id) || 0} inject(s) prévu(s)`, `${usage.get(cast.id) || 0} geplante(r) Inject(s)`);
+  const unlinked = storyboard.cast.filter((cast) => !cast.actor_id || !getActor(cast.actor_id));
+  const groupOptions = (value) => groups.map((group) => sbOption(group.key, group.label, value)).join('');
+  const readOnly = sbReadOnly() ? 'disabled' : '';
+  const row = (actor) => {
+    const roles = storyboard.cast.filter((cast) => cast.actor_id === actor.id);
+    return `<tr>
+      <td><input type="text" data-actor-bind="${escapeAttribute(actor.id)}.name" value="${escapeAttribute(actor.name)}" placeholder="${escapeAttribute(tt('Name', 'Nom', 'Name'))}" aria-label="${escapeAttribute(tt('Name', 'Nom', 'Name'))}"></td>
+      <td><input type="text" data-actor-bind="${escapeAttribute(actor.id)}.title" value="${escapeAttribute(actor.title)}" placeholder="${escapeAttribute(tt('Title', 'Fonction', 'Funktion'))}" aria-label="${escapeAttribute(tt('Title', 'Fonction', 'Funktion'))}"></td>
+      <td><input type="text" data-actor-bind="${escapeAttribute(actor.id)}.organization" value="${escapeAttribute(actor.organization)}" placeholder="${escapeAttribute(tt('Organisation', 'Organisation', 'Organisation'))}" aria-label="${escapeAttribute(tt('Organisation', 'Organisation', 'Organisation'))}"></td>
+      <td class="ce-roles-cell">${roles.map((cast) => `<span class="ce-role-chip" title="${escapeAttribute(`${roleLabel(cast.role)} · ${planned(cast)}`)}">${escapeHtml(cast.label)}<button type="button" data-tab-action="unlink-cast" data-tab-value="${cast.id}" aria-label="${escapeAttribute(tt('Unlink this role', 'Délier ce rôle', 'Diese Rolle lösen'))}" ${readOnly}>${sbUiIcon('close', 10)}</button></span>`).join('') || `<span class="subtle">-</span>`}</td>
+      <td><input type="text" data-actor-bind="${escapeAttribute(actor.id)}.played_by" value="${escapeAttribute(actor.played_by || '')}" placeholder="${escapeAttribute(tt('Exercise team member', 'Membre de l’équipe d’animation', 'Mitglied des Übungsteams'))}" aria-label="${escapeAttribute(tt('Played by', 'Joué par', 'Gespielt von'))}"></td>
+      <td><select data-actor-bind="${escapeAttribute(actor.id)}.language" aria-label="${escapeAttribute(tt('Language', 'Langue', 'Sprache'))}">${LANGUAGES.map((item) => sbOption(item.value, item.label, actor.language || 'en')).join('')}</select></td>
+      <td><select data-ce-actor-group="${escapeAttribute(actor.id)}" aria-label="${escapeAttribute(tt('Category', 'Catégorie', 'Kategorie'))}">${groupOptions(ceActorGroup(actor, categories))}</select></td>
+      <td><button class="sb-icon-btn is-danger" data-action="delete-actor" data-actor-id="${escapeAttribute(actor.id)}" title="${escapeAttribute(tt('Delete', 'Supprimer', 'Löschen'))}">${sbUiIcon('trash', 13)}</button></td>
+    </tr>`;
+  };
+  const head = (group) => group.custom
+    ? `<input type="text" class="ce-category-name" data-ce-category="${group.custom.id}.label" value="${escapeAttribute(group.custom.label)}" aria-label="${escapeAttribute(tt('Category name', 'Nom de la catégorie', 'Name der Kategorie'))}">
+       <select data-ce-category="${group.custom.id}.role" title="${escapeAttribute(tt('Type of sender: it sets the usual channels and tone', 'Type d’émetteur : il fixe les canaux et le ton habituels', 'Art des Absenders: bestimmt die üblichen Kanäle und den Ton'))}" aria-label="${escapeAttribute(tt('Type', 'Type', 'Typ'))}">${ROLES.map((item) => sbOption(item.value, roleLabel(item.value), group.role)).join('')}</select>
+       <button class="sb-icon-btn is-danger" data-tab-action="delete-category" data-tab-value="${group.custom.id}" title="${escapeAttribute(tt('Delete the category (its actors go back to their type)', 'Supprimer la catégorie (ses acteurs reviennent à leur type)', 'Kategorie löschen (ihre Akteure kehren zu ihrem Typ zurück)'))}">${sbUiIcon('trash', 12)}</button>`
+    : `<strong>${escapeHtml(group.label)}</strong>`;
+  return `<article class="card">
+    <div class="section-header">
+      <div><h3>${escapeHtml(tt('Simulated actors', 'Acteurs simulés', 'Simulierte Akteure'))}</h3><p class="subtle">${escapeHtml(tt('The characters outside the player cells who send the injects (attackers, press, authorities, customers, partners…), each played by a member of the exercise team. The storyline roles show which senders of the story each actor plays.', 'Les personnages hors des cellules de joueurs qui envoient les injects (attaquants, presse, autorités, clients, partenaires…), chacun joué par un membre de l’équipe d’animation. Les rôles de la storyline indiquent quels émetteurs de l’histoire chaque acteur joue.', 'Die Figuren außerhalb der Spielerzellen, die die Injects senden (Angreifer, Presse, Behörden, Kunden, Partner…), jeweils gespielt von einem Mitglied des Übungsteams. Die Storyline-Rollen zeigen, welche Absender der Geschichte jeder Akteur spielt.'))}</p></div>
+      <div class="actions">
+        <button class="btn btn-secondary btn-xs" data-sb-action="plan-cast" ${readOnly} ${isLLMAvailable() && storyboard.blocks.length ? '' : 'disabled'}>${sbUiIcon('wand', 12)} ${escapeHtml(tt('Suggest roles', 'Suggérer des rôles', 'Rollen vorschlagen'))}</button>
+        <button class="btn btn-secondary btn-xs" data-tab-action="add-category">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Category', 'Catégorie', 'Kategorie'))}</button>
+        <select class="ce-add-actor" data-ce-add-actor aria-label="${escapeAttribute(tt('Add an actor', 'Ajouter un acteur', 'Akteur hinzufügen'))}"><option value="">${escapeHtml(tt('+ Actor in…', '+ Acteur dans…', '+ Akteur in…'))}</option>${groupOptions('')}</select>
+      </div>
+    </div>
+    ${renderLLMConfigBlock('actors', placeholder)}
+    ${unlinked.length ? `<div class="ce-unlinked">
+      <strong>${sbUiIcon('alert', 13)} ${escapeHtml(tt('Storyline roles without an actor', 'Rôles de la storyline sans acteur', 'Storyline-Rollen ohne Akteur'))}</strong>
+      <p class="sb-help">${escapeHtml(tt('Senders the story needs: pick the actor who plays each one, or create it.', 'Émetteurs dont l’histoire a besoin : choisissez l’acteur qui joue chacun, ou créez-le.', 'Absender, die die Geschichte braucht: Wählen Sie den Akteur, der jeden spielt, oder legen Sie ihn an.'))}</p>
+      <div class="ce-table-wrap"><table class="ce-table"><tbody>${unlinked.map((cast) => `<tr>
+        <td><input type="text" data-sb-cast="${cast.id}.label" value="${escapeAttribute(cast.label)}" aria-label="${escapeAttribute(tt('Role label', 'Libellé du rôle', 'Rollenbezeichnung'))}" ${readOnly}></td>
+        <td><select data-sb-cast="${cast.id}.role" aria-label="${escapeAttribute(tt('Role type', 'Type de rôle', 'Rollentyp'))}" ${readOnly}>${ROLES.map((role) => sbOption(role.value, roleLabel(role.value), cast.role)).join('')}</select></td>
+        <td><select data-sb-cast="${cast.id}.actor_id" aria-label="${escapeAttribute(tt('Actor', 'Acteur', 'Akteur'))}" ${readOnly}>${sbOption('', tt('- Pick an actor -', '- Choisir un acteur -', '- Akteur wählen -'), '')}${project.actors.map((item) => sbOption(item.id, `${item.name} · ${item.title || roleLabel(item.role)}`, '')).join('')}</select></td>
+        <td class="subtle">${escapeHtml(planned(cast))}</td>
+        <td class="ce-row-actions"><button class="btn btn-secondary btn-xs" data-tab-action="create-cast-actor" data-tab-value="${cast.id}" ${readOnly}>${sbUiIcon('plus', 12)} ${escapeHtml(tt('Create the actor', 'Créer l’acteur', 'Akteur anlegen'))}</button><button class="sb-icon-btn" data-sb-action="delete-cast" data-sb-cast-id="${cast.id}" title="${escapeAttribute(tt('Remove role', 'Retirer le rôle', 'Rolle entfernen'))}" ${readOnly}>${sbUiIcon('trash', 13)}</button></td>
+      </tr>`).join('')}</tbody></table></div>
+    </div>` : ''}
+    <div class="ce-table-wrap"><table class="ce-table ce-people">
+      <thead><tr><th>${escapeHtml(tt('Name', 'Nom', 'Name'))}</th><th>${escapeHtml(tt('Title', 'Fonction', 'Funktion'))}</th><th>${escapeHtml(tt('Organisation', 'Organisation', 'Organisation'))}</th><th>${escapeHtml(tt('Storyline roles', 'Rôles de la storyline', 'Storyline-Rollen'))}</th><th>${escapeHtml(tt('Played by', 'Joué par', 'Gespielt von'))}</th><th>${escapeHtml(tt('Language', 'Langue', 'Sprache'))}</th><th>${escapeHtml(tt('Category', 'Catégorie', 'Kategorie'))}</th><th></th></tr></thead>
+      ${groups.filter((group) => byGroup.get(group.key).length || group.custom).map((group) => `<tbody>
+        <tr class="ce-group-row"><th colspan="8"><span class="ce-group-title">${head(group)} <span class="sb-chip">${byGroup.get(group.key).length}</span><button class="btn btn-ghost btn-xs" data-tab-action="add-actor" data-tab-value="${group.key}">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Actor', 'Acteur', 'Akteur'))}</button></span></th></tr>
+        ${byGroup.get(group.key).map(row).join('')}
+      </tbody>`).join('') || `<tbody><tr><td colspan="8" class="sb-empty">${escapeHtml(tt('No actor yet: add one, generate them with AI above, or build the exercise in Context.', 'Aucun acteur pour l’instant : ajoutez-en un, générez-les avec l’IA ci-dessus, ou construisez l’exercice dans Contexte.', 'Noch kein Akteur: Fügen Sie einen hinzu, erzeugen Sie sie oben mit KI oder bauen Sie die Übung im Kontext auf.'))}</td></tr></tbody>`}
+    </table></div>
+    ${storyboard.cast.length ? `<p class="sb-help ce-cast-foot">${escapeHtml(tt(`${storyboard.cast.length} storyline role(s), ${storyboard.cast.length - unlinked.length} played by an actor.`, `${storyboard.cast.length} rôle(s) de la storyline, ${storyboard.cast.length - unlinked.length} joué(s) par un acteur.`, `${storyboard.cast.length} Storyline-Rolle(n), ${storyboard.cast.length - unlinked.length} von einem Akteur gespielt.`))} <button class="btn btn-ghost btn-xs" data-sb-action="add-cast" ${readOnly}>${sbUiIcon('plus', 12)} ${escapeHtml(tt('Role', 'Rôle', 'Rolle'))}</button></p>` : ''}
+  </article>`;
 }
 
 // ═══ Detailed storyline ═════════════════════════════════════════════════════
@@ -1141,28 +1214,75 @@ async function tabHandleAction(event) {
         break;
       }
       case 'add-player': {
-        const cell = sbCell(project, value);
+        // A new player joins the list (and the cell of the group where it was added, if any).
         StoryboardHistory.track();
-        if (cell) cell.players.push(sbNormalizePlayer({ id: uid('player') }));
+        const player = sbNormalizePlayer({ id: uid('player') });
+        const cell = value ? sbCell(project, value) : null;
+        (cell ? cell.players : cePlayerPool(project)).push(player);
         StoryboardHistory.commit('Add player');
         saveLocal(false);
+        tabUI('cells').focusPlayer = player.id;
         break;
       }
       case 'delete-player': {
-        const [cellId, playerId] = value.split('.');
-        const cell = sbCell(project, cellId);
+        const entry = ceFindPlayer(project, value);
+        if (!entry) break;
         StoryboardHistory.track();
-        if (cell) cell.players = cell.players.filter((player) => player.id !== playerId);
+        if (entry.cell) entry.cell.players = entry.cell.players.filter((player) => player.id !== value);
+        else project.player_pool = cePlayerPool(project).filter((player) => player.id !== value);
         StoryboardHistory.commit('Delete player');
         saveLocal(false);
         break;
       }
-      case 'add-actor':
+      case 'unassign-player':
         StoryboardHistory.track();
-        addActor({ role: value, name: tt(`New ${roleLabel(value).toLowerCase()}`, `${roleLabel(value)} (nouveau)`, `Neu: ${roleLabel(value)}`), title: roleLabel(value) }, false);
-        StoryboardHistory.commit('Add actor');
+        if (ceMovePlayer(project, value, '')) StoryboardHistory.commit('Remove player from cell');
         saveLocal(false);
         break;
+      case 'add-actor': {
+        // value: "role:<type>" (built-in group) or "cat:<id>" (a category of the project).
+        const [kind, key] = String(value).split(':');
+        const category = kind === 'cat' ? ceActorCategories(project).find((item) => item.id === key) : null;
+        const role = category ? category.role : sbRoleValue(key || value);
+        StoryboardHistory.track();
+        const actor = addActor({ role, name: tt(`New ${(category?.label || roleLabel(role)).toLowerCase()}`, `${category?.label || roleLabel(role)} (nouveau)`, `Neu: ${category?.label || roleLabel(role)}`), title: category?.label || roleLabel(role), ...(category ? { category: category.id } : {}) }, false);
+        StoryboardHistory.commit('Add actor');
+        saveLocal(false);
+        if (actor?.id) tabUI('cells').focusActor = actor.id;
+        break;
+      }
+      case 'add-category': {
+        StoryboardHistory.track();
+        const categories = ceActorCategories(project);
+        categories.push({ id: uid('category'), label: tt('New category', 'Nouvelle catégorie', 'Neue Kategorie'), role: 'partner' });
+        StoryboardHistory.commit('Add actor category');
+        saveLocal(false);
+        tabUI('cells').focusCategory = categories[categories.length - 1].id;
+        break;
+      }
+      case 'delete-category':
+        StoryboardHistory.track();
+        project.actor_categories = ceActorCategories(project).filter((item) => item.id !== value);
+        project.actors.forEach((actor) => { if (actor.category === value) delete actor.category; });
+        StoryboardHistory.commit('Delete actor category');
+        saveLocal(false);
+        break;
+      case 'unlink-cast': {
+        const cast = storyboard.cast.find((item) => item.id === value);
+        if (!cast) break;
+        cast.actor_id = '';
+        StoryboardHistory.commit('Unlink role');
+        break;
+      }
+      case 'create-cast-actor': {
+        const cast = storyboard.cast.find((item) => item.id === value);
+        if (!cast) break;
+        StoryboardHistory.track();
+        sbCreateActorForCast(project, cast);
+        StoryboardHistory.commit('Create actor for role');
+        saveLocal(false);
+        break;
+      }
       case 'ds-cell':
         detailed.cell = value;
         detailed.selected = null;
@@ -1330,16 +1450,72 @@ function tabBindInputs(root) {
       if (field === 'color') App.render();
     });
   });
-  root.querySelectorAll('[data-ce-player]').forEach((input) => {
-    const [cellId, playerId, field] = input.dataset.cePlayer.split('.');
+  // Players: edited in the list; a new name, role or email is kept apart from the one the
+  // injects show, until Update writes it into them.
+  root.querySelectorAll('[data-ce-person]').forEach((input) => {
+    const [playerId, field] = input.dataset.cePerson.split('.');
     input.addEventListener('input', () => {
-      const player = sbCell(project, cellId)?.players.find((item) => item.id === playerId);
-      if (!player) return;
-      player[field] = sbText(input.value, 200);
+      const entry = ceFindPlayer(project, playerId);
+      if (!entry) return;
+      ceEditPlayer(entry.player, field, input.value);
       clearTimeout(window._ceSaveTimer);
       window._ceSaveTimer = setTimeout(() => saveLocal(false), 500);
     });
+    // The Update count and the cell pickers follow once the field is left.
+    input.addEventListener('change', () => { saveLocal(false); App.render(); });
   });
+  root.querySelectorAll('[data-ce-assign]').forEach((select) => select.addEventListener('change', () => {
+    StoryboardHistory.track();
+    if (ceMovePlayer(project, select.dataset.ceAssign, select.value)) StoryboardHistory.commit('Move player');
+    saveLocal(false);
+    App.render();
+  }));
+  root.querySelectorAll('[data-ce-cell-add]').forEach((select) => select.addEventListener('change', () => {
+    if (!select.value) return;
+    StoryboardHistory.track();
+    if (ceMovePlayer(project, select.value, select.dataset.ceCellAdd)) StoryboardHistory.commit('Add player to cell');
+    saveLocal(false);
+    App.render();
+  }));
+  root.querySelectorAll('[data-ce-category]').forEach((input) => {
+    const [categoryId, field] = input.dataset.ceCategory.split('.');
+    input.addEventListener('change', () => {
+      const category = ceActorCategories(project).find((item) => item.id === categoryId);
+      if (!category) return;
+      StoryboardHistory.track();
+      if (field === 'label') category.label = sbText(input.value, 120) || category.label;
+      if (field === 'role') {
+        category.role = sbRoleValue(input.value);
+        // The actors of the category take its type (channels and tone follow).
+        project.actors.forEach((actor) => { if (actor.category === category.id) actor.role = category.role; });
+      }
+      StoryboardHistory.commit('Edit actor category');
+      saveLocal(false);
+      App.render();
+    });
+  });
+  root.querySelectorAll('[data-ce-actor-group]').forEach((select) => select.addEventListener('change', () => {
+    const actor = getActor(select.dataset.ceActorGroup);
+    const [kind, key] = select.value.split(':');
+    if (!actor || !key) return;
+    StoryboardHistory.track();
+    if (kind === 'cat') {
+      const category = ceActorCategories(project).find((item) => item.id === key);
+      if (category) { actor.category = category.id; actor.role = category.role; }
+    } else { delete actor.category; actor.role = sbRoleValue(key); }
+    StoryboardHistory.commit('Move actor');
+    saveLocal(false);
+    App.render();
+  }));
+  root.querySelectorAll('[data-ce-add-actor]').forEach((select) => select.addEventListener('change', () => {
+    if (!select.value) return;
+    tabHandleAction({ currentTarget: { dataset: { tabAction: 'add-actor', tabValue: select.value } } });
+  }));
+  // A row just added: its first field takes the focus.
+  const ui = tabUI('cells');
+  const focus = ui.focusPlayer ? root.querySelector(`[data-ce-person="${ui.focusPlayer}.name"]`) : ui.focusActor ? root.querySelector(`[data-actor-bind="${ui.focusActor}.name"]`) : ui.focusCategory ? root.querySelector(`[data-ce-category="${ui.focusCategory}.label"]`) : null;
+  ui.focusPlayer = ui.focusActor = ui.focusCategory = null;
+  if (focus) { focus.focus(); focus.select?.(); }
 
   // Resolved once per render (bindings are rebuilt at each render), not at every keystroke.
   let selectedItem;

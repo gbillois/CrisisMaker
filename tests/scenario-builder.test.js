@@ -201,6 +201,42 @@ test('persistence: opening a project file keeps the interface language chosen he
   assert.equal(h.run('appState.checkerState.challengeRestoredFor'), null);
 });
 
+test('people: real names written in the players list replace the invented ones in the injects at Update', async () => {
+  const h = harness();
+  h.run(`StoryboardHistory.ensure();
+    const project = appState.scenario;
+    project.cells = [sbMakeCell('decision', { id: 'c1' })];
+    project.cells[0].players.push(sbNormalizePlayer({ id: 'p1', name: 'Marie Dupont', role: 'CFO', email: 'marie.dupont@example.com' }));
+    project.player_pool = [sbNormalizePlayer({ id: 'p2', name: 'Paul Martin', role: 'CIO' })];
+    project.stimuli = [makeStimulus('email_internal', project.actors[0]?.id || '', 10)];
+    project.stimuli[0].fields.to = 'Marie Dupont, CFO <marie.dupont@example.com>';
+    project.stimuli[0].fields.body = '<p>Dear Marie, the board awaits your figures. Marie Dupont must decide.</p>';`);
+  // A player moves from the list into a cell, and back.
+  assert.equal(h.run(`ceMovePlayer(appState.scenario, 'p2', 'c1')`), true);
+  assert.equal(h.run('appState.scenario.cells[0].players.length'), 2);
+  assert.equal(h.run(`ceMovePlayer(appState.scenario, 'p2', '')`), true);
+  assert.equal(h.run('appState.scenario.player_pool.length'), 1);
+  // The real name: nothing changes in the injects until Update.
+  h.run(`const player = ceFindPlayer(appState.scenario, 'p1').player; ceEditPlayer(player, 'name', 'Claire Martin'); ceEditPlayer(player, 'role', 'Chief Financial Officer'); ceEditPlayer(player, 'email', 'claire.martin@client.com');`);
+  assert.ok(h.run('appState.scenario.stimuli[0].fields.to').includes('Marie Dupont'));
+  const impacts = h.json('sbComputeImpacts(appState.scenario).filter((impact) => impact.kind === "rename")');
+  assert.equal(impacts.length, 1);
+  assert.equal(impacts[0].label, 'Marie Dupont, CFO → Claire Martin, Chief Financial Officer');
+  assert.equal(h.run(`ceApplyPlayerRename(appState.scenario, 'p1')`), 1);
+  assert.equal(h.run('appState.scenario.stimuli[0].fields.to'), 'Claire Martin, Chief Financial Officer <claire.martin@client.com>');
+  assert.equal(h.run('appState.scenario.stimuli[0].fields.body'), '<p>Dear Claire, the board awaits your figures. Claire Martin must decide.</p>');
+  assert.equal(h.json('sbComputeImpacts(appState.scenario).filter((impact) => impact.kind === "rename")').length, 0);
+  assert.equal(h.run(`!!ceFindPlayer(appState.scenario, 'p1').player.synced`), false);
+  // Back to the first value: nothing left to write.
+  h.run(`const p = ceFindPlayer(appState.scenario, 'p2').player; ceEditPlayer(p, 'name', 'Paul M'); ceEditPlayer(p, 'name', 'Paul Martin');`);
+  assert.equal(h.run(`!!ceFindPlayer(appState.scenario, 'p2').player.synced`), false);
+  // The list and the categories survive the project file.
+  h.run(`ceActorCategories(appState.scenario).push({ id: 'cat1', label: 'Insurers', role: 'partner' });`);
+  const reloaded = h.json('mergeScenario(migrateScenario(buildProjectFileData()))');
+  assert.equal(reloaded.player_pool[0].name, 'Paul Martin');
+  assert.equal(reloaded.actor_categories[0].label, 'Insurers');
+});
+
 test('model: a time in the text of an event is read only on the day played', () => {
   const h = harness();
   const at = (text) => h.run(`sbTextClockMinute(${JSON.stringify(text)}, '2026-11-27T08:00:00', 180)`);
@@ -456,7 +492,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   assert.ok(/data-cx-load-basic disabled/.test(h.run('renderScenarioView()')), 'greyed without a library scenario');
   h.run(`sbUI().modal = null; appState.scenario.cells[0].players.push(sbNormalizePlayer({ name: 'Ann Lee', role: 'CEO' }))`);
   const cells = h.run('renderCellsView()');
-  for (const marker of ['data-ce-cell', 'data-ce-player', 'data-actor-bind', 'Attackers', 'Press', 'Authorities']) assert.ok(cells.includes(marker), marker);
+  for (const marker of ['data-ce-cell', 'data-ce-person', 'data-ce-assign', 'data-ce-cell-add', 'data-actor-bind', 'Played by', 'Storyline roles', 'data-ce-add-actor', 'Attackers', 'Press', 'Authorities']) assert.ok(cells.includes(marker), marker);
   const detailed = h.run('renderDetailedView()');
   for (const marker of ['data-tab-action="ds-cell"', 'ds-phase-row', 'data-ds-item', 'bottom-editor']) assert.ok(detailed.includes(marker), marker);
   h.run(`tabUI('detailed').cell = appState.scenario.cells[0].id; tabUI('detailed').selected = sbExerciseItems(appState.scenario).find(i => i.cell_id === appState.scenario.cells[0].id).key`);

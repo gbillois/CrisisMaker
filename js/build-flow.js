@@ -91,6 +91,14 @@ const BuildFlow = {
       return false;
     }
     if (confirmUnvalidated && !bfFramingValidation(project) && !window.confirm(tt('The framing is not validated yet. Build the stimuli of every cell anyway?', 'Le cadrage n’est pas encore validé. Construire quand même les stimuli de chaque cellule ?', 'Der Rahmen ist noch nicht freigegeben. Trotzdem die Stimuli aller Zellen erstellen?'))) return false;
+    // A framing plans no inject: each phase gets a target from its length and the cells
+    // (about one inject per cell every 20 minutes), unless the designer set one.
+    const cells = Math.max(1, project.cells.length);
+    const empty = sbMainBlocks(project.storyboard).filter((block) => !block.locked && !block.beats.length && !(block.stimuli_target > 0));
+    if (empty.length) {
+      empty.forEach((block) => { block.stimuli_target = Math.min(40, Math.max(Math.min(cells, 4), Math.round(block.duration_minutes * cells / 20))); });
+      StoryboardHistory.commit('Set inject targets');
+    }
     this.stage = 'stimuli';
     appState.route = 'detailed';
     App.render();

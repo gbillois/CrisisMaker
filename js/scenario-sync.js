@@ -241,6 +241,8 @@ function sbComputeImpacts(project = appState.scenario) {
       add({ kind: 'actor_outdated', target: 'actor', cast_id: cast.id, actor_id: actor.id, label: `${actor.name} (${cast.label})`, detail: manual ? tt('Role changed; actor was edited by hand.', 'Rôle modifié ; l’acteur a été modifié à la main.', 'Rolle geändert; der Akteur wurde manuell bearbeitet.') : tt('Role description changed.', 'Description du rôle modifiée.', 'Rollenbeschreibung geändert.'), manual, options: ['update', 'accept', 'skip'], action: manual ? 'accept' : 'update' });
     }
   }
+  // Players whose real name, role or email is not in the injects yet (exact replacement).
+  if (typeof ceRenameImpacts === 'function') ceRenameImpacts(project).forEach(add);
   return impacts;
 }
 
@@ -360,7 +362,8 @@ function sbGenerationBrief(project, block, beat, options = {}) {
       if (sbIsAllCells(beat?.cell_id)) return `- Recipient: every player cell (${(project.cells || []).map((cell) => cell.name).join(', ') || 'all players'}). Address it to all of them.`;
       if (sbRecipientIds(beat?.cell_id).length > 1) return `- Recipients: ${sbRecipientName(project, beat.cell_id)}. Address the inject to all of them.`;
       const cell = sbCell(project, beat?.cell_id || options.cellId);
-      return cell ? `- Recipient: the ${cell.name}${cell.description ? ` (${cell.description})` : ''}. Address the inject to them.` : '';
+      const players = cell ? cell.players.filter((player) => player.name).slice(0, 12).map((player) => `${player.name}${player.role ? `, ${player.role}` : ''}`) : [];
+      return cell ? `- Recipient: the ${cell.name}${cell.description ? ` (${cell.description})` : ''}${players.length ? `; its players: ${players.join('; ')}` : ''}. Address the inject to them.` : '';
     })(),
     actor ? `- Sender: ${actor.name}, ${actor.title || ''} at ${actor.organization || ''}.` : '',
     neighbours.length ? `- Other injects in this phase (stay consistent, do not repeat them): ${neighbours.join(' | ')}` : '',
@@ -729,6 +732,9 @@ const SbPipeline = {
             missingBlocks.add(block.id);
             if (impact.beat_id) missingBeats.add(impact.beat_id);
             return;
+          } else if (impact.kind === 'rename') {
+            const count = ceApplyPlayerRename(project, impact.player_id);
+            this.note('success', tt(`${impact.label}: ${count} inject(s) updated.`, `${impact.label} : ${count} inject(s) mis à jour.`, `${impact.label}: ${count} Inject(s) aktualisiert.`));
           } else if (impact.kind === 'actor_missing') {
             const cast = storyboard.cast.find((item) => item.id === impact.cast_id);
             if (cast) sbCreateActorForCast(project, cast);
