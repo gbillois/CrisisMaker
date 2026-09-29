@@ -157,9 +157,10 @@
 <body>
   <div id="root"></div>
   <script>window.TIMELINE_CONFIG = ${json};<\/script>
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"><\/script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"><\/script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"><\/script>
+  <script>window.__cdnFailed = function () { var root = document.getElementById('root'); if (!root || root.dataset.failed) return; root.dataset.failed = '1'; root.innerHTML = ${JSON.stringify(`<p style="padding:24px;max-width:560px;font:15px/1.5 sans-serif">${escapeHtml(tt('The timeline cannot be shown: React and Babel load from unpkg.com, which this computer cannot reach (offline, firewall or proxy).', 'La frise ne peut pas s’afficher : React et Babel sont chargés depuis unpkg.com, injoignable depuis ce poste (hors ligne, pare-feu ou proxy).', 'Die Zeitleiste kann nicht angezeigt werden: React und Babel werden von unpkg.com geladen, das von diesem Rechner nicht erreichbar ist (offline, Firewall oder Proxy).'))}</p>`).replace(/</g, '\\u003c')}; };<\/script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" onerror="__cdnFailed()"><\/script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" onerror="__cdnFailed()"><\/script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" onerror="__cdnFailed()"><\/script>
   <script type="text/babel" data-presets="react">${renderer}<\/script>
 </body>
 </html>`;
