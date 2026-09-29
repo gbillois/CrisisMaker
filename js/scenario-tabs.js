@@ -3,11 +3,32 @@
    opens at the bottom of the screen. */
 const DS_CARD_WIDTH = 168;
 const DS_ROW_HEIGHT = 46;
+// [role, English, French, German]: translated when shown.
 const CE_ACTOR_GROUPS = [
-  ['attacker', 'Attackers'], ['journalist', 'Press & media'], ['authority', 'Authorities & regulators'],
-  ['client_b2b', 'Business customers'], ['client_b2c', 'Consumers'], ['partner', 'Partners & suppliers'],
-  ['analyst', 'Experts & analysts'], ['internal', 'Internal senders (simulated)']
+  ['attacker', 'Attackers', 'Attaquants', 'Angreifer'], ['journalist', 'Press & media', 'Presse et médias', 'Presse und Medien'],
+  ['authority', 'Authorities & regulators', 'Autorités et régulateurs', 'Behörden und Aufsicht'],
+  ['client_b2b', 'Business customers', 'Clients professionnels', 'Geschäftskunden'], ['client_b2c', 'Consumers', 'Particuliers', 'Privatkunden'],
+  ['partner', 'Partners & suppliers', 'Partenaires et fournisseurs', 'Partner und Lieferanten'],
+  ['analyst', 'Experts & analysts', 'Experts et analystes', 'Experten und Analysten'], ['internal', 'Internal senders (simulated)', 'Émetteurs internes (simulés)', 'Interne Absender (simuliert)']
 ];
+
+/* The cell presets, in the application language: [name, description] (stored presets stay in English). */
+const CE_CELL_PRESET_TEXT = {
+  decision: [['Cellule décisionnelle', 'Comité exécutif : arbitrages, stratégie et engagements externes.'], ['Entscheidungszelle', 'Geschäftsleitung: Abwägungen, Strategie und externe Zusagen.']],
+  operational: [['Cellule de crise opérationnelle', 'Coordonne la réponse, les impacts métier et la logistique.'], ['Operative Krisenzelle', 'Koordiniert die Reaktion, die geschäftlichen Auswirkungen und die Logistik.']],
+  communication: [['Cellule communication', 'Communication interne et externe, médias et réseaux sociaux.'], ['Kommunikationszelle', 'Interne und externe Kommunikation, Medien und soziale Netzwerke.']],
+  it: [['Cellule IT et technique', 'Investigation, confinement et reprise des systèmes d’information.'], ['IT- und Technikzelle', 'Untersuchung, Eindämmung und Wiederherstellung der IT-Systeme.']],
+  legal: [['Cellule juridique et conformité', 'Notifications réglementaires, exposition juridique et assureurs.'], ['Rechts- und Compliance-Zelle', 'Behördenmeldungen, rechtliche Risiken und Versicherer.']],
+  business: [['Cellule continuité d’activité', 'Mode dégradé, clients, fournisseurs et plans de continuité.'], ['Zelle Geschäftskontinuität', 'Notbetrieb, Kunden, Lieferanten und Kontinuitätspläne.']],
+  hr: [['Cellule RH', 'Personnel, partenaires sociaux, bien-être et organisation interne.'], ['Personalzelle', 'Mitarbeitende, Sozialpartner, Wohlbefinden und interne Organisation.']]
+};
+function cePresetText(preset) {
+  const [fr, de] = CE_CELL_PRESET_TEXT[preset.key] || [];
+  return {
+    name: tt(preset.name, fr?.[0] || preset.name, de?.[0] || preset.name),
+    description: tt(preset.description, fr?.[1] || preset.description, de?.[1] || preset.description)
+  };
+}
 
 function tabUI(name) {
   const ui = sbUI();
@@ -36,8 +57,8 @@ function tabEmptyNote(text, route, label) {
 
 /* The Update button of the Main storyline, Cells & actors and Detailed storyline tabs:
    one dialog that reflects every change in cascade (phases → plans → actors → injects). */
-function renderUpdateButton(project, pending = sbPendingSyncCount(project), label = 'Update') {
-  return `<button class="sb-tool sb-tool-label sb-update ${pending ? 'has-changes' : ''}" data-sb-action="open-modal" data-sb-modal="sync" title="${escapeAttribute(pending ? `${pending} change(s) to reflect in cascade: phases → inject plans → actors → injects` : 'Everything is up to date. Open to check.')}">${sbUiIcon('sync')}<span>${escapeHtml(label)}</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>`;
+function renderUpdateButton(project, pending = sbPendingSyncCount(project), label = tt('Update', 'Mettre à jour', 'Aktualisieren')) {
+  return `<button class="sb-tool sb-tool-label sb-update ${pending ? 'has-changes' : ''}" data-sb-action="open-modal" data-sb-modal="sync" title="${escapeAttribute(pending ? tt(`${pending} change(s) to reflect in cascade: phases → inject plans → actors → injects`, `${pending} modification(s) à répercuter en cascade : phases → plans d’injects → acteurs → injects`, `${pending} Änderung(en) kaskadenartig zu übernehmen: Phasen → Inject-Pläne → Akteure → Injects`) : tt('Everything is up to date. Open to check.', 'Tout est à jour. Ouvrez pour vérifier.', 'Alles ist aktuell. Zum Prüfen öffnen.'))}">${sbUiIcon('sync')}<span>${escapeHtml(label)}</span>${pending ? `<span class="sb-count">${pending}</span>` : ''}</button>`;
 }
 
 /* The bar between the timeline and the bottom editor of the Main and Detailed storyline:
@@ -57,7 +78,7 @@ function editorHeightStyle(key) {
 }
 
 function renderEditorSplitter(key) {
-  return `<div class="resize-handle resize-handle-horizontal be-splitter" data-be-splitter="${key}" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="Resize the timeline and the editor" title="Drag to resize the timeline and the editor (double-click to reset)"></div>`;
+  return `<div class="resize-handle resize-handle-horizontal be-splitter" data-be-splitter="${key}" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="${escapeAttribute(tt('Resize the timeline and the editor', 'Redimensionner la timeline et l’éditeur', 'Zeitleiste und Editor anpassen'))}" title="${escapeAttribute(tt('Drag to resize the timeline and the editor (double-click to reset)', 'Faites glisser pour redimensionner la timeline et l’éditeur (double-clic pour réinitialiser)', 'Ziehen, um Zeitleiste und Editor anzupassen (Doppelklick zum Zurücksetzen)'))}"></div>`;
 }
 
 function bindEditorSplitter(root) {
@@ -119,23 +140,23 @@ function renderStorylineView() {
     const stages = slPhaseTypes();
     return `<section class="sb-workspace sl-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="${escapeAttribute(workflowTabLabel('storyline'))}">
       <header class="sb-toolbar">
-        <div class="sb-tb-title"><span class="sb-eyebrow">${escapeHtml(workflowTabLabel('storyline'))}</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong><span class="sb-chip sb-chip-rev">rev ${storyboard.rev}</span></div></div>
+        <div class="sb-tb-title"><span class="sb-eyebrow">${escapeHtml(workflowTabLabel('storyline'))}</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || tt('Untitled scenario', 'Scénario sans titre', 'Unbenanntes Szenario'))}</strong><span class="sb-chip sb-chip-rev">rev ${storyboard.rev}</span></div></div>
         <div class="sb-tb-group">
-          <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="Undo (Ctrl+Z)">${sbUiIcon('undo')}</button>
-          <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="Redo (Ctrl+Shift+Z)">${sbUiIcon('redo')}</button>
-          <button class="sb-tool sb-tool-label" data-sb-action="open-modal" data-sb-modal="versions" title="Versions">${sbUiIcon('history')}<span>Versions</span></button>
+          <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="${escapeAttribute(tt('Undo (Ctrl+Z)', 'Annuler (Ctrl+Z)', 'Rückgängig (Strg+Z)'))}">${sbUiIcon('undo')}</button>
+          <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="${escapeAttribute(tt('Redo (Ctrl+Shift+Z)', 'Rétablir (Ctrl+Maj+Z)', 'Wiederholen (Strg+Umschalt+Z)'))}">${sbUiIcon('redo')}</button>
+          <button class="sb-tool sb-tool-label" data-sb-action="open-modal" data-sb-modal="versions" title="${escapeAttribute(tt('Versions', 'Versions', 'Versionen'))}">${sbUiIcon('history')}<span>${escapeHtml(tt('Versions', 'Versions', 'Versionen'))}</span></button>
         </div>
         ${storyboard.blocks.length ? renderSbTimelineTools() : ''}
         <div class="sb-tb-group">
-          <label class="sl-add">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="Add a phase"><option value="">Add phase…</option>${stages.map(([key, type]) => `<option value="${key}">${escapeHtml(type.label)}</option>`).join('')}</select></label>
+          <label class="sl-add" title="${escapeAttribute(tt('Add a phase', 'Ajouter une phase', 'Phase hinzufügen'))}">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="${escapeAttribute(tt('Add a phase', 'Ajouter une phase', 'Phase hinzufügen'))}"><option value="">${escapeHtml(tt('Add phase…', 'Ajouter…', 'Hinzufügen…'))}</option>${stages.map(([key]) => `<option value="${key}">${escapeHtml(sbBlockTypeLabel(key))}</option>`).join('')}</select></label>
         </div>
-        <div class="sb-tb-group sb-tb-output">${renderUpdateButton(project, undefined, 'Update next tabs')}</div>
+        <div class="sb-tb-group sb-tb-output">${renderUpdateButton(project, undefined, tt('Update next tabs', 'Mettre à jour les onglets suivants', 'Folgende Tabs aktualisieren'))}</div>
       </header>
       ${renderSbStatusBar()}
-      <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'scenario', 'Context')}</div>
+      <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote(tt('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'Aucune phase pour l’instant. Choisissez un scénario dans la bibliothèque du Projet, générez-en un avec l’IA dans Contexte, ou ajoutez une phase ci-dessus.', 'Noch keine Phase. Wählen Sie ein Szenario in der Projekt-Bibliothek, erstellen Sie eines mit KI im Kontext oder fügen Sie oben eine Phase hinzu.'), 'scenario', tt('Context', 'Contexte', 'Kontext'))}</div>
       ${renderEditorSplitter('storyline')}
-      <section class="bottom-editor sl-editor" aria-label="Phase editor" ${editorHeightStyle('storyline')}>
-        ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>Select a phase on the timeline to edit what happens and its key stimuli. Drag its edges to change its duration.</span></div>`}
+      <section class="bottom-editor sl-editor" aria-label="${escapeAttribute(tt('Phase editor', 'Éditeur de phase', 'Phasen-Editor'))}" ${editorHeightStyle('storyline')}>
+        ${block ? renderPhaseEditor(storyboard, block) : `<div class="bottom-editor-empty">${sbUiIcon('layers', 18)}<span>${escapeHtml(tt('Select a phase on the timeline to edit what happens and its key stimuli. Drag its edges to change its duration.', 'Sélectionnez une phase sur la timeline pour modifier ce qui s’y passe et ses stimuli clés. Faites glisser ses bords pour changer sa durée.', 'Wählen Sie eine Phase auf der Zeitleiste, um den Ablauf und ihre wichtigsten Stimuli zu bearbeiten. Ziehen Sie ihre Ränder, um die Dauer zu ändern.'))}</span></div>`}
       </section>
       ${renderSbModal(storyboard)}
     </section>`;
@@ -159,30 +180,30 @@ function renderPhaseEditor(storyboard, block) {
   const ai = isLLMAvailable();
   return `<div class="bottom-editor-head" style="--clip-color:${sbBlockColor(block, storyboard)}">
       <span class="sb-clip-icon">${sbIcon((SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).icon, 16)}</span>
-      <input class="be-title" data-sb-field="title" value="${escapeAttribute(block.title)}" aria-label="Phase title" ${readOnly}>
-      <select data-sb-field="type" aria-label="Phase type" ${readOnly}>${slPhaseTypes(block.type).map(([key, value]) => sbOption(key, value.label, block.type)).join('')}</select>
-      <label class="be-inline be-stress" title="Stress level of the phase: it sets its colour and the intensity the AI gives its injects">Stress<select data-sb-field="stress" ${readOnly}>${sbOption(0, `Auto · ${sbStressLevel(SB_TYPE_STRESS[block.type] || 3).label}`, block.stress)}${SB_STRESS_LEVELS.map((item) => sbOption(item.level, item.label, block.stress)).join('')}</select></label>
-      <label class="be-inline">Start · ${sbFormatOffset(block.start_minutes)}<input type="number" min="0" step="${sbSnapStep()}" data-sb-field="start_minutes" value="${block.start_minutes}" ${readOnly}></label>
-      <label class="be-inline">Duration (min)<input type="number" min="5" step="${sbSnapStep()}" data-sb-field="duration_minutes" value="${block.duration_minutes}" ${readOnly}></label>
+      <input class="be-title" data-sb-field="title" value="${escapeAttribute(block.title)}" aria-label="${escapeAttribute(tt('Phase title', 'Titre de la phase', 'Phasentitel'))}" ${readOnly}>
+      <select data-sb-field="type" aria-label="${escapeAttribute(tt('Phase type', 'Type de phase', 'Phasentyp'))}" ${readOnly}>${slPhaseTypes(block.type).map(([key]) => sbOption(key, sbBlockTypeLabel(key), block.type)).join('')}</select>
+      <label class="be-inline be-stress" title="${escapeAttribute(tt('Stress level of the phase: it sets its colour and the intensity the AI gives its injects', 'Niveau de stress de la phase : il fixe sa couleur et l’intensité que l’IA donne à ses injects', 'Stresslevel der Phase: Es bestimmt ihre Farbe und die Intensität, die die KI ihren Injects gibt'))}">${escapeHtml(tt('Stress', 'Stress', 'Stress'))}<select data-sb-field="stress" ${readOnly}>${sbOption(0, `Auto · ${sbStressLabel(SB_TYPE_STRESS[block.type] || 3)}`, block.stress)}${SB_STRESS_LEVELS.map((item) => sbOption(item.level, sbStressLabel(item.level), block.stress)).join('')}</select></label>
+      <label class="be-inline">${escapeHtml(tt('Start', 'Début', 'Beginn'))} · ${sbFormatOffset(block.start_minutes)}<input type="number" min="0" step="${sbSnapStep()}" data-sb-field="start_minutes" value="${block.start_minutes}" ${readOnly}></label>
+      <label class="be-inline">${escapeHtml(tt('Duration (min)', 'Durée (min)', 'Dauer (Min.)'))}<input type="number" min="5" step="${sbSnapStep()}" data-sb-field="duration_minutes" value="${block.duration_minutes}" ${readOnly}></label>
       <span class="be-actions">
-        <button class="sb-icon-btn ${block.locked ? 'is-on' : ''}" data-sb-action="toggle-lock" title="${block.locked ? 'Unlock' : 'Lock'}" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon(block.locked ? 'lock' : 'unlock', 15)}</button>
-        <button class="sb-icon-btn" data-sb-action="duplicate-block" title="Duplicate" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon('copy', 15)}</button>
-        <button class="sb-icon-btn is-danger" data-sb-action="delete-block" title="Delete" ${readOnly}>${sbUiIcon('trash', 15)}</button>
-        <button class="sb-icon-btn" data-sb-action="deselect" title="Close (Esc)">${sbUiIcon('close', 15)}</button>
+        <button class="sb-icon-btn ${block.locked ? 'is-on' : ''}" data-sb-action="toggle-lock" title="${escapeAttribute(block.locked ? tt('Unlock', 'Déverrouiller', 'Entsperren') : tt('Lock', 'Verrouiller', 'Sperren'))}" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon(block.locked ? 'lock' : 'unlock', 15)}</button>
+        <button class="sb-icon-btn" data-sb-action="duplicate-block" title="${escapeAttribute(tt('Duplicate', 'Dupliquer', 'Duplizieren'))}" ${sbReadOnly() ? 'disabled' : ''}>${sbUiIcon('copy', 15)}</button>
+        <button class="sb-icon-btn is-danger" data-sb-action="delete-block" title="${escapeAttribute(tt('Delete', 'Supprimer', 'Löschen'))}" ${readOnly}>${sbUiIcon('trash', 15)}</button>
+        <button class="sb-icon-btn" data-sb-action="deselect" title="${escapeAttribute(tt('Close (Esc)', 'Fermer (Échap)', 'Schließen (Esc)'))}">${sbUiIcon('close', 15)}</button>
       </span>
     </div>
     <div class="bottom-editor-body sl-editor-body">
-      <label class="sb-mini-field sl-what">What happens during this phase
-        <textarea data-sb-field="brief" rows="3" placeholder="${escapeAttribute(`In plain words, what happens during this phase: the events, what the players discover, the pressure they face. ${(SB_BLOCK_TYPES[block.type] || SB_BLOCK_TYPES.custom).hint}`)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
+      <label class="sb-mini-field sl-what">${escapeHtml(tt('What happens during this phase', 'Ce qui se passe pendant cette phase', 'Was in dieser Phase passiert'))}
+        <textarea data-sb-field="brief" rows="3" placeholder="${escapeAttribute(`${tt('In plain words, what happens during this phase: the events, what the players discover, the pressure they face.', 'En termes simples, ce qui se passe pendant cette phase : les événements, ce que découvrent les joueurs, la pression qu’ils subissent.', 'In einfachen Worten, was in dieser Phase passiert: die Ereignisse, was die Spieler entdecken, der Druck, dem sie ausgesetzt sind.')} ${sbBlockTypeHint(block.type)}`)}" ${readOnly}>${escapeHtml(block.brief)}</textarea>
       </label>
       ${renderMainEvents(block, readOnly)}
       <div class="sl-foot">
-        ${sbNeedsReplan(block) ? `<div class="sl-replan">${sbUiIcon('alert', 14)}<span>What happens changed: the ${block.beats.length} planned inject(s) still follow the previous version.</span>${renderUpdateButton(project)}</div>` : ''}
-        <div class="sl-injects">${block.beats.length ? `<b>${block.beats.length}</b> injects planned · ${(project.cells || []).filter((cell) => counts.get(cell.id)).map((cell) => `<span class="cell-dot" style="--cell-color:${cell.color}"></span>${escapeHtml(cell.name)} ${counts.get(cell.id)}`).join(' · ')}` : 'No inject planned in this phase yet.'} <button class="btn btn-ghost btn-xs" data-tab-action="open-detailed" data-tab-value="${block.id}">Detailed storyline →</button></div>
+        ${sbNeedsReplan(block) ? `<div class="sl-replan">${sbUiIcon('alert', 14)}<span>${escapeHtml(tt(`What happens changed: the ${block.beats.length} planned inject(s) still follow the previous version.`, `Le déroulé a changé : les ${block.beats.length} inject(s) prévu(s) suivent encore la version précédente.`, `Der Ablauf hat sich geändert: Die ${block.beats.length} geplanten Injects folgen noch der vorherigen Version.`))}</span>${renderUpdateButton(project)}</div>` : ''}
+        <div class="sl-injects">${block.beats.length ? `<b>${block.beats.length}</b> ${escapeHtml(tt('injects planned', 'injects prévus', 'geplante Injects'))} · ${(project.cells || []).filter((cell) => counts.get(cell.id)).map((cell) => `<span class="cell-dot" style="--cell-color:${cell.color}"></span>${escapeHtml(cell.name)} ${counts.get(cell.id)}`).join(' · ')}` : escapeHtml(tt('No inject planned in this phase yet.', 'Aucun inject prévu dans cette phase pour l’instant.', 'In dieser Phase ist noch kein Inject geplant.'))} <button class="btn btn-ghost btn-xs" data-tab-action="open-detailed" data-tab-value="${block.id}">${escapeHtml(workflowTabLabel('detailed'))} →</button></div>
         <div class="sl-ai">
-          <span class="sl-ai-label">${sbUiIcon('wand', 14)} Modify with AI</span>
-          <input type="text" data-sb-ui="rewrite" value="${escapeAttribute(ui.rewrite)}" placeholder="What to change, e.g. make it more ambiguous. Empty: the AI details the phase and plans its injects." aria-label="Instruction for the AI" ${readOnly}>
-          <button class="btn btn-secondary btn-sm" data-sb-action="modify-block" ${ai && !readOnly ? '' : 'disabled'} title="${ai ? 'With an instruction, the AI rewrites the phase; empty, it details it and plans its injects' : 'Configure an AI connection in Settings'}">${sbUiIcon('wand', 13)} Modify with AI</button>
+          <span class="sl-ai-label">${sbUiIcon('wand', 14)} ${escapeHtml(tt('Modify with AI', 'Modifier avec l’IA', 'Mit KI ändern'))}</span>
+          <input type="text" data-sb-ui="rewrite" value="${escapeAttribute(ui.rewrite)}" placeholder="${escapeAttribute(tt('What to change, e.g. make it more ambiguous. Empty: the AI details the phase and plans its injects.', 'Ce qu’il faut changer, ex. : la rendre plus ambiguë. Vide : l’IA détaille la phase et planifie ses injects.', 'Was geändert werden soll, z. B. mehrdeutiger machen. Leer: Die KI detailliert die Phase und plant ihre Injects.'))}" aria-label="${escapeAttribute(tt('Instruction for the AI', 'Instruction pour l’IA', 'Anweisung für die KI'))}" ${readOnly}>
+          <button class="btn btn-secondary btn-sm" data-sb-action="modify-block" ${ai && !readOnly ? '' : 'disabled'} title="${escapeAttribute(ai ? tt('With an instruction, the AI rewrites the phase; empty, it details it and plans its injects', 'Avec une instruction, l’IA réécrit la phase ; sans instruction, elle la détaille et planifie ses injects', 'Mit einer Anweisung schreibt die KI die Phase um; ohne Anweisung detailliert sie sie und plant ihre Injects') : tt('Configure an AI connection in Settings', 'Configurez une connexion IA dans les Paramètres', 'Richten Sie in den Einstellungen eine KI-Verbindung ein'))}">${sbUiIcon('wand', 13)} ${escapeHtml(tt('Modify with AI', 'Modifier avec l’IA', 'Mit KI ändern'))}</button>
         </div>
       </div>
     </div>`;
@@ -193,17 +214,17 @@ function renderPhaseEditor(storyboard, block) {
    the injects of every cell around them and never changes them. */
 function renderMainEvents(block, readOnly) {
   const events = block.events || [];
-  return `<section class="sl-events" aria-label="Main events">
+  return `<section class="sl-events" aria-label="${escapeAttribute(tt('Main events', 'Événements principaux', 'Hauptereignisse'))}">
     <div class="sl-events-head">
-      <strong>${sbUiIcon('star', 14)} Main events</strong>
-      <span class="subtle">The moments that frame this phase; the injects are planned around them.</span>
-      <button class="btn btn-ghost btn-xs" data-tab-action="sl-event-add" data-tab-value="${block.id}" ${readOnly}>${sbUiIcon('plus', 12)} Add</button>
+      <strong>${sbUiIcon('star', 14)} ${escapeHtml(tt('Main events', 'Événements principaux', 'Hauptereignisse'))}</strong>
+      <span class="subtle">${escapeHtml(tt('The moments that frame this phase; the injects are planned around them.', 'Les moments qui structurent cette phase ; les injects sont planifiés autour d’eux.', 'Die Momente, die diese Phase prägen; die Injects werden um sie herum geplant.'))}</span>
+      <button class="btn btn-ghost btn-xs" data-tab-action="sl-event-add" data-tab-value="${block.id}" ${readOnly}>${sbUiIcon('plus', 12)} ${escapeHtml(tt('Add', 'Ajouter', 'Hinzufügen'))}</button>
     </div>
     ${events.map((event) => `<div class="sl-event">
-      <label class="sl-event-time" title="Minutes from the phase start">${sbFormatOffset(block.start_minutes + event.offset_minutes)}<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-event="${escapeAttribute(event.id)}.at" value="${event.offset_minutes}" aria-label="Minutes from the phase start" ${readOnly}></label>
-      <input type="text" data-sl-event="${escapeAttribute(event.id)}.text" value="${escapeAttribute(event.text)}" placeholder="e.g. The ransom note appears on every screen" aria-label="Main event" ${readOnly}>
-      <button class="sb-icon-btn is-danger" data-tab-action="sl-event-delete" data-tab-value="${escapeAttribute(event.id)}" title="Delete" ${readOnly}>${sbUiIcon('trash', 13)}</button>
-    </div>`).join('') || '<p class="sl-main-empty">None yet: add the moments that frame this phase, e.g. the ransom note, a TV flash, the regulator\'s call.</p>'}
+      <label class="sl-event-time" title="${escapeAttribute(tt('Minutes from the phase start', 'Minutes depuis le début de la phase', 'Minuten ab Phasenbeginn'))}">${sbFormatOffset(block.start_minutes + event.offset_minutes)}<input type="number" min="0" max="${Math.max(0, block.duration_minutes - 1)}" step="1" data-sl-event="${escapeAttribute(event.id)}.at" value="${event.offset_minutes}" aria-label="${escapeAttribute(tt('Minutes from the phase start', 'Minutes depuis le début de la phase', 'Minuten ab Phasenbeginn'))}" ${readOnly}></label>
+      <input type="text" data-sl-event="${escapeAttribute(event.id)}.text" value="${escapeAttribute(event.text)}" placeholder="${escapeAttribute(tt('e.g. The ransom note appears on every screen', 'Ex. : la demande de rançon s’affiche sur tous les écrans', 'z. B. Die Lösegeldforderung erscheint auf allen Bildschirmen'))}" aria-label="${escapeAttribute(tt('Main event', 'Événement principal', 'Hauptereignis'))}" ${readOnly}>
+      <button class="sb-icon-btn is-danger" data-tab-action="sl-event-delete" data-tab-value="${escapeAttribute(event.id)}" title="${escapeAttribute(tt('Delete', 'Supprimer', 'Löschen'))}" ${readOnly}>${sbUiIcon('trash', 13)}</button>
+    </div>`).join('') || `<p class="sl-main-empty">${escapeHtml(tt('None yet: add the moments that frame this phase, e.g. the ransom note, a TV flash, the regulator\'s call.', 'Aucun pour l’instant : ajoutez les moments qui structurent cette phase, ex. : la demande de rançon, un flash TV, l’appel du régulateur.', 'Noch keine: Fügen Sie die Momente hinzu, die diese Phase prägen, z. B. die Lösegeldforderung, eine TV-Eilmeldung, den Anruf der Aufsichtsbehörde.'))}</p>`}
   </section>`;
 }
 
@@ -219,8 +240,8 @@ function slFindEvent(storyboard, eventId) {
 /* The recipients of an inject: "All cells", or any set of cells (none = unassigned). */function renderRecipientPicker(project, itemKey, cellId, readOnly) {
   const all = sbIsAllCells(cellId);
   const ids = sbRecipientIds(cellId);
-  return `<div class="rcpt chip-toggles" data-rcpt="${escapeAttribute(itemKey)}" role="group" aria-label="Recipient cells">
-    <label class="chip-toggle rcpt-all"><input type="checkbox" value="${SB_ALL_CELLS}" ${all ? 'checked' : ''} ${readOnly}>All cells</label>
+  return `<div class="rcpt chip-toggles" data-rcpt="${escapeAttribute(itemKey)}" role="group" aria-label="${escapeAttribute(tt('Recipient cells', 'Cellules destinataires', 'Empfängerzellen'))}">
+    <label class="chip-toggle rcpt-all"><input type="checkbox" value="${SB_ALL_CELLS}" ${all ? 'checked' : ''} ${readOnly}>${escapeHtml(tt('All cells', 'Toutes les cellules', 'Alle Zellen'))}</label>
     ${project.cells.map((cell) => `<label class="chip-toggle" style="--cell-color:${cell.color}"><input type="checkbox" value="${escapeAttribute(cell.id)}" ${all || ids.includes(cell.id) ? 'checked' : ''} ${all || readOnly ? 'disabled' : ''}><span class="cell-dot"></span>${escapeHtml(cell.name)}</label>`).join('')}
   </div>`;
 }
@@ -251,13 +272,13 @@ function renderStimulusLinks(project, stimulus) {
   const phases = sbMainBlocks(project.storyboard);
   const current = ExerciseModel.phaseOfStimulus(project, stimulus);
   const readOnly = sbReadOnly() ? 'disabled' : '';
-  return `<label class="field">Phase
+  return `<label class="field">${escapeHtml(tt('Phase', 'Phase', 'Phase'))}
       <select data-stimulus-phase="${escapeAttribute(stimulus.id)}" ${readOnly || !phases.length ? 'disabled' : ''}>
-        ${current ? '' : '<option value="" selected>Outside the storyline</option>'}
+        ${current ? '' : `<option value="" selected>${escapeHtml(tt('Outside the storyline', 'Hors storyline', 'Außerhalb der Storyline'))}</option>`}
         ${phases.map((block) => `<option value="${escapeAttribute(block.id)}" ${current?.id === block.id ? 'selected' : ''}>${escapeHtml(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}</option>`).join('')}
       </select>
     </label>
-    <div class="field stimulus-recipients">Received by
+    <div class="field stimulus-recipients">${escapeHtml(tt('Received by', 'Reçu par', 'Empfangen von'))}
       ${renderRecipientPicker(project, stimulusItemKey(project, stimulus), stimulus.cell_id || '', readOnly)}
     </div>`;
 }
@@ -314,19 +335,21 @@ function renderCellsView() {
     const items = sbExerciseItems(project);
     const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
     const missingPresets = SB_CELL_PRESETS.filter((preset) => !project.cells.some((cell) => cell.key === preset.key));
-    const actorsPlaceholder = 'Ex: "Journalists from a national daily and a TV channel, the national cyber agency, the data protection authority, an angry B2C customer on social media and the ransomware group."';
+    const actorsPlaceholder = tt('Ex: "Journalists from a national daily and a TV channel, the national cyber agency, the data protection authority, an angry B2C customer on social media and the ransomware group."', 'Ex. : « Des journalistes d’un quotidien national et d’une chaîne TV, l’agence nationale de cybersécurité, l’autorité de protection des données, un client particulier en colère sur les réseaux sociaux et le groupe de rançongiciel. »', 'Z. B.: „Journalisten einer überregionalen Tageszeitung und eines TV-Senders, die nationale Cybersicherheitsbehörde, die Datenschutzbehörde, ein verärgerter Privatkunde in sozialen Netzwerken und die Ransomware-Gruppe.“');
     const pending = sbPendingSyncCount(project);
     return `<section class="tab-page ce-page" data-sb-scope>
       <div class="ce-update ${pending ? 'has-changes' : ''}">
-        <span>${pending ? `${sbUiIcon('alert', 14)} <b>${pending}</b> change(s) not yet reflected in the injects.` : `${sbUiIcon('checkCircle', 14)} Injects are up to date with the cells and actors.`} <span class="subtle">Renamed a cell, changed its mission or edited an actor? Update adapts the injects concerned.</span></span>
+        <span>${pending ? `${sbUiIcon('alert', 14)} <b>${pending}</b> ${escapeHtml(tt('change(s) not yet reflected in the injects.', 'modification(s) pas encore répercutée(s) dans les injects.', 'Änderung(en) noch nicht in den Injects übernommen.'))}` : `${sbUiIcon('checkCircle', 14)} ${escapeHtml(tt('Injects are up to date with the cells and actors.', 'Les injects sont à jour avec les cellules et les acteurs.', 'Die Injects sind mit den Zellen und Akteuren auf dem neuesten Stand.'))}`} <span class="subtle">${escapeHtml(tt('Renamed a cell, changed its mission or edited an actor? Update adapts the injects concerned.', 'Cellule renommée, mission modifiée ou acteur édité ? Mettre à jour adapte les injects concernés.', 'Zelle umbenannt, Auftrag geändert oder Akteur bearbeitet? Aktualisieren passt die betroffenen Injects an.'))}</span></span>
         ${renderUpdateButton(project, pending)}
       </div>
       <article class="card">
         <div class="section-header">
-          <div><h3>Player cells</h3><p class="subtle">Groups of participants who receive injects. ${players} player(s) listed${project.exercise.players_count ? ` of ${escapeHtml(project.exercise.players_count)} expected` : ''}.</p></div>
+          <div><h3>${escapeHtml(tt('Player cells', 'Cellules de joueurs', 'Spielerzellen'))}</h3><p class="subtle">${escapeHtml(tt('Groups of participants who receive injects.', 'Groupes de participants qui reçoivent les injects.', 'Teilnehmergruppen, die Injects erhalten.'))} ${project.exercise.players_count
+            ? escapeHtml(tt(`${players} player(s) listed of ${project.exercise.players_count} expected.`, `${players} joueur(s) inscrit(s) sur ${project.exercise.players_count} attendu(s).`, `${players} Spieler erfasst von ${project.exercise.players_count} erwarteten.`))
+            : escapeHtml(tt(`${players} player(s) listed.`, `${players} joueur(s) inscrit(s).`, `${players} Spieler erfasst.`))}</p></div>
           <div class="actions">
-            ${missingPresets.map((preset) => `<button class="btn btn-ghost btn-xs" data-tab-action="add-cell" data-tab-value="${preset.key}" title="${escapeAttribute(preset.description)}">+ ${escapeHtml(preset.name)}</button>`).join('')}
-            <button class="btn btn-primary btn-sm" data-tab-action="add-cell" data-tab-value="custom">${sbUiIcon('plus', 13)} New cell</button>
+            ${missingPresets.map((preset) => `<button class="btn btn-ghost btn-xs" data-tab-action="add-cell" data-tab-value="${preset.key}" title="${escapeAttribute(cePresetText(preset).description)}">+ ${escapeHtml(cePresetText(preset).name)}</button>`).join('')}
+            <button class="btn btn-primary btn-sm" data-tab-action="add-cell" data-tab-value="custom">${sbUiIcon('plus', 13)} ${escapeHtml(tt('New cell', 'Nouvelle cellule', 'Neue Zelle'))}</button>
           </div>
         </div>
         <div class="ce-grid">
@@ -334,50 +357,51 @@ function renderCellsView() {
             const count = items.filter((item) => sbReaches(item.cell_id, cell.id)).length;
             return `<div class="ce-cell" style="--cell-color:${cell.color}">
               <div class="ce-cell-head">
-                <input type="color" data-ce-cell="${cell.id}.color" value="${cell.color}" aria-label="Cell colour">
-                <input type="text" class="ce-cell-name" data-ce-cell="${cell.id}.name" value="${escapeAttribute(cell.name)}" aria-label="Cell name">
+                <input type="color" data-ce-cell="${cell.id}.color" value="${cell.color}" aria-label="${escapeAttribute(tt('Cell colour', 'Couleur de la cellule', 'Zellenfarbe'))}">
+                <input type="text" class="ce-cell-name" data-ce-cell="${cell.id}.name" value="${escapeAttribute(cell.name)}" aria-label="${escapeAttribute(tt('Cell name', 'Nom de la cellule', 'Zellenname'))}">
                 <span class="sb-chip">${count} inject(s)</span>
-                <button class="sb-icon-btn is-danger" data-tab-action="delete-cell" data-tab-value="${cell.id}" title="Delete cell">${sbUiIcon('trash', 14)}</button>
+                <button class="sb-icon-btn is-danger" data-tab-action="delete-cell" data-tab-value="${cell.id}" title="${escapeAttribute(tt('Delete cell', 'Supprimer la cellule', 'Zelle löschen'))}">${sbUiIcon('trash', 14)}</button>
               </div>
-              <textarea data-ce-cell="${cell.id}.description" rows="2" placeholder="Mission of this cell">${escapeHtml(cell.description)}</textarea>
+              <textarea data-ce-cell="${cell.id}.description" rows="2" placeholder="${escapeAttribute(tt('Mission of this cell', 'Mission de cette cellule', 'Auftrag dieser Zelle'))}">${escapeHtml(cell.description)}</textarea>
               <table class="ce-players">
-                <thead><tr><th>Player</th><th>Role</th><th>Email</th><th></th></tr></thead>
+                <thead><tr><th>${escapeHtml(tt('Player', 'Joueur', 'Spieler'))}</th><th>${escapeHtml(tt('Role', 'Rôle', 'Rolle'))}</th><th>${escapeHtml(tt('Email', 'E-mail', 'E-Mail'))}</th><th></th></tr></thead>
                 <tbody>${cell.players.map((player) => `<tr>
-                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.name" value="${escapeAttribute(player.name)}" placeholder="Name"></td>
-                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.role" value="${escapeAttribute(player.role)}" placeholder="Role"></td>
-                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.email" value="${escapeAttribute(player.email)}" placeholder="Email"></td>
-                  <td><button class="sb-icon-btn" data-tab-action="delete-player" data-tab-value="${cell.id}.${player.id}" title="Remove">${sbUiIcon('close', 13)}</button></td>
+                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.name" value="${escapeAttribute(player.name)}" placeholder="${escapeAttribute(tt('Name', 'Nom', 'Name'))}"></td>
+                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.role" value="${escapeAttribute(player.role)}" placeholder="${escapeAttribute(tt('Role', 'Rôle', 'Rolle'))}"></td>
+                  <td><input type="text" data-ce-player="${cell.id}.${player.id}.email" value="${escapeAttribute(player.email)}" placeholder="${escapeAttribute(tt('Email', 'E-mail', 'E-Mail'))}"></td>
+                  <td><button class="sb-icon-btn" data-tab-action="delete-player" data-tab-value="${cell.id}.${player.id}" title="${escapeAttribute(tt('Remove', 'Retirer', 'Entfernen'))}">${sbUiIcon('close', 13)}</button></td>
                 </tr>`).join('')}</tbody>
               </table>
-              <button class="btn btn-ghost btn-xs" data-tab-action="add-player" data-tab-value="${cell.id}">${sbUiIcon('plus', 12)} Player</button>
+              <button class="btn btn-ghost btn-xs" data-tab-action="add-player" data-tab-value="${cell.id}">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Player', 'Joueur', 'Spieler'))}</button>
             </div>`;
-          }).join('') || '<p class="sb-empty">No cell yet. Add the cells playing the exercise (for example decision, operational and communication cells).</p>'}
+          }).join('') || `<p class="sb-empty">${escapeHtml(tt('No cell yet. Add the cells playing the exercise (for example decision, operational and communication cells).', 'Aucune cellule pour l’instant. Ajoutez les cellules qui jouent l’exercice (par exemple cellules décisionnelle, opérationnelle et communication).', 'Noch keine Zelle. Fügen Sie die Zellen hinzu, die die Übung spielen (zum Beispiel Entscheidungs-, operative und Kommunikationszelle).'))}</p>`}
         </div>
       </article>
       <article class="card">
         <div class="section-header">
-          <div><h3>Simulated actors</h3><p class="subtle">People and organisations outside the exercise who send the injects, grouped by type.</p></div>
+          <div><h3>${escapeHtml(tt('Simulated actors', 'Acteurs simulés', 'Simulierte Akteure'))}</h3><p class="subtle">${escapeHtml(tt('People and organisations outside the exercise who send the injects, grouped by type.', 'Personnes et organisations extérieures à l’exercice qui envoient les injects, regroupées par type.', 'Personen und Organisationen außerhalb der Übung, die die Injects senden, nach Typ gruppiert.'))}</p></div>
         </div>
         ${renderLLMConfigBlock('actors', actorsPlaceholder)}
         <div class="ce-groups">
-          ${CE_ACTOR_GROUPS.map(([role, label]) => {
+          ${CE_ACTOR_GROUPS.map(([role, en, fr, de]) => {
+            const label = tt(en, fr, de);
             const actors = project.actors.filter((actor) => actor.role === role);
             return `<div class="ce-group">
-              <div class="ce-group-head"><strong>${escapeHtml(label)}</strong><span class="sb-chip">${actors.length}</span><button class="btn btn-ghost btn-xs" data-tab-action="add-actor" data-tab-value="${role}">${sbUiIcon('plus', 12)} Add</button></div>
+              <div class="ce-group-head"><strong>${escapeHtml(label)}</strong><span class="sb-chip">${actors.length}</span><button class="btn btn-ghost btn-xs" data-tab-action="add-actor" data-tab-value="${role}">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Add', 'Ajouter', 'Hinzufügen'))}</button></div>
               ${actors.map((actor) => `<div class="ce-actor">
-                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.name" value="${escapeAttribute(actor.name)}" aria-label="Name" placeholder="Name">
-                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.title" value="${escapeAttribute(actor.title)}" aria-label="Title" placeholder="Title">
-                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.organization" value="${escapeAttribute(actor.organization)}" aria-label="Organisation" placeholder="Organisation">
-                <select data-actor-bind="${escapeAttribute(actor.id)}.role" aria-label="Group">${ROLES.map((item) => sbOption(item.value, roleLabel(item.value), actor.role)).join('')}</select>
-                <select data-actor-bind="${escapeAttribute(actor.id)}.language" aria-label="Language">${LANGUAGES.map((item) => sbOption(item.value, item.label, actor.language || 'en')).join('')}</select>
-                <button class="sb-icon-btn is-danger" data-action="delete-actor" data-actor-id="${escapeAttribute(actor.id)}" title="Delete">${sbUiIcon('trash', 13)}</button>
-              </div>`).join('') || '<p class="sb-empty">None.</p>'}
+                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.name" value="${escapeAttribute(actor.name)}" aria-label="${escapeAttribute(tt('Name', 'Nom', 'Name'))}" placeholder="${escapeAttribute(tt('Name', 'Nom', 'Name'))}">
+                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.title" value="${escapeAttribute(actor.title)}" aria-label="${escapeAttribute(tt('Title', 'Fonction', 'Funktion'))}" placeholder="${escapeAttribute(tt('Title', 'Fonction', 'Funktion'))}">
+                <input type="text" data-actor-bind="${escapeAttribute(actor.id)}.organization" value="${escapeAttribute(actor.organization)}" aria-label="${escapeAttribute(tt('Organisation', 'Organisation', 'Organisation'))}" placeholder="${escapeAttribute(tt('Organisation', 'Organisation', 'Organisation'))}">
+                <select data-actor-bind="${escapeAttribute(actor.id)}.role" aria-label="${escapeAttribute(tt('Group', 'Groupe', 'Gruppe'))}">${ROLES.map((item) => sbOption(item.value, roleLabel(item.value), actor.role)).join('')}</select>
+                <select data-actor-bind="${escapeAttribute(actor.id)}.language" aria-label="${escapeAttribute(tt('Language', 'Langue', 'Sprache'))}">${LANGUAGES.map((item) => sbOption(item.value, item.label, actor.language || 'en')).join('')}</select>
+                <button class="sb-icon-btn is-danger" data-action="delete-actor" data-actor-id="${escapeAttribute(actor.id)}" title="${escapeAttribute(tt('Delete', 'Supprimer', 'Löschen'))}">${sbUiIcon('trash', 13)}</button>
+              </div>`).join('') || `<p class="sb-empty">${escapeHtml(tt('None.', 'Aucun.', 'Keine.'))}</p>`}
             </div>`;
           }).join('')}
         </div>
       </article>
       <article class="card">
-        <div class="section-header"><div><h3>Storyline roles</h3><p class="subtle">Roles used as senders in the storyline, and the actor who plays each of them.</p></div></div>
+        <div class="section-header"><div><h3>${escapeHtml(tt('Storyline roles', 'Rôles de la storyline', 'Rollen der Storyline'))}</h3><p class="subtle">${escapeHtml(tt('Roles used as senders in the storyline, and the actor who plays each of them.', 'Rôles utilisés comme émetteurs dans la storyline, et l’acteur qui joue chacun d’eux.', 'Rollen, die in der Storyline als Absender dienen, und der Akteur, der jede von ihnen spielt.'))}</p></div></div>
         <div class="ce-roles">${renderSbCast(storyboard)}</div>
       </article>
       ${renderSbModal(storyboard)}
@@ -418,28 +442,28 @@ function renderDetailedView() {
     const missing = items.filter((item) => item.kind === 'beat' && !item.stimulus && (!cellScope || sbReaches(item.cell_id, cellScope.id))).length;
     return `<section class="sb-workspace ds-workspace ${readOnly ? 'is-readonly' : ''} ${sbCompact() ? 'is-compact' : ''}" data-sb-scope aria-label="${escapeAttribute(workflowTabLabel('detailed'))}">
       <header class="sb-toolbar ds-toolbar">
-        <div class="sb-tb-title"><span class="sb-eyebrow">${escapeHtml(workflowTabLabel('detailed'))}</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || 'Untitled scenario')}</strong></div></div>
-        <div class="ds-cells" role="tablist" aria-label="Cells">
-          <button class="ds-cell-chip ${state.cell === 'all' ? 'active' : ''}" data-tab-action="ds-cell" data-tab-value="all">All cells <b>${items.length}</b></button>
+        <div class="sb-tb-title"><span class="sb-eyebrow">${escapeHtml(workflowTabLabel('detailed'))}</span><div class="sb-tb-name-row"><strong class="sb-tb-name">${escapeHtml(project.name || tt('Untitled scenario', 'Scénario sans titre', 'Unbenanntes Szenario'))}</strong></div></div>
+        <div class="ds-cells" role="tablist" aria-label="${escapeAttribute(tt('Cells', 'Cellules', 'Zellen'))}">
+          <button class="ds-cell-chip ${state.cell === 'all' ? 'active' : ''}" data-tab-action="ds-cell" data-tab-value="all">${escapeHtml(tt('All cells', 'Toutes les cellules', 'Alle Zellen'))} <b>${items.length}</b></button>
           ${project.cells.map((cell) => `<button class="ds-cell-chip ${state.cell === cell.id ? 'active' : ''}" style="--cell-color:${cell.color}" data-tab-action="ds-cell" data-tab-value="${cell.id}"><i></i>${escapeHtml(cell.name)} <b>${counts.get(cell.id) || 0}</b></button>`).join('')}
-          ${counts.get('none') ? `<button class="ds-cell-chip ${state.cell === 'none' ? 'active' : ''}" data-tab-action="ds-cell" data-tab-value="none">Unassigned <b>${counts.get('none')}</b></button>` : ''}
+          ${counts.get('none') ? `<button class="ds-cell-chip ${state.cell === 'none' ? 'active' : ''}" data-tab-action="ds-cell" data-tab-value="none">${escapeHtml(tt('Unassigned', 'Non attribués', 'Nicht zugewiesen'))} <b>${counts.get('none')}</b></button>` : ''}
         </div>
         <div class="sb-tb-group">
-          <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="Undo (Ctrl+Z)">${sbUiIcon('undo')}</button>
-          <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="Redo (Ctrl+Shift+Z)">${sbUiIcon('redo')}</button>
+          <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="${escapeAttribute(tt('Undo (Ctrl+Z)', 'Annuler (Ctrl+Z)', 'Rückgängig (Strg+Z)'))}">${sbUiIcon('undo')}</button>
+          <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="${escapeAttribute(tt('Redo (Ctrl+Shift+Z)', 'Rétablir (Ctrl+Maj+Z)', 'Wiederholen (Strg+Umschalt+Z)'))}">${sbUiIcon('redo')}</button>
         </div>
         <div class="sb-tb-group">
-          <button class="sb-tool sb-tool-label" data-tab-action="ds-add" ${readOnly || !storyboard.blocks.length ? 'disabled' : ''} title="Add an inject at the playhead">${sbUiIcon('plus')}<span>Inject</span></button>
+          <button class="sb-tool sb-tool-label" data-tab-action="ds-add" ${readOnly || !storyboard.blocks.length ? 'disabled' : ''} title="${escapeAttribute(tt('Add an inject at the playhead', 'Ajouter un inject à la tête de lecture', 'Inject am Abspielkopf hinzufügen'))}">${sbUiIcon('plus')}<span>${escapeHtml(tt('Inject', 'Inject', 'Inject'))}</span></button>
         </div>
         <div class="sb-tb-group sb-tb-output">
           ${renderUpdateButton(project, pending)}
-          <button class="btn btn-primary btn-sm" data-tab-action="ds-generate" ${readOnly ? 'disabled' : ''}>${sbUiIcon('play', 13)} Generate${missing ? ` <span class="sb-count sb-count-light">${missing}</span>` : ''}</button>
+          <button class="btn btn-primary btn-sm" data-tab-action="ds-generate" ${readOnly ? 'disabled' : ''}>${sbUiIcon('play', 13)} ${escapeHtml(tt('Generate', 'Générer', 'Generieren'))}${missing ? ` <span class="sb-count sb-count-light">${missing}</span>` : ''}</button>
         </div>
       </header>
       ${renderSbStatusBar()}
-      <div class="ds-timeline">${storyboard.blocks.length || items.length ? renderDetailedTimeline(project, items) : tabEmptyNote('Build the main storyline first: its phases frame the injects of every cell.', 'storyline', 'Main storyline')}</div>
+      <div class="ds-timeline">${storyboard.blocks.length || items.length ? renderDetailedTimeline(project, items) : tabEmptyNote(tt('Build the main storyline first: its phases frame the injects of every cell.', 'Construisez d’abord la storyline principale : ses phases structurent les injects de chaque cellule.', 'Erstellen Sie zuerst die Haupt-Storyline: Ihre Phasen bilden den Rahmen für die Injects jeder Zelle.'), 'storyline', workflowTabLabel('storyline'))}</div>
       ${renderEditorSplitter('detailed')}
-      <section class="bottom-editor ds-editor" aria-label="Inject editor" ${editorHeightStyle('detailed')}>${selected ? renderInjectEditor(project, selected) : `<div class="bottom-editor-empty">${sbUiIcon('play', 18)}<span>Select an inject to edit it. Drag it to change its time, or to another cell row to change its recipient. ${cellScope ? `“+ Inject” adds one for the ${escapeHtml(cellScope.name)} at the playhead.` : 'Pick a cell above to focus on its injects.'}</span></div>`}</section>
+      <section class="bottom-editor ds-editor" aria-label="${escapeAttribute(tt('Inject editor', 'Éditeur d’inject', 'Inject-Editor'))}" ${editorHeightStyle('detailed')}>${selected ? renderInjectEditor(project, selected) : `<div class="bottom-editor-empty">${sbUiIcon('play', 18)}<span>${escapeHtml(tt('Select an inject to edit it. Drag it to change its time, or to another cell row to change its recipient.', 'Sélectionnez un inject pour le modifier. Faites-le glisser pour changer son heure, ou vers la ligne d’une autre cellule pour changer son destinataire.', 'Wählen Sie einen Inject, um ihn zu bearbeiten. Ziehen Sie ihn, um seine Zeit zu ändern, oder in die Zeile einer anderen Zelle, um den Empfänger zu ändern.'))} ${cellScope ? escapeHtml(tt(`“+ Inject” adds one for the ${cellScope.name} at the playhead.`, `« + Inject » en ajoute un pour la cellule ${cellScope.name} à la tête de lecture.`, `„+ Inject“ fügt am Abspielkopf einen für ${cellScope.name} hinzu.`)) : escapeHtml(tt('Pick a cell above to focus on its injects.', 'Choisissez une cellule ci-dessus pour vous concentrer sur ses injects.', 'Wählen Sie oben eine Zelle, um sich auf ihre Injects zu konzentrieren.'))}</span></div>`}</section>
       ${renderSbModal(storyboard)}
     </section>`;
   });
@@ -447,10 +471,10 @@ function renderDetailedView() {
 
 function dsRows(project, items) {
   const state = tabUI('detailed');
-  if (state.cell === 'none') return [{ id: 'none', name: 'Unassigned', color: '#6d687e' }];
+  if (state.cell === 'none') return [{ id: 'none', name: tt('Unassigned', 'Non attribués', 'Nicht zugewiesen'), color: '#6d687e' }];
   if (state.cell !== 'all') return project.cells.filter((cell) => cell.id === state.cell);
   const rows = [...project.cells];
-  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
+  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: tt('Unassigned', 'Non attribués', 'Nicht zugewiesen'), color: '#6d687e' });
   return rows;
 }
 
@@ -466,11 +490,11 @@ function renderDetailedTimeline(project, items) {
   return `<div class="ds-scroll" id="ds-scroll">
     <div class="sb-canvas ds-canvas" style="width:${header + width}px;--ppm:${ppm};--hour:${(60 * ppm).toFixed(2)}px;--quarter:${(15 * ppm).toFixed(2)}px;--header:${header}px">
       <div class="sb-ruler-row">
-        <div class="sb-corner"><span>Cells</span><small>${rows.length}</small></div>
+        <div class="sb-corner"><span>${escapeHtml(tt('Cells', 'Cellules', 'Zellen'))}</span><small>${rows.length}</small></div>
         <div class="sb-ruler" data-ds-ruler style="width:${width}px">${renderSbRuler({ duration_minutes: duration }, ppm)}</div>
       </div>
       <div class="sb-track-row ds-phase-row is-main">
-        <div class="sb-track-head"><strong>Main storyline</strong><small>${phases.length} phases</small></div>
+        <div class="sb-track-head"><strong>${escapeHtml(workflowTabLabel('storyline'))}</strong><small>${phases.length} ${escapeHtml(tt('phases', 'phases', 'Phasen'))}</small></div>
         <div class="sb-lane ds-phase-lane" style="width:${width}px">
           ${phases.map((block) => `<button class="ds-phase" data-tab-action="ds-phase" data-tab-value="${block.id}" style="left:${block.start_minutes * ppm}px;width:${Math.max(4, block.duration_minutes * ppm - 2)}px;--clip-color:${sbBlockColor(block, storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}: ${block.brief}`)}"><strong>${escapeHtml(block.title)}</strong><span>${escapeHtml(block.brief)}</span></button>`).join('')}
         </div>
@@ -489,16 +513,16 @@ function renderDetailedRow(project, row, items, width, ppm) {
   const height = Math.max(1, packing.rows) * DS_ROW_HEIGHT + 12;
   const players = row.players ? row.players.length : 0;
   return `<div class="sb-track-row ds-row" style="--track-color:${row.color}">
-    <div class="sb-track-head" style="height:${height}px"><strong>${escapeHtml(row.name)}</strong><small>${items.length} inject(s)${row.players ? ` · ${players} player(s)` : ''}</small></div>
+    <div class="sb-track-head" style="height:${height}px"><strong>${escapeHtml(row.name)}</strong><small>${items.length} inject(s)${row.players ? ` · ${players} ${escapeHtml(tt('player(s)', 'joueur(s)', 'Spieler'))}` : ''}</small></div>
     <div class="sb-lane" data-ds-lane="${escapeAttribute(row.id)}" style="width:${width}px;height:${height}px">
       ${items.map((item) => {
         const color = sbChannelColor(item.channel);
-        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || 'no sender'}\n${item.title}\n${item.intent || ''}`)}">
-          <span class="ds-card-meta"><i></i>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}${sbIsAllCells(item.cell_id) ? ' · all cells' : ''}</span>
+        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || tt('no sender', 'sans émetteur', 'ohne Absender')}\n${item.title}\n${item.intent || ''}`)}">
+          <span class="ds-card-meta"><i></i>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}${sbIsAllCells(item.cell_id) ? ` · ${escapeHtml(tt('all cells', 'toutes les cellules', 'alle Zellen'))}` : ''}</span>
           <strong>${escapeHtml(item.title)}</strong>
         </div>`;
       }).join('')}
-      ${!items.length ? '<span class="sb-lane-hint">No inject for this cell yet</span>' : ''}
+      ${!items.length ? `<span class="sb-lane-hint">${escapeHtml(tt('No inject for this cell yet', 'Aucun inject pour cette cellule pour l’instant', 'Noch kein Inject für diese Zelle'))}</span>` : ''}
     </div>
   </div>`;
 }
@@ -509,16 +533,16 @@ function renderInjectEditor(project, item) {
   const ai = isLLMAvailable();
   const status = item.stimulus ? sbStimulusStatus(project, item.stimulus) : null;
   const phase = sbMainBlockAt(storyboard, item.time);
-  const recipients = `<div class="sb-mini-field ds-to">To${renderRecipientPicker(project, item.key, item.cell_id, readOnly)}</div>`;
+  const recipients = `<div class="sb-mini-field ds-to">${escapeHtml(tt('To', 'À', 'An'))}${renderRecipientPicker(project, item.key, item.cell_id, readOnly)}</div>`;
   const head = `<div class="bottom-editor-head" style="--clip-color:${sbChannelColor(item.channel)}">
-      <span class="sb-status is-${item.status}">${escapeHtml(status?.label || (item.kind === 'beat' ? 'Planned' : 'Manual'))}</span>
-      <label class="be-inline">Time (min) · ${sbFormatOffset(item.time)}<input type="number" min="0" step="1" data-ds-time value="${item.time}" ${readOnly}></label>
-      <span class="be-phase">Phase: <b>${escapeHtml(phase?.title || '-')}</b></span>
+      <span class="sb-status is-${item.status}">${escapeHtml(status?.label || (item.kind === 'beat' ? tt('Planned', 'Prévu', 'Geplant') : tt('Manual', 'Manuel', 'Manuell')))}</span>
+      <label class="be-inline">${escapeHtml(tt('Time (min)', 'Heure (min)', 'Zeit (Min.)'))} · ${sbFormatOffset(item.time)}<input type="number" min="0" step="1" data-ds-time value="${item.time}" ${readOnly}></label>
+      <span class="be-phase">${escapeHtml(tt('Phase:', 'Phase :', 'Phase:'))} <b>${escapeHtml(phase?.title || '-')}</b></span>
       <span class="be-actions">
-        ${item.stimulus ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} Full editor</button>` : ''}
-        ${item.stimulus?.scenario_link ? `<button class="sb-icon-btn ${item.stimulus.scenario_link.locked ? 'is-on' : ''}" data-sb-action="lock-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}" title="${item.stimulus.scenario_link.locked ? 'Unlock' : 'Lock: never modified by sync'}" ${readOnly}>${sbUiIcon(item.stimulus.scenario_link.locked ? 'lock' : 'unlock', 15)}</button>` : ''}
-        <button class="sb-icon-btn is-danger" data-tab-action="ds-delete" title="Delete (Del)" ${readOnly}>${sbUiIcon('trash', 15)}</button>
-        <button class="sb-icon-btn" data-tab-action="ds-deselect" title="Close (Esc)">${sbUiIcon('close', 15)}</button>
+        ${item.stimulus ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} ${escapeHtml(tt('Full editor', 'Éditeur complet', 'Vollständiger Editor'))}</button>` : ''}
+        ${item.stimulus?.scenario_link ? `<button class="sb-icon-btn ${item.stimulus.scenario_link.locked ? 'is-on' : ''}" data-sb-action="lock-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}" title="${escapeAttribute(item.stimulus.scenario_link.locked ? tt('Unlock', 'Déverrouiller', 'Entsperren') : tt('Lock: never modified by sync', 'Verrouiller : jamais modifié par la synchronisation', 'Sperren: wird bei der Synchronisierung nie geändert'))}" ${readOnly}>${sbUiIcon(item.stimulus.scenario_link.locked ? 'lock' : 'unlock', 15)}</button>` : ''}
+        <button class="sb-icon-btn is-danger" data-tab-action="ds-delete" title="${escapeAttribute(tt('Delete (Del)', 'Supprimer (Suppr)', 'Löschen (Entf)'))}" ${readOnly}>${sbUiIcon('trash', 15)}</button>
+        <button class="sb-icon-btn" data-tab-action="ds-deselect" title="${escapeAttribute(tt('Close (Esc)', 'Fermer (Échap)', 'Schließen (Esc)'))}">${sbUiIcon('close', 15)}</button>
       </span>
     </div>`;
   if (item.kind === 'beat') {
@@ -528,18 +552,18 @@ function renderInjectEditor(project, item) {
       <div class="bottom-editor-body ds-editor-body">
         <div class="ds-fields">
           ${recipients}
-          <label class="sb-mini-field">Channel<select data-ds-beat="channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select></label>
-          ${templates.length ? `<label class="sb-mini-field">Outlet<select data-ds-beat="template_id" ${readOnly}>${sbOption('', 'Default', beat.template_id)}${templates.map(([key, value]) => sbOption(key, value.label || key, beat.template_id)).join('')}</select></label>` : ''}
-          <label class="sb-mini-field">From<select data-ds-beat="cast_id" ${readOnly}>${sbOption('', '- Sender role -', beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, `${cast.label}${cast.actor_id && getActor(cast.actor_id) ? ` (${getActor(cast.actor_id).name})` : ''}`, beat.cast_id)).join('')}</select></label>
-          <label class="sb-mini-field ds-title">Title<input type="text" data-ds-beat="title" value="${escapeAttribute(beat.title)}" placeholder="Inject title" ${readOnly}></label>
+          <label class="sb-mini-field">${escapeHtml(tt('Channel', 'Canal', 'Kanal'))}<select data-ds-beat="channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select></label>
+          ${templates.length ? `<label class="sb-mini-field">${escapeHtml(tt('Outlet', 'Média', 'Medium'))}<select data-ds-beat="template_id" ${readOnly}>${sbOption('', tt('Default', 'Par défaut', 'Standard'), beat.template_id)}${templates.map(([key, value]) => sbOption(key, value.label || key, beat.template_id)).join('')}</select></label>` : ''}
+          <label class="sb-mini-field">${escapeHtml(tt('From', 'De', 'Von'))}<select data-ds-beat="cast_id" ${readOnly}>${sbOption('', tt('- Sender role -', '- Rôle émetteur -', '- Absenderrolle -'), beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, `${cast.label}${cast.actor_id && getActor(cast.actor_id) ? ` (${getActor(cast.actor_id).name})` : ''}`, beat.cast_id)).join('')}</select></label>
+          <label class="sb-mini-field ds-title">${escapeHtml(tt('Title', 'Titre', 'Titel'))}<input type="text" data-ds-beat="title" value="${escapeAttribute(beat.title)}" placeholder="${escapeAttribute(tt('Inject title', 'Titre de l’inject', 'Inject-Titel'))}" ${readOnly}></label>
         </div>
-        <label class="sb-mini-field ds-intent">What it says and the reaction or decision it should trigger
+        <label class="sb-mini-field ds-intent">${escapeHtml(tt('What it says and the reaction or decision it should trigger', 'Ce qu’il dit et la réaction ou la décision qu’il doit provoquer', 'Was er aussagt und welche Reaktion oder Entscheidung er auslösen soll'))}
           <textarea data-ds-beat="intent" rows="3" ${readOnly}>${escapeHtml(beat.intent)}</textarea>
         </label>
         <div class="ds-editor-actions">
           ${item.stimulus
-            ? `<button class="btn btn-secondary btn-sm" data-tab-action="ds-rewrite" ${ai && !readOnly ? '' : 'disabled'} title="${status?.manual ? 'Adapts the content, keeping your manual edits' : 'Rewrites the content from the plan'}">${sbUiIcon('wand', 13)} ${status?.manual ? 'Adapt with AI' : 'Rewrite with AI'}</button>`
-            : `<button class="btn btn-primary btn-sm" data-tab-action="ds-create" ${readOnly}>${sbUiIcon('play', 13)} ${ai ? 'Create and write with AI' : 'Create inject'}</button>`}
+            ? `<button class="btn btn-secondary btn-sm" data-tab-action="ds-rewrite" ${ai && !readOnly ? '' : 'disabled'} title="${escapeAttribute(status?.manual ? tt('Adapts the content, keeping your manual edits', 'Adapte le contenu en conservant vos modifications manuelles', 'Passt den Inhalt an und behält Ihre manuellen Änderungen') : tt('Rewrites the content from the plan', 'Réécrit le contenu à partir du plan', 'Schreibt den Inhalt anhand des Plans neu'))}">${sbUiIcon('wand', 13)} ${escapeHtml(status?.manual ? tt('Adapt with AI', 'Adapter avec l’IA', 'Mit KI anpassen') : tt('Rewrite with AI', 'Réécrire avec l’IA', 'Mit KI neu schreiben'))}</button>`
+            : `<button class="btn btn-primary btn-sm" data-tab-action="ds-create" ${readOnly}>${sbUiIcon('play', 13)} ${escapeHtml(ai ? tt('Create and write with AI', 'Créer et rédiger avec l’IA', 'Mit KI erstellen und schreiben') : tt('Create inject', 'Créer l’inject', 'Inject erstellen'))}</button>`}
         </div>
       </div>`;
   }
@@ -548,11 +572,11 @@ function renderInjectEditor(project, item) {
     <div class="bottom-editor-body ds-editor-body">
       <div class="ds-fields">
         ${recipients}
-        <label class="sb-mini-field">Channel<input type="text" value="${escapeAttribute(channelLabel(stimulus.channel))}" disabled></label>
-        <label class="sb-mini-field">From<select data-ds-stim="actor_id" ${readOnly}>${project.actors.map((actor) => sbOption(actor.id, `${actor.name} · ${roleLabel(actor.role)}`, stimulus.actor_id)).join('')}</select></label>
-        <label class="sb-mini-field ds-title">Title<input type="text" data-ds-stim="name" value="${escapeAttribute(stimulus.name || '')}" placeholder="${escapeAttribute(sbStimulusLabel(stimulus))}" ${readOnly}></label>
+        <label class="sb-mini-field">${escapeHtml(tt('Channel', 'Canal', 'Kanal'))}<input type="text" value="${escapeAttribute(channelLabel(stimulus.channel))}" disabled></label>
+        <label class="sb-mini-field">${escapeHtml(tt('From', 'De', 'Von'))}<select data-ds-stim="actor_id" ${readOnly}>${project.actors.map((actor) => sbOption(actor.id, `${actor.name} · ${roleLabel(actor.role)}`, stimulus.actor_id)).join('')}</select></label>
+        <label class="sb-mini-field ds-title">${escapeHtml(tt('Title', 'Titre', 'Titel'))}<input type="text" data-ds-stim="name" value="${escapeAttribute(stimulus.name || '')}" placeholder="${escapeAttribute(sbStimulusLabel(stimulus))}" ${readOnly}></label>
       </div>
-      <p class="sb-help">This inject is not part of the storyline plan (created by hand, imported or orphan). It keeps its content; edit it in the full editor.</p>
+      <p class="sb-help">${escapeHtml(tt('This inject is not part of the storyline plan (created by hand, imported or orphan). It keeps its content; edit it in the full editor.', 'Cet inject ne fait pas partie du plan de la storyline (créé à la main, importé ou orphelin). Il garde son contenu ; modifiez-le dans l’éditeur complet.', 'Dieser Inject gehört nicht zum Plan der Storyline (manuell erstellt, importiert oder verwaist). Er behält seinen Inhalt; bearbeiten Sie ihn im vollständigen Editor.'))}</p>
     </div>`;
 }
 
@@ -623,7 +647,7 @@ async function ccChallenge() {
   if (cs.mode !== 'file' && project.storyboard?.blocks?.length) {
     tasks.push((async () => {
       try { summary.review = await SbAI.reviewExercise(); }
-      catch (error) { pushToast(error?.name === 'AbortError' ? 'Review stopped.' : sbErrorMessage(error), 'error'); }
+      catch (error) { pushToast(error?.name === 'AbortError' ? tt('Review stopped.', 'Revue arrêtée.', 'Prüfung gestoppt.') : sbErrorMessage(error), 'error'); }
       App.render();
     })());
   }
@@ -647,17 +671,20 @@ function renderSummaryView() {
     const source = fileLoaded && cs.mode === 'file' ? 'file' : 'scenario';
     if (cs.mode !== source) cs.mode = source;
     const kpi = (value, label) => `<div class="su-kpi"><strong>${value}</strong><span>${escapeHtml(label)}</span></div>`;
-    const verdicts = { ready: 'Ready to play', almost: 'Almost ready', work: 'Needs work', empty: 'Nothing to check yet' };
+    const verdicts = {
+      ready: tt('Ready to play', 'Prêt à jouer', 'Spielbereit'), almost: tt('Almost ready', 'Presque prêt', 'Fast bereit'),
+      work: tt('Needs work', 'À retravailler', 'Überarbeitung nötig'), empty: tt('Nothing to check yet', 'Rien à vérifier pour l’instant', 'Noch nichts zu prüfen')
+    };
     // The next steps, from what actually holds the score down.
     const errors = rules.filter((issue) => issue.severity === 'error').length;
     const steps = [
-      errors ? `fix the ${errors} error${errors > 1 ? 's' : ''} in the automatic checks` : '',
-      readiness.ai === null ? 'challenge the exercise with AI' : (readiness.ai < 80 && cs.analysisResult?.priority_actions?.length ? 'work through the priority actions of the challenge' : ''),
-      readiness.list.total && readiness.list.done < readiness.list.total ? `tick the ready-to-play checklist (${readiness.list.done}/${readiness.list.total})` : ''
+      errors ? tt(`fix the ${errors} error${errors > 1 ? 's' : ''} in the automatic checks`, `corriger ${errors > 1 ? `les ${errors} erreurs` : 'l’erreur'} des contrôles automatiques`, `${errors > 1 ? `die ${errors} Fehler` : 'den Fehler'} der automatischen Prüfungen beheben`) : '',
+      readiness.ai === null ? tt('challenge the exercise with AI', 'challenger l’exercice avec l’IA', 'die Übung mit KI hinterfragen') : (readiness.ai < 80 && cs.analysisResult?.priority_actions?.length ? tt('work through the priority actions of the challenge', 'traiter les actions prioritaires du challenge', 'die vorrangigen Maßnahmen der Challenge abarbeiten') : ''),
+      readiness.list.total && readiness.list.done < readiness.list.total ? tt(`tick the ready-to-play checklist (${readiness.list.done}/${readiness.list.total})`, `cocher la checklist « Prêt à jouer » (${readiness.list.done}/${readiness.list.total})`, `die Spielbereit-Checkliste abhaken (${readiness.list.done}/${readiness.list.total})`) : ''
     ].filter(Boolean);
     const hint = readiness.verdict === 'empty'
-      ? 'Build the main storyline or plan injects first (Context, Main storyline, Detailed storyline): the checks start once there is something to check.'
-      : steps.length ? `Next: ${steps.join(', then ')}.` : 'The checks, the AI challenge and the checklist agree.';
+      ? tt('Build the main storyline or plan injects first (Context, Main storyline, Detailed storyline): the checks start once there is something to check.', 'Construisez d’abord la storyline principale ou planifiez des injects (Contexte, Storyline principale, Storyline détaillée) : les contrôles démarrent dès qu’il y a quelque chose à vérifier.', 'Erstellen Sie zuerst die Haupt-Storyline oder planen Sie Injects (Kontext, Haupt-Storyline, Detaillierte Storyline): Die Prüfungen beginnen, sobald es etwas zu prüfen gibt.')
+      : steps.length ? tt(`Next: ${steps.join(', then ')}.`, `Ensuite : ${steps.join(', puis ')}.`, `Als Nächstes: ${steps.join(', dann ')}.`) : tt('The checks, the AI challenge and the checklist agree.', 'Les contrôles, le challenge IA et la checklist concordent.', 'Prüfungen, KI-Challenge und Checkliste stimmen überein.');
     const gauge = (label, value, hint, action = '') => `<div class="cc-gauge ${value === null ? 'is-empty' : value >= 80 ? 'is-good' : value >= 60 ? 'is-mid' : 'is-low'}">
       <span class="cc-gauge-label">${escapeHtml(label)}${action}</span>
       <strong>${value === null ? '—' : `${value}<small>/100</small>`}</strong>
@@ -670,50 +697,54 @@ function renderSummaryView() {
     const running = cs.analysisLoading || !!SbAI.busy;
     const canChallenge = isLLMAvailable() && !running && (source === 'file' || generated || storyboard.blocks.length);
     // Launch the AI challenge from its gauge: the results show in the "Challenge with AI" card below.
-    const launch = `<button class="btn btn-primary btn-xs cc-launch" data-action="checker-analyze" ${canChallenge ? '' : 'disabled'} title="${escapeAttribute(isLLMAvailable() ? (running ? 'The challenge is running' : 'Challenge the exercise with AI') : 'Configure an AI connection in Settings first')}">${sbUiIcon(running ? 'clock' : 'sparkles', 12)} ${running ? 'Running…' : 'Launch'}</button>`;
+    const launch = `<button class="btn btn-primary btn-xs cc-launch" data-action="checker-analyze" ${canChallenge ? '' : 'disabled'} title="${escapeAttribute(isLLMAvailable() ? (running ? tt('The challenge is running', 'Le challenge est en cours', 'Die Challenge läuft') : tt('Challenge the exercise with AI', 'Challenger l’exercice avec l’IA', 'Die Übung mit KI hinterfragen')) : tt('Configure an AI connection in Settings first', 'Configurez d’abord une connexion IA dans les Paramètres', 'Richten Sie zuerst in den Einstellungen eine KI-Verbindung ein'))}">${sbUiIcon(running ? 'clock' : 'sparkles', 12)} ${escapeHtml(running ? tt('Running…', 'En cours…', 'Läuft…') : tt('Launch', 'Lancer', 'Starten'))}</button>`;
     state.liveIssues = review.issues;
     return `<section class="tab-page su-page" data-sb-scope>
       ${renderSbStatusBar()}
       <article class="card cc-readiness is-${readiness.verdict}">
         <div class="cc-verdict">
-          <span class="page-eyebrow">Readiness</span>
+          <span class="page-eyebrow">${escapeHtml(tt('Readiness', 'Préparation', 'Einsatzbereitschaft'))}</span>
           <strong>${escapeHtml(verdicts[readiness.verdict])}</strong>
           <span class="cc-overall">${readiness.overall === null ? '-' : `${readiness.overall}<small>/100</small>`}</span>
           <p class="subtle">${escapeHtml(hint)}</p>
         </div>
         <div class="cc-gauges">
-          ${gauge('Automatic checks', readiness.structure, readiness.verdict === 'empty' ? 'Nothing to check yet' : `${rules.filter((issue) => issue.severity === 'error').length} error(s), ${rules.filter((issue) => issue.severity === 'warning').length} warning(s)`)}
-          ${gauge('AI challenge', readiness.ai, readiness.ai === null ? 'Not run yet' : 'Last challenge of the current scenario', launch)}
-          ${gauge('Ready-to-play checklist', readiness.checklist, `${readiness.list.done} / ${readiness.list.total} items checked`)}
+          ${gauge(tt('Automatic checks', 'Contrôles automatiques', 'Automatische Prüfungen'), readiness.structure, readiness.verdict === 'empty' ? tt('Nothing to check yet', 'Rien à vérifier pour l’instant', 'Noch nichts zu prüfen') : tt(`${rules.filter((issue) => issue.severity === 'error').length} error(s), ${rules.filter((issue) => issue.severity === 'warning').length} warning(s)`, `${rules.filter((issue) => issue.severity === 'error').length} erreur(s), ${rules.filter((issue) => issue.severity === 'warning').length} avertissement(s)`, `${rules.filter((issue) => issue.severity === 'error').length} Fehler, ${rules.filter((issue) => issue.severity === 'warning').length} Warnung(en)`))}
+          ${gauge(tt('AI challenge', 'Challenge IA', 'KI-Challenge'), readiness.ai, readiness.ai === null ? tt('Not run yet', 'Pas encore lancé', 'Noch nicht ausgeführt') : tt('Last challenge of the current scenario', 'Dernier challenge du scénario actuel', 'Letzte Challenge des aktuellen Szenarios'), launch)}
+          ${gauge(tt('Ready-to-play checklist', 'Checklist « Prêt à jouer »', 'Spielbereit-Checkliste'), readiness.checklist, tt(`${readiness.list.done} / ${readiness.list.total} items checked`, `${readiness.list.done} / ${readiness.list.total} éléments cochés`, `${readiness.list.done} / ${readiness.list.total} Punkte abgehakt`))}
         </div>
         <div class="su-kpis cc-kpis">
-          ${kpi(escapeHtml(sbFormatDuration(duration)), 'Duration')}
-          ${kpi(phases.length, 'Phases')}
-          ${kpi(`${generated}<small>/${items.length}</small>`, 'Injects written')}
-          ${kpi(project.cells.length, 'Cells')}
-          ${kpi(players || escapeHtml(project.exercise.players_count || 0), 'Players')}
-          ${kpi(project.actors.length, 'Actors')}
+          ${kpi(escapeHtml(sbFormatDuration(duration)), tt('Duration', 'Durée', 'Dauer'))}
+          ${kpi(phases.length, tt('Phases', 'Phases', 'Phasen'))}
+          ${kpi(`${generated}<small>/${items.length}</small>`, tt('Injects written', 'Injects rédigés', 'Geschriebene Injects'))}
+          ${kpi(project.cells.length, tt('Cells', 'Cellules', 'Zellen'))}
+          ${kpi(players || escapeHtml(project.exercise.players_count || 0), tt('Players', 'Joueurs', 'Spieler'))}
+          ${kpi(project.actors.length, tt('Actors', 'Acteurs', 'Akteure'))}
         </div>
       </article>
       <article class="card">
-        <div class="section-header"><div><h3>Load by cell and phase</h3><p class="subtle">Injects received by each cell in each phase, and their rhythm every 30 minutes.</p></div></div>
+        <div class="section-header"><div><h3>${escapeHtml(tt('Load by cell and phase', 'Charge par cellule et par phase', 'Last pro Zelle und Phase'))}</h3><p class="subtle">${escapeHtml(tt('Injects received by each cell in each phase, and their rhythm every 30 minutes.', 'Injects reçus par chaque cellule dans chaque phase, et leur rythme toutes les 30 minutes.', 'Von jeder Zelle in jeder Phase erhaltene Injects und ihr Rhythmus alle 30 Minuten.'))}</p></div></div>
         ${renderSummaryOverview(project, items, phases, duration)}
       </article>
       <div class="cc-grid">
         <article class="card cc-checks">
-          <div class="section-header"><div><h3>Automatic checks</h3><p class="subtle">Always up to date: storyline, cells, rhythm, recipients and senders${aiIssues.length ? ', plus the AI timing findings' : ''}.</p></div></div>
+          <div class="section-header"><div><h3>${escapeHtml(tt('Automatic checks', 'Contrôles automatiques', 'Automatische Prüfungen'))}</h3><p class="subtle">${escapeHtml(aiIssues.length
+            ? tt('Always up to date: storyline, cells, rhythm, recipients and senders, plus the AI timing findings.', 'Toujours à jour : storyline, cellules, rythme, destinataires et émetteurs, plus les constats de timing de l’IA.', 'Immer aktuell: Storyline, Zellen, Rhythmus, Empfänger und Absender, dazu die Timing-Befunde der KI.')
+            : tt('Always up to date: storyline, cells, rhythm, recipients and senders.', 'Toujours à jour : storyline, cellules, rythme, destinataires et émetteurs.', 'Immer aktuell: Storyline, Zellen, Rhythmus, Empfänger und Absender.'))}</p></div></div>
           ${renderSummaryReview(project, review)}
         </article>
         <article class="card cc-challenge">
-          <div class="section-header"><div><h3>Challenge with AI</h3><p class="subtle">A critical senior designer reviews ${source === 'file' ? 'the external exercise file' : 'the exercise'} on five quality axes${source === 'scenario' ? ', and its timing cell by cell' : ''}: priority actions, verdicts and findings.</p></div></div>
-          <div class="cc-source" role="group" aria-label="What to challenge">
-            <button class="${source === 'scenario' ? 'active' : ''}" data-action="checker-set-mode" data-mode="scenario">${sbUiIcon('layers', 14)} Current scenario</button>
-            <button class="${source === 'file' ? 'active' : ''}" data-action="checker-set-mode" data-mode="file" ${fileLoaded ? '' : 'disabled title="Load an external exercise file in the Context tab first"'}>${sbUiIcon('sheet', 14)} ${fileLoaded ? escapeHtml(cs.file?.name || 'External file') : 'External file'}</button>
-            ${fileLoaded ? '' : `<button class="btn btn-ghost btn-xs" data-route="scenario">Load a file in Context ${sbUiIcon('chevronRight', 12)}</button>`}
+          <div class="section-header"><div><h3>${escapeHtml(tt('Challenge with AI', 'Challenger avec l’IA', 'Mit KI hinterfragen'))}</h3><p class="subtle">${escapeHtml(source === 'file'
+            ? tt('A critical senior designer reviews the external exercise file on five quality axes: priority actions, verdicts and findings.', 'Un concepteur senior exigeant examine le fichier d’exercice externe selon cinq axes qualité : actions prioritaires, verdicts et constats.', 'Ein kritischer, erfahrener Übungsdesigner prüft die externe Übungsdatei nach fünf Qualitätsachsen: vorrangige Maßnahmen, Bewertungen und Befunde.')
+            : tt('A critical senior designer reviews the exercise on five quality axes, and its timing cell by cell: priority actions, verdicts and findings.', 'Un concepteur senior exigeant examine l’exercice selon cinq axes qualité, et son timing cellule par cellule : actions prioritaires, verdicts et constats.', 'Ein kritischer, erfahrener Übungsdesigner prüft die Übung nach fünf Qualitätsachsen und ihr Timing Zelle für Zelle: vorrangige Maßnahmen, Bewertungen und Befunde.'))}</p></div></div>
+          <div class="cc-source" role="group" aria-label="${escapeAttribute(tt('What to challenge', 'Ce qu’il faut challenger', 'Was hinterfragt werden soll'))}">
+            <button class="${source === 'scenario' ? 'active' : ''}" data-action="checker-set-mode" data-mode="scenario">${sbUiIcon('layers', 14)} ${escapeHtml(tt('Current scenario', 'Scénario actuel', 'Aktuelles Szenario'))}</button>
+            <button class="${source === 'file' ? 'active' : ''}" data-action="checker-set-mode" data-mode="file" ${fileLoaded ? '' : `disabled title="${escapeAttribute(tt('Load an external exercise file in the Context tab first', 'Chargez d’abord un fichier d’exercice externe dans l’onglet Contexte', 'Laden Sie zuerst im Tab Kontext eine externe Übungsdatei'))}"`}>${sbUiIcon('sheet', 14)} ${escapeHtml(fileLoaded ? (cs.file?.name || tt('External file', 'Fichier externe', 'Externe Datei')) : tt('External file', 'Fichier externe', 'Externe Datei'))}</button>
+            ${fileLoaded ? '' : `<button class="btn btn-ghost btn-xs" data-route="scenario">${escapeHtml(tt('Load a file in Context', 'Charger un fichier dans Contexte', 'Datei im Kontext laden'))} ${sbUiIcon('chevronRight', 12)}</button>`}
           </div>
           ${cs.analysisResult || cs.analysisLoading || cs.analysisError ? '' : `<div class="cc-run">
-            <button class="btn btn-primary" data-action="checker-analyze" ${canChallenge ? '' : 'disabled'}>${sbUiIcon('sparkles', 15)} Challenge with AI</button>
-            ${isLLMAvailable() ? '' : '<p class="agent-warning">Configure an AI connection in Settings to challenge the exercise.</p>'}
+            <button class="btn btn-primary" data-action="checker-analyze" ${canChallenge ? '' : 'disabled'}>${sbUiIcon('sparkles', 15)} ${escapeHtml(tt('Challenge with AI', 'Challenger avec l’IA', 'Mit KI hinterfragen'))}</button>
+            ${isLLMAvailable() ? '' : `<p class="agent-warning">${escapeHtml(tt('Configure an AI connection in Settings to challenge the exercise.', 'Configurez une connexion IA dans les Paramètres pour challenger l’exercice.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um die Übung zu hinterfragen.'))}</p>`}
           </div>`}
           ${typeof renderCheckerResults === 'function' ? renderCheckerResults() : ''}
         </article>
@@ -725,7 +756,7 @@ function renderSummaryView() {
 
 function renderSummaryOverview(project, items, phases, duration) {
   const rows = [...project.cells];
-  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: 'Unassigned', color: '#6d687e' });
+  if (items.some((item) => !sbHasRecipient(project, item.cell_id))) rows.push({ id: 'none', name: tt('Unassigned', 'Non attribués', 'Nicht zugewiesen'), color: '#6d687e' });
   // The phase of each inject comes from the exercise model: its linked phase, else the phase at its time.
   const phaseOf = new Map(ExerciseModel.of(project).injects.map((inject) => [inject.key, inject.phase_id]));
   const inPhase = (item, block) => phaseOf.get(item.key) === block.id;
@@ -733,9 +764,9 @@ function renderSummaryOverview(project, items, phases, duration) {
   const max = Math.max(1, ...rows.flatMap((row) => phases.map((block) => items.filter((item) => reaches(item, row) && inPhase(item, block)).length)));
   const buckets = Math.max(1, Math.ceil(duration / 30));
   // Phase names head their own column, so names and counts always line up.
-  return `${phases.length ? '' : '<p class="sb-empty">No phase</p>'}
+  return `${phases.length ? '' : `<p class="sb-empty">${escapeHtml(tt('No phase', 'Aucune phase', 'Keine Phase'))}</p>`}
     <div class="su-heat-wrap"><table class="su-heat">
-      <thead><tr><th>Cell</th>${phases.map((block) => `<th class="su-phase" style="--clip-color:${sbBlockColor(block, project.storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}"><span>${escapeHtml(block.title)}</span><small>${escapeHtml(sbFormatOffset(block.start_minutes))}</small></th>`).join('')}<th>Total</th><th>Load (per 30 min)</th></tr></thead>
+      <thead><tr><th>${escapeHtml(tt('Cell', 'Cellule', 'Zelle'))}</th>${phases.map((block) => `<th class="su-phase" style="--clip-color:${sbBlockColor(block, project.storyboard)}" title="${escapeAttribute(`${sbFormatOffset(block.start_minutes)} · ${block.title}`)}"><span>${escapeHtml(block.title)}</span><small>${escapeHtml(sbFormatOffset(block.start_minutes))}</small></th>`).join('')}<th>${escapeHtml(tt('Total', 'Total', 'Gesamt'))}</th><th>${escapeHtml(tt('Load (per 30 min)', 'Charge (par 30 min)', 'Last (pro 30 Min.)'))}</th></tr></thead>
       <tbody>${rows.map((row) => {
         const own = items.filter((item) => reaches(item, row));
         const load = Array.from({ length: buckets }, (_, index) => own.filter((item) => Math.floor(item.time / 30) === index).length);
@@ -751,7 +782,7 @@ function renderSummaryOverview(project, items, phases, duration) {
 }
 
 function renderSummaryReview(project, review = tabUI('summary').review) {
-  if (!review) return '<p class="sb-empty">Run the checks to review the rhythm and consistency of the exercise.</p>';
+  if (!review) return `<p class="sb-empty">${escapeHtml(tt('Run the checks to review the rhythm and consistency of the exercise.', 'Lancez les contrôles pour vérifier le rythme et la cohérence de l’exercice.', 'Führen Sie die Prüfungen aus, um Rhythmus und Konsistenz der Übung zu kontrollieren.'))}</p>`;
   const cellName = (id) => sbCell(project, id)?.name || '';
   const rank = { error: 0, warning: 1, info: 2 };
   const groups = new Map();
@@ -762,59 +793,93 @@ function renderSummaryReview(project, review = tabUI('summary').review) {
   });
   const ordered = [...groups.entries()].sort(([, a], [, b]) => Math.min(...a.map((entry) => rank[entry.issue.severity] ?? 2)) - Math.min(...b.map((entry) => rank[entry.issue.severity] ?? 2)));
   const renderIssue = ({ issue, index }) => `<li class="is-${issue.severity}">
-      <span>${issue.at !== null && issue.at !== undefined ? `<b>${sbFormatOffset(issue.at)}</b> ` : ''}${cellName(issue.cell_id) ? `<i>${escapeHtml(cellName(issue.cell_id))}</i> · ` : ''}${escapeHtml(issue.message)}${issue.suggestion ? `<br><small>${escapeHtml(issue.suggestion)}</small>` : ''}</span>
-      ${issue.item_key || issue.cell_id || (issue.at !== null && issue.at !== undefined) ? `<button class="btn btn-ghost btn-xs" data-tab-action="su-issue" data-tab-value="${index}">Go to</button>` : ''}
+      <span>${issue.at !== null && issue.at !== undefined ? `<b>${sbFormatOffset(issue.at)}</b> ` : ''}${cellName(issue.cell_id) ? `<i>${escapeHtml(cellName(issue.cell_id))}</i> · ` : ''}${escapeHtml(issue.display || issue.message)}${issue.suggestion ? `<br><small>${escapeHtml(issue.suggestion)}</small>` : ''}</span>
+      ${issue.item_key || issue.cell_id || (issue.at !== null && issue.at !== undefined) ? `<button class="btn btn-ghost btn-xs" data-tab-action="su-issue" data-tab-value="${index}">${escapeHtml(tt('Go to', 'Voir', 'Zeigen'))}</button>` : ''}
     </li>`;
   return `${review.summary ? `<p class="su-review-summary">${review.score !== null && review.score !== undefined ? `<b>${review.score}/100</b> ` : ''}${escapeHtml(review.summary)}</p>` : ''}
     ${review.issues.length ? `<div class="su-issue-groups">${ordered.map(([key, entries]) => {
       const severity = entries.reduce((best, entry) => ((rank[entry.issue.severity] ?? 2) < (rank[best] ?? 2) ? entry.issue.severity : best), 'info');
       return `<details class="su-issue-group is-${severity}" ${entries.length <= 3 || key === 'ai' ? 'open' : ''}>
-        <summary><b>${entries.length}</b>${escapeHtml(SU_ISSUE_LABELS[key] || key)}</summary>
+        <summary><b>${entries.length}</b>${escapeHtml(SU_ISSUE_LABELS[key] ? tt(...SU_ISSUE_LABELS[key]) : key)}</summary>
         <ul class="sb-issues">${entries.map(renderIssue).join('')}</ul>
       </details>`;
-    }).join('')}</div>` : '<ul class="sb-issues"><li class="is-info"><span>No issue found.</span></li></ul>'}`;
+    }).join('')}</div>` : `<ul class="sb-issues"><li class="is-info"><span>${escapeHtml(tt('No issue found.', 'Aucun problème détecté.', 'Kein Problem gefunden.'))}</span></li></ul>`}`;
 }
 
+// [English, French, German], translated when shown.
 const SU_ISSUE_LABELS = {
-  ai: 'AI review', empty: 'No inject yet', no_cells: 'No player cell', cell_idle: 'Cells without inject', gap: 'Dead times', peak: 'Overloads',
-  phase_empty: 'Phases without inject', no_cell: 'Injects without recipient cell', no_sender: 'Injects without sender', orphan: 'Injects no longer matching the storyline',
-  after_end: 'Injects after the end', event_time: 'Main events at another time than they say', other: 'Other'
+  ai: ['AI review', 'Revue IA', 'KI-Prüfung'],
+  empty: ['No inject yet', 'Aucun inject pour l’instant', 'Noch kein Inject'],
+  no_cells: ['No player cell', 'Aucune cellule de joueurs', 'Keine Spielerzelle'],
+  cell_idle: ['Cells without inject', 'Cellules sans inject', 'Zellen ohne Inject'],
+  gap: ['Dead times', 'Temps morts', 'Leerlaufzeiten'],
+  peak: ['Overloads', 'Surcharges', 'Überlastungen'],
+  phase_empty: ['Phases without inject', 'Phases sans inject', 'Phasen ohne Inject'],
+  no_cell: ['Injects without recipient cell', 'Injects sans cellule destinataire', 'Injects ohne Empfängerzelle'],
+  no_sender: ['Injects without sender', 'Injects sans émetteur', 'Injects ohne Absender'],
+  orphan: ['Injects no longer matching the storyline', 'Injects qui ne correspondent plus à la storyline', 'Injects, die nicht mehr zur Storyline passen'],
+  after_end: ['Injects after the end', 'Injects après la fin', 'Injects nach dem Ende'],
+  no_main: ['No phase on the main storyline', 'Aucune phase sur la storyline principale', 'Keine Phase auf der Haupt-Storyline'],
+  no_trigger: ['No trigger phase', 'Pas de phase de déclenchement', 'Keine Auslöserphase'],
+  no_exit: ['No crisis exit', 'Pas de sortie de crise', 'Kein Krisenende'],
+  late_start: ['Late start', 'Début tardif', 'Später Beginn'],
+  overlap: ['Overlapping phases', 'Phases qui se chevauchent', 'Überlappende Phasen'],
+  beyond_end: ['Phases after the end', 'Phases après la fin', 'Phasen nach dem Ende'],
+  no_brief: ['Phases without description', 'Phases sans déroulé', 'Phasen ohne Ablauf'],
+  beat_outside: ['Injects outside their phase', 'Injects hors de leur phase', 'Injects außerhalb ihrer Phase'],
+  beat_count: ['Inject counts to check', 'Nombres d’injects à vérifier', 'Zu prüfende Inject-Anzahlen'],
+  no_stimuli: ['Phases without planned inject', 'Phases sans inject prévu', 'Phasen ohne geplanten Inject'],
+  too_dense: ['Crowded phases', 'Phases trop chargées', 'Überladene Phasen'],
+  beat_no_sender: ['Planned injects without sender', 'Injects prévus sans émetteur', 'Geplante Injects ohne Absender'],
+  objective_uncovered: ['Objectives not covered', 'Objectifs non couverts', 'Nicht abgedeckte Ziele'],
+  no_objectives: ['No learning objectives', 'Aucun objectif pédagogique', 'Keine Lernziele'],
+  cast_unused: ['Unused roles', 'Rôles inutilisés', 'Ungenutzte Rollen'],
+  low_pressure: ['Low pressure', 'Pression faible', 'Geringer Druck'],
+  event_time: ['Main events at another time than they say', 'Événements principaux placés à une autre heure que celle indiquée', 'Hauptereignisse zu einer anderen Zeit als angegeben'],
+  other: ['Other', 'Autres', 'Sonstige']
 };
 
 // ═══ Context tab helpers ══════════════════════════════════════════════
 function renderContextGlance(project) {
   const sectors = ['Banking', 'Insurance', 'Energy', 'Healthcare', 'Transport', 'Industry', 'Telecom', 'Retail', 'Public sector', 'Pharmaceutical', 'Technology', 'Other'];
+  // The stored sector stays in English; the list shows it in the application language.
+  const sectorLabels = {
+    Banking: ['Banque', 'Bankwesen'], Insurance: ['Assurance', 'Versicherung'], Energy: ['Énergie', 'Energie'], Healthcare: ['Santé', 'Gesundheitswesen'],
+    Transport: ['Transport', 'Verkehr'], Industry: ['Industrie', 'Industrie'], Telecom: ['Télécommunications', 'Telekommunikation'], Retail: ['Distribution', 'Einzelhandel'],
+    'Public sector': ['Secteur public', 'Öffentlicher Sektor'], Pharmaceutical: ['Pharmaceutique', 'Pharmaindustrie'], Technology: ['Technologie', 'Technologie'], Other: ['Autre', 'Sonstige']
+  };
+  const sectorLabel = (sector) => tt(sector, sectorLabels[sector]?.[0] || sector, sectorLabels[sector]?.[1] || sector);
   const duration = project.storyboard?.duration_minutes || SB_DEFAULT_DURATION;
   // "Other" or a sector typed by hand: the select shows Other, a field next to it holds the text.
   const otherSector = Boolean(project.client.sector) && !sectors.slice(0, -1).includes(project.client.sector);
   const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
   const logo = project.client.logo_url || '';
   return `<article class="card cx-frame" data-sb-scope>
-    <div class="section-header"><div><h3>Context</h3><p class="subtle">Who the exercise is for, how long it plays, the simulated clock and the audience.</p></div></div>
+    <div class="section-header"><div><h3>${escapeHtml(tt('Context', 'Contexte', 'Kontext'))}</h3><p class="subtle">${escapeHtml(tt('Who the exercise is for, how long it plays, the simulated clock and the audience.', 'Pour qui est l’exercice, combien de temps il dure, l’horloge simulée et le public.', 'Für wen die Übung ist, wie lange sie dauert, die simulierte Uhr und das Publikum.'))}</p></div></div>
     <div class="cx-row cx-row-client">
-      <label class="field">Exercise name<input type="text" data-bind="name" value="${escapeAttribute(project.name || '')}" placeholder="e.g. Operation Bitter Pill"></label>
-      <label class="field">Client name<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="Organisation name"></label>
-      <label class="field">Sector<span class="cx-sector ${otherSector ? 'is-other' : ''}"><select data-cx-sector aria-label="Sector">${project.client.sector ? '' : '<option value="" selected disabled>Choose a sector</option>'}${sectors.map((sector) => sbOption(sector, sector, otherSector ? 'Other' : project.client.sector)).join('')}</select>${otherSector ? `<input type="text" data-cx-sector-other value="${escapeAttribute(project.client.sector === 'Other' ? '' : project.client.sector)}" placeholder="Type the sector" aria-label="Other sector">` : ''}</span></label>
+      <label class="field">${escapeHtml(tt('Exercise name', 'Nom de l’exercice', 'Name der Übung'))}<input type="text" data-bind="name" value="${escapeAttribute(project.name || '')}" placeholder="${escapeAttribute(tt('e.g. Operation Bitter Pill', 'Ex. : Opération Pilule amère', 'z. B. Operation Bittere Pille'))}"></label>
+      <label class="field">${escapeHtml(tt('Client name', 'Nom du client', 'Name des Auftraggebers'))}<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="${escapeAttribute(tt('Organisation name', 'Nom de l’organisation', 'Name der Organisation'))}"></label>
+      <label class="field">${escapeHtml(tt('Sector', 'Secteur', 'Branche'))}<span class="cx-sector ${otherSector ? 'is-other' : ''}"><select data-cx-sector aria-label="${escapeAttribute(tt('Sector', 'Secteur', 'Branche'))}">${project.client.sector ? '' : `<option value="" selected disabled>${escapeHtml(tt('Choose a sector', 'Choisissez un secteur', 'Branche wählen'))}</option>`}${sectors.map((sector) => sbOption(sector, sectorLabel(sector), otherSector ? 'Other' : project.client.sector)).join('')}</select>${otherSector ? `<input type="text" data-cx-sector-other value="${escapeAttribute(project.client.sector === 'Other' ? '' : project.client.sector)}" placeholder="${escapeAttribute(tt('Type the sector', 'Saisissez le secteur', 'Branche eingeben'))}" aria-label="${escapeAttribute(tt('Other sector', 'Autre secteur', 'Andere Branche'))}">` : ''}</span></label>
       <div class="field cx-logo">
-        <span>Logo</span>
+        <span>${escapeHtml(tt('Logo', 'Logo', 'Logo'))}</span>
         <div class="cx-logo-row">
-          ${logo ? `<img class="cx-logo-preview" src="${escapeAttribute(logo)}" alt="Client logo">` : `<span class="cx-logo-empty">${sbUiIcon('image', 18)}</span>`}
-          <label class="btn btn-secondary btn-sm cx-logo-pick">${sbUiIcon('upload', 14)} ${logo ? 'Replace' : 'Upload a file'}<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif" data-cx-logo hidden></label>
-          ${logo ? `<button class="btn btn-ghost btn-sm" data-cx-logo-clear>${sbUiIcon('trash', 13)} Remove</button>` : ''}
+          ${logo ? `<img class="cx-logo-preview" src="${escapeAttribute(logo)}" alt="${escapeAttribute(tt('Client logo', 'Logo du client', 'Logo des Auftraggebers'))}">` : `<span class="cx-logo-empty">${sbUiIcon('image', 18)}</span>`}
+          <label class="btn btn-secondary btn-sm cx-logo-pick">${sbUiIcon('upload', 14)} ${escapeHtml(logo ? tt('Replace', 'Remplacer', 'Ersetzen') : tt('Upload a file', 'Importer un fichier', 'Datei hochladen'))}<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif" data-cx-logo hidden></label>
+          ${logo ? `<button class="btn btn-ghost btn-sm" data-cx-logo-clear>${sbUiIcon('trash', 13)} ${escapeHtml(tt('Remove', 'Retirer', 'Entfernen'))}</button>` : ''}
         </div>
       </div>
     </div>
     <div class="cx-row cx-row-frame">
-      <label class="field">Exercise duration (h:min)<input type="text" inputmode="numeric" data-sc-duration value="${sbFormatHoursMinutes(duration)}" placeholder="e.g. 0:45 or 3:00" title="Hours and minutes, e.g. 0:45, 1:30 or 3:00"><span class="helper">${sbFormatDuration(duration)}</span></label>
-      <label class="field">Simulated start date<input type="datetime-local" data-bind="scenario.start_date" value="${escapeAttribute(project.scenario.start_date || '')}"></label>
-      <label class="field">Simulated end date<input type="datetime-local" data-bind="scenario.end_date" value="${escapeAttribute(project.scenario.end_date || '')}" min="${escapeAttribute(project.scenario.start_date || '')}"></label>
-      <label class="field">Timezone<select data-bind="scenario.timezone">${TIMEZONES.map((item) => sbOption(item, item, project.scenario.timezone)).join('')}</select></label>
-      <label class="field">Number of crisis cells<input type="number" min="0" max="20" step="1" data-sc-cells value="${escapeAttribute(project.exercise.cells_count || project.cells.length || '')}" placeholder="e.g. 3"><span class="helper">${project.cells.length} cell(s) defined</span></label>
-      <label class="field">Number of players<input type="number" min="0" max="10000" step="1" data-sc-players value="${escapeAttribute(project.exercise.players_count ?? '')}" placeholder="e.g. 15"><span class="helper">${players} listed in Cells & actors</span></label>
+      <label class="field">${escapeHtml(tt('Exercise duration (h:min)', 'Durée de l’exercice (h:min)', 'Übungsdauer (h:min)'))}<input type="text" inputmode="numeric" data-sc-duration value="${sbFormatHoursMinutes(duration)}" placeholder="${escapeAttribute(tt('e.g. 0:45 or 3:00', 'ex. : 0:45 ou 3:00', 'z. B. 0:45 oder 3:00'))}" title="${escapeAttribute(tt('Hours and minutes, e.g. 0:45, 1:30 or 3:00', 'Heures et minutes, ex. : 0:45, 1:30 ou 3:00', 'Stunden und Minuten, z. B. 0:45, 1:30 oder 3:00'))}"><span class="helper">${sbFormatDuration(duration)}</span></label>
+      <label class="field">${escapeHtml(tt('Simulated start date', 'Date de début simulée', 'Simuliertes Startdatum'))}<input type="datetime-local" data-bind="scenario.start_date" value="${escapeAttribute(project.scenario.start_date || '')}"></label>
+      <label class="field">${escapeHtml(tt('Simulated end date', 'Date de fin simulée', 'Simuliertes Enddatum'))}<input type="datetime-local" data-bind="scenario.end_date" value="${escapeAttribute(project.scenario.end_date || '')}" min="${escapeAttribute(project.scenario.start_date || '')}"></label>
+      <label class="field">${escapeHtml(tt('Timezone', 'Fuseau horaire', 'Zeitzone'))}<select data-bind="scenario.timezone">${TIMEZONES.map((item) => sbOption(item, item, project.scenario.timezone)).join('')}</select></label>
+      <label class="field">${escapeHtml(tt('Number of crisis cells', 'Nombre de cellules de crise', 'Anzahl der Krisenzellen'))}<input type="number" min="0" max="20" step="1" data-sc-cells value="${escapeAttribute(project.exercise.cells_count || project.cells.length || '')}" placeholder="${escapeAttribute(tt('e.g. 3', 'ex. : 3', 'z. B. 3'))}"><span class="helper">${escapeHtml(tt(`${project.cells.length} cell(s) defined`, `${project.cells.length} cellule(s) définie(s)`, `${project.cells.length} Zelle(n) definiert`))}</span></label>
+      <label class="field">${escapeHtml(tt('Number of players', 'Nombre de joueurs', 'Anzahl der Spieler'))}<input type="number" min="0" max="10000" step="1" data-sc-players value="${escapeAttribute(project.exercise.players_count ?? '')}" placeholder="${escapeAttribute(tt('e.g. 15', 'ex. : 15', 'z. B. 15'))}"><span class="helper">${escapeHtml(tt(`${players} listed in Cells & actors`, `${players} inscrit(s) dans Cellules et acteurs`, `${players} in Zellen und Akteure erfasst`))}</span></label>
     </div>
     <div class="cx-row cx-row-lang">
-      <label class="field">Primary language<select data-bind="client.language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.client.language || 'en')).join('')}</select></label>
-      <label class="field">Default inject language<select data-bind="settings.inject_language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.settings.inject_language || 'en')).join('')}</select></label>
+      <label class="field">${escapeHtml(tt('Primary language', 'Langue principale', 'Hauptsprache'))}<select data-bind="client.language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.client.language || 'en')).join('')}</select></label>
+      <label class="field">${escapeHtml(tt('Default inject language', 'Langue par défaut des injects', 'Standardsprache der Injects'))}<select data-bind="settings.inject_language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.settings.inject_language || 'en')).join('')}</select></label>
     </div>
   </article>`;
 }
@@ -829,31 +894,33 @@ function renderContextBrief(project) {
   const state = tabUI('context');
   state.mode = state.mode || 'agent';
   return `<article class="card cx-brief" data-sb-scope>
-    <div class="section-header"><div><h3>Scenario generation</h3><p class="subtle">Describe what you want to test, the audience, constraints and events you have in mind. Then load the basic library scenario as it is, or generate the scenario with AI: the agent reads this with the context above${template ? ' and the library scenario' : ''}, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.</p></div></div>
+    <div class="section-header"><div><h3>${escapeHtml(tt('Scenario generation', 'Génération du scénario', 'Szenario-Erstellung'))}</h3><p class="subtle">${escapeHtml(template
+      ? tt('Describe what you want to test, the audience, constraints and events you have in mind. Then load the basic library scenario as it is, or generate the scenario with AI: the agent reads this with the context above and the library scenario, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.', 'Décrivez ce que vous voulez tester, le public, les contraintes et les événements que vous avez en tête. Chargez ensuite le scénario de base de la bibliothèque tel quel, ou générez le scénario avec l’IA : l’agent lit ce texte avec le contexte ci-dessus et le scénario de la bibliothèque, vous pose des questions, puis construit la storyline principale, les cellules, les acteurs et le plan d’injects de chaque cellule.', 'Beschreiben Sie, was Sie testen möchten, das Publikum, die Rahmenbedingungen und die Ereignisse, die Sie im Sinn haben. Laden Sie dann das Basisszenario der Bibliothek unverändert oder erstellen Sie das Szenario mit KI: Der Agent liest dies zusammen mit dem Kontext oben und dem Bibliotheksszenario, stellt Ihnen Fragen und baut dann die Haupt-Storyline, die Zellen, die Akteure und den Inject-Plan jeder Zelle auf.')
+      : tt('Describe what you want to test, the audience, constraints and events you have in mind. Then load the basic library scenario as it is, or generate the scenario with AI: the agent reads this with the context above, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.', 'Décrivez ce que vous voulez tester, le public, les contraintes et les événements que vous avez en tête. Chargez ensuite le scénario de base de la bibliothèque tel quel, ou générez le scénario avec l’IA : l’agent lit ce texte avec le contexte ci-dessus, vous pose des questions, puis construit la storyline principale, les cellules, les acteurs et le plan d’injects de chaque cellule.', 'Beschreiben Sie, was Sie testen möchten, das Publikum, die Rahmenbedingungen und die Ereignisse, die Sie im Sinn haben. Laden Sie dann das Basisszenario der Bibliothek unverändert oder erstellen Sie das Szenario mit KI: Der Agent liest dies zusammen mit dem Kontext oben, stellt Ihnen Fragen und baut dann die Haupt-Storyline, die Zellen, die Akteure und den Inject-Plan jeder Zelle auf.'))}</p></div></div>
     ${template
-      ? `<p class="cx-template">${sbUiIcon('book', 14)} Library scenario loaded: <strong>${escapeHtml(template.name)}</strong>. Generate with AI to adapt it to your context, or load it as it is. <button class="btn btn-ghost btn-xs" data-route="project">Change in Project</button></p>`
-      : `<p class="cx-template is-empty">${sbUiIcon('book', 14)} No library scenario loaded. The AI builds the scenario from your context, or <button class="btn btn-ghost btn-xs" data-route="project">load one from the Project library</button></p>`}
+      ? `<p class="cx-template">${sbUiIcon('book', 14)} ${escapeHtml(tt('Library scenario loaded:', 'Scénario de la bibliothèque chargé :', 'Bibliotheksszenario geladen:'))} <strong>${escapeHtml(template.name)}</strong>. ${escapeHtml(tt('Generate with AI to adapt it to your context, or load it as it is.', 'Générez avec l’IA pour l’adapter à votre contexte, ou chargez-le tel quel.', 'Erstellen Sie es mit KI, um es an Ihren Kontext anzupassen, oder laden Sie es unverändert.'))} <button class="btn btn-ghost btn-xs" data-route="project">${escapeHtml(tt('Change in Project', 'Changer dans Projet', 'Im Projekt ändern'))}</button></p>`
+      : `<p class="cx-template is-empty">${sbUiIcon('book', 14)} ${escapeHtml(tt('No library scenario loaded. The AI builds the scenario from your context, or', 'Aucun scénario de la bibliothèque chargé. L’IA construit le scénario à partir de votre contexte, ou', 'Kein Bibliotheksszenario geladen. Die KI baut das Szenario aus Ihrem Kontext auf, oder'))} <button class="btn btn-ghost btn-xs" data-route="project">${escapeHtml(tt('load one from the Project library', 'chargez-en un depuis la bibliothèque du Projet', 'laden Sie eines aus der Projekt-Bibliothek'))}</button></p>`}
     ${renderContextExerciseFile()}
-    <label class="field cx-field">Context, objectives and ideas<textarea class="cx-brief-text" data-sb-meta="brief" rows="5" placeholder="e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.">${escapeHtml(storyboard.meta.brief)}</textarea></label>
+    <label class="field cx-field">${escapeHtml(tt('Context, objectives and ideas', 'Contexte, objectifs et idées', 'Kontext, Ziele und Ideen'))}<textarea class="cx-brief-text" data-sb-meta="brief" rows="5" placeholder="${escapeAttribute(tt('e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.', 'Ex. : cellule de crise de direction d’un groupe hospitalier régional. Tester la décision d’isolement dans l’incertitude, la sécurité des patients, les notifications réglementaires et la pression médiatique. Joueurs expérimentés ; prévoir un rebondissement dans la deuxième heure. Ne pas citer de fournisseurs réels.', 'Z. B. Krisenstab der Geschäftsleitung einer regionalen Klinikgruppe. Die Isolationsentscheidung unter Unsicherheit, die Patientensicherheit, behördliche Meldungen und den Mediendruck testen. Erfahrene Spieler; in der zweiten Stunde eine Wendung einbauen. Keine echten Lieferanten nennen.'))}">${escapeHtml(storyboard.meta.brief)}</textarea></label>
     <div class="cx-design">
       <div class="cx-design-col">
-        <div class="cx-design-head"><strong>Learning objectives</strong><span class="helper">What the players must practise or learn, in your own words. Name a cell or a category of players when an objective concerns only them: the AI works out who each objective is for and puts every cell in situations that test it.</span></div>
-        <textarea class="cx-objectives" data-bind="scenario.learning_objectives" rows="12" placeholder="e.g.&#10;Everyone: apply the crisis management procedure and keep a shared situation picture.&#10;Executives: decide on isolation under uncertainty and document each decision.&#10;Communication: hold consistent messages without premature disclosure.&#10;Legal: meet the NIS2 and GDPR notification deadlines.">${escapeHtml(project.scenario.learning_objectives || '')}</textarea>
+        <div class="cx-design-head"><strong>${escapeHtml(tt('Learning objectives', 'Objectifs pédagogiques', 'Lernziele'))}</strong><span class="helper">${escapeHtml(tt('What the players must practise or learn, in your own words. Name a cell or a category of players when an objective concerns only them: the AI works out who each objective is for and puts every cell in situations that test it.', 'Ce que les joueurs doivent pratiquer ou apprendre, avec vos propres mots. Nommez une cellule ou une catégorie de joueurs quand un objectif ne concerne qu’eux : l’IA détermine à qui s’adresse chaque objectif et place chaque cellule dans des situations qui le mettent à l’épreuve.', 'Was die Spieler üben oder lernen sollen, in Ihren eigenen Worten. Nennen Sie eine Zelle oder eine Spielergruppe, wenn ein Ziel nur sie betrifft: Die KI ermittelt, für wen jedes Ziel gilt, und bringt jede Zelle in Situationen, die es auf die Probe stellen.'))}</span></div>
+        <textarea class="cx-objectives" data-bind="scenario.learning_objectives" rows="12" placeholder="${escapeAttribute(tt('e.g.\nEveryone: apply the crisis management procedure and keep a shared situation picture.\nExecutives: decide on isolation under uncertainty and document each decision.\nCommunication: hold consistent messages without premature disclosure.\nLegal: meet the NIS2 and GDPR notification deadlines.', 'Ex. :\nTous : appliquer la procédure de gestion de crise et partager une même vision de la situation.\nDirection : décider de l’isolement dans l’incertitude et documenter chaque décision.\nCommunication : tenir des messages cohérents sans divulgation prématurée.\nJuridique : respecter les délais de notification NIS2 et RGPD.', 'Z. B.:\nAlle: das Krisenmanagementverfahren anwenden und ein gemeinsames Lagebild pflegen.\nGeschäftsleitung: unter Unsicherheit über die Isolation entscheiden und jede Entscheidung dokumentieren.\nKommunikation: konsistente Botschaften ohne vorzeitige Offenlegung vertreten.\nRecht: die Meldefristen nach NIS2 und DSGVO einhalten.')).replace(/\n/g, '&#10;')}">${escapeHtml(project.scenario.learning_objectives || '')}</textarea>
       </div>
       <div class="cx-design-col">
-        <div class="cx-design-head"><strong>Incident timeline</strong><span class="helper">What really happened, in order: how the attacker got in and moved, what was detected and when, how the teams reacted and what it cost the business. Phases, alerts and technical injects follow it.</span></div>
-        <textarea class="cx-attack" data-bind="scenario.attack_path" rows="12" placeholder="One event per line, in order, with its date or time when known. e.g.&#10;D-21: initial access, phishing email with a malicious attachment to an accounts payable clerk&#10;D-20: a loader installs a remote access beacon; nobody notices&#10;D-10: Kerberoasting of a service account, then lateral movement to the file servers&#10;D-3: 400 GB of HR and finance data sent to cloud storage&#10;D-day 06:40: hypervisors encrypted, backups deleted, ransom note&#10;D-day 07:15: the SOC escalates, the crisis cell is called at 08:00">${escapeHtml(project.scenario.attack_path || '')}</textarea>
+        <div class="cx-design-head"><strong>${escapeHtml(tt('Incident timeline', 'Chronologie de l’incident', 'Zeitlicher Ablauf des Vorfalls'))}</strong><span class="helper">${escapeHtml(tt('What really happened, in order: how the attacker got in and moved, what was detected and when, how the teams reacted and what it cost the business. Phases, alerts and technical injects follow it.', 'Ce qui s’est réellement passé, dans l’ordre : comment l’attaquant est entré et s’est déplacé, ce qui a été détecté et quand, comment les équipes ont réagi et ce que cela a coûté à l’activité. Les phases, les alertes et les injects techniques en découlent.', 'Was wirklich passiert ist, der Reihe nach: wie der Angreifer eindrang und sich bewegte, was wann entdeckt wurde, wie die Teams reagierten und was es das Unternehmen kostete. Phasen, Alarme und technische Injects folgen daraus.'))}</span></div>
+        <textarea class="cx-attack" data-bind="scenario.attack_path" rows="12" placeholder="${escapeAttribute(tt('One event per line, in order, with its date or time when known. e.g.\nD-21: initial access, phishing email with a malicious attachment to an accounts payable clerk\nD-20: a loader installs a remote access beacon; nobody notices\nD-10: Kerberoasting of a service account, then lateral movement to the file servers\nD-3: 400 GB of HR and finance data sent to cloud storage\nD-day 06:40: hypervisors encrypted, backups deleted, ransom note\nD-day 07:15: the SOC escalates, the crisis cell is called at 08:00', 'Un événement par ligne, dans l’ordre, avec sa date ou son heure si elle est connue. Ex. :\nJ-21 : accès initial, e-mail d’hameçonnage avec une pièce jointe malveillante envoyé à un comptable fournisseurs\nJ-20 : un loader installe une balise d’accès à distance ; personne ne le remarque\nJ-10 : Kerberoasting d’un compte de service, puis mouvement latéral vers les serveurs de fichiers\nJ-3 : 400 Go de données RH et financières envoyés vers un stockage cloud\nJour J 06:40 : hyperviseurs chiffrés, sauvegardes supprimées, demande de rançon\nJour J 07:15 : le SOC escalade, la cellule de crise est convoquée à 08:00', 'Ein Ereignis pro Zeile, der Reihe nach, mit Datum oder Uhrzeit, falls bekannt. Z. B.:\nT-21: Erstzugriff, Phishing-E-Mail mit schädlichem Anhang an einen Kreditorenbuchhalter\nT-20: ein Loader installiert einen Fernzugriffs-Beacon; niemand bemerkt es\nT-10: Kerberoasting eines Dienstkontos, dann laterale Bewegung zu den Dateiservern\nT-3: 400 GB Personal- und Finanzdaten werden in einen Cloud-Speicher übertragen\nTag X 06:40: Hypervisoren verschlüsselt, Backups gelöscht, Lösegeldforderung\nTag X 07:15: das SOC eskaliert, der Krisenstab wird für 08:00 einberufen')).replace(/\n/g, '&#10;')}">${escapeHtml(project.scenario.attack_path || '')}</textarea>
       </div>
     </div>
     <div class="cx-generate">
-      <label class="cx-mode">AI autonomy<select data-cx-mode ${busy ? 'disabled' : ''}>
-        <option value="agent" ${state.mode === 'agent' ? 'selected' : ''}>Ask me before big changes</option>
-        <option value="auto" ${state.mode === 'auto' ? 'selected' : ''}>Build automatically</option>
+      <label class="cx-mode">${escapeHtml(tt('AI autonomy', 'Autonomie de l’IA', 'KI-Autonomie'))}<select data-cx-mode ${busy ? 'disabled' : ''}>
+        <option value="agent" ${state.mode === 'agent' ? 'selected' : ''}>${escapeHtml(tt('Ask me before big changes', 'Me demander avant les gros changements', 'Vor größeren Änderungen fragen'))}</option>
+        <option value="auto" ${state.mode === 'auto' ? 'selected' : ''}>${escapeHtml(tt('Build automatically', 'Construire automatiquement', 'Automatisch aufbauen'))}</option>
       </select></label>
-      <button class="btn btn-secondary" data-cx-load-basic ${template && !busy ? '' : 'disabled'} title="${escapeAttribute(template ? `Replace the main storyline with "${template.name}" as it is in the library` : 'Load a scenario from the library in the Project tab first')}">${sbUiIcon('book', 15)} Load basic scenario from library</button>
-      <button class="btn btn-primary" data-cx-generate ${ai && !busy ? '' : 'disabled'} ${ai ? '' : `title="${escapeAttribute('Configure an AI connection in Settings to generate with AI.')}"`}>${sbUiIcon('sparkles', 15)} Generate with AI</button>
+      <button class="btn btn-secondary" data-cx-load-basic ${template && !busy ? '' : 'disabled'} title="${escapeAttribute(template ? tt(`Replace the main storyline with "${template.name}" as it is in the library`, `Remplacer la storyline principale par « ${template.name} » tel qu’il est dans la bibliothèque`, `Die Haupt-Storyline durch „${template.name}“ ersetzen, so wie es in der Bibliothek steht`) : tt('Load a scenario from the library in the Project tab first', 'Chargez d’abord un scénario de la bibliothèque dans l’onglet Projet', 'Laden Sie zuerst ein Szenario aus der Bibliothek im Tab Projekt'))}">${sbUiIcon('book', 15)} ${escapeHtml(tt('Load basic scenario from library', 'Charger le scénario de base de la bibliothèque', 'Basisszenario aus der Bibliothek laden'))}</button>
+      <button class="btn btn-primary" data-cx-generate ${ai && !busy ? '' : 'disabled'} ${ai ? '' : `title="${escapeAttribute(tt('Configure an AI connection in Settings to generate with AI.', 'Configurez une connexion IA dans les Paramètres pour générer avec l’IA.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um mit KI zu generieren.'))}"`}>${sbUiIcon('sparkles', 15)} ${escapeHtml(tt('Generate with AI', 'Générer avec l’IA', 'Mit KI generieren'))}</button>
     </div>
-    ${ai ? '' : '<p class="agent-warning">Configure an AI connection in Settings to generate with AI.</p>'}
+    ${ai ? '' : `<p class="agent-warning">${escapeHtml(tt('Configure an AI connection in Settings to generate with AI.', 'Configurez une connexion IA dans les Paramètres pour générer avec l’IA.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um mit KI zu generieren.'))}</p>`}
     ${renderAgentPanel({ origin: 'context' })}
   </article>`;
 }
@@ -864,9 +931,9 @@ function renderContextExerciseFile() {
   const cs = appState.checkerState || {};
   const loaded = !!cs.parsedData;
   return `<div class="cx-file ${loaded ? 'is-loaded' : ''}">
-    <div class="cx-design-head"><strong>Existing crisis exercise file</strong><span class="helper">${loaded
-      ? 'The agent uses it as a reference when it generates the scenario. Challenge it to audit the file as it is.'
-      : 'Optional. A chronogram from a previous exercise (.xlsx, .xls or .pptx): the agent uses it as a reference, and Check &amp; Challenge can audit it.'}</span></div>
+    <div class="cx-design-head"><strong>${escapeHtml(tt('Existing crisis exercise file', 'Fichier d’exercice de crise existant', 'Bestehende Krisenübungsdatei'))}</strong><span class="helper">${escapeHtml(loaded
+      ? tt('The agent uses it as a reference when it generates the scenario. Challenge it to audit the file as it is.', 'L’agent s’en sert comme référence pour générer le scénario. Challengez-le pour auditer le fichier tel quel.', 'Der Agent nutzt sie als Referenz, wenn er das Szenario erstellt. Hinterfragen Sie sie, um die Datei so zu prüfen, wie sie ist.')
+      : tt('Optional. A chronogram from a previous exercise (.xlsx, .xls or .pptx): the agent uses it as a reference, and Check & Challenge can audit it.', 'Facultatif. Un chronogramme d’un exercice précédent (.xlsx, .xls ou .pptx) : l’agent s’en sert comme référence, et Check & Challenge peut l’auditer.', 'Optional. Ein Chronogramm einer früheren Übung (.xlsx, .xls oder .pptx): Der Agent nutzt es als Referenz, und Check & Challenge kann es prüfen.'))}</span></div>
     ${typeof renderCheckerDropZone === 'function' ? (loaded ? renderCheckerImported({ inner: true }) : renderCheckerDropZone({ inner: true })) : ''}
   </div>`;
 }
@@ -957,11 +1024,11 @@ function dsAddInject(project) {
   const state = tabUI('detailed');
   const storyboard = project.storyboard;
   const block = sbMainBlockAt(storyboard, state.playhead);
-  if (!block) throw new AgentValidationError('Add a phase to the main storyline first.');
+  if (!block) throw new AgentValidationError(tt('Add a phase to the main storyline first.', 'Ajoutez d’abord une phase à la storyline principale.', 'Fügen Sie zuerst der Haupt-Storyline eine Phase hinzu.'));
   const cellId = sbCell(project, state.cell)?.id || project.cells[0]?.id || '';
   const cell = sbCell(project, cellId);
   const channel = cell ? (Object.entries(SB_CHANNEL_TO_CELL).find(([, key]) => key === cell.key)?.[0] || 'email_internal') : 'email_internal';
-  const beat = sbMakeBeat({ offset_minutes: Math.max(0, Math.min(state.playhead - block.start_minutes, block.duration_minutes - 1)), channel, cell_id: cellId, title: 'New inject' });
+  const beat = sbMakeBeat({ offset_minutes: Math.max(0, Math.min(state.playhead - block.start_minutes, block.duration_minutes - 1)), channel, cell_id: cellId, title: tt('New inject', 'Nouvel inject', 'Neuer Inject') });
   block.beats.push(beat);
   block.beats.sort((a, b) => a.offset_minutes - b.offset_minutes);
   if (!block.plan_hash) sbMarkPlanned(block);
@@ -974,7 +1041,9 @@ function dsDeleteSelected(project) {
   const state = tabUI('detailed');
   const item = dsSelectedItem(project);
   if (!item) return;
-  if (!window.confirm(`Delete "${item.title}"?${item.stimulus ? ' Its written inject is deleted too.' : ''}`)) return;
+  if (!window.confirm(item.stimulus
+    ? tt(`Delete "${item.title}"? Its written inject is deleted too.`, `Supprimer « ${item.title} » ? L’inject rédigé est supprimé aussi.`, `„${item.title}“ löschen? Der geschriebene Inject wird ebenfalls gelöscht.`)
+    : tt(`Delete "${item.title}"?`, `Supprimer « ${item.title} » ?`, `„${item.title}“ löschen?`))) return;
   StoryboardHistory.track();
   if (item.kind === 'beat') item.block.beats = item.block.beats.filter((beat) => beat.id !== item.beat.id);
   if (item.stimulus) project.stimuli = project.stimuli.filter((stimulus) => stimulus.id !== item.stimulus.id);
@@ -1014,7 +1083,8 @@ async function tabHandleAction(event) {
         break;
       }
       case 'add-cell': {
-        const cell = value === 'custom' ? sbMakeCell('custom', { name: `Cell ${project.cells.length + 1}` }) : sbMakeCell(value);
+        const preset = SB_CELL_PRESETS.find((item) => item.key === value);
+        const cell = value === 'custom' || !preset ? sbMakeCell('custom', { name: tt(`Cell ${project.cells.length + 1}`, `Cellule ${project.cells.length + 1}`, `Zelle ${project.cells.length + 1}`) }) : sbMakeCell(value, cePresetText(preset));
         StoryboardHistory.track();
         project.cells.push(cell);
         project.exercise.cells_count = project.cells.length;
@@ -1028,8 +1098,13 @@ async function tabHandleAction(event) {
         // Injects for several cells lose this one only; those for it alone become unassigned.
         const reached = sbExerciseItems(project).filter((item) => sbRecipientIds(item.cell_id).includes(value));
         const alone = reached.filter((item) => sbRecipientIds(item.cell_id).length === 1).length;
-        const effects = [alone ? `${alone} become unassigned` : '', reached.length - alone ? `${reached.length - alone} keep their other recipient cells` : ''].filter(Boolean).join(', ');
-        if (!window.confirm(`Delete the ${cell.name}?${reached.length ? ` It receives ${reached.length} inject(s): ${effects}.` : ''}`)) return;
+        const effects = [
+          alone ? tt(`${alone} become unassigned`, `${alone} n’auront plus de destinataire`, `${alone} werden keiner Zelle mehr zugewiesen`) : '',
+          reached.length - alone ? tt(`${reached.length - alone} keep their other recipient cells`, `${reached.length - alone} gardent leurs autres cellules destinataires`, `${reached.length - alone} behalten ihre anderen Empfängerzellen`) : ''
+        ].filter(Boolean).join(', ');
+        if (!window.confirm(reached.length
+          ? tt(`Delete the ${cell.name}? It receives ${reached.length} inject(s): ${effects}.`, `Supprimer la cellule ${cell.name} ? Elle reçoit ${reached.length} inject(s) : ${effects}.`, `Zelle ${cell.name} löschen? Sie erhält ${reached.length} Inject(s): ${effects}.`)
+          : tt(`Delete the ${cell.name}?`, `Supprimer la cellule ${cell.name} ?`, `Zelle ${cell.name} löschen?`))) return;
         StoryboardHistory.track();
         project.cells = project.cells.filter((item) => item.id !== value);
         const without = (cellId) => (sbRecipientIds(cellId).includes(value) ? sbJoinRecipients(project, sbRecipientIds(cellId).filter((id) => id !== value)) : cellId);
@@ -1055,7 +1130,7 @@ async function tabHandleAction(event) {
         break;
       }
       case 'add-actor':
-        addActor({ role: value, name: `New ${roleLabel(value).toLowerCase()}`, title: roleLabel(value) }, false);
+        addActor({ role: value, name: tt(`New ${roleLabel(value).toLowerCase()}`, `${roleLabel(value)} (nouveau)`, `Neu: ${roleLabel(value)}`), title: roleLabel(value) }, false);
         saveLocal(false);
         break;
       case 'ds-cell':
@@ -1112,7 +1187,9 @@ async function tabHandleAction(event) {
         const item = dsSelectedItem(project);
         if (item?.kind !== 'beat') break;
         const result = await SbPipeline.run({ blockIds: [item.block.id], beatIds: [item.beat.id], plan: false, cast: true, write: isLLMAvailable() });
-        pushToast(result.created ? `Inject created${result.written ? ' and written' : ''}.` : 'Nothing created.', result.created ? 'success' : 'info');
+        pushToast(result.created
+          ? (result.written ? tt('Inject created and written.', 'Inject créé et rédigé.', 'Inject erstellt und geschrieben.') : tt('Inject created.', 'Inject créé.', 'Inject erstellt.'))
+          : tt('Nothing created.', 'Rien n’a été créé.', 'Nichts erstellt.'), result.created ? 'success' : 'info');
         break;
       }
       case 'ds-rewrite': {
@@ -1120,7 +1197,7 @@ async function tabHandleAction(event) {
         if (!item?.stimulus) break;
         const manual = sbIsManuallyEdited(item.stimulus);
         await SbPipeline.applyImpacts([{ id: 'single', kind: 'outdated', target: 'stimulus', stimulus_id: item.stimulus.id, block_id: item.block?.id, beat_id: item.beat?.id || '', label: item.title, action: manual ? 'adapt' : 'regenerate' }]);
-        pushToast(manual ? 'Inject adapted, keeping your edits.' : 'Inject rewritten.', 'success');
+        pushToast(manual ? tt('Inject adapted, keeping your edits.', 'Inject adapté, vos modifications sont conservées.', 'Inject angepasst, Ihre Änderungen bleiben erhalten.') : tt('Inject rewritten.', 'Inject réécrit.', 'Inject neu geschrieben.'), 'success');
         break;
       }
       case 'su-issue': {
@@ -1157,12 +1234,12 @@ function tabBindInputs(root) {
   root.querySelectorAll('[data-sc-duration]').forEach((input) => input.addEventListener('change', () => {
     const minutes = sbParseDuration(input.value);
     if (minutes === null || minutes > SB_MAX_DURATION) {
-      pushToast('Type the duration as hours:minutes, e.g. 0:45, 1:30 or 3:00.', 'warning');
+      pushToast(tt('Type the duration as hours:minutes, e.g. 0:45, 1:30 or 3:00.', 'Saisissez la durée en heures:minutes, ex. : 0:45, 1:30 ou 3:00.', 'Geben Sie die Dauer als Stunden:Minuten ein, z. B. 0:45, 1:30 oder 3:00.'), 'warning');
     } else {
       const end = sbStoryboardEnd(storyboard);
       storyboard.duration_minutes = Math.max(30, minutes, end);
-      if (minutes < 30) pushToast('An exercise lasts at least 30 minutes.', 'info');
-      else if (minutes < end) pushToast(`The phases end at ${sbFormatDuration(end)}: shorten them in the Main storyline first.`, 'info');
+      if (minutes < 30) pushToast(tt('An exercise lasts at least 30 minutes.', 'Un exercice dure au moins 30 minutes.', 'Eine Übung dauert mindestens 30 Minuten.'), 'info');
+      else if (minutes < end) pushToast(tt(`The phases end at ${sbFormatDuration(end)}: shorten them in the Main storyline first.`, `Les phases se terminent à ${sbFormatDuration(end)} : raccourcissez-les d’abord dans la Storyline principale.`, `Die Phasen enden bei ${sbFormatDuration(end)}: Kürzen Sie sie zuerst in der Haupt-Storyline.`), 'info');
       StoryboardHistory.commit('Change duration');
     }
     App.render();
@@ -1188,8 +1265,8 @@ function tabBindInputs(root) {
   root.querySelectorAll('[data-cx-logo]').forEach((input) => input.addEventListener('change', () => {
     const file = input.files?.[0];
     if (!file) return;
-    if (!/^image\//.test(file.type)) { pushToast('Choose an image file for the logo.', 'error'); return; }
-    if (file.size > 1024 * 1024) { pushToast('Logo too large (max 1 MB).', 'error'); return; }
+    if (!/^image\//.test(file.type)) { pushToast(tt('Choose an image file for the logo.', 'Choisissez un fichier image pour le logo.', 'Wählen Sie eine Bilddatei für das Logo.'), 'error'); return; }
+    if (file.size > 1024 * 1024) { pushToast(tt('Logo too large (max 1 MB).', 'Logo trop volumineux (max. 1 Mo).', 'Logo zu groß (max. 1 MB).'), 'error'); return; }
     const reader = new FileReader();
     reader.onload = () => { project.client.logo_url = String(reader.result || ''); saveLocal(false); App.render(); };
     reader.readAsDataURL(file);
@@ -1204,7 +1281,7 @@ function tabBindInputs(root) {
     const template = contextLibraryTemplate(project);
     if (!template || !sbUseTemplate(template, 'replace')) return;
     appState.route = 'storyline';
-    pushToast(`"${template.name}" loaded as it is. Refine the phases, then plan and write the injects.`, 'success');
+    pushToast(tt(`"${template.name}" loaded as it is. Refine the phases, then plan and write the injects.`, `« ${template.name} » chargé tel quel. Affinez les phases, puis planifiez et rédigez les injects.`, `„${template.name}“ unverändert geladen. Verfeinern Sie die Phasen, dann planen und schreiben Sie die Injects.`), 'success');
     App.render();
   }));
   root.querySelectorAll('[data-cx-generate]').forEach((button) => button.addEventListener('click', () => {
@@ -1448,7 +1525,7 @@ function dsOnKeyDown(event) {
     event.preventDefault();
     if (sbReadOnly()) return;
     const label = key === 'y' || event.shiftKey ? StoryboardHistory.redo() : StoryboardHistory.undo();
-    if (label) pushToast(`${key === 'y' || event.shiftKey ? 'Redone' : 'Undone'}: ${label}`, 'info');
+    if (label) pushToast(key === 'y' || event.shiftKey ? tt(`Redone: ${label}`, `Rétabli : ${sbHistoryLabel(label)}`, `Wiederholt: ${sbHistoryLabel(label)}`) : tt(`Undone: ${label}`, `Annulé : ${sbHistoryLabel(label)}`, `Rückgängig gemacht: ${sbHistoryLabel(label)}`), 'info');
     App.render();
     return;
   }

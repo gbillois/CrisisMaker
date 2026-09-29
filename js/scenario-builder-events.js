@@ -81,7 +81,8 @@ function sbDeleteSelected() {
   const blocks = ui.selected.map((id) => sbBlock(storyboard, id)).filter((block) => block && !block.locked);
   if (!blocks.length) return;
   const linked = blocks.reduce((sum, block) => sum + sbStimuliForBlock(appState.scenario, block.id).length, 0);
-  const message = `Delete ${blocks.length === 1 ? `"${blocks[0].title}"` : `${blocks.length} blocks`}?${linked ? `\n${linked} linked inject(s) are kept and will be listed as orphans in Sync.` : ''}`;
+  const what = blocks.length === 1 ? tt(`"${blocks[0].title}"`, `« ${blocks[0].title} »`, `„${blocks[0].title}“`) : tt(`${blocks.length} blocks`, `${blocks.length} blocs`, `${blocks.length} Blöcke`);
+  const message = `${tt(`Delete ${what}?`, `Supprimer ${what} ?`, `${what} löschen?`)}${linked ? `\n${tt(`${linked} linked inject(s) are kept and will be listed as orphans in Sync.`, `${linked} inject(s) lié(s) sont conservés et apparaîtront comme orphelins dans la mise à jour.`, `${linked} verknüpfte(r) Inject(s) bleiben erhalten und werden bei der Aktualisierung als verwaist aufgeführt.`)}` : ''}`;
   if (!window.confirm(message)) return;
   const ids = new Set(blocks.map((block) => block.id));
   if (ui.ripple && blocks.length === 1 && sbTrack(storyboard, blocks[0].track_id)?.kind === 'main') {
@@ -121,10 +122,10 @@ async function sbRunAI(label, task, describe = null) {
   StoryboardHistory.snapshot(`Before ${label.toLowerCase()}`, 'ai');
   try {
     const result = await task();
-    pushToast(describe ? describe(result) : `${label}: done. Undo is available.`, 'success');
+    pushToast(describe ? describe(result) : tt(`${label}: done. Undo is available.`, `${sbHistoryLabel(label)} : terminé. Vous pouvez annuler.`, `${sbHistoryLabel(label)}: erledigt. Rückgängig ist möglich.`), 'success');
     return result;
   } catch (error) {
-    pushToast(error?.name === 'AbortError' ? 'AI operation stopped.' : sbErrorMessage(error), error?.name === 'AbortError' ? 'info' : 'error');
+    pushToast(error?.name === 'AbortError' ? tt('AI operation stopped.', 'Opération IA arrêtée.', 'KI-Vorgang gestoppt.') : sbErrorMessage(error), error?.name === 'AbortError' ? 'info' : 'error');
     return null;
   } finally {
     StoryboardHistory.commit(label);
@@ -148,7 +149,7 @@ function sbReplaceStoryboard(storyboard, label) {
 function sbUseTemplate(template, mode = 'replace') {
   const project = appState.scenario;
   const ui = sbUI();
-  if (mode === 'replace' && project.storyboard.blocks.length && !window.confirm(`Replace the main storyline (its phases and objectives) with "${template.name}"? The client, context, cells, actors and injects of this project stay. A version is saved first and Undo is available.`)) return false;
+  if (mode === 'replace' && project.storyboard.blocks.length && !window.confirm(tt(`Replace the main storyline (its phases and objectives) with "${template.name}"? The client, context, cells, actors and injects of this project stay. A version is saved first and Undo is available.`, `Remplacer la storyline principale (ses phases et ses objectifs) par « ${template.name} » ? Le client, le contexte, les cellules, les acteurs et les injects de ce projet sont conservés. Une version est enregistrée avant et vous pouvez annuler.`, `Die Haupt-Storyline (Phasen und Ziele) durch „${template.name}“ ersetzen? Auftraggeber, Kontext, Zellen, Akteure und Injects dieses Projekts bleiben erhalten. Vorher wird eine Version gespeichert, und Rückgängig ist möglich.`))) return false;
   StoryboardHistory.snapshot(`Before template "${template.name}"`, 'ai');
   const before = project.storyboard;
   sbApplyTemplate(template, mode);
@@ -176,13 +177,13 @@ async function sbHandleAction(event) {
     switch (action) {
       case 'undo': {
         const label = StoryboardHistory.undo();
-        if (label) pushToast(`Undone: ${label}`, 'info');
+        if (label) pushToast(tt(`Undone: ${label}`, `Annulé : ${sbHistoryLabel(label)}`, `Rückgängig gemacht: ${sbHistoryLabel(label)}`), 'info');
         App.render();
         break;
       }
       case 'redo': {
         const label = StoryboardHistory.redo();
-        if (label) pushToast(`Redone: ${label}`, 'info');
+        if (label) pushToast(tt(`Redone: ${label}`, `Rétabli : ${sbHistoryLabel(label)}`, `Wiederholt: ${sbHistoryLabel(label)}`), 'info');
         App.render();
         break;
       }
@@ -232,7 +233,7 @@ async function sbHandleAction(event) {
       case 'deepen-all': {
         const pool = action === 'deepen-all' ? storyboard.blocks : ui.selected.map((id) => sbBlock(storyboard, id)).filter(Boolean);
         const targets = pool.filter((item) => !item.locked && (sbDetailLevel(item) < 3 || item.beats.length < item.stimuli_target));
-        if (!targets.length) { pushToast('Every block already has a complete inject plan.', 'info'); break; }
+        if (!targets.length) { pushToast(tt('Every block already has a complete inject plan.', 'Chaque bloc a déjà un plan d’injects complet.', 'Jeder Block hat bereits einen vollständigen Inject-Plan.'), 'info'); break; }
         await sbRunAI(`Deepen ${targets.length} block(s)`, () => SbAI.deepen(targets.map((item) => item.id), null));
         break;
       }
@@ -249,7 +250,7 @@ async function sbHandleAction(event) {
       case 'rewrite-block': {
         const instruction = ui.rewrite.trim();
         if (!block) break;
-        if (!instruction) { pushToast('Write an instruction first.', 'info'); break; }
+        if (!instruction) { pushToast(tt('Write an instruction first.', 'Écrivez d’abord une instruction.', 'Schreiben Sie zuerst eine Anweisung.'), 'info'); break; }
         const result = await sbRunAI('Rewrite block', () => SbAI.rewrite(block.id, instruction));
         if (result) ui.rewrite = '';
         App.render();
@@ -279,7 +280,7 @@ async function sbHandleAction(event) {
         const track = sbTrack(storyboard, element.dataset.sbTrack);
         if (!track || track.kind === 'main') break;
         const blocks = storyboard.blocks.filter((item) => item.track_id === track.id);
-        if (blocks.length && !window.confirm(`Delete the track "${track.name}" and its ${blocks.length} block(s)?`)) break;
+        if (blocks.length && !window.confirm(tt(`Delete the track "${track.name}" and its ${blocks.length} block(s)?`, `Supprimer la piste « ${track.name} » et ses ${blocks.length} bloc(s) ?`, `Spur „${track.name}“ und ihre ${blocks.length} Block/Blöcke löschen?`))) break;
         storyboard.blocks = storyboard.blocks.filter((item) => item.track_id !== track.id);
         storyboard.tracks = storyboard.tracks.filter((item) => item.id !== track.id);
         sbCommitRender('Delete track');
@@ -309,7 +310,9 @@ async function sbHandleAction(event) {
         const mode = element.dataset.sbMode === 'insert' ? 'insert' : 'replace';
         if (!sbUseTemplate(template, mode)) break;
         appState.route = 'storyline';
-        pushToast(`"${template.name}" ${mode === 'insert' ? 'inserted' : 'loaded'}. Refine blocks, then generate injects.`, 'success');
+        pushToast(mode === 'insert'
+          ? tt(`"${template.name}" inserted. Refine blocks, then generate injects.`, `« ${template.name} » inséré. Affinez les blocs, puis générez les injects.`, `„${template.name}“ eingefügt. Verfeinern Sie die Blöcke, dann generieren Sie die Injects.`)
+          : tt(`"${template.name}" loaded. Refine blocks, then generate injects.`, `« ${template.name} » chargé. Affinez les blocs, puis générez les injects.`, `„${template.name}“ geladen. Verfeinern Sie die Blöcke, dann generieren Sie die Injects.`), 'success');
         App.render();
         break;
       }
@@ -336,8 +339,8 @@ async function sbHandleAction(event) {
         saveLocal(false);
         appState.route = 'scenario';
         pushToast(choice === 'new'
-          ? `New project from "${template.name}". Set the key information, then generate the scenario with AI or load the basic scenario.`
-          : `"${template.name}" loaded. Set the key information, then generate the scenario with AI or load the basic scenario.`, 'success');
+          ? tt(`New project from "${template.name}". Set the key information, then generate the scenario with AI or load the basic scenario.`, `Nouveau projet à partir de « ${template.name} ». Renseignez les informations clés, puis générez le scénario avec l’IA ou chargez le scénario de base.`, `Neues Projekt aus „${template.name}“. Legen Sie die wichtigsten Angaben fest, dann generieren Sie das Szenario mit KI oder laden das Basisszenario.`)
+          : tt(`"${template.name}" loaded. Set the key information, then generate the scenario with AI or load the basic scenario.`, `« ${template.name} » chargé. Renseignez les informations clés, puis générez le scénario avec l’IA ou chargez le scénario de base.`, `„${template.name}“ geladen. Legen Sie die wichtigsten Angaben fest, dann generieren Sie das Szenario mit KI oder laden das Basisszenario.`), 'success');
         App.render();
         break;
       }
@@ -351,29 +354,29 @@ async function sbHandleAction(event) {
         break;
       }
       case 'export-current': {
-        const template = sbStoryboardToTemplate(project.storyboard, project, sbText(project.name || 'My scenario', 160));
-        if (!template.blocks.length) { pushToast('The current storyline is empty: nothing to export.', 'error'); break; }
+        const template = sbStoryboardToTemplate(project.storyboard, project, sbText(project.name || tt('My scenario', 'Mon scénario', 'Mein Szenario'), 160));
+        if (!template.blocks.length) { pushToast(tt('The current storyline is empty: nothing to export.', 'La storyline actuelle est vide : rien à exporter.', 'Die aktuelle Storyline ist leer: nichts zu exportieren.'), 'error'); break; }
         sbExportTemplate(template);
-        pushToast(`"${template.name}" exported as a template file.`, 'success');
+        pushToast(tt(`"${template.name}" exported as a template file.`, `« ${template.name} » exporté comme fichier modèle.`, `„${template.name}“ als Vorlagendatei exportiert.`), 'success');
         break;
       }
       case 'delete-template':
-        if (window.confirm('Delete this template from your library?')) {
+        if (window.confirm(tt('Delete this template from your library?', 'Supprimer ce modèle de votre bibliothèque ?', 'Diese Vorlage aus Ihrer Bibliothek löschen?'))) {
           sbDeleteUserTemplate(element.dataset.sbTemplate);
           ui.modal = null;
           App.render();
         }
         break;
       case 'save-template': {
-        const template = sbSaveCurrentAsTemplate(ui.templateName || project.name || 'My scenario');
+        const template = sbSaveCurrentAsTemplate(ui.templateName || project.name || tt('My scenario', 'Mon scénario', 'Mein Szenario'));
         ui.templateName = '';
-        pushToast(`Template "${template.name}" saved in this browser. Export it to share it.`, 'success');
+        pushToast(tt(`Template "${template.name}" saved in this browser. Export it to share it.`, `Modèle « ${template.name} » enregistré dans ce navigateur. Exportez-le pour le partager.`, `Vorlage „${template.name}“ in diesem Browser gespeichert. Exportieren Sie sie, um sie zu teilen.`), 'success');
         App.render();
         break;
       }
       case 'import-template': {
         const template = await sbImportTemplateFile();
-        if (template) { pushToast(`Template "${template.name}" imported.`, 'success'); ui.bin = 'library'; App.render(); }
+        if (template) { pushToast(tt(`Template "${template.name}" imported.`, `Modèle « ${template.name} » importé.`, `Vorlage „${template.name}“ importiert.`), 'success'); ui.bin = 'library'; App.render(); }
         break;
       }
       case 'add-cast':
@@ -383,27 +386,27 @@ async function sbHandleAction(event) {
       case 'delete-cast': {
         const castId = element.dataset.sbCastId;
         const used = storyboard.blocks.reduce((sum, item) => sum + item.beats.filter((beat) => beat.cast_id === castId).length, 0);
-        if (used && !window.confirm(`This role sends ${used} planned inject(s). Remove it anyway?`)) break;
+        if (used && !window.confirm(tt(`This role sends ${used} planned inject(s). Remove it anyway?`, `Ce rôle envoie ${used} inject(s) prévu(s). Le retirer quand même ?`, `Diese Rolle sendet ${used} geplante(n) Inject(s). Trotzdem entfernen?`))) break;
         storyboard.cast = storyboard.cast.filter((cast) => cast.id !== castId);
         storyboard.blocks.forEach((item) => item.beats.forEach((beat) => { if (beat.cast_id === castId) beat.cast_id = ''; }));
         sbCommitRender('Remove role');
         break;
       }
       case 'plan-cast':
-        await sbRunAI('Suggest roles', () => SbAI.planCast(), (added) => added ? `${added} role(s) added. Undo is available.` : 'No role missing: every sender the storyline needs already has one.');
+        await sbRunAI('Suggest roles', () => SbAI.planCast(), (added) => added ? tt(`${added} role(s) added. Undo is available.`, `${added} rôle(s) ajouté(s). Vous pouvez annuler.`, `${added} Rolle(n) hinzugefügt. Rückgängig ist möglich.`) : tt('No role missing: every sender the storyline needs already has one.', 'Aucun rôle manquant : chaque émetteur dont la storyline a besoin en a déjà un.', 'Keine Rolle fehlt: Jeder Absender, den die Storyline braucht, hat bereits eine.'));
         break;
       case 'create-actors': {
         const missing = storyboard.cast.filter((cast) => !sbFindActorForCast(project, cast));
         storyboard.cast.forEach((cast) => { const actor = sbFindActorForCast(project, cast); if (actor && cast.actor_id !== actor.id) cast.actor_id = actor.id; });
-        if (!missing.length) { StoryboardHistory.commit('Link actors'); pushToast('Every role already has an actor.', 'info'); App.render(); break; }
+        if (!missing.length) { StoryboardHistory.commit('Link actors'); pushToast(tt('Every role already has an actor.', 'Chaque rôle a déjà un acteur.', 'Jede Rolle hat bereits einen Akteur.'), 'info'); App.render(); break; }
         let details = {};
         if (isLLMAvailable()) {
-          try { details = await SbAI.nameCast(missing.map((cast) => cast.id)); } catch (error) { if (error?.name !== 'AbortError') pushToast(`AI naming failed; roles are used as names. ${sbErrorMessage(error)}`, 'info'); }
+          try { details = await SbAI.nameCast(missing.map((cast) => cast.id)); } catch (error) { if (error?.name !== 'AbortError') pushToast(`${tt('AI naming failed; roles are used as names.', 'Le nommage par l’IA a échoué ; les rôles servent de noms.', 'Benennung durch KI fehlgeschlagen; die Rollen werden als Namen verwendet.')} ${sbErrorMessage(error)}`, 'info'); }
         }
         missing.forEach((cast) => sbCreateActorForCast(project, cast, details[cast.id] || {}));
         StoryboardHistory.commit('Create actors');
         saveLocal(false);
-        pushToast(`${missing.length} actor(s) created.`, 'success');
+        pushToast(tt(`${missing.length} actor(s) created.`, `${missing.length} acteur(s) créé(s).`, `${missing.length} Akteur(e) erstellt.`), 'success');
         App.render();
         break;
       }
@@ -411,7 +414,7 @@ async function sbHandleAction(event) {
         const version = StoryboardHistory.snapshot(ui.versionLabel.trim() || `Version rev ${storyboard.rev}`, 'named');
         ui.versionLabel = '';
         ui.diffVersionId = version.id;
-        pushToast('Version saved with the project.', 'success');
+        pushToast(tt('Version saved with the project.', 'Version enregistrée avec le projet.', 'Version mit dem Projekt gespeichert.'), 'success');
         App.render();
         break;
       }
@@ -419,7 +422,7 @@ async function sbHandleAction(event) {
         storyboard.meta.validated_rev = storyboard.rev + 1;
         StoryboardHistory.commit('Mark as validated');
         StoryboardHistory.snapshot(`Validated rev ${storyboard.rev}`, 'named');
-        pushToast(`Storyboard rev ${storyboard.rev} marked as validated.`, 'success');
+        pushToast(tt(`Storyboard rev ${storyboard.rev} marked as validated.`, `Storyboard rev ${storyboard.rev} marqué comme validé.`, `Storyboard rev ${storyboard.rev} als freigegeben markiert.`), 'success');
         App.render();
         break;
       case 'compare-version':
@@ -428,11 +431,11 @@ async function sbHandleAction(event) {
         break;
       case 'restore-version': {
         const version = StoryboardHistory.findVersion(element.dataset.sbVersion);
-        if (!version || !window.confirm(`Restore "${version.label}"? The current storyboard is saved as a version first.`)) break;
+        if (!version || !window.confirm(tt(`Restore "${version.label}"? The current storyboard is saved as a version first.`, `Restaurer « ${version.label} » ? Le storyboard actuel est d’abord enregistré comme version.`, `„${version.label}“ wiederherstellen? Das aktuelle Storyboard wird zuerst als Version gespeichert.`))) break;
         StoryboardHistory.restore(version.id);
         ui.modal = null;
         ui.selected = [];
-        pushToast(`Restored "${version.label}".`, 'success');
+        pushToast(tt(`Restored "${version.label}".`, `« ${version.label} » restauré.`, `„${version.label}“ wiederhergestellt.`), 'success');
         App.render();
         break;
       }
@@ -446,7 +449,7 @@ async function sbHandleAction(event) {
           await SbAI.coherence({ ai: element.dataset.sbValue === 'ai' });
           StoryboardHistory.silent();
         } catch (error) {
-          pushToast(error?.name === 'AbortError' ? 'AI review stopped.' : sbErrorMessage(error), 'error');
+          pushToast(error?.name === 'AbortError' ? tt('AI review stopped.', 'Revue IA arrêtée.', 'KI-Prüfung gestoppt.') : sbErrorMessage(error), 'error');
         }
         App.render();
         break;
@@ -455,7 +458,7 @@ async function sbHandleAction(event) {
         const issue = report?.issues?.[Number(element.dataset.sbIssue)];
         const target = issue?.fix && sbBlock(storyboard, issue.fix.block_id);
         if (!target) break;
-        if (target.locked) { pushToast('This block is locked.', 'info'); break; }
+        if (target.locked) { pushToast(tt('This block is locked.', 'Ce bloc est verrouillé.', 'Dieser Block ist gesperrt.'), 'info'); break; }
         Object.assign(target, issue.fix.patch);
         target.ai_rev = storyboard.rev + 1;
         report.issues.splice(Number(element.dataset.sbIssue), 1);
@@ -471,7 +474,7 @@ async function sbHandleAction(event) {
         const cellIds = ui.generate.scope === 'cell' && sbCell(project, ui.generate.cellId) ? [ui.generate.cellId] : null;
         const result = await SbPipeline.run({ blockIds: ids && ids.length ? ids : null, cellIds, plan: ui.generate.plan && !cellIds, cast: ui.generate.cast, write: ui.generate.write });
         ui.impacts = null;
-        if (SbPipeline.status === 'complete') pushToast(`${result.created} inject(s) created, ${result.written} written with AI.`, 'success');
+        if (SbPipeline.status === 'complete') pushToast(tt(`${result.created} inject(s) created, ${result.written} written with AI.`, `${result.created} inject(s) créé(s), ${result.written} rédigé(s) avec l’IA.`, `${result.created} Inject(s) erstellt, ${result.written} mit KI geschrieben.`), 'success');
         App.render();
         break;
       }
@@ -483,7 +486,7 @@ async function sbHandleAction(event) {
         SbAI.stop();
         break;
       case 'undo-generation':
-        if (window.confirm(`Restore actors, injects and storyboard from before the ${SbPipeline.checkpoint?.label || 'last generation'}? Later edits are replaced too.`)) {
+        if (window.confirm(tt(`Restore actors, injects and storyboard from before the ${SbPipeline.checkpoint?.label || 'last generation'}? Later edits are replaced too.`, `Restaurer les acteurs, les injects et le storyboard d’avant ${SbPipeline.checkpoint?.label ? `« ${SbPipeline.checkpoint.label} »` : 'la dernière génération'} ? Les modifications ultérieures sont aussi remplacées.`, `Akteure, Injects und Storyboard vom Stand vor ${SbPipeline.checkpoint?.label ? `„${SbPipeline.checkpoint.label}“` : 'der letzten Generierung'} wiederherstellen? Spätere Änderungen werden ebenfalls ersetzt.`))) {
           SbPipeline.undo();
           ui.impacts = null;
           App.render();
@@ -496,7 +499,7 @@ async function sbHandleAction(event) {
       case 'apply-sync': {
         const impacts = ui.impacts || sbComputeImpacts(project);
         const destructive = impacts.filter((impact) => impact.action === 'delete').length;
-        if (destructive && !window.confirm(`${destructive} inject(s) will be deleted. Continue?`)) break;
+        if (destructive && !window.confirm(tt(`${destructive} inject(s) will be deleted. Continue?`, `${destructive} inject(s) seront supprimés. Continuer ?`, `${destructive} Inject(s) werden gelöscht. Fortfahren?`))) break;
         await SbPipeline.applyImpacts(impacts);
         ui.impacts = null;
         App.render();
@@ -808,13 +811,13 @@ function sbStartClipPointer(event, clip) {
       const end = sbSnapWithEdges(original.start + original.duration + raw, edges, ppm);
       delta = Math.max(5, end - original.start) - original.duration;
       clip.style.width = `${(original.duration + delta) * ppm}px`;
-      sbDragTip(canvas, `${sbFormatDuration(original.duration + delta)} · ends ${sbFormatOffset(original.start + original.duration + delta)}`, sbHeaderWidth() + (original.start + original.duration + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
+      sbDragTip(canvas, `${sbFormatDuration(original.duration + delta)} · ${tt('ends', 'fin', 'Ende')} ${sbFormatOffset(original.start + original.duration + delta)}`, sbHeaderWidth() + (original.start + original.duration + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
     } else {
       const start = Math.max(0, sbSnapWithEdges(original.start + raw, edges, ppm));
       delta = Math.min(start, original.start + original.duration - 5) - original.start;
       clip.style.left = `${(original.start + delta) * ppm}px`;
       clip.style.width = `${(original.duration - delta) * ppm}px`;
-      sbDragTip(canvas, `starts ${sbFormatOffset(original.start + delta)} · ${sbFormatDuration(original.duration - delta)}`, sbHeaderWidth() + (original.start + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
+      sbDragTip(canvas, `${tt('starts', 'début', 'Beginn')} ${sbFormatOffset(original.start + delta)} · ${sbFormatDuration(original.duration - delta)}`, sbHeaderWidth() + (original.start + delta) * ppm, clip.offsetTop + clip.parentElement.offsetTop - 26);
     }
   };
 
@@ -976,7 +979,7 @@ function sbOnKeyDown(event) {
     event.preventDefault();
     if (sbReadOnly()) return;
     const label = (key === 'y' || event.shiftKey) ? StoryboardHistory.redo() : StoryboardHistory.undo();
-    if (label) pushToast(`${key === 'y' || event.shiftKey ? 'Redone' : 'Undone'}: ${label}`, 'info');
+    if (label) pushToast(key === 'y' || event.shiftKey ? tt(`Redone: ${label}`, `Rétabli : ${sbHistoryLabel(label)}`, `Wiederholt: ${sbHistoryLabel(label)}`) : tt(`Undone: ${label}`, `Annulé : ${sbHistoryLabel(label)}`, `Rückgängig gemacht: ${sbHistoryLabel(label)}`), 'info');
     App.render();
     return;
   }

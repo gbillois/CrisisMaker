@@ -719,43 +719,47 @@ function sbObjectivesList(project) {
 
 function sbStructuralChecks(storyboard, project = null) {
   const issues = [];
-  const add = (severity, code, message, blockIds = []) => issues.push({ severity, code, message, block_ids: blockIds, fix: null, source: 'rules' });
+  // text: English (message, also given to the AI), or [English, French, German] (display in the app language).
+  const add = (severity, code, text, blockIds = []) => {
+    const [message, fr, de] = Array.isArray(text) ? text : [text];
+    issues.push({ severity, code, message, display: fr && typeof tt === 'function' ? tt(message, fr, de) : message, block_ids: blockIds, fix: null, source: 'rules' });
+  };
   if (!storyboard.blocks.length) {
     // Nothing to play yet: a warning, never a near-perfect score.
-    add('warning', 'empty', 'The storyboard is empty. Start from the library, generate a skeleton with AI or drag blocks onto the timeline.');
+    add('warning', 'empty', ['The storyboard is empty. Start from the library, generate a skeleton with AI or drag blocks onto the timeline.', 'Le storyboard est vide. Partez de la bibliothèque, générez un squelette avec l’IA ou faites glisser des blocs sur la timeline.', 'Das Storyboard ist leer. Starten Sie mit der Bibliothek, erstellen Sie ein Grundgerüst mit KI oder ziehen Sie Blöcke auf die Zeitleiste.']);
     return issues;
   }
   const main = sbMainBlocks(storyboard);
-  if (!main.length) add('warning', 'no_main', 'No block on the main storyline.');
-  if (main.length && !main.some((block) => block.type === 'trigger')) add('warning', 'no_trigger', 'The main storyline has no trigger & detection block.');
-  if (main.length && !storyboard.blocks.some((block) => block.type === 'exit')) add('info', 'no_exit', 'No crisis exit block: plan how the exercise ends.');
-  if (main.length && main[0].start_minutes > 0) add('warning', 'late_start', `The main storyline starts at ${sbFormatOffset(main[0].start_minutes)}; nothing happens before.`, [main[0].id]);
+  if (!main.length) add('warning', 'no_main', ['No block on the main storyline.', 'Aucun bloc sur la storyline principale.', 'Kein Block auf der Haupt-Storyline.']);
+  if (main.length && !main.some((block) => block.type === 'trigger')) add('warning', 'no_trigger', ['The main storyline has no trigger & detection block.', 'La storyline principale n’a pas de bloc de déclenchement et détection.', 'Die Haupt-Storyline hat keinen Block „Auslöser und Erkennung“.']);
+  if (main.length && !storyboard.blocks.some((block) => block.type === 'exit')) add('info', 'no_exit', ['No crisis exit block: plan how the exercise ends.', 'Aucun bloc de sortie de crise : prévoyez comment l’exercice se termine.', 'Kein Block zum Krisenende: Planen Sie, wie die Übung endet.']);
+  if (main.length && main[0].start_minutes > 0) add('warning', 'late_start', [`The main storyline starts at ${sbFormatOffset(main[0].start_minutes)}; nothing happens before.`, `La storyline principale commence à ${sbFormatOffset(main[0].start_minutes)} ; rien ne se passe avant.`, `Die Haupt-Storyline beginnt bei ${sbFormatOffset(main[0].start_minutes)}; davor passiert nichts.`], [main[0].id]);
   main.forEach((block, index) => {
     const next = main[index + 1];
     if (!next) return;
     const gap = next.start_minutes - sbBlockEnd(block);
-    if (gap > 20) add('warning', 'gap', `${sbFormatDuration(gap)} gap on the main storyline between "${block.title}" and "${next.title}".`, [block.id, next.id]);
-    if (gap < 0) add('warning', 'overlap', `"${block.title}" overlaps "${next.title}" on the main storyline by ${sbFormatDuration(-gap)}.`, [block.id, next.id]);
+    if (gap > 20) add('warning', 'gap', [`${sbFormatDuration(gap)} gap on the main storyline between "${block.title}" and "${next.title}".`, `Écart de ${sbFormatDuration(gap)} sur la storyline principale entre « ${block.title} » et « ${next.title} ».`, `Lücke von ${sbFormatDuration(gap)} auf der Haupt-Storyline zwischen „${block.title}“ und „${next.title}“.`], [block.id, next.id]);
+    if (gap < 0) add('warning', 'overlap', [`"${block.title}" overlaps "${next.title}" on the main storyline by ${sbFormatDuration(-gap)}.`, `« ${block.title} » chevauche « ${next.title} » de ${sbFormatDuration(-gap)} sur la storyline principale.`, `„${block.title}“ überschneidet sich auf der Haupt-Storyline um ${sbFormatDuration(-gap)} mit „${next.title}“.`], [block.id, next.id]);
   });
   for (const block of storyboard.blocks) {
-    if (sbBlockEnd(block) > storyboard.duration_minutes) add('error', 'beyond_end', `"${block.title}" ends after the exercise end (${sbFormatOffset(storyboard.duration_minutes)}).`, [block.id]);
-    if (!block.brief.trim() && !block.narrative.trim()) add('warning', 'no_brief', `"${block.title}" has no brief: describe what should happen.`, [block.id]);
-    if (block.beats.some((beat) => beat.offset_minutes >= block.duration_minutes)) add('error', 'beat_outside', `"${block.title}" has planned injects outside its time window.`, [block.id]);
-    if (block.beats.length && block.beats.length !== block.stimuli_target) add('warning', 'beat_count', `"${block.title}" plans ${block.stimuli_target} injects but its inject plan has ${block.beats.length}.`, [block.id]);
-    if (block.stimuli_target === 0 && block.type !== 'custom') add('info', 'no_stimuli', `"${block.title}" plans no inject.`, [block.id]);
+    if (sbBlockEnd(block) > storyboard.duration_minutes) add('error', 'beyond_end', [`"${block.title}" ends after the exercise end (${sbFormatOffset(storyboard.duration_minutes)}).`, `« ${block.title} » se termine après la fin de l’exercice (${sbFormatOffset(storyboard.duration_minutes)}).`, `„${block.title}“ endet nach dem Übungsende (${sbFormatOffset(storyboard.duration_minutes)}).`], [block.id]);
+    if (!block.brief.trim() && !block.narrative.trim()) add('warning', 'no_brief', [`"${block.title}" has no brief: describe what should happen.`, `« ${block.title} » n’a pas de déroulé : décrivez ce qui doit se passer.`, `„${block.title}“ hat keinen Ablauf: Beschreiben Sie, was passieren soll.`], [block.id]);
+    if (block.beats.some((beat) => beat.offset_minutes >= block.duration_minutes)) add('error', 'beat_outside', [`"${block.title}" has planned injects outside its time window.`, `« ${block.title} » a des injects prévus hors de sa plage horaire.`, `„${block.title}“ hat geplante Injects außerhalb seines Zeitfensters.`], [block.id]);
+    if (block.beats.length && block.beats.length !== block.stimuli_target) add('warning', 'beat_count', [`"${block.title}" plans ${block.stimuli_target} injects but its inject plan has ${block.beats.length}.`, `« ${block.title} » prévoit ${block.stimuli_target} injects mais son plan d’injects en compte ${block.beats.length}.`, `„${block.title}“ sieht ${block.stimuli_target} Injects vor, sein Inject-Plan enthält aber ${block.beats.length}.`], [block.id]);
+    if (block.stimuli_target === 0 && block.type !== 'custom') add('info', 'no_stimuli', [`"${block.title}" plans no inject.`, `« ${block.title} » ne prévoit aucun inject.`, `„${block.title}“ sieht keinen Inject vor.`], [block.id]);
     const density = block.stimuli_target / Math.max(1, block.duration_minutes);
-    if (density > 0.25) add('warning', 'too_dense', `"${block.title}" plans ${block.stimuli_target} injects in ${sbFormatDuration(block.duration_minutes)}: players may be flooded.`, [block.id]);
+    if (density > 0.25) add('warning', 'too_dense', [`"${block.title}" plans ${block.stimuli_target} injects in ${sbFormatDuration(block.duration_minutes)}: players may be flooded.`, `« ${block.title} » prévoit ${block.stimuli_target} injects en ${sbFormatDuration(block.duration_minutes)} : les joueurs risquent d’être submergés.`, `„${block.title}“ sieht ${block.stimuli_target} Injects in ${sbFormatDuration(block.duration_minutes)} vor: Die Spieler könnten überflutet werden.`], [block.id]);
     const missingCast = block.beats.filter((beat) => !beat.cast_id || !storyboard.cast.some((cast) => cast.id === beat.cast_id));
-    if (missingCast.length) add('info', 'beat_no_sender', `"${block.title}": ${missingCast.length} planned inject(s) without a sender role.`, [block.id]);
+    if (missingCast.length) add('info', 'beat_no_sender', [`"${block.title}": ${missingCast.length} planned inject(s) without a sender role.`, `« ${block.title} » : ${missingCast.length} inject(s) prévu(s) sans rôle émetteur.`, `„${block.title}“: ${missingCast.length} geplante(r) Inject(s) ohne Absenderrolle.`], [block.id]);
   }
   const objectives = sbObjectivesList(project);
   const covered = new Set(storyboard.blocks.flatMap((block) => block.objectives));
-  objectives.filter((objective) => !covered.has(objective)).forEach((objective) => add('warning', 'objective_uncovered', `Objective not covered by any block: "${objective}".`));
-  if (!objectives.length && !String(project?.scenario?.learning_objectives || '').trim()) add('info', 'no_objectives', 'No learning objectives: describe them in the Context tab.');
+  objectives.filter((objective) => !covered.has(objective)).forEach((objective) => add('warning', 'objective_uncovered', [`Objective not covered by any block: "${objective}".`, `Objectif couvert par aucun bloc : « ${objective} ».`, `Ziel von keinem Block abgedeckt: „${objective}“.`]));
+  if (!objectives.length && !String(project?.scenario?.learning_objectives || '').trim()) add('info', 'no_objectives', ['No learning objectives: describe them in the Context tab.', 'Aucun objectif pédagogique : décrivez-les dans l’onglet Contexte.', 'Keine Lernziele: Beschreiben Sie sie im Tab Kontext.']);
   const usedCast = new Set(storyboard.blocks.flatMap((block) => block.beats.map((beat) => beat.cast_id)));
-  storyboard.cast.filter((cast) => !usedCast.has(cast.id)).forEach((cast) => add('info', 'cast_unused', `Role "${cast.label}" never sends an inject.`));
+  storyboard.cast.filter((cast) => !usedCast.has(cast.id)).forEach((cast) => add('info', 'cast_unused', [`Role "${cast.label}" never sends an inject.`, `Le rôle « ${cast.label} » n’envoie jamais d’inject.`, `Die Rolle „${cast.label}“ sendet nie einen Inject.`]));
   const planned = storyboard.blocks.reduce((sum, block) => sum + block.stimuli_target, 0);
-  if (planned && storyboard.duration_minutes / planned > 30) add('info', 'low_pressure', `${planned} injects over ${sbFormatDuration(storyboard.duration_minutes)}: pressure may be low.`);
+  if (planned && storyboard.duration_minutes / planned > 30) add('info', 'low_pressure', [`${planned} injects over ${sbFormatDuration(storyboard.duration_minutes)}: pressure may be low.`, `${planned} injects sur ${sbFormatDuration(storyboard.duration_minutes)} : la pression risque d’être faible.`, `${planned} Injects in ${sbFormatDuration(storyboard.duration_minutes)}: Der Druck könnte gering sein.`]);
   return issues;
 }
 

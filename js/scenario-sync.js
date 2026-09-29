@@ -185,7 +185,7 @@ function sbComputeImpacts(project = appState.scenario) {
   for (const block of storyboard.blocks) {
     if (block.locked || !sbNeedsReplan(block)) continue;
     const written = block.beats.filter((beat) => sbStimulusForBeat(project, beat.id)).length;
-    add({ kind: 'replan', target: 'block', block_id: block.id, label: block.title, detail: `What happens changed since its ${block.beats.length} inject(s) were planned${written ? ` (${written} written)` : ''}. The AI updates the plan, then the injects follow.`, options: ai ? ['replan', 'accept', 'skip'] : ['accept', 'skip'], action: ai ? 'replan' : 'skip' });
+    add({ kind: 'replan', target: 'block', block_id: block.id, label: block.title, detail: tt(`What happens changed since its ${block.beats.length} inject(s) were planned${written ? ` (${written} written)` : ''}. The AI updates the plan, then the injects follow.`, `Le déroulé a changé depuis la planification de ses ${block.beats.length} inject(s)${written ? ` (${written} rédigé(s))` : ''}. L’IA met à jour le plan, puis les injects suivent.`, `Der Ablauf hat sich geändert, seit seine ${block.beats.length} Inject(s) geplant wurden${written ? ` (${written} geschrieben)` : ''}. Die KI aktualisiert den Plan, dann folgen die Injects.`), options: ai ? ['replan', 'accept', 'skip'] : ['accept', 'skip'], action: ai ? 'replan' : 'skip' });
   }
   const replanning = new Set(impacts.map((impact) => impact.block_id));
   for (const stimulus of project.stimuli) {
@@ -196,26 +196,26 @@ function sbComputeImpacts(project = appState.scenario) {
     const beat = block && link.beat_id ? block.beats.find((item) => item.id === link.beat_id) : null;
     const manual = sbIsManuallyEdited(stimulus);
     if (!block || (link.beat_id && !beat)) {
-      add({ kind: 'orphan', target: 'stimulus', stimulus_id: stimulus.id, label, detail: block ? 'Its planned inject was removed from the block.' : 'Its block was removed from the storyboard.', manual, locked: link.locked, options: ['unlink', 'delete', 'skip'], action: 'unlink' });
+      add({ kind: 'orphan', target: 'stimulus', stimulus_id: stimulus.id, label, detail: block ? tt('Its planned inject was removed from the block.', 'Son inject prévu a été retiré du bloc.', 'Sein geplanter Inject wurde aus dem Block entfernt.') : tt('Its block was removed from the storyboard.', 'Son bloc a été retiré du storyboard.', 'Sein Block wurde aus dem Storyboard entfernt.'), manual, locked: link.locked, options: ['unlink', 'delete', 'skip'], action: 'unlink' });
       continue;
     }
     if (link.locked) continue;
     const expected = sbExpectedOffset(block, beat, link);
     if (stimulus.timestamp_offset_minutes !== expected) {
       const movedByHand = link.at !== null && link.at !== stimulus.timestamp_offset_minutes;
-      add({ kind: 'retime', target: 'stimulus', stimulus_id: stimulus.id, block_id: block.id, beat_id: beat?.id || '', label, detail: `${sbFormatOffset(stimulus.timestamp_offset_minutes)} → ${sbFormatOffset(expected)}${movedByHand ? ' (moved by hand in the timeline)' : ''}`, from: stimulus.timestamp_offset_minutes, to: expected, manual: movedByHand, options: ['apply', 'skip'], action: movedByHand ? 'skip' : 'apply' });
+      add({ kind: 'retime', target: 'stimulus', stimulus_id: stimulus.id, block_id: block.id, beat_id: beat?.id || '', label, detail: `${sbFormatOffset(stimulus.timestamp_offset_minutes)} → ${sbFormatOffset(expected)}${movedByHand ? ` ${tt('(moved by hand in the timeline)', '(déplacé à la main sur la timeline)', '(manuell in der Zeitleiste verschoben)')}` : ''}`, from: stimulus.timestamp_offset_minutes, to: expected, manual: movedByHand, options: ['apply', 'skip'], action: movedByHand ? 'skip' : 'apply' });
     }
     // Injects of a phase being re-planned are handled after the new plan.
     if (replanning.has(block.id)) continue;
     const reasons = [];
-    if (link.source_hash && sbBeatSourceHash(block, beat) !== link.source_hash) reasons.push('the storyline changed');
+    const storyline = !!(link.source_hash && sbBeatSourceHash(block, beat) !== link.source_hash);
+    if (storyline) reasons.push(tt('the storyline changed', 'la storyline a changé', 'die Storyline hat sich geändert'));
     const actor = project.actors.find((item) => item.id === stimulus.actor_id);
-    if (link.actor_hash && actor && sbActorContentHash(actor) !== link.actor_hash) reasons.push(`its sender changed (${actor.name})`);
+    if (link.actor_hash && actor && sbActorContentHash(actor) !== link.actor_hash) reasons.push(tt(`its sender changed (${actor.name})`, `son émetteur a changé (${actor.name})`, `sein Absender hat sich geändert (${actor.name})`));
     const cell = (project.cells || []).find((item) => item.id === stimulus.cell_id);
-    if (link.cell_hash && cell && sbCellContentHash(cell) !== link.cell_hash) reasons.push(`its recipient cell changed (${cell.name})`);
+    if (link.cell_hash && cell && sbCellContentHash(cell) !== link.cell_hash) reasons.push(tt(`its recipient cell changed (${cell.name})`, `sa cellule destinataire a changé (${cell.name})`, `seine Empfängerzelle hat sich geändert (${cell.name})`));
     if (reasons.length) {
-      const storyline = reasons[0] === 'the storyline changed';
-      add({ kind: storyline ? 'outdated' : 'people', target: 'stimulus', stimulus_id: stimulus.id, block_id: block.id, beat_id: beat?.id || '', label, detail: `Since it was written, ${reasons.join(', ')}.${manual ? ' Its content was edited by hand.' : ''}`, manual, options: manual || !storyline ? ['adapt', 'regenerate', 'accept', 'skip'] : ['regenerate', 'adapt', 'accept', 'skip'], action: manual || !storyline ? 'adapt' : 'regenerate' });
+      add({ kind: storyline ? 'outdated' : 'people', target: 'stimulus', stimulus_id: stimulus.id, block_id: block.id, beat_id: beat?.id || '', label, detail: `${tt(`Since it was written, ${reasons.join(', ')}.`, `Depuis sa rédaction, ${reasons.join(', ')}.`, `Seit er geschrieben wurde: ${reasons.join(', ')}.`)}${manual ? ` ${tt('Its content was edited by hand.', 'Son contenu a été modifié à la main.', 'Sein Inhalt wurde manuell bearbeitet.')}` : ''}`, manual, options: manual || !storyline ? ['adapt', 'regenerate', 'accept', 'skip'] : ['regenerate', 'adapt', 'accept', 'skip'], action: manual || !storyline ? 'adapt' : 'regenerate' });
     }
   }
   // New planned injects are proposed only in blocks that were already generated;
@@ -232,13 +232,13 @@ function sbComputeImpacts(project = appState.scenario) {
     const actor = cast.actor_id ? project.actors.find((item) => item.id === cast.actor_id) : null;
     const used = storyboard.blocks.some((block) => generatedBlocks.has(block.id) && block.beats.some((beat) => beat.cast_id === cast.id));
     if (!actor) {
-      if (used) add({ kind: 'actor_missing', target: 'cast', cast_id: cast.id, label: cast.label, detail: 'No actor plays this role yet.', options: ['create', 'skip'], action: 'create' });
+      if (used) add({ kind: 'actor_missing', target: 'cast', cast_id: cast.id, label: cast.label, detail: tt('No actor plays this role yet.', 'Aucun acteur ne joue encore ce rôle.', 'Noch spielt kein Akteur diese Rolle.'), options: ['create', 'skip'], action: 'create' });
       continue;
     }
     const link = actor.scenario_link;
     if (link?.cast_id === cast.id && !link.locked && link.source_hash && link.source_hash !== sbCastSourceHash(cast)) {
       const manual = link.content_hash && link.content_hash !== sbActorContentHash(actor);
-      add({ kind: 'actor_outdated', target: 'actor', cast_id: cast.id, actor_id: actor.id, label: `${actor.name} (${cast.label})`, detail: manual ? 'Role changed; actor was edited by hand.' : 'Role description changed.', manual, options: ['update', 'accept', 'skip'], action: manual ? 'accept' : 'update' });
+      add({ kind: 'actor_outdated', target: 'actor', cast_id: cast.id, actor_id: actor.id, label: `${actor.name} (${cast.label})`, detail: manual ? tt('Role changed; actor was edited by hand.', 'Rôle modifié ; l’acteur a été modifié à la main.', 'Rolle geändert; der Akteur wurde manuell bearbeitet.') : tt('Role description changed.', 'Description du rôle modifiée.', 'Rollenbeschreibung geändert.'), manual, options: ['update', 'accept', 'skip'], action: manual ? 'accept' : 'update' });
     }
   }
   return impacts;
@@ -475,7 +475,7 @@ const SbPipeline = {
     this.checkpoint = null;
     StoryboardHistory.ensure(appState.scenario, `Undo ${label}`);
     sbAfterStoryboardChange(appState.scenario, { save: true });
-    this.note('success', `Restored the exercise from before: ${label}.`);
+    this.note('success', tt(`Restored the exercise from before: ${label}.`, `Exercice restauré tel qu’il était avant : ${label}.`, `Übung auf den Stand vor „${label}“ wiederhergestellt.`));
     return true;
   },
 
@@ -503,7 +503,7 @@ const SbPipeline = {
     this.status = 'running';
     this.log = [];
     this.step = 0;
-    if (!keepCheckpoint || !this.checkpoint) this.saveCheckpoint(blockIds && blockIds.length === 1 ? `generation for "${blocks[0].title}"` : 'storyboard generation');
+    if (!keepCheckpoint || !this.checkpoint) this.saveCheckpoint(blockIds && blockIds.length === 1 ? tt(`generation for "${blocks[0].title}"`, `génération pour « ${blocks[0].title} »`, `Generierung für „${blocks[0].title}“`) : tt('storyboard generation', 'génération du storyboard', 'Storyboard-Generierung'));
     StoryboardHistory.snapshot('Before generation', 'generation');
     let created = 0;
     let written = 0;
@@ -511,34 +511,34 @@ const SbPipeline = {
       // 1. Plan missing beats with AI (inject plan = level 3).
       const needPlan = beatIds || cellIds ? [] : blocks.filter((block) => !block.locked && block.beats.length < block.stimuli_target);
       if (plan && needPlan.length) {
-        if (!aiAvailable) this.note('warning', `${needPlan.length} block(s) have no complete inject plan and AI is not configured: only planned injects will be created.`);
+        if (!aiAvailable) this.note('warning', tt(`${needPlan.length} block(s) have no complete inject plan and AI is not configured: only planned injects will be created.`, `${needPlan.length} bloc(s) n’ont pas de plan d’injects complet et l’IA n’est pas configurée : seuls les injects prévus seront créés.`, `${needPlan.length} Block/Blöcke haben keinen vollständigen Inject-Plan und KI ist nicht eingerichtet: Nur geplante Injects werden erstellt.`));
         else {
-          this.label = 'Planning injects';
-          this.note('info', `Planning injects for ${needPlan.length} block(s)…`);
+          this.label = tt('Planning injects', 'Planification des injects', 'Injects werden geplant');
+          this.note('info', tt(`Planning injects for ${needPlan.length} block(s)…`, `Planification des injects pour ${needPlan.length} bloc(s)…`, `Injects für ${needPlan.length} Block/Blöcke werden geplant…`));
           await SbAI.deepen(needPlan.map((block) => block.id), 3, { signal: controller.signal, nested: true });
           assertActive();
-          this.note('success', 'Inject plan ready.');
+          this.note('success', tt('Inject plan ready.', 'Plan d’injects prêt.', 'Inject-Plan bereit.'));
         }
       }
       const beats = blocks.flatMap((block) => block.beats.map((beat) => ({ block, beat })))
         .filter(({ beat }) => !sbStimulusForBeat(project, beat.id) && (!beatIds || beatIds.includes(beat.id)) && (!cellIds || cellIds.some((id) => sbReaches(beat.cell_id, id))));
       this.total = beats.length;
-      if (!beats.length) this.note('info', 'Every planned inject already has a stimulus. Use Sync to update existing ones.');
+      if (!beats.length) this.note('info', tt('Every planned inject already has a stimulus. Use Sync to update existing ones.', 'Chaque inject prévu a déjà un stimulus. Utilisez Mettre à jour pour actualiser les existants.', 'Jeder geplante Inject hat bereits einen Stimulus. Verwenden Sie Aktualisieren, um bestehende zu aktualisieren.'));
       // 2. Actors for the roles used by these beats.
       if (cast) {
         const castIds = [...new Set(beats.map(({ beat }) => beat.cast_id).filter(Boolean))];
         const missing = castIds.map((id) => storyboard.cast.find((item) => item.id === id)).filter((item) => item && !sbFindActorForCast(project, item));
         if (missing.length) {
-          this.label = 'Casting actors';
+          this.label = tt('Casting actors', 'Distribution des acteurs', 'Akteure werden besetzt');
           let details = {};
           if (aiAvailable) {
             try { details = await SbAI.nameCast(missing.map((item) => item.id), { signal: controller.signal }); }
-            catch (error) { if (error?.name === 'AbortError') throw error; this.note('warning', 'AI casting failed; roles are used as actor names.'); }
+            catch (error) { if (error?.name === 'AbortError') throw error; this.note('warning', tt('AI casting failed; roles are used as actor names.', 'La distribution par l’IA a échoué ; les rôles servent de noms d’acteurs.', 'Besetzung durch KI fehlgeschlagen; die Rollen werden als Akteursnamen verwendet.')); }
             assertActive();
           }
           for (const item of missing) {
             const actor = sbCreateActorForCast(project, item, details[item.id] || {});
-            this.note('success', `Actor created: ${actor.name} (${item.label}).`);
+            this.note('success', tt(`Actor created: ${actor.name} (${item.label}).`, `Acteur créé : ${actor.name} (${item.label}).`, `Akteur erstellt: ${actor.name} (${item.label}).`));
           }
         }
         for (const id of castIds) {
@@ -554,7 +554,7 @@ const SbPipeline = {
       const toWrite = [];
       for (const { block, beat } of beats) {
         assertActive();
-        this.label = `Creating ${beat.title || channelLabel(beat.channel)}`;
+        this.label = tt(`Creating ${beat.title || channelLabel(beat.channel)}`, `Création : ${beat.title || channelLabel(beat.channel)}`, `Wird erstellt: ${beat.title || channelLabel(beat.channel)}`);
         const castEntry = storyboard.cast.find((item) => item.id === beat.cast_id);
         const actor = (castEntry && sbFindActorForCast(project, castEntry)) || fallbackActor();
         const probe = makeStimulus(beat.channel, actor.id, 0, beat.template_id || null);
@@ -576,17 +576,17 @@ const SbPipeline = {
         sbStampStimulus(stimulus, block, beat, storyboard);
         created++;
         toWrite.push({ stimulus, block, beat });
-        this.note('success', `Inject created: ${args.name} (${sbFormatOffset(args.timestamp_offset_minutes)}).`);
+        this.note('success', tt(`Inject created: ${args.name} (${sbFormatOffset(args.timestamp_offset_minutes)}).`, `Inject créé : ${args.name} (${sbFormatOffset(args.timestamp_offset_minutes)}).`, `Inject erstellt: ${args.name} (${sbFormatOffset(args.timestamp_offset_minutes)}).`));
       }
       saveLocal(false);
       // 4. Write content with AI.
       if (write && toWrite.length) {
-        if (!aiAvailable) this.note('warning', 'AI is not configured: injects were created as drafts without content.');
+        if (!aiAvailable) this.note('warning', tt('AI is not configured: injects were created as drafts without content.', 'L’IA n’est pas configurée : les injects ont été créés comme brouillons sans contenu.', 'KI ist nicht eingerichtet: Die Injects wurden als Entwürfe ohne Inhalt erstellt.'));
         else {
           for (const [index, item] of toWrite.entries()) {
             assertActive();
             this.step = index + 1;
-            this.label = `Writing ${index + 1}/${toWrite.length}: ${sbStimulusLabel(item.stimulus)}`;
+            this.label = tt(`Writing ${index + 1}/${toWrite.length}: ${sbStimulusLabel(item.stimulus)}`, `Rédaction ${index + 1}/${toWrite.length} : ${sbStimulusLabel(item.stimulus)}`, `Wird geschrieben ${index + 1}/${toWrite.length}: ${sbStimulusLabel(item.stimulus)}`);
             sbNotify();
             try {
               await sbGenerateStimulusContent(item.stimulus, item.block, item.beat, { signal: controller.signal, assertActive });
@@ -595,13 +595,13 @@ const SbPipeline = {
               saveLocal(false);
             } catch (error) {
               if (error?.name === 'AbortError' || controller.signal.aborted) throw error;
-              this.note('warning', `Content not written for "${sbStimulusLabel(item.stimulus)}": ${sbErrorMessage(error)}`);
+              this.note('warning', tt(`Content not written for "${sbStimulusLabel(item.stimulus)}": ${sbErrorMessage(error)}`, `Contenu non rédigé pour « ${sbStimulusLabel(item.stimulus)} » : ${sbErrorMessage(error)}`, `Inhalt nicht geschrieben für „${sbStimulusLabel(item.stimulus)}“: ${sbErrorMessage(error)}`));
             }
           }
         }
       }
       this.status = 'complete';
-      this.note('success', `Done: ${created} inject(s) created, ${written} written with AI.`);
+      this.note('success', tt(`Done: ${created} inject(s) created, ${written} written with AI.`, `Terminé : ${created} inject(s) créé(s), ${written} rédigé(s) avec l’IA.`, `Fertig: ${created} Inject(s) erstellt, ${written} mit KI geschrieben.`));
     } catch (error) {
       if (controller.signal.aborted || appState.scenario !== project || error?.name === 'AbortError') this.status = 'stopped';
       else { this.status = 'failed'; this.note('error', sbErrorMessage(error)); }
@@ -651,7 +651,7 @@ const SbPipeline = {
             this.step++;
             const block = sbBlock(storyboard, impact.block_id);
             if (!block) continue;
-            this.label = `Re-planning ${block.title}`;
+            this.label = tt(`Re-planning ${block.title}`, `Nouvelle planification : ${block.title}`, `Wird neu geplant: ${block.title}`);
             sbNotify();
             if (impact.action === 'accept') { sbMarkPlanned(block); applied++; continue; }
             try {
@@ -664,7 +664,7 @@ const SbPipeline = {
               sbMarkPlanned(block);
               replanned.add(block.id);
               applied++;
-              this.note('success', `Inject plan updated: ${block.title} (${block.beats.length} inject(s)).`);
+              this.note('success', tt(`Inject plan updated: ${block.title} (${block.beats.length} inject(s)).`, `Plan d’injects mis à jour : ${block.title} (${block.beats.length} inject(s)).`, `Inject-Plan aktualisiert: ${block.title} (${block.beats.length} Inject(s)).`));
             } catch (error) {
               if (error?.name === 'AbortError' || controller.signal.aborted) throw error;
               this.note('warning', `${block.title}: ${sbErrorMessage(error)}`);
@@ -686,7 +686,7 @@ const SbPipeline = {
           return impact;
         }).filter((impact) => impact.action && impact.action !== 'skip');
         this.total = this.step + queue.length;
-        if (queue.length) this.note('info', `Then ${queue.length} consequence(s): timing, content and injects of the new plans.`);
+        if (queue.length) this.note('info', tt(`Then ${queue.length} consequence(s): timing, content and injects of the new plans.`, `Puis ${queue.length} conséquence(s) : timing, contenu et injects des nouveaux plans.`, `Dann ${queue.length} Folge(n): Timing, Inhalt und Injects der neuen Pläne.`));
       }
       // 3. Timing, content, orphans, actors and new injects.
       const updatedActors = new Set();
@@ -753,7 +753,7 @@ const SbPipeline = {
       }
       sortStimuli();
       this.status = 'idle';
-      this.note('success', `Update applied: ${applied} change(s).`);
+      this.note('success', tt(`Update applied: ${applied} change(s).`, `Mise à jour appliquée : ${applied} modification(s).`, `Aktualisierung übernommen: ${applied} Änderung(en).`));
     } catch (error) {
       if (controller.signal.aborted || error?.name === 'AbortError') this.status = 'stopped';
       else { this.status = 'failed'; this.note('error', sbErrorMessage(error)); }
@@ -825,7 +825,11 @@ function sbBuildExerciseItems(project, { status: withStatus = true } = {}) {
 /* Deterministic rhythm and consistency checks over the whole exercise. */
 function sbExerciseChecks(project = appState.scenario) {
   const issues = [];
-  const add = (severity, code, message, extra = {}) => issues.push({ severity, code, message, at: null, cell_id: '', item_key: '', suggestion: '', source: 'rules', ...extra });
+  // text: English (message, also given to the AI), or [English, French, German] (display in the app language).
+  const add = (severity, code, text, extra = {}) => {
+    const [message, fr, de] = Array.isArray(text) ? text : [text];
+    issues.push({ severity, code, message, display: fr ? tt(message, fr, de) : message, at: null, cell_id: '', item_key: '', suggestion: '', source: 'rules', ...extra });
+  };
   const items = sbExerciseItems(project);
   const duration = project.storyboard?.duration_minutes || Math.max(0, ...items.map((item) => item.time));
   const cells = project.cells || [];
@@ -834,34 +838,34 @@ function sbExerciseChecks(project = appState.scenario) {
     for (const event of block.events || []) {
       const minute = sbTextClockMinute(event.text, project.scenario?.start_date, duration);
       const placed = block.start_minutes + event.offset_minutes;
-      if (minute !== null && Math.abs(minute - placed) > 2) add('warning', 'event_time', `Main event "${sbText(event.text, 80)}" is placed at ${sbFormatOffset(placed)} (${sbClockTime(placed, project.scenario.start_date).split(' ')[1]}) but its text says ${sbClockTime(minute, project.scenario.start_date).split(' ')[1]} (${sbFormatOffset(minute)}).`, { at: placed });
+      if (minute !== null && Math.abs(minute - placed) > 2) add('warning', 'event_time', [`Main event "${sbText(event.text, 80)}" is placed at ${sbFormatOffset(placed)} (${sbClockTime(placed, project.scenario.start_date).split(' ')[1]}) but its text says ${sbClockTime(minute, project.scenario.start_date).split(' ')[1]} (${sbFormatOffset(minute)}).`, `L’événement principal « ${sbText(event.text, 80)} » est placé à ${sbFormatOffset(placed)} (${sbClockTime(placed, project.scenario.start_date).split(' ')[1]}) mais son texte indique ${sbClockTime(minute, project.scenario.start_date).split(' ')[1]} (${sbFormatOffset(minute)}).`, `Das Hauptereignis „${sbText(event.text, 80)}“ liegt bei ${sbFormatOffset(placed)} (${sbClockTime(placed, project.scenario.start_date).split(' ')[1]}), sein Text nennt aber ${sbClockTime(minute, project.scenario.start_date).split(' ')[1]} (${sbFormatOffset(minute)}).`], { at: placed });
     }
   }
-  if (!items.length) { add('warning', 'empty', 'No inject yet: plan injects in the Detailed storyline.'); return issues; }
-  if (!cells.length) add('warning', 'no_cells', 'No player cell: create cells in Cells & actors.');
+  if (!items.length) { add('warning', 'empty', ['No inject yet: plan injects in the Detailed storyline.', 'Aucun inject pour l’instant : planifiez des injects dans la Storyline détaillée.', 'Noch kein Inject: Planen Sie Injects in der Detaillierten Storyline.']); return issues; }
+  if (!cells.length) add('warning', 'no_cells', ['No player cell: create cells in Cells & actors.', 'Aucune cellule de joueurs : créez des cellules dans Cellules et acteurs.', 'Keine Spielerzelle: Legen Sie Zellen in Zellen und Akteure an.']);
   for (const cell of cells) {
     const times = items.filter((item) => sbReaches(item.cell_id, cell.id)).map((item) => item.time).sort((a, b) => a - b);
-    if (!times.length) { add('warning', 'cell_idle', `The ${cell.name} receives no inject.`, { cell_id: cell.id }); continue; }
+    if (!times.length) { add('warning', 'cell_idle', [`The ${cell.name} receives no inject.`, `${cell.name} : aucun inject reçu.`, `${cell.name}: erhält keinen Inject.`], { cell_id: cell.id }); continue; }
     const marks = [0, ...times, duration];
     // Dead time is judged against the cell's own rhythm: a quiet cell is not flagged for every half hour.
     const threshold = Math.max(45, Math.round(1.8 * duration / (times.length + 1)));
     for (let index = 1; index < marks.length; index++) {
       const gap = marks[index] - marks[index - 1];
-      if (gap > threshold) add('warning', 'gap', `The ${cell.name} receives nothing between ${sbFormatOffset(marks[index - 1])} and ${sbFormatOffset(marks[index])} (${sbFormatDuration(gap)}).`, { at: marks[index - 1], cell_id: cell.id });
+      if (gap > threshold) add('warning', 'gap', [`The ${cell.name} receives nothing between ${sbFormatOffset(marks[index - 1])} and ${sbFormatOffset(marks[index])} (${sbFormatDuration(gap)}).`, `${cell.name} : rien reçu entre ${sbFormatOffset(marks[index - 1])} et ${sbFormatOffset(marks[index])} (${sbFormatDuration(gap)}).`, `${cell.name}: erhält nichts zwischen ${sbFormatOffset(marks[index - 1])} und ${sbFormatOffset(marks[index])} (${sbFormatDuration(gap)}).`], { at: marks[index - 1], cell_id: cell.id });
     }
     for (let index = 0; index < times.length; index++) {
       const burst = times.filter((time) => time >= times[index] && time < times[index] + 10).length;
-      if (burst > 3) { add('warning', 'peak', `${burst} injects reach the ${cell.name} within 10 minutes from ${sbFormatOffset(times[index])}: risk of overload.`, { at: times[index], cell_id: cell.id }); break; }
+      if (burst > 3) { add('warning', 'peak', [`${burst} injects reach the ${cell.name} within 10 minutes from ${sbFormatOffset(times[index])}: risk of overload.`, `${burst} injects atteignent ${cell.name} en 10 minutes à partir de ${sbFormatOffset(times[index])} : risque de surcharge.`, `${burst} Injects erreichen ${cell.name} innerhalb von 10 Minuten ab ${sbFormatOffset(times[index])}: Überlastungsgefahr.`], { at: times[index], cell_id: cell.id }); break; }
     }
   }
   for (const block of project.storyboard ? sbMainBlocks(project.storyboard) : []) {
-    if (!items.some((item) => item.time >= block.start_minutes && item.time < sbBlockEnd(block))) add('warning', 'phase_empty', `Phase "${block.title}" has no inject.`, { at: block.start_minutes });
+    if (!items.some((item) => item.time >= block.start_minutes && item.time < sbBlockEnd(block))) add('warning', 'phase_empty', [`Phase "${block.title}" has no inject.`, `La phase « ${block.title} » n’a aucun inject.`, `Phase „${block.title}“ hat keinen Inject.`], { at: block.start_minutes });
   }
   for (const item of items) {
-    if (!sbHasRecipient(project, item.cell_id)) add('warning', 'no_cell', `"${item.title}" has no recipient cell.`, { at: item.time, item_key: item.key });
-    if (!item.sender) add('info', 'no_sender', `"${item.title}" has no sender.`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
-    if (item.status === 'orphan') add('warning', 'orphan', `"${item.title}" no longer matches the storyline (orphan).`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
-    if (item.time > duration) add('error', 'after_end', `"${item.title}" is scheduled after the end of the exercise.`, { at: item.time, cell_id: item.cell_id, item_key: item.key });
+    if (!sbHasRecipient(project, item.cell_id)) add('warning', 'no_cell', [`"${item.title}" has no recipient cell.`, `« ${item.title} » n’a pas de cellule destinataire.`, `„${item.title}“ hat keine Empfängerzelle.`], { at: item.time, item_key: item.key });
+    if (!item.sender) add('info', 'no_sender', [`"${item.title}" has no sender.`, `« ${item.title} » n’a pas d’émetteur.`, `„${item.title}“ hat keinen Absender.`], { at: item.time, cell_id: item.cell_id, item_key: item.key });
+    if (item.status === 'orphan') add('warning', 'orphan', [`"${item.title}" no longer matches the storyline (orphan).`, `« ${item.title} » ne correspond plus à la storyline (orphelin).`, `„${item.title}“ passt nicht mehr zur Storyline (verwaist).`], { at: item.time, cell_id: item.cell_id, item_key: item.key });
+    if (item.time > duration) add('error', 'after_end', [`"${item.title}" is scheduled after the end of the exercise.`, `« ${item.title} » est programmé après la fin de l’exercice.`, `„${item.title}“ ist nach dem Ende der Übung geplant.`], { at: item.time, cell_id: item.cell_id, item_key: item.key });
   }
   return issues.slice(0, 80);
 }

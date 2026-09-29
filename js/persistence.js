@@ -618,7 +618,7 @@
         chronogramCsv(stimuli) {
           const project = appState.scenario;
           const quote = csvCell;
-          const header = ['#', 'Time', 'Simulated time', 'Phase', 'Recipient cell', 'Channel', 'Sender', 'Title', 'Status', 'File'];
+          const header = ['#', tt('Time', 'Heure', 'Zeit'), tt('Simulated time', 'Heure simulée', 'Simulierte Zeit'), tt('Phase', 'Phase', 'Phase'), tt('Recipient cell', 'Cellule destinataire', 'Empfängerzelle'), tt('Channel', 'Canal', 'Kanal'), tt('Sender', 'Émetteur', 'Absender'), tt('Title', 'Titre', 'Titel'), tt('Status', 'Statut', 'Status'), tt('File', 'Fichier', 'Datei')];
           const numbers = ExerciseModel.numbers(project);
           const rows = stimuli.map((stimulus, index) => {
             const phase = ExerciseModel.phaseOfStimulus(project, stimulus);
