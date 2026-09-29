@@ -358,6 +358,7 @@ function sbGenerationBrief(project, block, beat, options = {}) {
     })(),
     block.objectives.length ? `- Objectives tested: ${block.objectives.join('; ')}` : '',
     beat ? `- THIS INJECT (${channelLabel(beat.channel)} at ${sbFormatOffset(sbBeatAbsolute(block, beat))}): "${beat.title}". ${beat.intent}` : '',
+    beat?.kind === 'nudge' ? '- This inject is a nudge: it relaunches or redirects players who stall or go off track (a follow-up asking for a decision, a call back, a deadline reminder). Make it short, direct and pressing.' : '',
     (() => {
       if (sbIsAllCells(beat?.cell_id)) return `- Recipient: every player cell (${(project.cells || []).map((cell) => cell.name).join(', ') || 'all players'}). Address it to all of them.`;
       if (sbRecipientIds(beat?.cell_id).length > 1) return `- Recipients: ${sbRecipientName(project, beat.cell_id)}. Address the inject to all of them.`;
@@ -873,6 +874,12 @@ function sbExerciseChecks(project = appState.scenario) {
       const burst = times.filter((time) => time >= times[index] && time < times[index] + 10).length;
       if (burst > 3) { add('warning', 'peak', [`${burst} injects reach the ${cell.name} within 10 minutes from ${sbFormatOffset(times[index])}: risk of overload.`, `${burst} injects atteignent ${cell.name} en 10 minutes à partir de ${sbFormatOffset(times[index])} : risque de surcharge.`, `${burst} Injects erreichen ${cell.name} innerhalb von 10 Minuten ab ${sbFormatOffset(times[index])}: Überlastungsgefahr.`], { at: times[index], cell_id: cell.id }); break; }
     }
+  }
+  // Every cell with planned injects has a nudge to relaunch or redirect it if it stalls
+  // (a framing without planned injects, or a cell with only manual injects, is not flagged).
+  for (const cell of cells) {
+    const planned = items.filter((item) => item.beat && sbReaches(item.cell_id, cell.id));
+    if (planned.length && !planned.some((item) => item.beat.kind === 'nudge')) add('warning', 'cell_no_nudge', [`The ${cell.name} has no nudge inject to relaunch or redirect it if it stalls or goes off track (a follow-up asking for a decision, a call back, a deadline reminder).`, `${cell.name} : aucun inject de relance pour relancer ou réorienter les joueurs s’ils bloquent ou s’égarent (relance demandant une décision, rappel d’un journaliste, rappel d’échéance).`, `${cell.name}: kein Impuls-Inject, um die Spieler neu anzustoßen oder umzulenken, wenn sie stocken oder abschweifen (Nachfrage nach einer Entscheidung, Rückruf, Fristerinnerung).`], { cell_id: cell.id });
   }
   for (const block of project.storyboard ? sbMainBlocks(project.storyboard) : []) {
     if (!items.some((item) => item.time >= block.start_minutes && item.time < sbBlockEnd(block))) add('warning', 'phase_empty', [`Phase "${block.title}" has no inject.`, `La phase « ${block.title} » n’a aucun inject.`, `Phase „${block.title}“ hat keinen Inject.`], { at: block.start_minutes });

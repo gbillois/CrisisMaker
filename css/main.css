@@ -3934,6 +3934,9 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .ds-card.is-orphan { border-color: #b52c43; }
 .ds-card-meta { display: flex; align-items: center; gap: 5px; font-size: 0.62rem; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
 .ds-card-meta i { width: 7px; height: 7px; border-radius: 50%; background: var(--beat-color); flex-shrink: 0; }
+.sb-nudge-tag { flex-shrink: 0; padding: 0 5px; background: #e8f7ef; color: #146c43; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.play-title .sb-nudge-tag { padding: 1px 6px; font-size: 0.68rem; }
+.ds-fields .ds-nudge { align-self: end; justify-self: start; }
 .ds-card strong { font-size: 0.74rem; color: var(--primary-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Key stimuli: the injects that frame a phase, managed in the phase editor. */
 .sl-main { display: grid; gap: 6px; }

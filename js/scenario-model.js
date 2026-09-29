@@ -225,6 +225,11 @@ function sbMakeBeat(values = {}) {
   return sbNormalizeBeat({ id: uid('beat'), offset_minutes: 0, channel: 'email_internal', title: '', intent: '', cast_id: '', ...values });
 }
 
+/* The tag of a nudge inject (see sbNormalizeBeat). */
+function sbNudgeLabel() {
+  return typeof tt === 'function' ? tt('Nudge', 'Relance', 'Impuls') : 'Nudge';
+}
+
 function sbMakeCast(values = {}) {
   return sbNormalizeCast({ id: uid('cast'), label: 'New role', role: 'internal', organization: '', description: '', actor_id: '', ...values });
 }
@@ -240,7 +245,10 @@ function sbNormalizeBeat(input = {}) {
     cast_id: sbSafeId(input.cast_id),
     cell_id: sbSafeRecipient(input.cell_id),
     title: sbText(input.title, 300),
-    intent: sbText(input.intent, 2000)
+    intent: sbText(input.intent, 2000),
+    // A nudge relaunches or redirects players who stall or go off track (a follow-up asking
+    // for a decision, a journalist calling back, a deadline reminder). Absent on other injects.
+    ...(input.kind === 'nudge' || input.nudge === true || input.nudge === 'true' ? { kind: 'nudge' } : {})
   };
 }
 
@@ -587,7 +595,8 @@ function sbTemplateToStoryboard(template, options = {}) {
       cast_id: castIds.get(String(beat.cast ?? beat.cast_id ?? '')) || '',
       cell_id: beat.cell_id || '',
       title: beat.title,
-      intent: beat.intent
+      intent: beat.intent,
+      kind: beat.kind
     }));
     return sbMakeBlock(type, {
       title: block.title,
@@ -678,7 +687,7 @@ function sbStoryboardToTemplate(storyboard, project, name = '') {
       objectives: block.objectives.map((objective) => objectives.indexOf(objective)).filter((index) => index >= 0),
       ...(block.stress ? { stress: block.stress } : {}),
       ...(block.events?.length ? { events: block.events.map((event) => ({ at: event.offset_minutes, text: event.text })) } : {}),
-      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent }))
+      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent, ...(beat.kind ? { kind: beat.kind } : {}) }))
     })),
     created_at: new Date().toISOString()
   };
@@ -719,6 +728,16 @@ function sbObjectivesList(project) {
   return sbTextList(project?.scenario?.objectives || '', 20, 600);
 }
 
+/* The main storyline ends with a closing phase: recovery and return to normal operations, or
+   crisis exit and end of exercise (hot wash). */
+const SB_CLOSING_TYPES = ['recovery', 'exit'];
+function sbEndsWithClosing(storyboard) {
+  const main = sbMainBlocks(storyboard);
+  if (!main.length) return false;
+  const last = main.reduce((latest, block) => (sbBlockEnd(block) >= sbBlockEnd(latest) ? block : latest));
+  return SB_CLOSING_TYPES.includes(last.type);
+}
+
 function sbStructuralChecks(storyboard, project = null) {
   const issues = [];
   // text: English (message, also given to the AI), or [English, French, German] (display in the app language).
@@ -734,7 +753,7 @@ function sbStructuralChecks(storyboard, project = null) {
   const main = sbMainBlocks(storyboard);
   if (!main.length) add('warning', 'no_main', ['No block on the main storyline.', 'Aucun bloc sur la storyline principale.', 'Kein Block auf der Haupt-Storyline.']);
   if (main.length && !main.some((block) => block.type === 'trigger')) add('warning', 'no_trigger', ['The main storyline has no trigger & detection block.', 'La storyline principale n’a pas de bloc de déclenchement et détection.', 'Die Haupt-Storyline hat keinen Block „Auslöser und Erkennung“.']);
-  if (main.length && !storyboard.blocks.some((block) => block.type === 'exit')) add('info', 'no_exit', ['No crisis exit block: plan how the exercise ends.', 'Aucun bloc de sortie de crise : prévoyez comment l’exercice se termine.', 'Kein Block zum Krisenende: Planen Sie, wie die Übung endet.']);
+  if (main.length && !sbEndsWithClosing(storyboard)) add('warning', 'no_exit', ['The main storyline does not end with a closing phase (recovery and return to normal operations, crisis exit, end of exercise): plan how the exercise ends.', 'La storyline principale ne se termine pas par une phase de clôture (reprise et retour à la normale, sortie de crise, fin d’exercice) : prévoyez comment l’exercice se termine.', 'Die Haupt-Storyline endet nicht mit einer Abschlussphase (Wiederherstellung und Rückkehr zum Normalbetrieb, Krisenende, Übungsende): Planen Sie, wie die Übung endet.']);
   if (main.length && main[0].start_minutes > 0) add('warning', 'late_start', [`The main storyline starts at ${sbFormatOffset(main[0].start_minutes)}; nothing happens before.`, `La storyline principale commence à ${sbFormatOffset(main[0].start_minutes)} ; rien ne se passe avant.`, `Die Haupt-Storyline beginnt bei ${sbFormatOffset(main[0].start_minutes)}; davor passiert nichts.`], [main[0].id]);
   main.forEach((block, index) => {
     const next = main[index + 1];

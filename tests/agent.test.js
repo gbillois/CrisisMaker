@@ -609,3 +609,41 @@ test('cast: a staff actor cannot also play the attacker; each kind of sender get
   const roles = h.json(`appState.scenario.storyboard.cast.map(c => [c.label, getActor(c.actor_id)?.name])`);
   assert.equal(JSON.stringify(roles.find(r => r[0] === 'Ransomware group')), JSON.stringify(['Ransomware group', 'VEIL-9']));
 });
+
+test('nudges and closing phase: planned by the agent tools, reported by the consistency check until fixed', async () => {
+  const h = harness();
+  assert.match(h.run('AgentPrompts.builder'), /closing phase/);
+  assert.match(h.run('AgentPrompts.builder'), /at least one nudge per cell/);
+  assert.match(h.run('AgentPrompts.protocol'), /A nudge \(nudge=true\)/);
+  h.run(`StoryboardHistory.ensure(appState.scenario)`);
+  await execute(h, 'buildMainStoryline', { cast: [{ key: 'ceo', label: 'CEO', role: 'internal' }], phases: [
+    { type: 'trigger', title: 'Alerts', start_minutes: 0, duration_minutes: 60, brief: 'EDR alerts.' },
+    { type: 'custom', title: 'Strategic review', start_minutes: 60, duration_minutes: 60, brief: 'Hot wash.' }
+  ] });
+  h.run(`appState.scenario.cells = [{ id: 'cell_a', name: 'Decision cell', color: '#222222', description: '', players: [] }, { id: 'cell_b', name: 'IT cell', color: '#333333', description: '', players: [] }]`);
+  const issues = () => JSON.stringify(h.json('agentConsistencyCheck()').issues);
+  assert.match(issues(), /does not end with a closing phase.*updateStoryboardBlock/);
+  // A framing without planned injects is not pushed to plan injects.
+  assert.doesNotMatch(issues(), /no nudge inject/);
+  const [first, last] = h.json('sbMainBlocks(appState.scenario.storyboard).map(b => b.id)');
+  const plan = await execute(h, 'planPhaseInjects', { id: first, injects: [
+    { at: 10, channel: 'email_internal', cell: 'cell_a', cast: 'CEO', title: 'Isolation request' },
+    { at: 40, channel: 'email_internal', cell: 'cell_a', cast: 'CEO', title: 'CEO asks for the decision now', nudge: true },
+    { at: 20, channel: 'email_internal', cell: 'cell_b', cast: 'CEO', title: 'Status please' }
+  ] });
+  assert.equal(plan.planned.find(item => item.title === 'CEO asks for the decision now').nudge, true);
+  assert.equal(plan.planned.find(item => item.title === 'Isolation request').nudge, undefined);
+  assert.match(issues(), /Cell \\"IT cell\\" has no nudge inject/);
+  assert.doesNotMatch(issues(), /Cell \\"Decision cell\\" has no nudge inject/);
+  const status = (await execute(h, 'getPhase', { id: first })).planned_injects.find(item => item.title === 'Status please');
+  assert.equal((await execute(h, 'updatePlannedInject', { id: first, inject_id: status.id, patch: { nudge: true } })).nudge, true);
+  assert.doesNotMatch(issues(), /no nudge inject/);
+  assert.ok(!h.json('sbExerciseChecks(appState.scenario)').some(issue => issue.code === 'cell_no_nudge'));
+  await execute(h, 'updatePlannedInject', { id: first, inject_id: status.id, patch: { nudge: false } });
+  assert.equal(h.run(`sbBlock(appState.scenario.storyboard, '${first}').beats.find(b => b.id === '${status.id}').kind`), undefined);
+  assert.match(issues(), /Cell \\"IT cell\\" has no nudge inject/);
+  // The last phase becomes the closing phase without rebuilding the storyline.
+  await execute(h, 'updateStoryboardBlock', { id: last, patch: { type: 'exit' } });
+  assert.doesNotMatch(issues(), /closing phase/);
+  await assert.rejects(execute(h, 'updateStoryboardBlock', { id: last, patch: { type: 'bogus' } }), /Invalid/);
+});

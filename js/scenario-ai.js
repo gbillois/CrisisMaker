@@ -33,6 +33,7 @@ function sbAISystemPrompt() {
   return `You are a senior crisis exercise designer (cyber crisis management) working in the Scenario Builder of CrisisMaker.
 You design exercise storyboards: ONE main storyline of sequential phases (trigger & detection, investigation, containment, eradication, business continuity, recovery, crisis exit, optional twists). Players are organised in CELLS (for example decision cell, operational cell, communication cell, IT cell, legal cell); every inject is addressed to exactly one cell.
 A good storyboard escalates pressure progressively, keeps ambiguity early, avoids premature disclosure, creates real dilemmas and decisions for executives and crisis cells, tests every objective, keeps timing realistic (e.g. GDPR 72h notification, NIS2 24h early warning, media cycles), and gives every cell a steady, meaningful workload without floods or long silences.
+Unless the designer's brief says otherwise, the main storyline ends with a closing phase (recovery and return to normal operations, or crisis exit and end of exercise with a hot wash), and every player cell receives at least one NUDGE: a planned inject marked "nudge": true, meant to relaunch or redirect players who stall or go off track (a follow-up from the CEO asking for a decision, a journalist calling back, a regulator deadline reminder).
 When the exercise gives learning objectives (exercise.learning_objectives, one free text that may name cells or categories of players), work out which cells each objective concerns and plan phases and injects so every cell is put in situations that test its objectives. When it gives an incident timeline (exercise.attack_path: what really happened, in order, from the attack to its detection and the response), follow it: phases, technical findings, attacker actions and alerts must match that sequence and its timing.
 Each phase has a stress level (Calm, Low, Tension, High, Peak): match the pressure, pace and tone of its injects to it.
 Phases may have MAIN EVENTS (key_events: a line of text at a minute from the phase start): the designer's main events that frame the whole story. They are not injects: never change them, and plan the injects of every cell around them: before them to build up, when they happen to let players discover them, after them for the reactions and consequences.
@@ -82,9 +83,9 @@ function sbAIContext(project, options = {}) {
           stress: sbStressLevel(sbBlockStress(block)).label,
           locked: block.locked || undefined,
           beats: detailed
-            ? block.beats.map((beat) => ({ id: beat.id, at: beat.offset_minutes, exercise_time: sbFormatOffset(sbBeatAbsolute(block, beat)), channel: beat.channel, cast: beat.cast_id, cell: beat.cell_id, title: beat.title, intent: excerpt(beat.intent, 400) }))
+            ? block.beats.map((beat) => ({ id: beat.id, at: beat.offset_minutes, exercise_time: sbFormatOffset(sbBeatAbsolute(block, beat)), channel: beat.channel, cast: beat.cast_id, cell: beat.cell_id, title: beat.title, intent: excerpt(beat.intent, 400), nudge: beat.kind === 'nudge' || undefined }))
             // Exercise time first (as for the written injects), the minute in the phase after it.
-            : block.beats.map((beat) => `${sbFormatOffset(sbBeatAbsolute(block, beat))} (+${beat.offset_minutes} min in the phase) ${beat.channel} → ${sbRecipientName(project, beat.cell_id) || 'cell'}: ${excerpt(beat.title, 80)}`),
+            : block.beats.map((beat) => `${sbFormatOffset(sbBeatAbsolute(block, beat))} (+${beat.offset_minutes} min in the phase) ${beat.channel} → ${sbRecipientName(project, beat.cell_id) || 'cell'}: ${excerpt(beat.title, 80)}${beat.kind === 'nudge' ? ' [nudge]' : ''}`),
           ...((block.events || []).length ? { key_events: block.events.map((event) => (detailed ? { at: event.offset_minutes, text: excerpt(event.text, 400) } : `${event.offset_minutes}m ${excerpt(event.text, 90)}`)) } : {})
         };
       })
@@ -150,7 +151,9 @@ function sbBeatsFromAI(storyboard, items, castMap, project = appState.scenario, 
     template_id: beat.template_id,
     cast_id: beat.cast_id,
     title: beat.title,
-    intent: beat.intent
+    intent: beat.intent,
+    kind: beat.kind,
+    nudge: beat.nudge
   }));
 }
 
@@ -270,13 +273,14 @@ const SbAI = {
         target: chunk.map((block) => ({ id: block.id, want: wants.get(block.id), injects: block.stimuli_target, duration: block.duration_minutes, existing_beats: block.beats.length })),
         context: sbAIContext(project, { focus: chunk.map((block) => block.id) }),
         response_format: {
-          blocks: [{ id: 'target block id', narrative: '3-5 sentences: what really happens, what players know and do not know, decisions and dilemmas expected, consequences', beats: [{ at: 'minutes from block start (0 <= at < duration)', channel: 'allowed channel', template_id: 'optional', cast: 'existing cast id or key of a new role', cell: 'id of the recipient cell (from context.storyboard.cells)', title: 'short inject title', intent: 'what the inject says and the pressure or decision it creates' }] }],
+          blocks: [{ id: 'target block id', narrative: '3-5 sentences: what really happens, what players know and do not know, decisions and dilemmas expected, consequences', beats: [{ at: 'minutes from block start (0 <= at < duration)', channel: 'allowed channel', template_id: 'optional', cast: 'existing cast id or key of a new role', cell: 'id of the recipient cell (from context.storyboard.cells)', title: 'short inject title', intent: 'what the inject says and the pressure or decision it creates', nudge: 'true for a nudge (see rules), otherwise omit' }] }],
           cast: [{ key: 'new_role_key', label: 'Role label', role: 'allowed role', organization: 'organisation', description: '1 sentence' }]
         },
         rules: [
           'Return one entry per target block, with its exact id.',
           'want=narrative: return narrative only. want=beats: return beats only. want=narrative_and_beats: return both.',
           'beats: exactly `injects` NEW beats minus existing_beats (existing beats are kept unchanged). Space them realistically, vary channels, escalate, and make each one force a reaction or decision.',
+          'Nudges: every player cell receives at least one nudge ("nudge": true) over the exercise, counted within `injects`: a planned inject that relaunches or redirects players who stall or go off track (a follow-up from the CEO asking for a decision, a journalist calling back, a regulator deadline reminder). Plan one in these phases for each cell that has no [nudge] yet in context.storyboard, preferably where that cell must decide.',
           'Only add cast entries for roles that do not exist yet.'
         ]
       };
@@ -319,7 +323,7 @@ const SbAI = {
       task: `Rewrite block ${block.id} following the designer instruction, keeping coherence with the rest of the storyboard.`,
       instruction: sbText(instruction, 3000),
       context: sbAIContext(project, { focus: [block.id] }),
-      response_format: { block: { title: 'optional', brief: 'optional', narrative: 'optional', duration: 'optional minutes', stimuli: 'optional count', beats: [{ id: 'existing beat id to keep or edit (omit for a new beat)', at: 0, channel: 'channel', template_id: 'optional', cast: 'cast id or new key', title: 'title', intent: 'intent' }] }, cast: [{ key: 'new role key', label: 'label', role: 'role', organization: 'organisation', description: 'description' }] },
+      response_format: { block: { title: 'optional', brief: 'optional', narrative: 'optional', duration: 'optional minutes', stimuli: 'optional count', beats: [{ id: 'existing beat id to keep or edit (omit for a new beat)', at: 0, channel: 'channel', template_id: 'optional', cast: 'cast id or new key', title: 'title', intent: 'intent', nudge: 'true for a nudge, otherwise omit' }] }, cast: [{ key: 'new role key', label: 'label', role: 'role', organization: 'organisation', description: 'description' }] },
       rules: ['Return only the fields you change. If you return beats, return the complete new list (beats you omit are removed).']
     };
     const result = await this.request('Rewriting block', payload, 6000, options);
@@ -337,7 +341,8 @@ const SbAI = {
         if (beat.id) seen.add(beat.id);
         const existing = block.beats.find((item) => item.id === beat.id);
         const next = sbBeatsFromAI(storyboard, [beat], castMap)[0];
-        return existing ? { ...next, id: existing.id, cast_id: next.cast_id || existing.cast_id, cell_id: sbCell(appState.scenario, beat.cell) ? next.cell_id : existing.cell_id } : next;
+        // A nudge stays one unless the AI says otherwise.
+        return existing ? { ...next, id: existing.id, cast_id: next.cast_id || existing.cast_id, cell_id: sbCell(appState.scenario, beat.cell) ? next.cell_id : existing.cell_id, ...(existing.kind && beat.nudge !== false ? { kind: existing.kind } : {}) } : next;
       }).map((beat) => ({ ...beat, offset_minutes: Math.min(beat.offset_minutes, Math.max(0, block.duration_minutes - 1)) }))
         .sort((a, b) => a.offset_minutes - b.offset_minutes);
       block.stimuli_target = Math.max(block.stimuli_target, block.beats.length);
