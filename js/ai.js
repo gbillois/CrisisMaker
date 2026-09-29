@@ -1316,7 +1316,8 @@ Return this structure:
          unescaped quotes inside a string (an HTML attribute such as class="lead": a quote that is
          not followed by , } ] or : closes nothing), and trailing commas. Null when still invalid. */
       function repairLLMJson(text) {
-        const source = String(text || '');
+        // Special tokens a model leaks into its answer (DeepSeek: {"ok":<|OPENAI|>true}) are dropped.
+        const source = String(text || '').replace(/<\|[A-Za-z0-9_:.\- ]{1,40}\|>/g, '');
         let out = '', inString = false, escaped = false;
         for (let i = 0; i < source.length; i++) {
           const char = source[i];

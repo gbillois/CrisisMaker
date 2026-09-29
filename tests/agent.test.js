@@ -760,3 +760,9 @@ test('a Claude reply with its native <invoke> syntax first: the agent object is 
   h.context.reply = reply;
   assert.equal(h.run('parseStrictLLMJson(reply).tool'), 'setMainEvents');
 });
+
+test('a special token leaked into a JSON reply is dropped by the repair', () => {
+  const h = harness();
+  assert.equal(h.run(`JSON.stringify(repairLLMJson('{"ok":<|OPENAI|>true,"message":"valid connection"}'))`), '{"ok":true,"message":"valid connection"}');
+  assert.equal(h.run(`repairLLMJson('{"text":"a <|b|> c"}').text`), 'a  c');
+});
