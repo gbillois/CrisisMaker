@@ -128,7 +128,7 @@ const SB_HISTORY_TEXT = {
   'Move block to track': ['Déplacement du bloc vers une piste', 'Block in Spur verschieben'], 'Edit role': ['Modification du rôle', 'Rolle bearbeiten'],
   'Edit planned inject': ['Modification de l’inject prévu', 'Geplanten Inject bearbeiten'], 'Duplicate block': ['Duplication du bloc', 'Block duplizieren'],
   'Delete block': ['Suppression du bloc', 'Block löschen'], 'Delete blocks': ['Suppression des blocs', 'Blöcke löschen'], 'Delete track': ['Suppression de la piste', 'Spur löschen'],
-  'Apply coherence fix': ['Correction de cohérence', 'Konsistenzkorrektur anwenden'], 'Add role': ['Ajout d’un rôle', 'Rolle hinzufügen'],
+  'Add role': ['Ajout d’un rôle', 'Rolle hinzufügen'],
   'Lock block': ['Verrouillage du bloc', 'Block sperren'], 'Unlock block': ['Déverrouillage du bloc', 'Block entsperren'],
   'Edit inject': ['Modification de l’inject', 'Inject bearbeiten'], 'Rename track': ['Renommage de la piste', 'Spur umbenennen'], 'Move main event': ['Déplacement de l’événement principal', 'Hauptereignis verschieben'],
   'Move inject': ['Déplacement de l’inject', 'Inject verschieben'], 'Mark as validated': ['Marquage comme validé', 'Als freigegeben markieren'], 'Link actors': ['Liaison des acteurs', 'Akteure verknüpfen'],
@@ -326,14 +326,6 @@ function renderSbCast(storyboard) {
     </div>`;
 }
 
-// ── Program monitor ──────────────────────────────────────────────────────────
-function sbScoreRing(score) {
-  const value = Number.isFinite(score) ? score : null;
-  const circumference = 2 * Math.PI * 15;
-  const tone = value === null ? 'none' : value >= 80 ? 'good' : value >= 60 ? 'mid' : 'low';
-  return `<span class="sb-ring is-${tone}"><svg viewBox="0 0 36 36" width="38" height="38"><circle cx="18" cy="18" r="15" class="sb-ring-track"/><circle cx="18" cy="18" r="15" class="sb-ring-value" stroke-dasharray="${value === null ? 0 : (circumference * value / 100).toFixed(1)} ${circumference.toFixed(1)}"/></svg><b>${value === null ? '-' : value}</b></span>`;
-}
-
 // ── Timeline ─────────────────────────────────────────────────────────────────
 /* The timeline tools of the Main storyline (zoom, magnet, ripple), shown in its top toolbar.
    The exercise duration is set in Context. */
@@ -487,7 +479,6 @@ function renderSbModal(storyboard) {
   const ui = sbUI();
   switch (ui.modal) {
     case 'versions': return renderSbVersionsModal(storyboard);
-    case 'coherence': return renderSbCoherenceModal(storyboard);
     case 'generate': return renderSbGenerateModal(storyboard);
     case 'sync': return renderSbSyncModal(storyboard);
     case 'preview': return renderSbPreviewModal();
@@ -550,33 +541,6 @@ function renderSbDiff(diff) {
     ${diff.meta.length ? `<li class="is-changed">~ ${escapeHtml(tt('Scenario', 'Scénario', 'Szenario'))} <small>${diff.meta.join(', ')}</small></li>` : ''}
     ${diff.cast.added.length + diff.cast.removed.length + diff.cast.changed.length ? `<li class="is-changed">~ ${escapeHtml(tt('Cast', 'Rôles', 'Rollen'))} <small>${[...diff.cast.added.map((label) => `+${label}`), ...diff.cast.removed.map((label) => `−${label}`), ...diff.cast.changed].map(escapeHtml).join(', ')}</small></li>` : ''}
   </ul>`;
-}
-
-function renderSbCoherenceModal(storyboard) {
-  const report = storyboard.meta.coherence;
-  const issues = report?.issues || [];
-  const groups = [['error', 'Errors'], ['warning', 'Warnings'], ['info', 'Suggestions']];
-  const body = `<div class="sb-coherence-head">
-      ${sbScoreRing(report?.score)}
-      <div>
-        <strong>${report ? (report.score === null ? 'Nothing to check yet' : `Score ${report.score}/100`) : 'Not checked yet'}</strong>
-        <p class="sb-help">${report ? `${escapeHtml(report.summary || 'Deterministic checks only.')} Checked on rev ${report.checked_rev}${report.checked_rev !== storyboard.rev ? ' (storyboard changed since)' : ''}.` : 'Run the checks to review structure, timing, objectives coverage and workload across cells.'}</p>
-      </div>
-    </div>
-    ${groups.map(([severity, title]) => {
-      const list = issues.map((issue, index) => ({ issue, index })).filter(({ issue }) => issue.severity === severity);
-      if (!list.length) return '';
-      return `<h4 class="sb-issue-title is-${severity}">${title} · ${list.length}</h4><ul class="sb-issues">${list.map(({ issue, index }) => `<li class="is-${severity}">
-        <span>${issue.source === 'ai' ? '<b class="sb-flag is-ai">AI</b> ' : ''}${escapeHtml(issue.message)}</span>
-        <span class="sb-inline">
-          ${issue.block_ids.length ? `<button class="btn btn-ghost btn-xs" data-sb-action="select-blocks" data-sb-blocks="${escapeAttribute(issue.block_ids.join(','))}">Show</button>` : ''}
-          ${issue.fix ? `<button class="btn btn-secondary btn-xs" data-sb-action="apply-fix" data-sb-issue="${index}" title="${escapeAttribute(Object.entries(issue.fix.patch).map(([key, value]) => `${key}: ${value}`).join('\n'))}">Apply fix</button>` : ''}
-        </span>
-      </li>`).join('')}</ul>`;
-    }).join('')}`;
-  const footer = `<button class="btn btn-secondary btn-sm" data-sb-action="run-coherence" data-sb-value="rules" ${sbBusy() ? 'disabled' : ''}>Run checks</button>
-    <button class="btn btn-primary btn-sm" data-sb-action="run-coherence" data-sb-value="ai" ${isLLMAvailable() && !sbBusy() && storyboard.blocks.length ? '' : 'disabled'}>${sbUiIcon('wand', 13)} Checks + AI review</button>`;
-  return sbModalShell('Global coherence', body, footer, 'sb-modal-wide');
 }
 
 function renderSbGenerateModal(storyboard) {

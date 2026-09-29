@@ -1347,12 +1347,18 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
       function renderCheckerPriorityActions(result) {
         const actions = result.priority_actions;
         if (!actions || !actions.length) return '';
+        // On the current scenario, the agent applies one priority action or all of them (the
+        // challenge that edits, formerly "Challenge my exercise" in the agent console).
+        const fixable = appState.checkerState.mode !== 'file' && isLLMAvailable();
+        const busy = typeof getCrisisAgent === 'function' && (getCrisisAgent().active || getCrisisAgent().busy);
+        const fix = (index, label) => `<button class="btn ${index === 'all' ? 'btn-primary' : 'btn-ghost'} btn-xs" data-action="checker-fix" data-fix-index="${index}" ${busy ? 'disabled' : ''}>${sbUiIcon('wand', 12)} ${escapeHtml(label)}</button>`;
         return `
           <div class="checker-priority-actions">
-            <h4>${tt('Priority Actions', 'Actions prioritaires', 'Prioritätsmaßnahmen')}</h4>
+            <div class="checker-priority-head"><h4>${tt('Priority Actions', 'Actions prioritaires', 'Prioritätsmaßnahmen')}</h4>${fixable ? fix('all', tt('Fix all with the agent', 'Tout corriger avec l’agent', 'Alle mit dem Agenten beheben')) : ''}</div>
             <ol>
-              ${actions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+              ${actions.map((a, i) => `<li><span>${escapeHtml(a)}</span>${fixable ? fix(i, tt('Fix', 'Corriger', 'Beheben')) : ''}</li>`).join('')}
             </ol>
+            ${fixable && typeof renderAgentPanel === 'function' ? renderAgentPanel({ origin: 'summary' }) : ''}
           </div>
         `;
       }

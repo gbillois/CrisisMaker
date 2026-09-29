@@ -66,9 +66,11 @@ function answerFor(system, user) {
   await page.reload();
   await page.click('.launch-hero-close');
 
-  // 0. Project is the first tab, top left.
-  assert.equal(await page.evaluate(() => appState.route), 'project');
-  assert.equal(await page.evaluate(() => document.querySelector('.nav-topbar-left .nav-icon-btn')?.dataset.route), 'project');
+  // 0. Context is the first tab, top left, in the Prepare group; Project is a menu of the header.
+  assert.equal(await page.evaluate(() => appState.route), 'scenario');
+  assert.equal(await page.evaluate(() => document.querySelector('.nav-topbar-left .nav-icon-btn')?.dataset.route), 'scenario');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.nav-group')].map((group) => group.querySelectorAll('.nav-icon-btn').length)), [5, 2, 2]);
+  assert.equal(await page.locator('.nav-icon-btn[data-route="project"]').count(), 0);
   const navX = await page.evaluate(() => document.querySelector('.nav-topbar-left').getBoundingClientRect().left);
   assert.ok(navX < 40, `nav starts top left (${navX})`);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -85,8 +87,14 @@ function answerFor(system, user) {
   await page.dispatchEvent('[data-sc-players]', 'change');
   assert.deepEqual(await page.evaluate(() => ({ client: appState.scenario.client.name, duration: appState.scenario.storyboard.duration_minutes, cells: appState.scenario.cells.length, players: Number(appState.scenario.exercise.players_count) })), { client: 'Northwind Hospitals', duration: 180, cells: 3, players: 14 });
 
-  // The scenario library lives on the Project tab.
-  await page.click('.nav-icon-btn[data-route="project"]');
+  // The scenario library lives on the Project page, opened from the Project menu of the header.
+  await page.click('.brand-project');
+  assert.ok(await page.isVisible('.project-menu'));
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.project-menu').count(), 0, 'Esc closes the Project menu');
+  await page.click('.brand-project');
+  await page.click('.project-menu [data-route="project"]');
+  assert.equal(await page.locator('.project-menu').count(), 0);
   await page.click('.pj-library [data-sb-action="preview-template"][data-sb-template="ransomware-double-extortion"]');
   // Load selects the scenario and opens Context; nothing replaces the storyline yet.
   assert.equal(await page.isDisabled('[data-cx-load-basic]').catch(() => null), null);
@@ -105,16 +113,25 @@ function answerFor(system, user) {
   await page.keyboard.press('Control+z');
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
 
-  // Context tab: objectives and ideas, then Generate with AI runs the builder agent, which asks first.
+  // Context tab: objectives and ideas, then Build the framing runs the builder agent (framing only), which asks first.
   await page.click('.nav-icon-btn[data-route="scenario"]');
   await page.fill('[data-sb-meta="brief"]', 'Three-hour hospital ransomware exercise for the executive cell');
   await page.dispatchEvent('[data-sb-meta="brief"]', 'change');
   await page.selectOption('[data-cx-mode]', 'auto');
-  await page.click('[data-cx-generate]');
+  assert.ok(await page.isDisabled('[data-bf-action="validate"]'), 'nothing to validate before the framing');
+  await page.click('[data-bf-action="framing"]');
   await page.waitForSelector('.agent-panel .agent-question');
+  assert.equal(await page.evaluate(() => crisisAgentRunner.scope), 'framing');
   await page.fill('#agent-answer', 'The executive committee; the isolation decision.');
   await page.click('.agent-panel [data-agent-action="answer"]');
   await page.waitForFunction(() => crisisAgentRunner.status === 'complete');
+  // The framing done, the Main storyline opens for the client review, with the validation at hand.
+  await page.waitForFunction(() => appState.route === 'storyline');
+  assert.ok(await page.isVisible('.bf-bar [data-bf-action="validate"]'));
+  await page.click('.bf-bar [data-bf-action="validate"]');
+  assert.ok(await page.isVisible('.bf-bar.is-ok'), 'validated, unchanged');
+  assert.ok(await page.evaluate(() => StoryboardHistory.findVersion(appState.scenario.framing_validation.version_id)?.kind === 'named'));
+  await page.click('.nav-icon-btn[data-route="scenario"]');
   assert.ok(await page.isVisible('.agent-panel.is-complete'));
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 3);
   assert.ok(await page.evaluate(() => crisisAgentRunner.answers.some((entry) => entry.answers?.includes('executive committee'))));

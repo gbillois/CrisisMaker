@@ -57,8 +57,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await page.locator('.nav-icon-btn[data-route="detailed"]').click();
   assert.ok((await page.locator('main').innerText()).includes('Isolation decision'));
   await page.evaluate(() => { appState.route = 'agent'; App.render(); });
-  await page.locator('#agent-kind').selectOption('reviewer');
-  assert.equal(await page.locator('#agent-kind').inputValue(), 'reviewer');
+  // One challenge: the reviewer is no longer in the console; Check & Challenge starts it.
+  assert.deepEqual(await page.locator('#agent-kind option').evaluateAll((options) => options.map((option) => option.value)), ['builder', 'designer']);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: '/tmp/crisismaker-agent-mobile.png', fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'No mobile horizontal overflow');
@@ -69,10 +69,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.equal(await page.evaluate(() => appState.scenario.settings.ai_api_key), 'mock-key');
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.evaluate(project => { applyLoadedScenario(project); appState.route = 'agent'; App.render(); }, built);
-  await page.locator('#agent-kind').selectOption('reviewer');
-  await page.locator('#agent-mode').selectOption('assist');
-  await page.locator('#agent-objective').fill('Challenge the exercise and strengthen weak dilemmas.');
-  await page.locator('[data-agent-action="start"]').click();
+  // The fix of a Check & Challenge priority action, in Assist mode: every change waits for approval.
+  await page.evaluate(() => { startCrisisAgent({ kind: 'reviewer', mode: 'assist', objective: 'Apply these priority actions of the Check & Challenge report to the exercise, then re-check it:\n1. Strengthen weak dilemmas.', origin: 'summary' }); });
   await page.waitForFunction(() => crisisAgentRunner.status === 'approval');
   assert.ok((await page.locator('.agent-approval').innerText()).includes('decision owner'));
   assert.ok(!(await page.evaluate(() => appState.scenario.stimuli[0].fields.body)).includes('two hours'));
@@ -85,7 +83,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.equal(await page.evaluate(() => appState.scenario.stimuli[0].fields.body), built.stimuli[0].fields.body);
 
   // Assistant: floating button, suggestions, a question, then a change and its undo.
-  await page.locator('.nav-icon-btn[data-route="project"]').click();
+  await page.locator('.brand-project').click();
+  await page.locator('.project-menu [data-route="project"]').click();
   await page.locator('.assistant-fab').click();
   await page.locator('.assistant-panel').waitFor();
   assert.ok(await page.locator('.assistant-chip').count() >= 6);

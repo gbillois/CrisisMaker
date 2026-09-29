@@ -196,10 +196,6 @@ async function sbHandleAction(event) {
         if (['sync', 'generate'].includes(ui.modal) && !SbPipeline.active) SbPipeline.log = [];
         if (ui.modal === 'sync') ui.impacts = null;
         if (ui.modal === 'generate') ui.generate.scope = ui.selected.length ? 'selection' : 'all';
-        if (ui.modal === 'coherence' && !storyboard.meta.coherence) {
-          await SbAI.coherence({ ai: false });
-          StoryboardHistory.silent();
-        }
         if (ui.modal === 'versions') ui.diffVersionId = null;
         App.render();
         break;
@@ -448,27 +444,6 @@ async function sbHandleAction(event) {
         ui.diffVersionId = null;
         App.render();
         break;
-      case 'run-coherence':
-        try {
-          await SbAI.coherence({ ai: element.dataset.sbValue === 'ai' });
-          StoryboardHistory.silent();
-        } catch (error) {
-          pushToast(error?.name === 'AbortError' ? tt('AI review stopped.', 'Revue IA arrêtée.', 'KI-Prüfung gestoppt.') : sbErrorMessage(error), 'error');
-        }
-        App.render();
-        break;
-      case 'apply-fix': {
-        const report = storyboard.meta.coherence;
-        const issue = report?.issues?.[Number(element.dataset.sbIssue)];
-        const target = issue?.fix && sbBlock(storyboard, issue.fix.block_id);
-        if (!target) break;
-        if (target.locked) { pushToast(tt('This block is locked.', 'Ce bloc est verrouillé.', 'Dieser Block ist gesperrt.'), 'info'); break; }
-        Object.assign(target, issue.fix.patch);
-        target.ai_rev = storyboard.rev + 1;
-        report.issues.splice(Number(element.dataset.sbIssue), 1);
-        sbCommitRender('Apply coherence fix');
-        break;
-      }
       case 'generate-scope':
         ui.generate.scope = element.dataset.sbValue;
         App.render();

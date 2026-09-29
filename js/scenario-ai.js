@@ -1,5 +1,5 @@
 /* Scenario Builder AI operations: skeleton, deepening by layers, rewrite,
-   coherence review, template adaptation and casting. Every operation reuses
+   exercise review, template adaptation and casting. Every operation reuses
    the configured provider through AITextGenerator and validates the output. */
 const SB_AI_TIMEOUT = 180000;
 
@@ -374,33 +374,6 @@ const SbAI = {
       };
     }).filter((issue) => issue.message);
     return { score: Number.isFinite(Number(result.score)) ? sbInt(result.score, 0, 0, 100) : null, summary: sbText(result.summary, 2000), issues: [...rules, ...issues], checked_at: new Date().toISOString() };
-  },
-
-  /* Deterministic rules first, then an AI critical review when available. */
-  async coherence({ ai = true } = {}) {
-    const project = appState.scenario;
-    const storyboard = project.storyboard;
-    const rules = sbStructuralChecks(storyboard, project);
-    // An empty storyboard has nothing to score.
-    const report = { score: storyboard.blocks.length ? sbScore(rules) : null, summary: '', checked_rev: storyboard.rev, checked_at: new Date().toISOString(), issues: rules };
-    if (ai && isLLMAvailable() && storyboard.blocks.length) {
-      const payload = {
-        task: 'Critically review the whole storyboard for global coherence and exercise quality. Be specific and cite block ids.',
-        deterministic_findings: rules.map((issue) => issue.message),
-        context: sbAIContext(project),
-        checks: ['causality and chronology across cells', 'premature disclosure or missing information', 'escalation and dead time', 'workload balance across cells and parallel pressure', 'objectives actually tested', 'realistic deadlines and actors (authorities, media, regulators)', 'decisions and dilemmas for executives', 'credible ending and exit criteria'],
-        response_format: { score: '0-100 overall quality', summary: '2-3 sentences', issues: [{ severity: 'error|warning|info', block_ids: ['block id'], message: 'specific finding and recommendation', fix: { block_id: 'optional: block whose text change fixes the issue', patch: { brief: 'optional new brief', narrative: 'optional new narrative', title: 'optional new title' } } }] },
-        rules: ['Do not repeat the deterministic findings.', 'At most 12 issues, most important first.', 'Only propose a fix when a text change of ONE block solves the issue.']
-      };
-      const result = await this.request('Reviewing coherence', payload, 6000);
-      const aiReport = sbNormalizeCoherence({ score: result.score, summary: result.summary, issues: (Array.isArray(result.issues) ? result.issues : []).map((issue) => ({ ...issue, source: 'ai' })) });
-      aiReport.issues = aiReport.issues.map((issue) => ({ ...issue, block_ids: issue.block_ids.filter((id) => sbBlock(storyboard, id)), fix: issue.fix && sbBlock(storyboard, issue.fix.block_id) ? issue.fix : null }));
-      report.summary = aiReport.summary;
-      report.issues = [...rules, ...aiReport.issues];
-      report.score = Math.round((report.score + (Number.isFinite(Number(result.score)) ? aiReport.score : report.score)) / 2);
-    }
-    storyboard.meta.coherence = sbNormalizeCoherence(report);
-    return storyboard.meta.coherence;
   },
 
   /* Contextualises a library template for the current organisation. */

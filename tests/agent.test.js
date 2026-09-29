@@ -189,7 +189,7 @@ test('all existing providers normalize the same structured response and forward 
 test('empty actor lists and exercise plan survive the normal project format', () => {
   const h = harness();
   assert.equal(h.run('mergeScenario(migrateScenario(buildProjectFileData())).actors.length'), 0);
-  const html = h.run('renderAgentView()'); assert.ok(html.includes('Build my exercise')); assert.ok(html.includes('Challenge my exercise')); assert.ok(html.includes('Undo agent changes'));
+  const html = h.run('renderAgentView()'); assert.ok(html.includes('Design the whole exercise')); assert.ok(!html.includes('Challenge my exercise'), 'one challenge: in Check & Challenge'); assert.ok(html.includes('use Check &amp; Challenge') || html.includes('use Check & Challenge')); assert.ok(html.includes('Undo agent changes'));
 });
 
 test('builder agent asks questions, waits for answers, then continues with them', async () => {

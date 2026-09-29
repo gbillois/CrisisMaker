@@ -153,6 +153,7 @@ function renderStorylineView() {
         <div class="sb-tb-group sb-tb-output">${renderUpdateButton(project, undefined, tt('Update next tabs', 'Mettre à jour les onglets suivants', 'Folgende Tabs aktualisieren'))}</div>
       </header>
       ${renderSbStatusBar()}
+      ${renderFramingBar(project, 'storyline')}
       <div class="sl-timeline">${storyboard.blocks.length ? renderSbTimeline(storyboard) : tabEmptyNote(tt('No phase yet. Pick a scenario in the Project library, generate one with AI in Context, or add a phase above.', 'Aucune phase pour l’instant. Choisissez un scénario dans la bibliothèque du Projet, générez-en un avec l’IA dans Contexte, ou ajoutez une phase ci-dessus.', 'Noch keine Phase. Wählen Sie ein Szenario in der Projekt-Bibliothek, erstellen Sie eines mit KI im Kontext oder fügen Sie oben eine Phase hinzu.'), 'scenario', tt('Context', 'Contexte', 'Kontext'))}</div>
       ${renderEditorSplitter('storyline')}
       <section class="bottom-editor sl-editor" aria-label="${escapeAttribute(tt('Phase editor', 'Éditeur de phase', 'Phasen-Editor'))}" ${editorHeightStyle('storyline')}>
@@ -461,6 +462,7 @@ function renderDetailedView() {
         </div>
       </header>
       ${renderSbStatusBar()}
+      ${renderFramingBar(project, 'detailed')}
       <div class="ds-timeline">${storyboard.blocks.length || items.length ? renderDetailedTimeline(project, items) : tabEmptyNote(tt('Build the main storyline first: its phases frame the injects of every cell.', 'Construisez d’abord la storyline principale : ses phases structurent les injects de chaque cellule.', 'Erstellen Sie zuerst die Haupt-Storyline: Ihre Phasen bilden den Rahmen für die Injects jeder Zelle.'), 'storyline', workflowTabLabel('storyline'))}</div>
       ${renderEditorSplitter('detailed')}
       <section class="bottom-editor ds-editor" aria-label="${escapeAttribute(tt('Inject editor', 'Éditeur d’inject', 'Inject-Editor'))}" ${editorHeightStyle('detailed')}>${selected ? renderInjectEditor(project, selected) : `<div class="bottom-editor-empty">${sbUiIcon('play', 18)}<span>${escapeHtml(tt('Select an inject to edit it. Drag it to change its time, or to another cell row to change its recipient.', 'Sélectionnez un inject pour le modifier. Faites-le glisser pour changer son heure, ou vers la ligne d’une autre cellule pour changer son destinataire.', 'Wählen Sie einen Inject, um ihn zu bearbeiten. Ziehen Sie ihn, um seine Zeit zu ändern, oder in die Zeile einer anderen Zelle, um den Empfänger zu ändern.'))} ${cellScope ? escapeHtml(tt(`“+ Inject” adds one for the ${cellScope.name} at the playhead.`, `« + Inject » en ajoute un pour la cellule ${cellScope.name} à la tête de lecture.`, `„+ Inject“ fügt am Abspielkopf einen für ${cellScope.name} hinzu.`)) : escapeHtml(tt('Pick a cell above to focus on its injects.', 'Choisissez une cellule ci-dessus pour vous concentrer sur ses injects.', 'Wählen Sie oben eine Zelle, um sich auf ihre Injects zu konzentrieren.'))}</span></div>`}</section>
@@ -940,8 +942,8 @@ function renderContextBrief(project) {
         <option value="auto" ${state.mode === 'auto' ? 'selected' : ''}>${escapeHtml(tt('Build automatically', 'Construire automatiquement', 'Automatisch aufbauen'))}</option>
       </select></label>
       <button class="btn btn-secondary" data-cx-load-basic ${template && !busy ? '' : 'disabled'} title="${escapeAttribute(template ? tt(`Replace the main storyline with "${template.name}" as it is in the library`, `Remplacer la storyline principale par « ${template.name} » tel qu’il est dans la bibliothèque`, `Die Haupt-Storyline durch „${template.name}“ ersetzen, so wie es in der Bibliothek steht`) : tt('Load a scenario from the library in the Project tab first', 'Chargez d’abord un scénario de la bibliothèque dans l’onglet Projet', 'Laden Sie zuerst ein Szenario aus der Bibliothek im Tab Projekt'))}">${sbUiIcon('book', 15)} ${escapeHtml(tt('Load basic scenario from library', 'Charger le scénario de base de la bibliothèque', 'Basisszenario aus der Bibliothek laden'))}</button>
-      <button class="btn btn-primary" data-cx-generate ${ai && !busy ? '' : 'disabled'} ${ai ? '' : `title="${escapeAttribute(tt('Configure an AI connection in Settings to generate with AI.', 'Configurez une connexion IA dans les Paramètres pour générer avec l’IA.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um mit KI zu generieren.'))}"`}>${sbUiIcon('sparkles', 15)} ${escapeHtml(tt('Generate with AI', 'Générer avec l’IA', 'Mit KI generieren'))}</button>
     </div>
+    ${renderBuildFlow(project)}
     ${ai ? '' : `<p class="agent-warning">${escapeHtml(tt('Configure an AI connection in Settings to generate with AI.', 'Configurez une connexion IA dans les Paramètres pour générer avec l’IA.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um mit KI zu generieren.'))}</p>`}
     ${renderAgentPanel({ origin: 'context' })}
   </article>`;
@@ -1311,13 +1313,6 @@ function tabBindInputs(root) {
     appState.route = 'storyline';
     pushToast(tt(`"${template.name}" loaded as it is. Refine the phases, then plan and write the injects.`, `« ${template.name} » chargé tel quel. Affinez les phases, puis planifiez et rédigez les injects.`, `„${template.name}“ unverändert geladen. Verfeinern Sie die Phasen, dann planen und schreiben Sie die Injects.`), 'success');
     App.render();
-  }));
-  root.querySelectorAll('[data-cx-generate]').forEach((button) => button.addEventListener('click', () => {
-    // The agent adapts the loaded library scenario: put it on the storyline first.
-    const template = contextLibraryTemplate(project);
-    if (template && project.storyboard.meta.template_id !== template.id && !sbUseTemplate(template, 'replace')) return;
-    saveLocal(false);
-    startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', objective: contextAgentObjective(project), origin: 'context' });
   }));
   root.querySelectorAll('[data-sc-players]').forEach((input) => input.addEventListener('change', () => {
     project.exercise.players_count = input.value === '' ? '' : sbInt(input.value, 0, 0, 10000);

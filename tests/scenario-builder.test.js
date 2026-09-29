@@ -289,17 +289,6 @@ test('AI: deepen adds narrative then exactly the missing beats, keeping existing
   assert.equal(h.run(`sbBlock(sbStoryboard(), 'b1').beats.length`), 1);
 });
 
-test('AI: coherence merges rules with AI findings and fixes apply to one block', async () => {
-  const h = harness();
-  h.run(`sbApplyTemplate(sbFindTemplate('ddos-hacktivism'), 'replace'); StoryboardHistory.ensure(appState.scenario, 'Use');`);
-  const target = h.run('sbStoryboard().blocks[1].id');
-  mockAI(h, [{ score: 70, summary: 'Solid but late escalation.', issues: [{ severity: 'warning', block_ids: [target, 'ghost'], message: 'Escalation arrives late.', fix: { block_id: target, patch: { brief: 'Earlier escalation', start_minutes: 'no' } } }, { severity: 'loud', message: 'Odd severity' }] }]);
-  const coherence = await h.run(`(async () => JSON.stringify(await SbAI.coherence({ ai: true })))()`).then(JSON.parse);
-  assert.ok(coherence.issues.some(i => i.source === 'ai' && i.block_ids.length === 1 && i.fix?.patch?.brief === 'Earlier escalation'));
-  assert.ok(coherence.issues.every(i => ['error', 'warning', 'info'].includes(i.severity)));
-  assert.ok(coherence.score > 0 && coherence.score <= 100);
-});
-
 test('pipeline: plans, casts, creates linked injects through agent tools and writes content with storyboard context', async () => {
   const h = harness();
   h.run(`appState.scenario.client.name = 'Acme Bank'; appState.scenario.settings.inject_language = 'fr';
@@ -436,7 +425,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
   const context = h.run('renderScenarioView()');
-  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-cx-sector', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-cx-generate', 'Generate with AI']) assert.ok(context.includes(marker), marker);
+  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-cx-sector', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-bf-action="framing"', 'Build my exercise', 'data-bf-action="validate"', 'data-bf-action="stimuli"']) assert.ok(context.includes(marker), marker);
   assert.ok(context.indexOf('data-sc-players') < context.indexOf('data-sb-meta="brief"'), 'context, then objectives and AI');
   assert.ok(context.includes('data-bind="name"') && !context.includes('cx-details') && !context.includes('data-sb-meta="synopsis"'), 'the exercise name in the Context card; no "Scenario details" block');
   assert.ok(!context.includes('skeleton.brief') && !context.includes('llm-block-scenario'), 'the old AI blocks are gone');

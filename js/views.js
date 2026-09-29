@@ -170,9 +170,13 @@
                   ${crisisMakerIcon(26, 'cm-icon brand-mark')}
                   <span class="brand-product">Crisis<b>Maker</b></span>
                 </a>
-                <div class="brand-project">
-                  <span class="brand-project-label">${tt('Current exercise', 'Exercice en cours', 'Aktuelle Übung')}</span>
-                  <span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker', 'CrisisMaker-Projekt'))}</span>
+                <div class="brand-project-wrap">
+                  <button type="button" class="brand-project ${appState.route === 'project' ? 'is-active' : ''}" data-action="toggle-project-menu" aria-haspopup="menu" aria-expanded="${appState.projectMenuOpen ? 'true' : 'false'}" title="${escapeAttribute(tt('Project: open, save, export, library', 'Projet : ouvrir, sauvegarder, exporter, bibliothèque', 'Projekt: öffnen, speichern, exportieren, Bibliothek'))}">
+                    <span class="brand-project-label">${svgFolder()} ${tt('Project', 'Projet', 'Projekt')}</span>
+                    <span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker', 'CrisisMaker-Projekt'))}</span>
+                    <span class="brand-project-caret" aria-hidden="true">${sbUiIcon('down', 14)}</span>
+                  </button>
+                  ${appState.projectMenuOpen ? renderProjectMenu() : ''}
                 </div>
                 <div class="brand-actions">
                   <span id="save-indicator" class="save-indicator"></span>
@@ -199,16 +203,21 @@
               </div>
               <nav class="nav-topbar" aria-label="${tt('Workspace', 'Espace de travail', 'Arbeitsbereich')}">
                 <div class="nav-topbar-left">
-                  ${renderNavIconButton('project', svgFolder(), tt('Project', 'Projet', 'Projekt'))}
-                  ${renderNavIconButton('scenario', svgTarget(), tt('Context', 'Contexte', 'Kontext'))}
-                  ${renderNavIconButton('storyline', svgStoryboard(), escapeHtml(workflowTabLabel('storyline')))}
-                  ${renderNavIconButton('cells', svgUsers(), escapeHtml(workflowTabLabel('cells')))}
-                  ${renderNavIconButton('detailed', svgPen(), escapeHtml(workflowTabLabel('detailed')))}
-                  ${renderNavIconButton('library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'))}
-                  ${renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge')}
-                  ${renderNavIconButton('play', svgBroadcast(), 'Play')}
-                  ${renderNavIconButton('evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung'))}
-                  ${renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))}
+                  ${renderNavGroup(tt('Prepare', 'Préparer', 'Vorbereiten'), [
+                    renderNavIconButton('scenario', svgTarget(), tt('Context', 'Contexte', 'Kontext')),
+                    renderNavIconButton('storyline', svgStoryboard(), escapeHtml(workflowTabLabel('storyline')), workflowStageLabel('storyline')),
+                    renderNavIconButton('cells', svgUsers(), escapeHtml(workflowTabLabel('cells'))),
+                    renderNavIconButton('detailed', svgPen(), escapeHtml(workflowTabLabel('detailed')), workflowStageLabel('detailed')),
+                    renderNavIconButton('library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'))
+                  ])}
+                  ${renderNavGroup(tt('Run', 'Jouer', 'Durchführen'), [
+                    renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge'),
+                    renderNavIconButton('play', svgBroadcast(), 'Play')
+                  ])}
+                  ${renderNavGroup(tt('After', 'Après', 'Danach'), [
+                    renderNavIconButton('evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung')),
+                    renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))
+                  ])}
                 </div>
               </nav>
             </header>
@@ -278,9 +287,40 @@
         return route;
       }
 
-      function renderNavIconButton(route, iconSvg, label) {
+      /* The tabs in the order of an exercise: prepare it, run it, then evaluate and debrief. */
+      /* The two stages of the work with a client: the framing, validated, then the stimuli of each cell. */
+      function workflowStageLabel(route) {
+        if (route === 'storyline') return tt('stage 1, framing (phases, main events, consequences)', 'étape 1, cadrage (phases, événements principaux, conséquences)', 'Schritt 1, Rahmen (Phasen, Hauptereignisse, Folgen)');
+        if (route === 'detailed') return tt('stage 2, the stimuli of each cell', 'étape 2, les stimuli de chaque cellule', 'Schritt 2, die Stimuli jeder Zelle');
+        return '';
+      }
+
+      function renderNavGroup(label, buttons) {
+        return `<div class="nav-group" role="group" aria-label="${escapeAttribute(label)}"><span class="nav-group-label" aria-hidden="true">${escapeHtml(label)}</span>${buttons.join('')}</div>`;
+      }
+
+      /* The Project menu of the header: files and the library, which are not a step of the exercise. */
+      function renderProjectMenu() {
+        const exporting = !!appState.ui?.actionLoading?.['export-all'];
+        const item = (attrs, icon, label, hint = '') => `<button type="button" class="project-menu-item" role="menuitem" ${attrs}>${sbUiIcon(icon, 16)}<span><strong>${escapeHtml(label)}</strong>${hint ? `<small>${escapeHtml(hint)}</small>` : ''}</span></button>`;
+        const excel = isLLMAvailable() ? 'data-action="import-chronogram-ia"' : `data-action="import-chronogram-ia" disabled title="${escapeAttribute(tt('Configure an AI connection in Settings to import an Excel timeline', 'Configurez une connexion IA dans les Paramètres pour importer une chronologie Excel', 'Konfigurieren Sie eine KI-Verbindung in den Einstellungen, um einen Excel-Zeitplan zu importieren'))}"`;
+        return `<div class="project-menu" role="menu" aria-label="${escapeAttribute(tt('Project', 'Projet', 'Projekt'))}">
+          ${item('data-route="project"', 'layers', tt('Project overview', 'Vue d’ensemble du projet', 'Projektübersicht'), tt('Summary, data and scenario library', 'Synthèse, données et bibliothèque de scénarios', 'Übersicht, Daten und Szenario-Bibliothek'))}
+          <div class="project-menu-sep"></div>
+          ${item('data-action="new-scenario"', 'filePlus', tt('New', 'Nouveau', 'Neu'), tt('Blank project', 'Projet vierge', 'Leeres Projekt'))}
+          ${item('data-action="project-scroll-library"', 'book', tt('Create from library', 'Créer depuis la bibliothèque', 'Aus Bibliothek erstellen'), tt('Ready-made scenario', 'Scénario prêt à l’emploi', 'Fertiges Szenario'))}
+          ${item('data-action="load-json"', 'folderOpen', tt('Open', 'Ouvrir', 'Öffnen'), '.json · .zip')}
+          ${item(excel, 'sheet', tt('Import Excel', 'Importer Excel', 'Excel importieren'), tt('AI-assisted timeline import', 'Import de chronologie assisté par IA', 'KI-gestützter Zeitplan-Import'))}
+          ${item('data-action="load-example"', 'demo', tt('Load a demo', 'Charger une démo', 'Demo laden'), tt('StonaWave ransomware', 'Rançongiciel StonaWave', 'StonaWave-Ransomware'))}
+          <div class="project-menu-sep"></div>
+          ${item('data-action="save-json"', 'braces', tt('Export text content', 'Exporter le contenu texte', 'Textinhalt exportieren'), 'JSON')}
+          ${item(`data-action="export-all" ${exporting ? 'disabled' : ''}`, exporting ? 'clock' : 'archive', tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Styled images · .zip', 'Images stylées · .zip', 'Gestaltete Bilder · .zip'))}
+        </div>`;
+      }
+
+      function renderNavIconButton(route, iconSvg, label, hint = '') {
         const isActive = appState.route === route;
-        return `<button class="nav-icon-btn ${isActive ? 'active' : ''}" data-route="${route}" title="${label}">
+        return `<button class="nav-icon-btn ${isActive ? 'active' : ''}" data-route="${route}" title="${hint ? `${label}: ${escapeAttribute(hint)}` : label}">
           ${iconSvg}
           <span>${label}</span>
         </button>`;
@@ -313,9 +353,9 @@
         const cards = [
           ['project', svgFolder(), tt('Project', 'Projet', 'Projekt'), tt('The exercise at a glance, projects to open, save and export, and a library of ready-made scenarios to start from.', 'L’exercice en un coup d’œil, les projets à ouvrir, sauvegarder et exporter, et une bibliothèque de scénarios prêts à l’emploi pour démarrer.', 'Die Übung auf einen Blick, Projekte zum Öffnen, Speichern und Exportieren sowie eine Bibliothek fertiger Szenarien als Ausgangspunkt.')],
           ['scenario', svgTarget(), tt('Context', 'Contexte', 'Kontext'), tt('Set the client, duration, simulated dates, cells, players and languages, describe your objectives and ideas, and let the AI agent build the exercise with you.', 'Renseignez le client, la durée, les dates simulées, les cellules, les joueurs et les langues, décrivez vos objectifs et vos idées, et laissez l’agent IA construire l’exercice avec vous.', 'Auftraggeber, Dauer, simulierte Daten, Zellen, Spieler und Sprachen festlegen, Ziele und Ideen beschreiben und die Übung gemeinsam mit dem KI-Agenten aufbauen.')],
-          ['storyline', svgStoryboard(), workflowTabLabel('storyline'), tt('Lay out the phases of the crisis on a single timeline and write what happens in each one, by hand or with AI.', 'Disposez les phases de la crise sur une timeline unique et décrivez ce qui se passe dans chacune, à la main ou avec l’IA.', 'Die Phasen der Krise auf einer einzigen Zeitachse anordnen und beschreiben, was in jeder passiert, von Hand oder mit KI.')],
+          ['storyline', svgStoryboard(), workflowTabLabel('storyline'), tt('Stage 1, the framing: the phases of the crisis on one timeline, their main events and the consequences to manage, reviewed and validated with the client.', 'Étape 1, le cadrage : les phases de la crise sur une timeline unique, leurs événements principaux et les conséquences à gérer, relus et validés avec le client.', 'Schritt 1, der Rahmen: die Phasen der Krise auf einer Zeitachse, ihre Hauptereignisse und die zu bewältigenden Folgen, mit dem Kunden geprüft und freigegeben.')],
           ['cells', svgUsers(), workflowTabLabel('cells'), tt('Create the player cells and their participants, and the simulated actors who send injects: attackers, press, authorities.', 'Créez les cellules de joueurs et leurs participants, et les acteurs simulés qui envoient les injects : attaquants, presse, autorités.', 'Spielerzellen und ihre Teilnehmer anlegen sowie die simulierten Akteure, die Injects senden: Angreifer, Presse, Behörden.')],
-          ['detailed', svgPen(), workflowTabLabel('detailed'), tt('Pick a cell and plan its injects under the main storyline, then write them with AI and keep them in sync.', 'Choisissez une cellule et planifiez ses injects sous la storyline principale, puis rédigez-les avec l’IA et gardez-les synchronisés.', 'Eine Zelle wählen und ihre Injects unter der Haupt-Storyline planen, dann mit KI schreiben und synchron halten.')],
+          ['detailed', svgPen(), workflowTabLabel('detailed'), tt('Stage 2, once the framing is validated: the injects of each cell under the main storyline, written with AI and kept in sync.', 'Étape 2, une fois le cadrage validé : les injects de chaque cellule sous la storyline principale, rédigés avec l’IA et gardés synchronisés.', 'Schritt 2, nach der Freigabe des Rahmens: die Injects jeder Zelle unter der Haupt-Storyline, mit KI geschrieben und synchron gehalten.')],
           ['library', svgGrid(), tt('Injects library', 'Bibliothèque d’injects', 'Inject-Bibliothek'), tt('Every inject of the scenario, gathered by phase and filterable by cell: preview them for facilitation and export them as styled images or a ZIP.', 'Tous les injects du scénario, regroupés par phase et filtrables par cellule : prévisualisez-les pour l’animation et exportez-les en images stylées ou en ZIP.', 'Alle Injects des Szenarios, nach Phase gruppiert und nach Zelle filterbar: für die Moderation ansehen und als gestaltete Bilder oder ZIP exportieren.')],
           ['summary', svgShieldCheck(), 'Check & Challenge', tt('Know whether the exercise is ready to play: live consistency checks, the load of each cell by phase, one AI challenge on coverage, pacing and realism, and a ready-to-play checklist.', 'Sachez si l’exercice est prêt à être joué : contrôles de cohérence en continu, charge de chaque cellule par phase, un challenge IA sur la couverture, le rythme et le réalisme, et une checklist « Prêt à jouer ».', 'Wissen, ob die Übung spielbereit ist: laufende Konsistenzprüfungen, Last jeder Zelle pro Phase, eine KI-Challenge zu Abdeckung, Tempo und Realismus und eine Spielbereit-Checkliste.')],
           ['play', svgBroadcast(), 'Play', tt('Run the exercise live: a permanent control bar with the clock, current phase and next inject, a vertical chronogram to send each inject on time, and an exercise log.', 'Animez l’exercice en direct : un bandeau de pilotage avec l’horloge, la phase en cours et le prochain inject, un chronogramme vertical pour envoyer chaque inject à temps, et un journal de l’exercice.', 'Übung live durchführen: Steuerleiste mit Uhr, aktueller Phase und nächstem Inject, vertikales Chronogramm zum pünktlichen Senden und ein Übungsprotokoll.')],

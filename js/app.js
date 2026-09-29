@@ -1,6 +1,6 @@
       const initialScenario = loadInitialScenario();
       const appState = {
-        route: 'project',
+        route: 'scenario', // The first tab; the Project overview opens from the header menu.
         selectedStimulusId: null,
         stimulusModalId: null,
         slideshowIndex: 0,
@@ -53,6 +53,7 @@
           checkerLoadChecklist();
           this.bindBeforeUnload();
           this.bindEscape();
+          this.bindProjectMenu();
           this.bindDebriefEditorBridge();
           this.installVideoDebriefBridge();
           this.bindVideoDebriefBridge();
@@ -68,6 +69,7 @@
           window.addEventListener('keydown', (event) => {
             if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
             if (event.target?.closest?.('[data-assistant-form]')) return;
+            if (appState.projectMenuOpen) { appState.projectMenuOpen = false; App.render(); document.querySelector('.brand-project')?.focus(); return; }
             if (appState.techLogOpen) { appState.techLogOpen = false; App.render(); return; }
             if (appState.stimulusModalId || appState.historyModalStimulusId || appState.chronogramImport) return;
             const ui = typeof sbUI === 'function' ? sbUI() : null;
@@ -81,6 +83,14 @@
             }
             if (appState.launchScreenOpen) { appState.launchScreenOpen = false; App.render(); return; }
             if (appState.settingsDrawerOpen) { appState.settingsDrawerOpen = false; App.render(); }
+          });
+        },
+        /* A click outside the Project menu of the header closes it. */
+        bindProjectMenu() {
+          document.addEventListener('click', (event) => {
+            if (!appState.projectMenuOpen || event.target?.closest?.('.brand-project-wrap')) return;
+            appState.projectMenuOpen = false;
+            App.render();
           });
         },
         bindBeforeUnload() {
@@ -378,6 +388,7 @@
         document.querySelectorAll('[data-route]').forEach((button) => {
           button.addEventListener('click', () => {
             captureVideoDebriefProjectState();
+            appState.projectMenuOpen = false;
             appState.route = button.dataset.route;
             App.render();
           });
@@ -732,8 +743,24 @@
 
       async function handleAction(event) {
         const action = event.currentTarget.dataset.action;
+        // An item of the Project menu closes the menu before it runs.
+        if (appState.projectMenuOpen && action !== 'toggle-project-menu') { appState.projectMenuOpen = false; App.render(); }
         try {
           switch (action) {
+            case 'checker-fix': {
+              // The reviewer agent applies the chosen priority actions of the challenge.
+              const actions = appState.checkerState.analysisResult?.priority_actions || [];
+              const index = event.currentTarget.dataset.fixIndex;
+              const chosen = index === 'all' ? actions : [actions[Number(index)]].filter(Boolean);
+              if (!chosen.length) break;
+              startCrisisAgent({ kind: 'reviewer', mode: 'agent', origin: 'summary', objective: ['Apply these priority actions of the Check & Challenge report to the exercise, then re-check it:', ...chosen.map((action, i) => `${i + 1}. ${action}`)].join('\n').slice(0, 7900) });
+              break;
+            }
+            case 'toggle-project-menu':
+              appState.projectMenuOpen = !appState.projectMenuOpen;
+              App.render();
+              if (appState.projectMenuOpen) document.querySelector('.project-menu-item')?.focus();
+              break;
             case 'show-launch-screen':
               appState.launchScreenOpen = true;
               App.render();
@@ -794,6 +821,7 @@
             case 'project-scroll-library': {
               // "Create from library": the next Load from the library starts a new project.
               sbUI().libraryIntent = 'new';
+              appState.route = 'project'; // Also from the Project menu of the header.
               App.render();
               const library = document.getElementById('project-library');
               library?.scrollIntoView({ behavior: 'smooth', block: 'start' });

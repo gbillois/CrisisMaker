@@ -147,15 +147,17 @@ function agentConsistencyCheck() {
   for (const [actorId, casts] of byActor) if (new Set(casts.map(cast => sbRoleValue(cast.role))).size > 1) issues.push(`Cast: ${getActor(actorId)?.name || actorId} plays roles of different kinds (${casts.map(cast => `"${cast.label}" ${cast.role}`).join(', ')}): give each its own actor (upsertCast).`);
   const generic = (s.cells || []).filter(cell => /^(Decision|Operational crisis|Communication|IT & technical|Legal & compliance|Business continuity|HR & people) cell$/.test(cell.name));
   if (generic.length && /cell/i.test(s.scenario.learning_objectives || '') && generic.some(cell => !(s.scenario.learning_objectives || '').toLowerCase().includes(cell.name.toLowerCase()))) issues.push(`Cells: ${generic.map(cell => `"${cell.name}"`).join(', ')} still have their default names while the learning objectives name the cells: rename them after the learning objectives (upsertCells).`);
+  // A framing run (stage 1 of the Build flow) leaves the injects to stage 2.
+  const framing = typeof getCrisisAgent === 'function' && getCrisisAgent().active && getCrisisAgent().scope === 'framing';
   const beats = storyboard ? storyboard.blocks.flatMap(block => block.beats) : [];
-  for (const cell of s.cells || []) {
+  if (!framing) for (const cell of s.cells || []) {
     const count = beats.filter(beat => sbReaches(beat.cell_id, cell.id)).length + s.stimuli.filter(item => sbReaches(item.cell_id, cell.id) && !item.scenario_link?.beat_id).length;
     if (!count) issues.push(`Cell "${cell.name}" receives no inject, so its learning objectives are never tested.`);
   }
   const unwritten = beats.filter(beat => !sbStimulusForBeat(s, beat.id)).length;
-  if (unwritten) issues.push(`${unwritten} planned inject(s) of the storyline are not written yet.`);
+  if (unwritten && !framing) issues.push(`${unwritten} planned inject(s) of the storyline are not written yet.`);
   if (!s.actors.length) issues.push('No actors.');
-  if (!s.stimuli.length && !beats.length) issues.push('No inject planned or written yet.');
+  if (!s.stimuli.length && !beats.length && !framing) issues.push('No inject planned or written yet.');
   // Same rule as every tab (exercise model): a strict window, so injects outside every phase are caught.
   if (storyboard && sbMainBlocks(storyboard).length) getSortedStimuli().filter(item => !ExerciseModel.phaseAt(s, item.timestamp_offset_minutes, { strict: true })).forEach(item => issues.push(`${item.id}: outside every phase of the main storyline.`));
   const phases = storyboard && sbMainBlocks(storyboard).length ? [] : (s.scenario.phases || []);
