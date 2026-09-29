@@ -213,7 +213,7 @@ function sdSlides(project = appState.scenario) {
   const story = (project.debrief?.events || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
   if (on.story && story.length) {
     const items = story.map((event) => ({ when: sdClip(event.dateLabel, 30), title: sdClip(event.title, SD_FIT.storyTitle), text: sdClip(event.headline || event.body, SD_FIT.storyText) }));
-    sdPages(items, SD_FIT.storyItems).forEach((page, index) => slides.push({ kind: 'story', eyebrow: 'Story debrief', title: sdContinued(t('What really happened', 'Ce qui s’est réellement passé', 'Was wirklich geschah'), index, lang), continued: index > 0, items: page }));
+    sdPages(items, SD_FIT.storyItems).forEach((page, index) => slides.push({ kind: 'story', eyebrow: 'Animated debrief', title: sdContinued(t('What really happened', 'Ce qui s’est réellement passé', 'Was wirklich geschah'), index, lang), continued: index > 0, items: page }));
   }
   if (on.evaluation && cells.length && typeof evTally === 'function') {
     const rows = cells.map((cell) => ({ name: cell.name, color: cell.color, tally: evTally(project, cell), injects: evReceivedInjects(project, cell).length }));
