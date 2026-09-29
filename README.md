@@ -183,6 +183,14 @@ client; then the **stimuli of each cell** (Detailed storyline).
    injects per cell. Pick a cell to work on its injects: drag a card to change its
    time or its recipient cell, plan new injects for the cell with AI, create and
    write them, and keep them in sync. The inject editor also opens at the bottom.
+   **Injects library**: every written inject, phase by phase, with filters. **Create
+   injects in bulk with AI** is for a designer who only wants injects, without building
+   the storyline: describe them and how many ("Create 20 injects from H+0 to H+2…"), and
+   optionally impose the recipient cell and the phase. The AI writes them directly with
+   their sender, time and recipient cell, from the context, cells and phases of the
+   exercise; senders missing from the cast are added to it. Large requests are written in
+   parts of 8 (up to 60 injects per request, with Stop); the batch is one undo step, and
+   **Remove them** takes it out in one click.
 6. **Check & Challenge**: is the exercise ready to play? One **readiness** verdict
    (Ready to play, Almost ready, Needs work) and score from three signals, each with
    its gauge: the automatic checks, the AI challenge and the ready-to-play checklist,

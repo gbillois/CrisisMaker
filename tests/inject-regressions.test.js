@@ -59,7 +59,7 @@ const updateContext = {
   Date
 };
 vm.createContext(updateContext);
-vm.runInContext(functionSource('applyStimulusConfig', 'handleMultiStimulusResult'), updateContext);
+vm.runInContext(functionSource('applyStimulusConfig', 'stimuliBatchCell'), updateContext);
 
 const editedArticle = {
   channel: 'article_press',

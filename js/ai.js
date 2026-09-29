@@ -13,6 +13,27 @@
         return result && typeof result === 'object' ? [result] : [];
       }
 
+      /* The exercise structure for a bulk creation of injects: its duration, the player cells
+         that receive injects and the phases of the main storyline, plus the cell and phase the
+         designer imposed. */
+      function stimulusBatchStructure(scenario, options = {}) {
+        const storyboard = scenario.storyboard;
+        const cells = (scenario.cells || []).map((cell) => ({ name: cell.name, ...(cell.description ? { description: String(cell.description).slice(0, 200) } : {}) }));
+        const phases = storyboard && typeof sbMainBlocks === 'function'
+          ? sbMainBlocks(storyboard).map((block) => ({ title: block.title, start_minutes: block.start_minutes, end_minutes: sbBlockEnd(block), what_happens: String(block.brief || '').slice(0, 300) }))
+          : [];
+        const cell = options.cellId === 'all' ? { name: 'all' } : (scenario.cells || []).find((item) => item.id === options.cellId);
+        const phase = phases.length && options.phaseId ? sbMainBlocks(storyboard).find((block) => block.id === options.phaseId) : null;
+        const lines = [
+          storyboard?.duration_minutes ? `- Exercise duration: ${storyboard.duration_minutes} minutes (timestamps from 0 to ${storyboard.duration_minutes})` : '',
+          cells.length ? `- Player cells (recipients of the injects): ${JSON.stringify(cells)}` : '- Player cells: none defined yet; set "cell" to null',
+          phases.length ? `- Phases of the main storyline: ${JSON.stringify(phases)}` : '',
+          cell ? `- IMPOSED: every inject is addressed to ${cell.name === 'all' ? 'all cells: set "cell" to "all"' : `the cell "${cell.name}": set "cell" to "${cell.name}"`}` : (cells.length ? '- Choose the recipient cell of each inject from the player cells, by the role of the cell and the content of the inject' : ''),
+          phase ? `- IMPOSED: every inject belongs to the phase "${phase.title}": timestamp_offset_minutes between ${phase.start_minutes} and ${sbBlockEnd(phase) - 1}, and the content follows what happens in that phase` : (phases.length ? '- Place each inject in the phase that fits its content, and follow what happens in that phase' : '')
+        ].filter(Boolean);
+        return lines.length ? `\nEXERCISE STRUCTURE:\n${lines.join('\n')}\n` : '';
+      }
+
       function normalizeOllamaEndpoint(settings = appState.scenario.settings) {
         const raw = String(settings.ollama_endpoint || 'http://localhost:11434').trim().replace(/\/+$/, '');
         try {
@@ -412,14 +433,17 @@
           const { systemPrompt, userPrompt } = LLMConfigPrompts.debrief(userInput, scenario);
           return this.generate('llm_config_debrief', systemPrompt, userPrompt, false, 8000);
         },
-        async generateStimulusConfig(userInput, scenario, actors, maxTokens = 3000, currentStimulus = null) {
-          const { systemPrompt, userPrompt } = LLMConfigPrompts.stimulus(userInput, scenario, actors, currentStimulus);
-          let result = await this.generate('llm_config_stimulus', systemPrompt, userPrompt, false, maxTokens);
-          const requestedCount = currentStimulus ? null : requestedStimulusCount(userInput);
+        /* options (creation only): cellId and phaseId force the recipient cell and the phase,
+           count overrides the number read from the request (one chunk of a bulk creation),
+           already lists the injects of the same batch written by earlier chunks. */
+        async generateStimulusConfig(userInput, scenario, actors, maxTokens = 3000, currentStimulus = null, options = {}) {
+          const { systemPrompt, userPrompt } = LLMConfigPrompts.stimulus(userInput, scenario, actors, currentStimulus, options);
+          let result = await this.generate('llm_config_stimulus', systemPrompt, userPrompt, false, maxTokens, options.signal ? { signal: options.signal } : {});
+          const requestedCount = currentStimulus ? null : (options.count || requestedStimulusCount(userInput));
           if (requestedCount && stimulusConfigsFromResult(result).length !== requestedCount) {
             const actualCount = stimulusConfigsFromResult(result).length;
             const correctionPrompt = `${userPrompt}\n\nCORRECTION REQUIRED: the previous response contained ${actualCount} inject object(s), but the request requires exactly ${requestedCount}. Regenerate the complete response as one JSON object with a stimuli array containing exactly ${requestedCount} complete, distinct inject objects.`;
-            result = await this.generate('llm_config_stimulus', systemPrompt, correctionPrompt, false, maxTokens);
+            result = await this.generate('llm_config_stimulus', systemPrompt, correctionPrompt, false, maxTokens, options.signal ? { signal: options.signal } : {});
             const correctedCount = stimulusConfigsFromResult(result).length;
             if (correctedCount !== requestedCount) {
               throw new Error(tt(
@@ -1037,11 +1061,12 @@ Reply ONLY with a JSON array:
             userPrompt: `ACTOR DESCRIPTION:\n${userInput}`
           };
         },
-        stimulus(userInput, scenario, actors, currentStimulus = null) {
+        stimulus(userInput, scenario, actors, currentStimulus = null, options = {}) {
           const actorsList = actors.map((a) => ({ name: a.name, role: a.role, organization: a.organization, language: a.language }));
           const injectLang = scenario.settings?.inject_language || scenario.settings?.language || 'en';
           const injectLangName = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch', ja: 'Japanese', zh: 'Chinese' }[injectLang] || 'English';
-          const requestedCount = requestedStimulusCount(userInput);
+          const requestedCount = options.count || requestedStimulusCount(userInput);
+          const structure = currentStimulus ? '' : stimulusBatchStructure(scenario, options);
           const currentContext = currentStimulus ? {
             channel: currentStimulus.channel,
             template_id: currentStimulus.template_id,
@@ -1059,7 +1084,7 @@ SCENARIO CONTEXT:
 - Scenario: ${scenario.scenario.summary}
 - Detailed context: ${scenario.scenario.detailed_context || 'Not provided'}
 - Available actors: ${JSON.stringify(actorsList)}
-
+${structure}
 AVAILABLE TEMPLATES:
 - article_press: lemonde, nyt, faz, ft, nikkei
 - email_internal: outlook
@@ -1085,8 +1110,9 @@ ${JSON.stringify(currentContext)}` : `- CREATION MODE: determine the most suitab
 - "Inject" and "stimulus" mean the same thing.
 - Return a JSON object with a top-level "stimuli" array, including when only one inject is requested.
 - The "stimuli" array must contain exactly the number of injects requested by the operator.${requestedCount ? ` The explicit requested count is ${requestedCount}, so the array must contain exactly ${requestedCount} objects.` : ''}`}
-- If an actor is mentioned or matches the description, put their name in actor_id (the code will resolve it)
-- For timeline position, interpret "H+2" as 120 minutes, "H+30" as 30, etc. If not mentioned, use 0
+- If an actor is mentioned or matches the description, put their name in actor_id (the code will resolve it)${currentStimulus ? '' : `
+- When no available actor fits the sender of an inject, set actor_id to null and describe the sender in "new_actor" (it is added to the cast); reuse the same new sender across injects rather than inventing one per inject`}
+- For timeline position, interpret "H+2" as 120 minutes, "H+30" as 30, etc. If not mentioned, ${currentStimulus ? 'use 0' : 'spread the injects credibly over the exercise and its phases'}
 - If the user requests a batch ("create 30 injects…" with categories), return EXACTLY the requested number and distribute timestamps credibly if no precise schedule is given
 - For external stimuli ("client", "regulator", "press", etc.), alternate actors/sources to reflect the requested distribution
 - Generate field content in ${injectLangName} by default, EXCEPT press articles which must use their publication's native language
@@ -1125,14 +1151,17 @@ Stimulus format:
 {
   "channel": "article_press | email_internal | post_twitter | ...",
   "template_id": "lemonde | nyt | outlook | twitter | ...",
-  "actor_id": "actor name or null",
+  "actor_id": "actor name or null",${currentStimulus ? '' : `
+  "new_actor": { "name": "First Last or organization", "role": "journalist | authority | client_b2b | client_b2c | internal | partner | attacker | analyst", "organization": "...", "title": "..." } or null,
+  "cell": "name of the recipient player cell, several names joined with \" + \", or \"all\"",
+  "name": "short title of the inject (at most 80 characters)",`}
   "source_label": "label if no actor",
   "timestamp_offset_minutes": 120,
   "generation_mode": "ai_guided",
-  "generation_prompt": "original user description",
+  "generation_prompt": "what this inject is meant to make the players do, in one sentence",
   "fields": { /* all channel fields filled with realistic content */ }
 }`,
-            userPrompt: `${currentStimulus ? 'UPDATE REQUEST' : 'NEW INJECT REQUEST'}:\n${userInput}${!currentStimulus && requestedCount ? `\n\nREQUIRED OUTPUT COUNT: exactly ${requestedCount} inject objects in the stimuli array.` : ''}`
+            userPrompt: `${currentStimulus ? 'UPDATE REQUEST' : 'NEW INJECT REQUEST'}:\n${userInput}${!currentStimulus && options.already?.length ? `\n\nThis request is written in several parts. Injects already created for it (do not repeat them, continue the sequence):\n${JSON.stringify(options.already)}` : ''}${!currentStimulus && requestedCount ? `\n\nREQUIRED OUTPUT COUNT: exactly ${requestedCount} inject objects in the stimuli array.` : ''}`
           };
         },
         debrief(userInput, scenario) {

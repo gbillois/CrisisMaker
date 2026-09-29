@@ -67,6 +67,7 @@
         const successBannerHtml = (zone !== 'actors' && state.lastFilledCount > 0 && !loading && !state.error)
           ? `<div class="llm-success-banner">
               <span>${sbUiIcon('checkCircle', 14)} ${successMessage}</span>
+              ${options.bannerActions || ''}
               <button data-action="llm-dismiss-banner" data-zone="${zone}">${tt('OK', 'OK', 'OK')}</button>
              </div>`
           : '';
@@ -81,6 +82,7 @@
             </div>
             <div class="llm-config-body">
               <p class="llm-config-subtitle">${subtitle}</p>
+              ${options.extraHtml || ''}
               <textarea
                 data-llm-zone="${zone}"
                 placeholder="${escapeAttribute(placeholder)}"
@@ -92,6 +94,7 @@
                 <button class="btn-llm-generate" data-action="llm-generate-${zone}" ${disabledAttr}
                   ${noKeyTooltip ? `title="${noKeyTooltip}"` : ''}
                 >${generateLabel}</button>
+                ${loading && options.stopAction ? `<button class="btn-llm-clear" data-action="${options.stopAction}">${tt('Stop', 'Arrêter', 'Stoppen')}</button>` : ''}
                 <button class="btn-llm-clear" data-action="llm-clear" data-zone="${zone}">${tt('Clear', 'Effacer', 'Löschen')}</button>
               </div>
               ${successBannerHtml}
@@ -642,12 +645,58 @@
         return ExerciseModel.phaseOfStimulus(appState.scenario, stimulus);
       }
 
+      /* Bulk creation with AI: for a designer who only wants injects, without the storyline. */
+      function renderStimuliBatchBlock() {
+        const state = appState.llmState.stimuli_batch;
+        const project = appState.scenario;
+        const cells = project.cells || [];
+        const phases = project.storyboard ? sbMainBlocks(project.storyboard) : [];
+        const disabled = state.loading ? 'disabled' : '';
+        const cellSelect = cells.length ? `<label class="llm-option">${tt('Recipient cell', 'Cellule destinataire', 'Empfängerzelle')}
+            <select data-llm-option="stimuli_batch.cellId" ${disabled}>
+              <option value="">${tt('Chosen by the AI for each inject', 'Choisie par l’IA pour chaque inject', 'Von der KI je Inject gewählt')}</option>
+              <option value="all" ${state.cellId === 'all' ? 'selected' : ''}>${tt('All cells', 'Toutes les cellules', 'Alle Zellen')}</option>
+              ${cells.map((cell) => `<option value="${escapeAttribute(cell.id)}" ${state.cellId === cell.id ? 'selected' : ''}>${escapeHtml(cell.name)}</option>`).join('')}
+            </select></label>` : '';
+        const phaseSelect = phases.length ? `<label class="llm-option">${tt('Phase', 'Phase', 'Phase')}
+            <select data-llm-option="stimuli_batch.phaseId" ${disabled}>
+              <option value="">${tt('Spread over the phases', 'Réparti sur les phases', 'Über die Phasen verteilt')}</option>
+              ${phases.map((phase) => `<option value="${escapeAttribute(phase.id)}" ${state.phaseId === phase.id ? 'selected' : ''}>${escapeHtml(`${sbFormatOffset(phase.start_minutes)} · ${phase.title}`)}</option>`).join('')}
+            </select></label>` : '';
+        const progress = state.progress;
+        const batch = state.lastBatch && state.lastBatch.projectId === project.id ? state.lastBatch : null;
+        const removeButton = batch && !state.loading ? `<button data-action="llm-remove-batch">${tt('Remove them', 'Les supprimer', 'Entfernen')}</button>` : '';
+        return renderLLMConfigBlock('stimuli_batch', tt(
+          'e.g. "Create 12 injects from H+0 to H+3 mixing internal emails, customer complaints, press coverage, a regulator request and social posts. Escalating but credible tone."',
+          'Ex. : « Crée 12 injects de H+0 à H+3 en mélangeant e-mails internes, plaintes clients, articles de presse, une demande du régulateur et des posts sur les réseaux sociaux. Tension croissante mais crédible. »',
+          'Bsp.: „Erstelle 12 Injects von H+0 bis H+3 mit internen E-Mails, Kundenbeschwerden, Presseberichten, einer Anfrage der Aufsichtsbehörde und Social-Media-Posts. Steigende, aber glaubwürdige Spannung.“'
+        ), {
+          title: tt('Create injects in bulk with AI', 'Créer des injects en lot avec l’IA', 'Injects mit KI in großer Zahl erstellen'),
+          subtitle: tt(
+            'Describe the injects you want and how many: the AI writes them directly, with their sender, time and recipient cell, from the context of the exercise. Senders missing from the cast are added to it. Up to 60 injects per request.',
+            'Décrivez les injects voulus et leur nombre : l’IA les rédige directement, avec leur émetteur, leur horaire et leur cellule destinataire, à partir du contexte de l’exercice. Les émetteurs absents de la distribution y sont ajoutés. Jusqu’à 60 injects par demande.',
+            'Beschreiben Sie die gewünschten Injects und ihre Anzahl: Die KI schreibt sie direkt, mit Absender, Zeitpunkt und Empfängerzelle, aus dem Kontext der Übung. Absender, die in der Besetzung fehlen, werden ergänzt. Bis zu 60 Injects pro Anfrage.'
+          ),
+          extraHtml: cellSelect || phaseSelect ? `<div class="llm-options">${cellSelect}${phaseSelect}</div>` : '',
+          generateLabel: tt('Create the injects', 'Créer les injects', 'Injects erstellen'),
+          loadingLabel: progress
+            ? tt(`Writing injects… ${progress.done}/${progress.total}`, `Rédaction des injects… ${progress.done}/${progress.total}`, `Injects werden geschrieben… ${progress.done}/${progress.total}`)
+            : tt('Writing injects…', 'Rédaction des injects…', 'Injects werden geschrieben…'),
+          stopAction: 'llm-stop-stimuli_batch',
+          bannerActions: removeButton,
+          successMessage: (count) => tt(`${count} inject(s) created. Review them below, or undo in the Detailed storyline (Ctrl+Z).`, `${count} inject(s) créé(s). Relisez-les ci-dessous, ou annulez dans la Storyline détaillée (Ctrl+Z).`, `${count} Inject(s) erstellt. Unten prüfen oder in der Detaillierten Storyline rückgängig machen (Strg+Z).`)
+        });
+      }
+
       function renderLibraryView() {
         const allStimuli = getSortedStimuli();
         if (!allStimuli.length) {
-          return `<section class="grid" style="max-width:600px; margin: 60px auto; text-align:center;">
-            <p class="subtle">${tt('No injects yet. Build the scenario and its phases, then plan and write the injects of each phase in the Detailed storyline.', 'Aucun inject pour l’instant. Construisez le scénario et ses phases, puis planifiez et rédigez les injects de chaque phase dans la Storyline détaillée.', 'Noch keine Injects. Szenario und Phasen aufbauen, dann die Injects jeder Phase in der Detaillierten Storyline planen und schreiben.')}</p>
-            <button class="btn btn-primary" data-action="nav-stimuli">${tt('Go to Detailed storyline', 'Aller à la Storyline détaillée', 'Zur Detaillierten Storyline')}</button>
+          return `<section class="grid">
+            ${renderStimuliBatchBlock()}
+            <div style="max-width:600px; margin: 40px auto; text-align:center;">
+              <p class="subtle">${tt('No injects yet. Create them in bulk with AI above, or build the scenario and its phases, then plan and write the injects of each phase in the Detailed storyline.', 'Aucun inject pour l’instant. Créez-les en lot avec l’IA ci-dessus, ou construisez le scénario et ses phases, puis planifiez et rédigez les injects de chaque phase dans la Storyline détaillée.', 'Noch keine Injects. Erstellen Sie sie oben mit KI in großer Zahl, oder bauen Sie Szenario und Phasen auf und planen und schreiben Sie dann die Injects jeder Phase in der Detaillierten Storyline.')}</p>
+              <button class="btn btn-primary" data-action="nav-stimuli">${tt('Go to Detailed storyline', 'Aller à la Storyline détaillée', 'Zur Detaillierten Storyline')}</button>
+            </div>
           </section>`;
         }
         const f = appState.libraryFilter;
@@ -689,6 +738,7 @@
         return `
           <section class="grid">
             ${renderPlayGenerate(playReadiness(appState.scenario))}
+            ${renderStimuliBatchBlock()}
             <div class="library-filter-bar">
               <select data-library-filter="phase">
                 <option value="">${tt('All phases', 'Toutes les phases', 'Alle Phasen')}</option>

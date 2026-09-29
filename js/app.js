@@ -610,6 +610,14 @@
           });
         });
 
+        // Options of a prompt zone (the recipient cell and phase of a bulk creation): "zone.key".
+        document.querySelectorAll('[data-llm-option]').forEach((select) => {
+          select.addEventListener('change', () => {
+            const [zone, key] = select.dataset.llmOption.split('.');
+            if (appState.llmState[zone]) appState.llmState[zone][key] = select.value;
+          });
+        });
+
         document.querySelectorAll('[data-debrief-bind]').forEach((input) => {
           input.addEventListener('change', () => {
             const path = input.dataset.debriefBind;
@@ -661,7 +669,7 @@
           scenario:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' },
           actors:        { text: '', collapsed: false, loading: false, error: null, pendingActors: null, rawResponse: '' },
           stimulus:      { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' },
-          stimuli_batch: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' },
+          stimuli_batch: { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '', cellId: '', phaseId: '', progress: null, lastBatch: null, controller: null },
           debrief:       { text: '', collapsed: false, loading: false, error: null, lastFilledCount: 0, rawResponse: '' }
         };
       }
@@ -1255,6 +1263,31 @@
                 state.error = classifyLLMError(err);
                 App.render();
               }
+              break;
+            }
+            case 'llm-generate-stimuli_batch': {
+              const state = appState.llmState.stimuli_batch;
+              if (!state.text.trim()) { state.error = 'empty'; App.render(); break; }
+              state.loading = true; state.error = null; state.lastFilledCount = 0; state.rawResponse = ''; state.lastBatch = null; AITextGenerator.lastRawResponse = ''; App.render();
+              try {
+                await generateStimuliBatch(state);
+              } catch (err) {
+                captureLLMRawResponse(state);
+                if (err?.name !== 'AbortError') state.error = classifyLLMError(err);
+              } finally {
+                state.loading = false;
+                state.progress = null;
+                state.controller = null;
+                App.render();
+              }
+              break;
+            }
+            case 'llm-stop-stimuli_batch': {
+              appState.llmState.stimuli_batch.controller?.abort();
+              break;
+            }
+            case 'llm-remove-batch': {
+              removeLastStimuliBatch();
               break;
             }
             case 'llm-generate-debrief': {
@@ -2554,7 +2587,7 @@
       }
 
       function addActorFromLLM(actorData) {
-        appState.scenario.actors.push({
+        const actor = {
           id: uid('actor'),
           name: actorData.name || tt('New actor', 'Nouvel acteur', 'Neuer Akteur'),
           role: actorData.role || 'internal',
@@ -2563,7 +2596,9 @@
           language: actorData.language || appState.scenario.client.language || 'en',
           avatar_initials: initialsFromName(actorData.name || ''),
           avatar_url: ''
-        });
+        };
+        appState.scenario.actors.push(actor);
+        return actor;
       }
 
       function resolveActorFromName(nameOrNull) {
@@ -2589,7 +2624,7 @@
           stimulus.source_label = config.source_label;
         }
         if (config.timestamp_offset_minutes !== undefined) {
-          stimulus.timestamp_offset_minutes = Number(config.timestamp_offset_minutes) || 0;
+          stimulus.timestamp_offset_minutes = Math.max(0, Math.round(Number(config.timestamp_offset_minutes) || 0));
         }
         stimulus.generation_mode = 'ai_guided';
         if (config.generation_prompt) stimulus.generation_prompt = config.generation_prompt;
@@ -2603,20 +2638,123 @@
         stimulus.updated_at = new Date().toISOString();
       }
 
-      async function handleMultiStimulusResult(configs, fallbackPrompt = '') {
-        const validConfigs = configs.filter((config) => config && typeof config === 'object');
-        validConfigs.forEach((config) => {
-          const actorId = appState.scenario.actors[0]?.id;
-          const stimulus = makeStimulus(config.channel || 'email_internal', actorId, config.timestamp_offset_minutes || 0, config.template_id || null);
-          if (!config.generation_prompt && fallbackPrompt) config.generation_prompt = fallbackPrompt;
-          applyStimulusConfig(stimulus, config);
-          appState.scenario.stimuli.push(stimulus);
-        });
-        appState.selectedStimulusId = appState.scenario.stimuli[appState.scenario.stimuli.length - 1]?.id || null;
-        if (validConfigs.length > 0) {
-          pushToast(tt(`${validConfigs.length} stimuli added to timeline.`, `${validConfigs.length} stimuli ajoutés à la timeline.`, `${validConfigs.length} Stimuli zum Zeitplan hinzugefügt.`), 'success');
+      /* ─── Bulk creation of injects (Injects library) ───────────────────
+         For a designer who only wants injects: one request creates many written injects,
+         each with its recipient cell, sender and time, without building the storyline first.
+         A large request is written in chunks (the model keeps each answer short enough to
+         be complete); the whole batch is one undo step and can be removed in one click. */
+      const STIMULI_BATCH_CHUNK = 8;
+      const STIMULI_BATCH_MAX = 60;
+
+      function stimuliBatchCell(project, value, forced) {
+        if (forced) return forced;
+        const cells = project.cells || [];
+        const only = cells.length === 1 ? cells[0].id : '';
+        const text = Array.isArray(value) ? value.join(' + ') : String(value ?? '').trim();
+        if (!text) return only;
+        if (/^(all|all cells|toutes|toutes les cellules|alle|alle zellen)$/i.test(text)) return SB_ALL_CELLS;
+        const ids = text.split(/\s*\+\s*|\s*,\s*/).map((name) => {
+          const key = name.trim().toLowerCase();
+          return cells.find((cell) => cell.id === name.trim() || cell.name.trim().toLowerCase() === key)?.id;
+        }).filter(Boolean);
+        return sbJoinRecipients(project, ids) || only;
+      }
+
+      function stimuliBatchActor(config, createdActors) {
+        const named = typeof config.actor_id === 'string' ? config.actor_id.trim() : '';
+        const draft = config.new_actor && typeof config.new_actor === 'object' ? config.new_actor : null;
+        const existing = resolveActorFromName(named) || resolveActorFromName(draft?.name);
+        if (existing) return existing;
+        const data = draft?.name ? draft : (named ? { name: named } : null);
+        if (!data) return null;
+        const roles = ['journalist', 'authority', 'client_b2b', 'client_b2c', 'internal', 'partner', 'attacker', 'analyst'];
+        const actor = addActorFromLLM({ ...data, role: roles.includes(data.role) ? data.role : 'internal' });
+        createdActors.push(actor.id);
+        return actor;
+      }
+
+      function stimuliBatchPhaseRange(project, phaseId) {
+        const phase = phaseId && project.storyboard ? sbMainBlocks(project.storyboard).find((block) => block.id === phaseId) : null;
+        return phase ? [phase.start_minutes, Math.max(phase.start_minutes, sbBlockEnd(phase) - 1)] : null;
+      }
+
+      async function generateStimuliBatch(state) {
+        const project = appState.scenario;
+        const requested = requestedStimulusCount(state.text);
+        const total = requested ? Math.min(STIMULI_BATCH_MAX, requested) : null;
+        const cells = project.cells || [];
+        const cellId = state.cellId === SB_ALL_CELLS || cells.some((cell) => cell.id === state.cellId) ? state.cellId : '';
+        const range = stimuliBatchPhaseRange(project, state.phaseId);
+        const controller = new AbortController();
+        state.controller = controller;
+        state.progress = total ? { done: 0, total } : null;
+        const created = [];
+        const createdActors = [];
+        StoryboardHistory.ensure(project);
+        StoryboardHistory.snapshot('Before creating injects in bulk', 'generation');
+        StoryboardHistory.track();
+        try {
+          do {
+            const count = total ? Math.min(STIMULI_BATCH_CHUNK, total - created.length) : null;
+            const already = created.map((stimulus) => ({ minute: stimulus.timestamp_offset_minutes, channel: stimulus.channel, name: stimulus.name, intent: stimulus.generation_prompt }));
+            const result = await AITextGenerator.generateStimulusConfig(state.text, project, project.actors, Math.min(32000, 1500 + 1100 * (count || STIMULI_BATCH_CHUNK)), null,
+              { cellId, phaseId: range ? state.phaseId : '', count, already, signal: controller.signal });
+            captureLLMRawResponse(state);
+            if (appState.scenario !== project || controller.signal.aborted) break;
+            const configs = stimulusConfigsFromResult(result).filter((config) => config && typeof config === 'object');
+            if (!configs.length) throw new Error(tt('The AI did not return any inject.', 'L’IA n’a renvoyé aucun inject.', 'Die KI hat keinen Inject zurückgegeben.'));
+            for (const config of configs.slice(0, total ? total - created.length : STIMULI_BATCH_MAX)) {
+              const channel = CHANNEL_META[config.channel] ? config.channel : 'email_internal';
+              const actor = stimuliBatchActor(config, createdActors);
+              const stimulus = makeStimulus(channel, actor?.id || null, 0, config.template_id || null);
+              await applyStimulusConfig(stimulus, { ...config, channel, actor_id: actor?.name || null, generation_prompt: config.generation_prompt || state.text });
+              stimulus.actor_id = actor?.id || null;
+              if (range) stimulus.timestamp_offset_minutes = Math.min(range[1], Math.max(range[0], stimulus.timestamp_offset_minutes));
+              if (typeof config.name === 'string' && config.name.trim()) stimulus.name = config.name.trim().slice(0, 160);
+              const cell = stimuliBatchCell(project, config.cell, cellId);
+              if (cell) stimulus.cell_id = cell;
+              project.stimuli.push(stimulus);
+              created.push(stimulus);
+            }
+            if (state.progress) state.progress.done = created.length;
+            App.render();
+          } while (total && created.length < total && !controller.signal.aborted);
+        } finally {
+          if (appState.scenario === project) {
+            StoryboardHistory.commit('Create injects in bulk');
+            if (created.length || createdActors.length) {
+              state.lastBatch = { projectId: project.id, stimulusIds: created.map((stimulus) => stimulus.id), actorIds: createdActors };
+              state.lastFilledCount = created.length;
+              if (created.length) appState.selectedStimulusId = created[created.length - 1].id;
+              saveLocal(false);
+            }
+          }
         }
-        return validConfigs.length;
+        return created.length;
+      }
+
+      /* Removes the injects of the last bulk creation, and the senders it added that no other
+         inject uses. One undo step, like the creation. */
+      function removeLastStimuliBatch() {
+        const state = appState.llmState.stimuli_batch;
+        const batch = state.lastBatch;
+        const project = appState.scenario;
+        if (!batch || batch.projectId !== project.id) return;
+        const ids = new Set(batch.stimulusIds);
+        const count = project.stimuli.filter((stimulus) => ids.has(stimulus.id)).length;
+        if (count && !window.confirm(tt(`Remove the ${count} inject(s) created by this request?`, `Supprimer les ${count} inject(s) créés par cette demande ?`, `Die ${count} von dieser Anfrage erstellten Injects entfernen?`))) return;
+        StoryboardHistory.track();
+        project.stimuli = project.stimuli.filter((stimulus) => !ids.has(stimulus.id));
+        const used = new Set(project.stimuli.map((stimulus) => stimulus.actor_id));
+        const actorIds = new Set(batch.actorIds.filter((id) => !used.has(id)));
+        project.actors = project.actors.filter((actor) => !actorIds.has(actor.id));
+        if (ids.has(appState.selectedStimulusId)) appState.selectedStimulusId = project.stimuli[0]?.id || null;
+        StoryboardHistory.commit('Remove injects created in bulk');
+        state.lastBatch = null;
+        state.lastFilledCount = 0;
+        saveLocal(false);
+        App.render();
+        pushToast(tt(`${count} inject(s) removed.`, `${count} inject(s) supprimé(s).`, `${count} Inject(s) entfernt.`), 'success');
       }
 
       App.init();

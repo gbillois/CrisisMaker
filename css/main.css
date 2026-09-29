@@ -2127,6 +2127,24 @@
       box-shadow: 0 0 0 3px rgba(69, 29, 199, 0.14);
     }
     .llm-config-block textarea.textarea-error { border-color: #dc2626; }
+    .llm-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .llm-option {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #594282;
+      min-width: 0;
+      flex: 1 1 220px;
+      max-width: 360px;
+    }
+    .llm-option select { font-weight: 400; }
     .llm-config-actions {
       display: flex;
       gap: 8px;
@@ -2213,6 +2231,7 @@
       justify-content: space-between;
       gap: 8px;
     }
+    .llm-success-banner > span { margin-right: auto; }
     .llm-success-banner button {
       background: transparent;
       border: 1px solid #D97706;
