@@ -134,6 +134,10 @@ function agentConsistencyCheck() {
   const listedPlayers = (s.cells || []).reduce((sum, cell) => sum + cell.players.length, 0);
   if (expectedPlayers && listedPlayers && listedPlayers !== expectedPlayers) issues.push(`Cells: ${listedPlayers} players are listed but the exercise expects ${expectedPlayers}; adjust the players of the cells (upsertCells).`);
   if (expectedCells && (s.cells || []).length !== expectedCells) issues.push(`Cells: ${(s.cells || []).length} cells exist but the exercise expects ${expectedCells}.`);
+  // One actor playing roles of different kinds (the SOC analyst also signing the ransom note).
+  const byActor = new Map();
+  for (const cast of storyboard?.cast || []) if (cast.actor_id) byActor.set(cast.actor_id, [...(byActor.get(cast.actor_id) || []), cast]);
+  for (const [actorId, casts] of byActor) if (new Set(casts.map(cast => sbRoleValue(cast.role))).size > 1) issues.push(`Cast: ${getActor(actorId)?.name || actorId} plays roles of different kinds (${casts.map(cast => `"${cast.label}" ${cast.role}`).join(', ')}): give each its own actor (upsertCast).`);
   const generic = (s.cells || []).filter(cell => /^(Decision|Operational crisis|Communication|IT & technical|Legal & compliance|Business continuity|HR & people) cell$/.test(cell.name));
   if (generic.length && /cell/i.test(s.scenario.learning_objectives || '') && generic.some(cell => !(s.scenario.learning_objectives || '').toLowerCase().includes(cell.name.toLowerCase()))) issues.push(`Cells: ${generic.map(cell => `"${cell.name}"`).join(', ')} still have their default names while the learning objectives name the cells: rename them after the learning objectives (upsertCells).`);
   const beats = storyboard ? storyboard.blocks.flatMap(block => block.beats) : [];
@@ -364,7 +368,16 @@ function createAgentToolRegistry() {
       if (!cast) { cast = sbMakeCast({ label: input.label, role: input.role }); storyboard.cast.push(cast); }
       Object.assign(cast, sbNormalizeCast({ ...cast, ...agentPick(input, ['label', 'role', 'organization', 'description']), id: cast.id }));
       if (input.actor) {
-        const actor = sbFindActorForCast(project, { ...cast, label: input.actor.name }) || sbCreateActorForCast(project, cast, { ...input.actor, role: cast.role });
+        // One named actor per kind of sender: an actor who is staff, or who already plays another
+        // role of another kind, cannot also be the attacker, the bank or the journalist.
+        const existing = sbFindActorForCast(project, { ...cast, actor_id: '', label: input.actor.name });
+        if (existing) {
+          const other = storyboard.cast.find(item => item.id !== cast.id && item.actor_id === existing.id);
+          if (sbRoleValue(existing.role) !== sbRoleValue(cast.role) || (other && sbRoleValue(other.role) !== sbRoleValue(cast.role))) {
+            throw new AgentValidationError(`"${existing.name}" is a ${existing.role} actor${other ? ` who already plays "${other.label}"` : ''}: role "${cast.label}" (${cast.role}) needs its own actor with a distinct name.`);
+          }
+        }
+        const actor = existing || sbCreateActorForCast(project, cast, { ...input.actor, role: cast.role });
         Object.assign(actor, agentPick(input.actor, ['title', 'organization', 'language']));
         cast.actor_id = actor.id;
       }

@@ -597,3 +597,13 @@ test('AI field values: plain text keeps its characters, HTML is sanitized, entit
   const merged = h.json(`mergeScenario({ ...appState.scenario, stimuli: [{ ...getStimulus('${created.id}'), fields: { ...getStimulus('${created.id}').fields, to: 'IT &amp; Cyber Cell' } }] }).stimuli[0].fields.to`);
   assert.equal(merged, 'IT & Cyber Cell');
 });
+
+test('cast: a staff actor cannot also play the attacker; each kind of sender gets its own actor', async () => {
+  const h = harness();
+  await execute(h, 'upsertCast', { cast: [{ label: 'SOC analyst', role: 'internal', actor: { name: 'Théo Renaud', title: 'SOC analyst' } }] });
+  await assert.rejects(execute(h, 'upsertCast', { cast: [{ label: 'Ransomware group', role: 'attacker', actor: { name: 'Théo Renaud' } }] }), /needs its own actor/);
+  // Two staff roles may share a person; a new attacker gets its own actor.
+  await execute(h, 'upsertCast', { cast: [{ label: 'On-call manager', role: 'internal', actor: { name: 'Théo Renaud' } }, { label: 'Ransomware group', role: 'attacker', actor: { name: 'VEIL-9' } }] });
+  const roles = h.json(`appState.scenario.storyboard.cast.map(c => [c.label, getActor(c.actor_id)?.name])`);
+  assert.equal(JSON.stringify(roles.find(r => r[0] === 'Ransomware group')), JSON.stringify(['Ransomware group', 'VEIL-9']));
+});
