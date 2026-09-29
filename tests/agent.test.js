@@ -577,10 +577,13 @@ test('main events with a clock time are placed at that simulated time; the frame
   const blocks = h.json('sbMainBlocks(appState.scenario.storyboard).map(b => ({ id: b.id, start: b.start_minutes }))');
   // Before any main event, the consistency check lists the incident timeline events in play.
   assert.match(JSON.stringify(h.json('agentConsistencyCheck()')), /incident timeline event at H\+1:30 .*not a main event yet/);
-  // The text's clock wins over a wrong at; an event in another phase is refused with that phase.
+  // The text's clock wins over a wrong at; an event whose time is in another phase goes to that phase.
   const set = await execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 5, text: '09:30 - The attacker emails the CEO' }] });
   assert.equal(set.key_events[0].exercise_minute, 90);
-  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 20, text: '10:15 - Sample on the leak site' }] }), new RegExp(`inside phase "Leak" \\(id ${blocks[2].id}.*Set it on phase ${blocks[2].id} with at = 15`));
+  const moved = await execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 20, text: '10:15 - Sample on the leak site' }] });
+  assert.match(JSON.stringify(moved.moved_to_their_phase), /Leak/);
+  assert.equal(h.json(`sbBlock(appState.scenario.storyboard, '${blocks[2].id}').events[0].offset_minutes`), 15);
+  assert.equal(h.json(`sbBlock(appState.scenario.storyboard, '${blocks[1].id}').events.length`), 1);
   // GLM slips: a stray empty "id" next to "arguments" and extra keys in an event are dropped;
   // exercise_minute places an event that has no at.
   const registry = h.run('createAgentToolRegistry()');
@@ -591,7 +594,8 @@ test('main events with a clock time are placed at that simulated time; the frame
   h.run(`ToolValidator.validate(${JSON.stringify(normalized.arguments)}, registry.get('setMainEvents').inputSchema)`);
   const placed = await execute(h, 'setMainEvents', normalized.arguments);
   assert.equal(placed.key_events.find(event => /Press calls/.test(event.text)).exercise_minute, 150);
-  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[2].id, events: [{ exercise_minute: 30, text: 'Too early' }] }), /inside phase "Opening"/);
+  const early = await execute(h, 'setMainEvents', { id: blocks[2].id, events: [{ exercise_minute: 30, text: 'Too early' }] });
+  assert.match(JSON.stringify(early.moved_to_their_phase), /Opening/);
   await assert.rejects(execute(h, 'setMainEvents', { id: blocks[2].id, events: [{ text: 'No time' }] }), /has no time/);
   // A main event moved by hand away from its time is flagged.
   h.run(`sbBlock(appState.scenario.storyboard, '${blocks[1].id}').events[0].offset_minutes = 10`);
@@ -765,4 +769,11 @@ test('a special token leaked into a JSON reply is dropped by the repair', () => 
   const h = harness();
   assert.equal(h.run(`JSON.stringify(repairLLMJson('{"ok":<|OPENAI|>true,"message":"valid connection"}'))`), '{"ok":true,"message":"valid connection"}');
   assert.equal(h.run(`repairLLMJson('{"text":"a <|b|> c"}').text`), 'a  c');
+});
+
+test('stage 1 framing: three reads in a row bring the list of what is still missing', async () => {
+  const h = harness();
+  const r = runner(h, [call('getStoryboard', {}), call('getScenario', {}), call('getExerciseFrame', {}), final, final, final]);
+  await r.start({ kind: 'builder', mode: 'auto', objective: 'Frame', scope: 'framing' });
+  assert.ok(r.log.some((entry) => /Reading again and again/.test(entry.message)));
 });

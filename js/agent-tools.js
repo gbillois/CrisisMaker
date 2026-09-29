@@ -137,6 +137,9 @@ function agentConsistencyCheck() {
   const listedPlayers = (s.cells || []).reduce((sum, cell) => sum + cell.players.length, 0);
   if (expectedPlayers && listedPlayers && listedPlayers !== expectedPlayers) issues.push(`Cells: ${listedPlayers} players are listed but the exercise expects ${expectedPlayers}; adjust the players of the cells (upsertCells).`);
   if (expectedCells && (s.cells || []).length !== expectedCells) issues.push(`Cells: ${(s.cells || []).length} cells exist but the exercise expects ${expectedCells}.`);
+  const cellNames = (s.cells || []).map(cell => cell.name.trim().toLowerCase());
+  const twins = [...new Set(cellNames.filter((name, index) => cellNames.indexOf(name) !== index))];
+  if (twins.length) issues.push(`Cells: several cells share the same name (${twins.map(name => `"${name}"`).join(', ')}): give each cell its own name (upsertCells).`);
   // The incident timeline events that happen during play are main events of their phase.
   if (storyboard) {
     const placed = sbMainBlocks(storyboard).flatMap(block => (block.events || []).map(event => block.start_minutes + event.offset_minutes));
@@ -331,6 +334,9 @@ function createAgentToolRegistry() {
   }, ['phases'], args => {
     const project = appState.scenario;
     if (!args.phases.length) throw new AgentValidationError('Provide at least one phase.');
+    // A framing on a library scenario: replacing the storyline would drop its planned injects.
+    const planned = project.storyboard.blocks.reduce((sum, block) => sum + block.beats.length, 0);
+    if (planned && typeof getCrisisAgent === 'function' && getCrisisAgent().active && getCrisisAgent().scope === 'framing') throw new AgentValidationError(`The storyline already has ${planned} planned injects (from the library scenario): do not replace it. Change phases with updateStoryboardBlock and main events with setMainEvents.`);
     // Checked before anything is replaced.
     args.phases.forEach(phase => { phase.beats = agentBeatsInPhase(phase, phase.beats); });
     StoryboardHistory.ensure(project); StoryboardHistory.snapshot('Before the agent storyline', 'ai');
@@ -491,25 +497,37 @@ function createAgentToolRegistry() {
       const owner = sbMainBlockAt(project.storyboard, minute);
       return new AgentValidationError(`Main event "${agentExcerpt(event.text, 80)}" happens at ${sbFormatOffset(minute)} (exercise minute ${minute}), inside phase "${owner?.title || '?'}"${owner ? ` (id ${owner.id}, minutes ${owner.start_minutes} to ${sbBlockEnd(owner) - 1})` : ''}, not in "${block.title}" (${block.start_minutes} to ${sbBlockEnd(block) - 1}). Set it on ${owner ? `phase ${owner.id}` : 'the phase of that time'} with at = ${owner ? minute - owner.start_minutes : 'minutes from its start'}, or move the phase boundaries first (updateStoryboardBlock).`);
     };
-    const timed = args.events.map(event => {
+    // An event whose time falls in another phase goes to that phase (models often set a whole
+    // timeline on one phase); the result says where it went.
+    const placed = new Map();
+    const moved = [];
+    const place = (target, event, offset) => {
+      if (!placed.has(target)) placed.set(target, []);
+      placed.get(target).push({ ...event, at: offset });
+      if (target !== block) moved.push(`"${agentExcerpt(event.text, 60)}" -> "${target.title}" (${target.id})`);
+    };
+    for (const event of args.events) {
       const { exercise_minute: absolute, ...rest } = event;
-      const minute = sbTextClockMinute(event.text, project.scenario.start_date, duration);
-      if (minute === null) {
-        if (rest.at !== undefined) return rest;
-        if (absolute === undefined) throw new AgentValidationError(`Main event "${agentExcerpt(event.text, 80)}" has no time: give at, minutes from the phase start (0 to ${block.duration_minutes - 1}).`);
-        if (absolute < block.start_minutes || absolute >= sbBlockEnd(block)) throw outside(event, absolute);
-        return { ...rest, at: absolute - block.start_minutes };
-      }
-      if (minute >= block.start_minutes && minute < sbBlockEnd(block)) return { ...rest, at: minute - block.start_minutes };
-      throw outside(event, minute);
-    });
-    const added = agentBeatsInPhase(block, timed.map(event => ({ ...event, title: event.text }))).map(event => sbMakeEvent({ offset_minutes: event.at, text: event.text }));
-    // An event already there (same text, as the agent may set a phase twice) is not added again.
-    const kept = args.replace ? [] : block.events || [];
-    const known = new Set(kept.map(event => String(event.text).trim().toLowerCase()));
-    block.events = [...kept, ...added.filter(event => !known.has(String(event.text).trim().toLowerCase()) && known.add(String(event.text).trim().toLowerCase()))].sort((a, b) => a.offset_minutes - b.offset_minutes).slice(0, 12);
+      const clock = sbTextClockMinute(event.text, project.scenario.start_date, duration);
+      const minute = clock !== null ? clock : rest.at !== undefined ? null : absolute;
+      if (minute === null) { place(block, rest, rest.at); continue; }
+      if (minute === undefined) throw new AgentValidationError(`Main event "${agentExcerpt(event.text, 80)}" has no time: give at, minutes from the phase start (0 to ${block.duration_minutes - 1}).`);
+      if (minute >= block.start_minutes && minute < sbBlockEnd(block)) { place(block, rest, minute - block.start_minutes); continue; }
+      const owner = sbMainBlockAt(project.storyboard, minute);
+      if (!owner || owner.locked) throw outside(event, minute);
+      place(owner, rest, minute - owner.start_minutes);
+    }
+    const setEvents = (target, events, replace) => {
+      const added = agentBeatsInPhase(target, events.map(event => ({ ...event, title: event.text }))).map(event => sbMakeEvent({ offset_minutes: event.at, text: event.text }));
+      // An event already there (same text, as the agent may set a phase twice) is not added again.
+      const kept = replace ? [] : target.events || [];
+      const known = new Set(kept.map(event => String(event.text).trim().toLowerCase()));
+      target.events = [...kept, ...added.filter(event => !known.has(String(event.text).trim().toLowerCase()) && known.add(String(event.text).trim().toLowerCase()))].sort((x, y) => x.offset_minutes - y.offset_minutes).slice(0, 12);
+    };
+    if (args.replace && !placed.has(block)) block.events = [];
+    for (const [target, events] of placed) setEvents(target, events, args.replace && target === block);
     StoryboardHistory.commit('Agent: main events');
-    return { id: block.id, title: block.title, key_events: block.events.map(event => ({ at: event.offset_minutes, exercise_minute: block.start_minutes + event.offset_minutes, text: event.text })) };
+    return { id: block.id, title: block.title, key_events: block.events.map(event => ({ at: event.offset_minutes, exercise_minute: block.start_minutes + event.offset_minutes, text: event.text })), ...(moved.length ? { moved_to_their_phase: moved } : {}) };
   }, 'write');
   add('listActors', 'Read actors with pagination.', page, [], args => paginate(appState.scenario.actors, args, agentActor));
   add('getActor', 'Read a single actor.', id, ['id'], args => agentActor(requireItem(getActor, args.id)));

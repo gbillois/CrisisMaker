@@ -405,6 +405,57 @@ test('AI: deepen adds narrative then exactly the missing beats, keeping existing
   assert.equal(h.run(`sbBlock(sbStoryboard(), 'b1').beats.length`), 1);
 });
 
+test('AI: a library scenario is made the client\'s own in short requests, keeping its structure', async () => {
+  const h = harness();
+  h.run(`appState.scenario.client.name = 'Maison Aubray'; appState.scenario.client.sector = 'Retail';`);
+  const template = h.json(`sbFindTemplate('ransomware-double-extortion')`);
+  const calls = mockAI(h, [
+    (payload) => ({ name: 'Black Friday Blackout', summary: 'Maison Aubray is hit on Black Friday.', threat: 'An affiliate and a card skimmer.', objectives: payload.template.objectives.map((item, i) => `Retail objective ${i + 1}`),
+      cast: payload.template.cast.map((cast) => ({ key: cast.key, label: `${cast.label} (Aubray)`, organization: cast.organization === 'The organisation' ? 'Maison Aubray' : cast.organization })),
+      blocks: payload.template.blocks.map((block) => ({ key: block.key, title: `Aubray: ${block.title}`, brief: 'Stores and checkout are down.' })) }),
+    (payload) => ({ phases: payload.phases.filter((phase) => phase.key !== payload.scenario.phases[2].key).map((phase) => ({ key: phase.key, narrative: 'The skimmer was there first.', beats: phase.beats.map((beat, i) => ({ title: `Store alert ${i + 1}`, intent: 'Store managers call the crisis cell.' })) })) })
+  ]);
+  const adapted = await h.run(`(async () => JSON.stringify(await SbAI.instantiateTemplate(sbFindTemplate('ransomware-double-extortion'))))()`).then(JSON.parse);
+  assert.equal(calls.length, 1 + Math.ceil(template.blocks.length / 2), 'one request for the scenario, then one per two phases');
+  assert.ok(JSON.stringify(calls[0].payload.rules).includes('Maison Aubray'));
+  assert.equal(adapted.name, 'Black Friday Blackout');
+  assert.equal(adapted.blocks.length, template.blocks.length);
+  assert.ok(adapted.blocks.every((block) => block.title.startsWith('Aubray: ')));
+  assert.equal(adapted.blocks[0].beats[0].title, 'Store alert 1');
+  assert.equal(adapted.blocks[0].beats[0].channel, template.blocks[0].beats[0].channel, 'channels stay');
+  assert.equal(adapted.blocks[0].beats[0].cast, template.blocks[0].beats[0].cast, 'senders stay');
+  // A phase the AI left out keeps its original story.
+  assert.equal(adapted.blocks[2].narrative, template.blocks[2].narrative);
+  assert.ok(adapted.cast.some((cast) => cast.organization === 'Maison Aubray'));
+});
+
+test('AI: a library phase group cut at its length is retried phase by phase, and a failing phase keeps its text', async () => {
+  const h = harness();
+  h.run(`appState.scenario.client.name = 'Maison Aubray';`);
+  const template = h.json(`sbFindTemplate('ransomware-double-extortion')`);
+  mockAI(h, [
+    (payload) => ({ name: 'Adapted', blocks: payload.template.blocks.map((block) => ({ key: block.key, title: `A ${block.title}` })) }),
+    (payload) => {
+      if (payload.phases.length > 1) throw new Error('The AI reply was cut off at its length limit.');
+      if (payload.phases[0].key === payload.scenario.phases[1].key) throw new Error('LLM response contained malformed JSON.');
+      return { phases: payload.phases.map((phase) => ({ key: phase.key, narrative: 'Adapted story.' })) };
+    }
+  ]);
+  const adapted = await h.run(`(async () => JSON.stringify(await SbAI.instantiateTemplate(sbFindTemplate('ransomware-double-extortion'))))()`).then(JSON.parse);
+  assert.equal(adapted.blocks[0].narrative, 'Adapted story.');
+  assert.equal(adapted.blocks[1].narrative, template.blocks[1].narrative, 'the phase that kept failing keeps its original story');
+  assert.equal(adapted.kept_phases, 1);
+});
+
+test('library: a template keeps the number of cells set in Context, its workstreams go to the closest cells', () => {
+  const h = harness();
+  h.run(`appState.scenario.cells = ['decision', 'operational', 'communication', 'it'].map((key) => sbMakeCell(key)); appState.scenario.exercise.cells_count = 4; StoryboardHistory.ensure();
+    sbApplyTemplate(sbFindTemplate('ransomware-double-extortion'), 'replace');`);
+  assert.equal(h.run('appState.scenario.cells.length'), 4);
+  assert.equal(h.run('appState.scenario.exercise.cells_count'), 4);
+  assert.ok(h.json('(() => { const cells = appState.scenario.cells.map((cell) => cell.id); return sbStoryboard().blocks.flatMap((block) => block.beats).filter((beat) => beat.cell_id && !sbIsAllCells(beat.cell_id)).every((beat) => sbRecipientIds(beat.cell_id).every((id) => cells.includes(id))); })()'), 'every planned inject goes to one of the 4 cells');
+});
+
 test('pipeline: plans, casts, creates linked injects through agent tools and writes content with storyboard context', async () => {
   const h = harness();
   h.run(`appState.scenario.client.name = 'Acme Bank'; appState.scenario.settings.inject_language = 'fr';

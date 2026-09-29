@@ -410,18 +410,102 @@ const SbAI = {
   },
 
   /* Contextualises a library template for the current organisation. */
-  async adaptTemplate(template) {
+  async adaptTemplate(template, options = {}) {
     const project = appState.scenario;
     const payload = {
       task: 'Adapt this ready-made storyboard template to the organisation and scenario context. Keep the same blocks, tracks, timing and number of injects, but make titles, briefs, narratives, beats and cast specific (organisation, sector, systems, locations, regulators, media).',
-      context: sbAIContext(project, { storyboard: false }),
+      context: { ...sbAIContext(project, { storyboard: false }), designer_brief: agentExcerpt(project.storyboard?.meta?.brief || '', 4000) },
       template,
       response_format: 'The full template JSON with exactly the same shape and keys as the input template.'
     };
-    const result = await this.request('Adapting template', payload, 14000);
+    const result = await this.request('Adapting template', payload, 14000, options);
     const repaired = sbRepairTemplate({ ...template, ...result, id: template.id }, template.duration_minutes);
     if (!repaired.blocks.length) throw new AgentValidationError('The AI returned an empty template.');
     return repaired;
+  },
+
+  /* A library scenario made the client's own before it lands on the storyline, in a few short
+     requests instead of one long reply (slower models time out on a whole template): first the
+     scenario, the roles and the phase titles and briefs, then the story and the planned injects
+     of three phases at a time. Timings, channels, senders and structure stay the template's;
+     anything the AI leaves out keeps its original text. */
+  async instantiateTemplate(template, { signal, onProgress } = {}) {
+    const project = appState.scenario;
+    const copy = JSON.parse(JSON.stringify(template));
+    const client = project.client.name || 'the organisation';
+    const context = { ...sbAIContext(project, { storyboard: false }), designer_brief: agentExcerpt(project.storyboard?.meta?.brief || '', 4000) };
+    const rules = [
+      `Write for ${client}${project.client.sector ? ` (${project.client.sector})` : ''}: never "the organisation", "the company" or a generic customer; name its sites, systems, products, customers and partners the way this sector does (invent plausible fictional names; real authorities of the country are allowed, never real companies or people).`,
+      'Follow the designer brief, the learning objectives and the incident timeline: when they describe threats or events the template lacks (for example a data leak, a payment compromise, a seasonal peak), bring them into the phases and the planned injects instead of the template\'s generic ones.',
+      'Keep every key, the number and order of items, the timings, channels and senders. Change only texts.',
+      `Write in ${sbLanguageName(project)}.`
+    ];
+    const opts = { nested: !!signal, signal };
+    onProgress?.(0, 1);
+    const head = await this.request('Adapting the library scenario', {
+      task: 'Make this library crisis scenario the client\'s own: its name, summary, threat, objectives, roles and the title and brief of every phase.',
+      rules,
+      context,
+      template: { name: copy.name, summary: copy.summary, threat: copy.threat, objectives: copy.objectives, cast: copy.cast, blocks: copy.blocks.map((block) => ({ key: block.key, type: block.type, title: block.title, brief: block.brief })) },
+      response_format: { name: 'scenario name', summary: '3-5 sentences', threat: '2-3 sentences', objectives: ['one per input objective, same order'], cast: [{ key: 'same key', label: 'role label', organization: 'named organisation', description: '1 sentence' }], blocks: [{ key: 'same key', title: 'phase title', brief: 'what players face, 1-2 sentences' }] }
+    }, 6000, opts);
+    const text = (value, fallback, max) => (typeof value === 'string' && value.trim() ? sbText(value, max) : fallback);
+    copy.name = text(head.name, copy.name, 200);
+    copy.summary = text(head.summary, copy.summary, 3000);
+    copy.threat = text(head.threat, copy.threat, 3000);
+    if (Array.isArray(head.objectives)) copy.objectives = copy.objectives.map((objective, index) => text(head.objectives[index], objective, 400));
+    const castByKey = new Map((Array.isArray(head.cast) ? head.cast : []).filter((item) => item && typeof item === 'object').map((item) => [String(item.key), item]));
+    copy.cast = copy.cast.map((cast) => {
+      const next = castByKey.get(String(cast.key));
+      return next ? { ...cast, label: text(next.label, cast.label, 200), organization: text(next.organization, cast.organization, 200), description: text(next.description, cast.description, 600) } : cast;
+    });
+    const headBlocks = new Map((Array.isArray(head.blocks) ? head.blocks : []).filter((item) => item && typeof item === 'object').map((item) => [String(item.key), item]));
+    copy.blocks.forEach((block) => {
+      const next = headBlocks.get(String(block.key));
+      if (next) { block.title = text(next.title, block.title, 200); block.brief = text(next.brief, block.brief, 4000); }
+    });
+    // Two phases per request; a request cut at its length or unreadable is tried again one phase
+    // at a time, and a phase that still fails keeps its original text instead of stopping it all.
+    const adaptGroup = async (group) => {
+      const part = await this.request('Adapting the library scenario', {
+        task: 'Rewrite the hidden story and the planned injects of these phases for the client, consistent with the adapted scenario.',
+        rules,
+        context,
+        scenario: { name: copy.name, summary: copy.summary, threat: copy.threat, cast: copy.cast.map((cast) => ({ key: cast.key, label: cast.label, role: cast.role, organization: cast.organization })), phases: copy.blocks.map((block) => ({ key: block.key, title: block.title })) },
+        phases: group.map((block) => ({ key: block.key, title: block.title, brief: block.brief, narrative: block.narrative, beats: (block.beats || []).map((beat) => ({ at: beat.at, channel: beat.channel, cast: beat.cast, title: beat.title, intent: beat.intent })) })),
+        response_format: { phases: [{ key: 'same key', narrative: 'what really happens, 3-5 sentences', beats: [{ title: 'inject title', intent: 'what the inject says and what it forces the players to do, 1-2 sentences' }] }] }
+      }, 9000, opts);
+      const byKey = new Map((Array.isArray(part.phases) ? part.phases : []).filter((item) => item && typeof item === 'object').map((item) => [String(item.key), item]));
+      group.forEach((block) => {
+        const next = byKey.get(String(block.key));
+        if (!next) return;
+        block.narrative = text(next.narrative, block.narrative, 8000);
+        if (Array.isArray(next.beats)) (block.beats || []).forEach((beat, beatIndex) => {
+          const item = next.beats[beatIndex];
+          if (item && typeof item === 'object') { beat.title = text(item.title, beat.title, 300); beat.intent = text(item.intent, beat.intent, 2000); }
+        });
+      });
+    };
+    const groups = [];
+    for (let index = 0; index < copy.blocks.length; index += 2) groups.push(copy.blocks.slice(index, index + 2));
+    let kept = 0;
+    for (const [index, group] of groups.entries()) {
+      onProgress?.(index + 1, groups.length + 1);
+      try {
+        await adaptGroup(group);
+      } catch (error) {
+        if (error?.name === 'AbortError' || signal?.aborted) throw error;
+        for (const block of group) {
+          try { await adaptGroup([block]); } catch (retry) {
+            if (retry?.name === 'AbortError' || signal?.aborted) throw retry;
+            kept++;
+          }
+        }
+      }
+    }
+    copy.kept_phases = kept;
+    onProgress?.(groups.length + 1, groups.length + 1);
+    return sbRepairTemplate({ ...copy, id: template.id }, template.duration_minutes);
   },
 
   /* Suggests missing roles from the current storyboard. */

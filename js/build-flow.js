@@ -44,17 +44,19 @@ function bfValidateFraming(project = appState.scenario) {
   return true;
 }
 
-function bfFramingObjective(project) {
+function bfFramingObjective(project, { adapted = false } = {}) {
   return [
     'STAGE 1 OF 2, FRAMING ONLY. The designer reviews and validates the framing with the client before any inject is planned.',
+    adapted ? 'The library scenario is already adapted to the client (phases, roles and planned injects): keep its phases and planned injects, correct only what contradicts the context, and spend your steps on what is missing: main events, cells and players, actors for the roles.' : '',
     'Build: scenario name, type and summary; objectives; synopsis and threat; the phases of the main storyline, ending with a closing phase (recovery, return to normal, end of exercise) unless the context says otherwise; the main events of each phase with the main consequences the players must manage; the player cells and their players; the cast roles with their actors.',
     'Do NOT plan or write injects for the cells (no planPhaseInjects, no addPlannedInjects, no createStimulus): stage 2 plans and writes them once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects.',
     contextAgentObjective(project)
-  ].join('\n').slice(0, 7900);
+  ].filter(Boolean).join('\n').slice(0, 7900);
 }
 
 const BuildFlow = {
   stage: '',
+  progress: null,
 
   busy() {
     return !!this.stage || getCrisisAgent().active || (typeof SbPipeline !== 'undefined' && SbPipeline.active) || !!appState.checkerState?.analysisLoading;
@@ -65,11 +67,33 @@ const BuildFlow = {
     const project = appState.scenario;
     if (this.busy()) return false;
     const template = contextLibraryTemplate(project);
-    if (template && project.storyboard.meta.template_id !== template.id && !sbUseTemplate(template, 'replace')) return false;
+    let adapted = false;
+    if (template && project.storyboard.meta.template_id !== template.id) {
+      // The library scenario is made the client's own (texts only) before it lands on the
+      // storyline; without AI, or when that fails, it lands as it is and the agent adapts it.
+      let instance = template;
+      this.stage = 'adapting';
+      App.render();
+      try {
+        instance = await SbAI.instantiateTemplate(template, { onProgress: (done, total) => { this.progress = { done, total }; App.render(); } });
+        adapted = true;
+        if (instance.kept_phases) pushToast(tt(`${instance.kept_phases} phase(s) of the library scenario kept their original story: the AI could not rewrite them.`, `${instance.kept_phases} phase(s) du scénario de bibliothèque gardent leur histoire d’origine : l’IA n’a pas pu les réécrire.`, `${instance.kept_phases} Phase(n) des Bibliotheksszenarios behalten ihre ursprüngliche Geschichte: Die KI konnte sie nicht umschreiben.`), 'warning');
+      } catch (error) {
+        pushToast(tt(`The library scenario could not be adapted by the AI (${sbErrorMessage(error)}): the agent adapts it instead.`, `Le scénario de bibliothèque n’a pas pu être adapté par l’IA (${sbErrorMessage(error)}) : l’agent l’adapte à la place.`, `Das Bibliotheksszenario konnte nicht von der KI angepasst werden (${sbErrorMessage(error)}): Der Agent passt es stattdessen an.`), 'warning');
+      } finally {
+        this.stage = '';
+        this.progress = null;
+      }
+      if (appState.scenario !== project) return false;
+      if (!sbUseTemplate(instance, 'replace')) return false;
+      project.storyboard.meta.template_id = template.id;
+      project.storyboard.meta.library_id = template.id;
+      if (adapted && instance.name && !project.name) project.name = instance.name;
+    }
     saveLocal(false);
     this.stage = 'framing';
     try {
-      await startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', objective: bfFramingObjective(project), origin: 'context', scope: 'framing' });
+      await startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', objective: bfFramingObjective(project, { adapted }), origin: 'context', scope: 'framing' });
     } finally {
       this.stage = '';
     }
@@ -154,8 +178,8 @@ function renderBuildFlow(project) {
       <button class="btn btn-ghost btn-sm" data-bf-action="all" ${ai && !busy ? '' : 'disabled'} ${noAI} title="${escapeAttribute(tt('Framing, stimuli and challenge in one go, without a client review in between', 'Cadrage, stimuli et challenge d’un seul tenant, sans relecture client entre les deux', 'Rahmen, Stimuli und Challenge in einem Durchgang, ohne Kundenprüfung dazwischen'))}">${escapeHtml(tt('Everything at once', 'Tout d’un coup', 'Alles auf einmal'))}</button>
     </div>
     <ol class="bf-steps">
-      ${step(1, phases ? 'done' : 'todo', tt('Framing', 'Cadrage', 'Rahmen'), escapeHtml(phases ? tt(`${phases} phases on the main storyline.`, `${phases} phases sur la storyline principale.`, `${phases} Phasen in der Haupt-Storyline.`) : tt('Phases, main events and their consequences, cells and senders, from the context above.', 'Phases, événements principaux et leurs conséquences, cellules et émetteurs, à partir du contexte ci-dessus.', 'Phasen, Hauptereignisse und ihre Folgen, Zellen und Absender, aus dem Kontext oben.')),
-        `<button class="btn ${phases ? 'btn-secondary' : 'btn-primary'} btn-sm" data-bf-action="framing" ${ai && !busy ? '' : 'disabled'} ${noAI}>${running('framing')}${sbUiIcon('sparkles', 14)} ${escapeHtml(phases ? tt('Rebuild the framing', 'Reconstruire le cadrage', 'Rahmen neu erstellen') : tt('Build the framing', 'Construire le cadrage', 'Rahmen erstellen'))}</button>`)}
+      ${step(1, phases && BuildFlow.stage !== 'adapting' ? 'done' : 'todo', tt('Framing', 'Cadrage', 'Rahmen'), escapeHtml(BuildFlow.stage === 'adapting' ? tt(`Adapting the library scenario to the client${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`, `Adaptation du scénario de bibliothèque au client${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`, `Das Bibliotheksszenario wird an den Kunden angepasst${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`) : phases ? tt(`${phases} phases on the main storyline.`, `${phases} phases sur la storyline principale.`, `${phases} Phasen in der Haupt-Storyline.`) : tt('Phases, main events and their consequences, cells and senders, from the context above.', 'Phases, événements principaux et leurs conséquences, cellules et émetteurs, à partir du contexte ci-dessus.', 'Phasen, Hauptereignisse und ihre Folgen, Zellen und Absender, aus dem Kontext oben.')),
+        `<button class="btn ${phases ? 'btn-secondary' : 'btn-primary'} btn-sm" data-bf-action="framing" ${ai && !busy ? '' : 'disabled'} ${noAI}>${running('adapting') || running('framing')}${sbUiIcon('sparkles', 14)} ${escapeHtml(phases ? tt('Rebuild the framing', 'Reconstruire le cadrage', 'Rahmen neu erstellen') : tt('Build the framing', 'Construire le cadrage', 'Rahmen erstellen'))}</button>`)}
       ${step(2, validation && !changes?.total ? 'done' : phases ? 'todo' : 'later', tt('Client validation', 'Validation client', 'Kundenfreigabe'), validatedText,
         `<button class="btn btn-secondary btn-sm" data-route="storyline" ${phases ? '' : 'disabled'}>${escapeHtml(tt('Review', 'Relire', 'Prüfen'))} ${sbUiIcon('chevronRight', 14)}</button>
          <button class="btn ${phases && !validation ? 'btn-primary' : 'btn-secondary'} btn-sm" data-bf-action="validate" ${phases && !busy ? '' : 'disabled'}>${sbUiIcon('checkCircle', 14)} ${escapeHtml(validation ? tt('Validate again', 'Valider à nouveau', 'Erneut freigeben') : tt('Validate the framing', 'Valider le cadrage', 'Rahmen freigeben'))}</button>`)}

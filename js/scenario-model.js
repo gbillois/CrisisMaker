@@ -951,9 +951,17 @@ function sbCell(project, id) {
 }
 
 /* Finds the cell of a preset, creating it when needed. */
+/* The closest existing cell for a kind of cell, when the exercise has all its cells already. */
+const SB_CELL_FALLBACK = { legal: ['decision', 'operational'], business: ['operational', 'decision'], hr: ['operational', 'decision'], it: ['operational'], communication: ['decision', 'operational'], decision: ['operational'], operational: ['decision', 'business'] };
+
 function sbEnsureCell(project, key) {
   if (!Array.isArray(project.cells)) project.cells = [];
   let cell = project.cells.find((item) => item.key === key);
+  // The number of cells set in Context wins: a template's workstream goes to the closest cell.
+  const expected = Number(project.exercise?.cells_count) || 0;
+  if (!cell && expected && project.cells.length >= expected) {
+    cell = (SB_CELL_FALLBACK[key] || []).map((fallback) => project.cells.find((item) => item.key === fallback)).find(Boolean) || project.cells[0];
+  }
   if (!cell) {
     cell = sbMakeCell(SB_CELL_PRESETS.some((item) => item.key === key) ? key : 'operational');
     project.cells.push(cell);

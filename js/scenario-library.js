@@ -90,7 +90,8 @@ function sbApplyTemplate(template, mode = 'replace') {
   sbFlattenWorkstreams(project);
   // The plans come with the template: later edits of a phase's text call for a re-plan.
   for (const block of project.storyboard.blocks) if (block.beats.length && !block.plan_hash) sbMarkPlanned(block);
-  project.exercise = { ...(project.exercise || {}), cells_count: project.cells.length };
+  // The number of cells set in Context stays; otherwise it follows the cells now in the project.
+  project.exercise = { ...(project.exercise || {}), cells_count: Number(project.exercise?.cells_count) || project.cells.length };
   return project.storyboard;
 }
 

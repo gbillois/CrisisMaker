@@ -236,7 +236,7 @@ class AgentRunner {
     const execution = { controller: runController, assertActive: () => {
       if (runController.signal.aborted || runProject !== appState.scenario) throw new DOMException('Stopped', 'AbortError');
     } };
-    const calls = new Map(); let invalidCount = 0, refusedFinals = 0;
+    const calls = new Map(); let invalidCount = 0, refusedFinals = 0; let readStreak = 0;
     const catalog = [...this.registry.values()].map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
     const system = AgentPrompts.protocol + '\n' + AgentPrompts[kind] + '\nTools:\n' + JSON.stringify(catalog);
     try {
@@ -333,6 +333,17 @@ class AgentRunner {
           if (tool.risk !== 'read') { this.changed++; appState.checkerState.analysisResult = null; delete appState.scenario.challenge; saveLocal(false); }
           this.remember(call, result); invalidCount = 0;
           AgentLog.append(this, 'success', `${call.tool}: ${tool.risk === 'read' ? 'reviewed' : 'applied'}`, result);
+          // A framing run that keeps reading (DeepSeek flash re-reads the storyboard and the frame
+          // between every change) is told, after three reads in a row, what is still missing.
+          readStreak = tool.risk === 'read' ? readStreak + 1 : 0;
+          if (readStreak >= 3 && this.scope === 'framing') {
+            const gaps = agentFramingGaps(appState.scenario);
+            readStreak = 0;
+            if (gaps.length) {
+              this.history.push({ instruction: `Stop reading: the current state is in your context and in the results above. Still missing for the framing: ${gaps.join('; ')}. Make these changes now with the write tools, one per step.` }); this.history = this.history.slice(-8);
+              AgentLog.append(this, 'warning', `Reading again and again: asked to fill what is missing (${gaps.join('; ')}).`);
+            }
+          }
         } catch (error) {
           this.assertActive();
           if (!(error instanceof AgentValidationError || error instanceof SyntaxError || agentTruncated(error))) throw error;
