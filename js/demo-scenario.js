@@ -239,6 +239,7 @@
           [95, 'article_press', 'nyt', 'nyt', 'communication', 'New York Times: hospital supplies at risk', 'International coverage focused on patients in the US.', {
             headline: 'Cyberattack on Drugmaker StonaWave Threatens Cancer Drug Supplies', subheadline: 'A ransomware group says it stole the files of thousands of patients and demands $18 million.',
             author: 'Hannah Brooks', date: 'November 16, 2026', update_time: 'Updated 4:05 a.m. ET', location: 'PARIS',
+            image_caption: 'StonaWave\'s headquarters outside Paris, where the crisis cell met on Monday morning.',
             body: '<p>PARIS - A ransomware attack has halted production at StonaWave, a French pharmaceutical group that supplies cancer drugs to hospitals in Europe and the United States, according to employees and hospital pharmacists.</p><p>The group behind the attack, PharmLeaks, published a sample of patient records on Monday. StonaWave has not yet commented publicly.</p>' }],
           [100, 'breaking_news_tv', 'cnn', 'tv', all, 'CNN breaking news on the leak', 'Everyone sees the story go global.', {
             headline: 'STONAWAVE HACK: PATIENT DATA LEAKED', subline: 'Ransomware group publishes 2,000 patient records, demands $18M', ticker: 'French drugmaker StonaWave halts cancer drug lines after cyberattack * Hospitals check stocks * Company silent so far', category: 'BREAKING NEWS' }],
@@ -303,6 +304,7 @@
           [160, 'article_press', 'ft', 'ft', 'decision+communication', 'Financial Times: markets and the ransom question', 'Investors and the ransom question: the committee position is tested.', {
             headline: 'StonaWave shares fall as hackers demand $18mn ransom', subheadline: 'Drugmaker says patient safety is its priority but will not say whether it will pay.',
             author: 'Oliver Grant', date: 'November 16 2026',
+            image_caption: 'The StonaWave plant in Frankfurt, where two oncology lines stopped on Monday morning.',
             body: '<p>Shares in StonaWave fell 7 per cent in Paris on Monday after the French drugmaker confirmed a cyberattack that halted two production lines and exposed patient data.</p><p>Analysts said the key question was whether the company had clean backups. People familiar with the matter said the board would meet in the afternoon.</p>' }],
           [165, 'email_external', null, 'medichem', 'business', 'MediChem confirms packaging capacity', 'A partner solution with conditions to accept.', {
             from_email: 'david.chen@medichem-mfg.example', to: 'james.carter@stonawave.example', cc: 'anika.patel@stonawave.example',
@@ -417,6 +419,136 @@
         scenario.slide_debrief = typeof normalizeSlideDebrief === 'function' ? normalizeSlideDebrief(slideDebrief) : slideDebrief;
         scenario.checklist = normalizeChecklist({ checked: { playability_0: true, playability_1: true, playability_2: true, observation_0: true, realism_0: true, realism_1: true } });
         scenario.debrief = buildDebriefFromScenario(scenario);
-        scenario.video_debrief = normalizeVideoDebrief({ source_material: scenario.scenario.summary }, 'en');
+        // The video debrief is ready at step 2: the story material, the setup and a written scenario.
+        const videoSource = [
+          `Exercise: ${scenario.name}`,
+          `Summary: ${scenario.scenario.summary}`,
+          `Context: ${scenario.scenario.detailed_context}`,
+          `Incident timeline (what really happened, in order):\n${scenario.scenario.attack_path}`,
+          `Main events:\n${phaseSpecs.flatMap((spec) => spec.events.map(([, text]) => `- ${text}`)).join('\n')}`
+        ].join('\n\n');
+        scenario.video_debrief = normalizeVideoDebrief({
+          source_material: videoSource,
+          setup: { duration: 120, language: 'en', theme: 'wavestone', voice: 'en-US-AndrewNeural', tone: 'documentaire sobre et factuel', audience: 'comité exécutif' },
+          project: stonaWaveDemoVideoProject(),
+          ui: { active_step: 2 }
+        }, 'en');
         return scenario;
+      }
+
+      /* The demo's video debrief scenario, in the format of the Video debrief studio (step 2):
+         seven scenes and an end card, about 115 seconds. video-debrief/examples/stonawave.json
+         is the same project (tests/video-debrief-demo.test.js keeps them equal). */
+      function stonaWaveDemoVideoProject() {
+        const paris = [2.35, 48.86], frankfurt = [8.68, 50.11], lyon = [4.84, 45.76], newJersey = [-74.5, 40.05], hyderabad = [78.49, 17.39];
+        return {
+          meta: { title: 'StonaWave, Operation Cold Chain', slug: 'stonawave-operation-cold-chain-debrief-video', lang: 'en' },
+          theme: { preset: 'wavestone' },
+          audio: { voice: 'en-US-AndrewNeural', rate: '+6%' },
+          target: { duration: 120 },
+          pacing: { lead: 0.8, gap: 0.55, tail: 1.6 },
+          scenes: [
+            {
+              id: 's1', type: 'cold-open', mood: 'dark',
+              vo: 'Monday, the sixteenth of November, 2026. Five forty in the morning. Ransomware spreads through StonaWave, a drugmaker that supplies cancer treatments to hospitals in Europe and America. This is Operation Cold Chain.',
+              eyebrow: 'Wavestone · Cyber Crisis Debrief',
+              dateLine: '16.11.2026',
+              kicker: '05:40 CET · MONDAY',
+              title: 'COLD CHAIN', titleSize: 190, titleAt: 12.6,
+              subtitle: 'The StonaWave ransomware crisis'
+            },
+            {
+              id: 's2', type: 'chain', mood: 'tension',
+              vo: 'It began nineteen days earlier, with a contractor V P N account and no multi-factor authentication. A weak service account gave PharmLeaks the whole domain. For ten nights, patient and trial data slipped out. Then the backups were sabotaged.',
+              eyebrow: 'Act I · The silent preparation',
+              heading: 'Nineteen days inside.',
+              nodes: [
+                { date: 'D-19 · 28 OCT', title: 'Contractor VPN access', sub: 'Bought from a broker, no MFA', at: 1.2 },
+                { date: 'D-17', title: 'Domain administrator', sub: 'Kerberoasting of the svc-backup account', at: 7.0 },
+                { date: 'D-12 to D-3', title: '1.9 TB exfiltrated', sub: 'Trials, pharmacovigilance, 38,000 patient files', at: 10.6 },
+                { date: 'D-1 · 23:50', title: 'Recovery sabotaged', sub: 'EDR off on 40 servers, backup catalogs deleted', at: 14.2 },
+                { date: 'D0 · 05:40', title: 'Encryption', sub: 'Pushed by group policy to ERP, MES and identity', at: 15.4 }
+              ]
+            },
+            {
+              id: 's3', type: 'map-focus', mood: 'impact',
+              vo: 'At eight thirty, the crisis cell meets in Paris. Frankfurt has stopped two oncology lines. The Lyon warehouse is blind on temperatures, and hospitals cannot order. Only Hyderabad and its backup vault look untouched.',
+              eyebrow: 'Act II · 08:30 · The plants stop',
+              heading: 'One domain. Every site exposed.',
+              camera: { center: [15.0, 35.0], scale: 9 },
+              epicenter: paris, impactAt: 1.4,
+              dotAnchors: [paris, frankfurt, lyon, newJersey, hyderabad],
+              stat: { value: 11000 }, statAt: 3.2,
+              statLabel: 'doses in quarantine in Frankfurt',
+              bullets: [
+                { text: 'MES · two oncology lines down', at: 4.6 },
+                { text: 'Lyon · cold rooms blind', at: 7.2 },
+                { text: 'ERP · hospital orders down', at: 9.8 },
+                { text: 'Hyderabad · vault untouched', at: 12.2 }
+              ]
+            },
+            {
+              id: 's4', type: 'stat-grid', mood: 'cold',
+              vo: 'PharmLeaks writes to the executives: eighteen million dollars in seventy-two hours, or the data goes public. A broker already sells it on a dark web forum. Paying would not protect a single patient.',
+              eyebrow: 'Act II · 08:55 · Double extortion',
+              heading: 'Three crises. One clock.',
+              facts: [
+                { tag: 'Ransom demand', big: '$18M', sub: 'in Bitcoin, within 72 hours', at: 2.6 },
+                { tag: 'Data stolen', big: '1.9 TB', sub: '38,000 patient files, trials, pharmacovigilance', at: 5.2 },
+                { tag: 'Resale', big: '12 BTC', sub: 'the same data on sale on a dark web forum', at: 8.2 },
+                { tag: 'The decision', big: 'Pay or rebuild?', sub: 'and isolate every site before 10:00', at: 11.2 }
+              ]
+            },
+            {
+              id: 's5', type: 'map-spread', mood: 'grim',
+              vo: 'At ten, two thousand patient records appear online. CNN goes live, the press follows in three languages. CERT-FR, the CNIL and the health regulator each start a clock, and patients ask if their treatment will come.',
+              eyebrow: 'Act II · 10:00 · The leak goes public',
+              heading: 'Every audience adds a deadline',
+              origin: paris,
+              stamps: [
+                { name: 'LEAK SITE', fig: '2,000 patient records published', coords: [37.62, 55.75], at: 1.0 },
+                { name: 'MEDIA', fig: 'CNN · Le Monde · NYT · FAZ', coords: [-74.0, 40.71], at: 4.0 },
+                { name: 'FRANKFURT', fig: 'journalists at the plant gate', coords: frankfurt, at: 6.2 },
+                { name: 'REGULATORS', fig: 'ANSSI · CNIL · ANSM clocks running', coords: paris, at: 8.6 },
+                { name: 'HOSPITALS', fig: '42 patients, three days of stock', coords: lyon, at: 12.4 }
+              ],
+              bottom: { text: 'The encryption stopped the plants.', strong: 'The leak made it a patient crisis.' }
+            },
+            {
+              id: 's6', type: 'map-trace', mood: 'hope',
+              vo: 'The committee isolates every site and refuses to pay. Critical treatments leave Lyon on paper, temperatures logged by hand. At eleven, the Hyderabad vault is confirmed clean: the rebuild starts in a clean room.',
+              eyebrow: 'Act III · Patients first, then recovery',
+              heading: 'Rebuild on what can be trusted',
+              camera: { center: [4.85, 34.0], scale: 12 },
+              trail: [
+                { coords: lyon, label: 'LYON · MANUAL COLD CHAIN', at: 4.4, dy: 44 },
+                { coords: hyderabad, label: 'HYDERABAD · CLEAN VAULT', at: 8.8, dx: -350 },
+                { coords: frankfurt, label: 'FRANKFURT · LINE 3 FIRST', at: 12.0 }
+              ],
+              big: '$0', bigAt: 12.8,
+              sub: 'paid to PharmLeaks',
+              strip: 'Isolated sites · clean vault\nclean-room rebuild · paper cold chain',
+              footer: 'Recovery is a chain of trusted decisions.'
+            },
+            {
+              id: 's7', type: 'lessons', mood: 'resolve',
+              vo: 'Three lessons. A contractor account without multi-factor authentication opened the door. Backups only count if the attacker cannot reach them. And in a drug company, every cyber decision is a patient decision.',
+              eyebrow: 'What this means for the executive committee',
+              lessons: [
+                { text: 'Enforce MFA on every contractor and third-party access.', at: 1.4 },
+                { text: 'Keep one backup offline, tested and out of the domain\'s reach.', at: 6.2 },
+                { text: 'Weigh every cyber decision against patient safety.', at: 10.0 }
+              ],
+              finalLine1: 'The attackers came for the data.',
+              finalLine2: 'The crisis was about the patients.',
+              finalAt: 13.4
+            },
+            {
+              id: 's8', type: 'endcard', vo: '', minDuration: 4.2,
+              title: 'OPERATION COLD CHAIN',
+              subtitle: 'StonaWave · Ransomware crisis exercise',
+              brand: 'Cyber Crisis Debrief · Wavestone'
+            }
+          ]
+        };
       }
