@@ -4501,7 +4501,10 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .play-log { position: fixed; top: var(--header-h); right: 0; bottom: 0; z-index: 95; width: min(400px, 100vw); display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: #fff; border-left: 1px solid var(--line); border-top: 3px solid var(--indigo); box-shadow: var(--shadow-lg); }
 .play-log-head { display: flex; align-items: center; gap: 8px; }
 .play-log-head h3 { display: flex; align-items: center; gap: 7px; margin: 0; flex: 1; }
-.play-log-toggle { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 4px 10px; border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; font-size: 0.76rem; font-weight: 700; }
+.play-export { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 4px 10px; border: 1px solid rgba(4, 240, 106, 0.6); background: rgba(4, 240, 106, 0.12); color: #fff; font-size: 0.76rem; font-weight: 700; cursor: pointer; }
+.play-export:hover:not(:disabled) { background: rgba(4, 240, 106, 0.24); }
+.play-export:disabled { opacity: 0.5; cursor: not-allowed; }
+.play-log-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; font-size: 0.76rem; font-weight: 700; }
 .play-log-toggle b { min-width: 20px; padding: 0 5px; background: var(--green); color: #183127; font-size: 0.7rem; text-align: center; }
 .play-log-toggle:hover, .play-log-toggle.active { background: #fff; color: var(--dark); border-color: #fff; }
 .play-note { display: flex; gap: 6px; }

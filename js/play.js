@@ -270,6 +270,7 @@ function renderPlayBar(project, play, ui, items, now, counts, phases) {
   return `<div class="play-bar ${play.running ? 'is-running' : ''}" data-play-bar>
     <div class="play-bar-top">
       <span class="play-bar-title">${sbUiIcon('play', 13)} ${tt('Exercise control', 'Pilotage de l’exercice', 'Übungssteuerung')}${play.started_at ? ` · ${tt('started at', 'démarré à', 'gestartet um')} ${escapeHtml(playWallClock(play.started_at))}` : ''}</span>
+      <button class="play-export" data-play="export-xlsx" title="${escapeAttribute(tt('The whole chronogram in an Excel file, with a filter on every column', 'Tout le chronogramme dans un fichier Excel, avec un filtre sur chaque colonne', 'Das ganze Chronogramm als Excel-Datei, mit einem Filter in jeder Spalte'))}" ${items.length ? '' : 'disabled'}>${sbUiIcon('sheet', 13)} ${tt('Export chronogram (Excel)', 'Exporter le chronogramme (Excel)', 'Chronogramm exportieren (Excel)')}</button>
       <button class="play-log-toggle ${ui.logOpen ? 'active' : ''}" data-play="log" aria-expanded="${ui.logOpen ? 'true' : 'false'}">${sbUiIcon('history', 13)} ${tt('Exercise log', 'Journal', 'Protokoll')} <b>${play.log.length}</b></button>
       <button class="play-reset" data-play="reset-all" ${started || play.log.length || counts.sent ? '' : 'disabled'} title="${escapeAttribute(tt('Clock back to H+0:00, sent injects back to Validated, log cleared', 'Horloge à H+0:00, injects envoyés repassés en Validé, journal effacé', 'Uhr auf H+0:00, gesendete Injects wieder Freigegeben, Protokoll gelöscht'))}">${sbUiIcon('refresh', 13)} ${tt('Reset play', 'Réinitialiser le jeu', 'Spiel zurücksetzen')}</button>
     </div>
@@ -516,6 +517,7 @@ function bindPlayEvents() {
       case 'add': playAddInject(); return;
       case 'log': ui.logOpen = !ui.logOpen; App.render(); return;
       case 'save-log': playSaveLog(); return;
+      case 'export-xlsx': playExportXlsx(); return;
     }
     saveLocal(false);
     App.render();
@@ -688,5 +690,49 @@ function playTick(initial) {
       const top = line.getBoundingClientRect().top;
       if (top < offset || top > window.innerHeight - 120) window.scrollBy({ top: top - offset, behavior: initial ? 'auto' : 'smooth' });
     }
+  }
+}
+
+/* The whole chronogram as an Excel file: one row per inject (written or planned) in play order,
+   a filter on every column, the header row frozen. */
+function playChronogramRows(project = appState.scenario) {
+  const start = project.scenario.start_date;
+  const header = ['#', tt('Exercise time', 'Heure d’exercice', 'Übungszeit'), tt('Simulated time', 'Heure simulée', 'Simulierte Zeit'), tt('Phase', 'Phase', 'Phase'), tt('Recipient cell', 'Cellule destinataire', 'Empfängerzelle'), tt('Channel', 'Canal', 'Kanal'), tt('Sender', 'Émetteur', 'Absender'), tt('Title', 'Titre', 'Titel'), tt('Purpose', 'Objectif de l’inject', 'Zweck'), tt('Nudge', 'Relance', 'Impuls'), tt('Status', 'Statut', 'Status'), tt('Sent at (exercise time)', 'Envoyé à (heure d’exercice)', 'Gesendet um (Übungszeit)')];
+  const rows = playItems(project).map((item) => {
+    const sentAt = item.stimulus?.sent_at_min;
+    return [
+      item.number || '',
+      sbFormatOffset(Math.round(item.time)),
+      start ? sbClockTime(item.time, start) : '',
+      item.phase?.title || '',
+      item.cell?.name || '',
+      channelLabel(item.channel),
+      item.sender || '',
+      item.title || '',
+      String(item.intent || '').replace(/\s+/g, ' ').trim().slice(0, 1000),
+      item.beat?.kind === 'nudge' ? tt('Yes', 'Oui', 'Ja') : '',
+      playStatusLabel(item.status),
+      Number.isFinite(sentAt) ? sbFormatOffset(Math.round(sentAt)) : ''
+    ];
+  });
+  return [header, ...rows];
+}
+
+async function playExportXlsx() {
+  const project = appState.scenario;
+  try {
+    await evLoadScript('XLSX', 'js/lib/xlsx.full.min.js');
+    const rows = playChronogramRows(project);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(1, rows.length) - 1, c: rows[0].length - 1 } }) };
+    ws['!cols'] = [6, 12, 12, 30, 26, 18, 26, 44, 60, 9, 12, 14].map((wch) => ({ wch }));
+    ws['!views'] = [{ state: 'frozen', ySplit: 1, xSplit: 0, topLeftCell: 'A2' }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, tt('Chronogram', 'Chronogramme', 'Chronogramm'));
+    const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    downloadBlob(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${slugify(project.name || 'crisismaker')}_${tt('chronogram', 'chronogramme', 'chronogramm')}.xlsx`);
+    pushToast(tt(`Chronogram exported: ${rows.length - 1} injects, a filter on every column.`, `Chronogramme exporté : ${rows.length - 1} injects, un filtre sur chaque colonne.`, `Chronogramm exportiert: ${rows.length - 1} Injects, ein Filter in jeder Spalte.`), 'success');
+  } catch (error) {
+    CrisisError.toast(error, { operation: 'Export chronogram (Excel)' });
   }
 }

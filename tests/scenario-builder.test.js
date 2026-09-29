@@ -1517,3 +1517,15 @@ test('press templates: the byline and reading-time prefixes are never doubled', 
   assert.equal(h.run('ARTICLE_TEMPLATE_LIBRARY.lemonde.defaults.author.startsWith("Par ")'), false);
   assert.equal(h.run('ARTICLE_TEMPLATE_LIBRARY.lemonde.defaults.read_time'), '4 min');
 });
+
+test('play: the chronogram for Excel has one row per inject in play order, with its phase, cell, sender and status', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const rows = h.json('playChronogramRows(appState.scenario)');
+  assert.equal(rows[0].length, 12);
+  assert.equal(rows.length - 1, h.run('playItems(appState.scenario).length'));
+  assert.equal(rows[1][0], 1);
+  assert.match(rows[1][1], /^H\+0:0/);
+  assert.ok(rows.slice(1).every((row) => row[3] && row[5] && row[10]), 'phase, channel and status on every row');
+  assert.ok(rows.slice(1).some((row) => row[9]), 'nudges are marked');
+});
