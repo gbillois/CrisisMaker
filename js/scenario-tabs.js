@@ -517,8 +517,8 @@ function renderDetailedRow(project, row, items, width, ppm) {
     <div class="sb-lane" data-ds-lane="${escapeAttribute(row.id)}" style="width:${width}px;height:${height}px">
       ${items.map((item) => {
         const color = sbChannelColor(item.channel);
-        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || tt('no sender', 'sans émetteur', 'ohne Absender')}\n${item.title}\n${item.intent || ''}`)}">
-          <span class="ds-card-meta"><i></i>${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}${sbIsAllCells(item.cell_id) ? ` · ${escapeHtml(tt('all cells', 'toutes les cellules', 'alle Zellen'))}` : ''}</span>
+        return `<div class="ds-card is-${item.status} ${state.selected === item.key ? 'is-selected' : ''}" data-ds-item="${escapeAttribute(item.key)}" tabindex="0" role="button" style="left:${(item.time * ppm).toFixed(1)}px;top:${packing.placement.get(item.key) * DS_ROW_HEIGHT + 6}px;width:${DS_CARD_WIDTH}px;--beat-color:${color}" title="${escapeAttribute(`${sbFormatOffset(item.time)} · ${channelLabel(item.channel)} · ${item.sender || tt('no sender', 'sans émetteur', 'ohne Absender')}${item.beat?.kind === 'nudge' ? ` · ${sbNudgeLabel()}` : ''}\n${item.title}\n${item.intent || ''}`)}">
+          <span class="ds-card-meta"><i></i>${item.beat?.kind === 'nudge' ? `<span class="sb-nudge-tag">${escapeHtml(sbNudgeLabel())}</span>` : ''}${sbFormatOffset(item.time)} · ${escapeHtml(channelLabel(item.channel))}${sbIsAllCells(item.cell_id) ? ` · ${escapeHtml(tt('all cells', 'toutes les cellules', 'alle Zellen'))}` : ''}</span>
           <strong>${escapeHtml(item.title)}</strong>
         </div>`;
       }).join('')}
@@ -555,6 +555,7 @@ function renderInjectEditor(project, item) {
           <label class="sb-mini-field">${escapeHtml(tt('Channel', 'Canal', 'Kanal'))}<select data-ds-beat="channel" ${readOnly}>${Object.keys(TEMPLATE_LIBRARY).map((channel) => sbOption(channel, channelLabel(channel), beat.channel)).join('')}</select></label>
           ${templates.length ? `<label class="sb-mini-field">${escapeHtml(tt('Outlet', 'Média', 'Medium'))}<select data-ds-beat="template_id" ${readOnly}>${sbOption('', tt('Default', 'Par défaut', 'Standard'), beat.template_id)}${templates.map(([key, value]) => sbOption(key, value.label || key, beat.template_id)).join('')}</select></label>` : ''}
           <label class="sb-mini-field">${escapeHtml(tt('From', 'De', 'Von'))}<select data-ds-beat="cast_id" ${readOnly}>${sbOption('', tt('- Sender role -', '- Rôle émetteur -', '- Absenderrolle -'), beat.cast_id)}${storyboard.cast.map((cast) => sbOption(cast.id, `${cast.label}${cast.actor_id && getActor(cast.actor_id) ? ` (${getActor(cast.actor_id).name})` : ''}`, beat.cast_id)).join('')}</select></label>
+          <label class="chip-toggle ds-nudge" title="${escapeAttribute(tt('A nudge relaunches or redirects players who stall or go off track: a follow-up asking for a decision, a call back, a deadline reminder.', 'Une relance remobilise ou réoriente les joueurs qui bloquent ou s’égarent : relance demandant une décision, rappel d’un journaliste, rappel d’échéance.', 'Ein Impuls stößt Spieler neu an oder lenkt sie um, wenn sie stocken oder abschweifen: Nachfrage nach einer Entscheidung, Rückruf, Fristerinnerung.'))}"><input type="checkbox" data-ds-beat="kind" ${beat.kind === 'nudge' ? 'checked' : ''} ${readOnly}>${escapeHtml(sbNudgeLabel())}</label>
           <label class="sb-mini-field ds-title">${escapeHtml(tt('Title', 'Titre', 'Titel'))}<input type="text" data-ds-beat="title" value="${escapeAttribute(beat.title)}" placeholder="${escapeAttribute(tt('Inject title', 'Titre de l’inject', 'Inject-Titel'))}" ${readOnly}></label>
         </div>
         <label class="sb-mini-field ds-intent">${escapeHtml(tt('What it says and the reaction or decision it should trigger', 'Ce qu’il dit et la réaction ou la décision qu’il doit provoquer', 'Was er aussagt und welche Reaktion oder Entscheidung er auslösen soll'))}
@@ -836,6 +837,7 @@ const SU_ISSUE_LABELS = {
   cell_idle: ['Cells without inject', 'Cellules sans inject', 'Zellen ohne Inject'],
   gap: ['Dead times', 'Temps morts', 'Leerlaufzeiten'],
   peak: ['Overloads', 'Surcharges', 'Überlastungen'],
+  cell_no_nudge: ['Cells without nudge inject', 'Cellules sans inject de relance', 'Zellen ohne Impuls-Inject'],
   phase_empty: ['Phases without inject', 'Phases sans inject', 'Phasen ohne Inject'],
   no_cell: ['Injects without recipient cell', 'Injects sans cellule destinataire', 'Injects ohne Empfängerzelle'],
   no_sender: ['Injects without sender', 'Injects sans émetteur', 'Injects ohne Absender'],
@@ -843,7 +845,7 @@ const SU_ISSUE_LABELS = {
   after_end: ['Injects after the end', 'Injects après la fin', 'Injects nach dem Ende'],
   no_main: ['No phase on the main storyline', 'Aucune phase sur la storyline principale', 'Keine Phase auf der Haupt-Storyline'],
   no_trigger: ['No trigger phase', 'Pas de phase de déclenchement', 'Keine Auslöserphase'],
-  no_exit: ['No crisis exit', 'Pas de sortie de crise', 'Kein Krisenende'],
+  no_exit: ['No closing phase', 'Pas de phase de clôture', 'Keine Abschlussphase'],
   late_start: ['Late start', 'Début tardif', 'Später Beginn'],
   overlap: ['Overlapping phases', 'Phases qui se chevauchent', 'Überlappende Phasen'],
   beyond_end: ['Phases after the end', 'Phases après la fin', 'Phasen nach dem Ende'],
@@ -1363,6 +1365,7 @@ function tabBindInputs(root) {
       if (field === 'channel') { item.beat.channel = sbValidChannel(input.value); item.beat.template_id = ''; }
       else if (field === 'template_id') item.beat.template_id = sbValidTemplateId(item.beat.channel, input.value);
       else if (field === 'cast_id') item.beat.cast_id = storyboard.cast.some((cast) => cast.id === input.value) ? input.value : '';
+      else if (field === 'kind') { if (input.checked) item.beat.kind = 'nudge'; else delete item.beat.kind; }
       StoryboardHistory.commit('Edit inject');
       App.render();
     });

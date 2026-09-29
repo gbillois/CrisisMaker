@@ -217,8 +217,86 @@ test('checks: deterministic coherence rules flag gaps, overlaps, coverage and pl
     sb.blocks.push(sbMakeBlock('containment', { track_id: main, start_minutes: 120, duration_minutes: 30, brief: 'y', stimuli_target: 3, beats: [{ offset_minutes: 5, channel: 'email_internal', title: 'a' }] }, sb));
     sb.blocks.push(sbMakeBlock('recovery', { track_id: main, start_minutes: 140, duration_minutes: 30 }, sb)); }`);
   const codes = h.json('sbStructuralChecks(sbStoryboard(), appState.scenario).map(i => i.code)');
-  for (const code of ['no_trigger', 'gap', 'overlap', 'beat_count', 'no_brief', 'objective_uncovered', 'no_exit']) assert.ok(codes.includes(code), code);
+  for (const code of ['no_trigger', 'gap', 'overlap', 'beat_count', 'no_brief', 'objective_uncovered']) assert.ok(codes.includes(code), code);
+  assert.ok(!codes.includes('no_exit'), 'a recovery phase closes the storyline');
   assert.ok(h.run('sbScore(sbStructuralChecks(sbStoryboard(), appState.scenario))') < 100);
+});
+
+test('checks: the main storyline ends with a closing phase (recovery or exit), a warning otherwise', () => {
+  const h = harness();
+  const exitIssue = () => h.json(`sbStructuralChecks(sbStoryboard(), appState.scenario).find(i => i.code === 'no_exit') || null`);
+  h.run(`{ const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
+    sb.blocks.push(sbMakeBlock('trigger', { track_id: main, start_minutes: 0, duration_minutes: 60, brief: 'x' }, sb));
+    sb.blocks.push(sbMakeBlock('exit', { track_id: main, start_minutes: 60, duration_minutes: 30, brief: 'y' }, sb));
+    sb.blocks.push(sbMakeBlock('twist', { track_id: main, start_minutes: 90, duration_minutes: 30, brief: 'z' }, sb)); }`);
+  // An exit block that is not last does not close the exercise.
+  const issue = exitIssue();
+  assert.equal(issue.severity, 'warning');
+  assert.match(issue.message, /does not end with a closing phase/);
+  h.run(`appState.scenario.settings.language = 'fr'`);
+  assert.match(exitIssue().display, /phase de clôture/);
+  assert.ok(h.json('ccRuleIssues(appState.scenario).map(i => i.code)').includes('no_exit'), 'shown in Check & Challenge');
+  h.run(`sbStoryboard().blocks[2].type = 'recovery'`);
+  assert.equal(exitIssue(), null);
+  h.run(`sbStoryboard().blocks[2].type = 'exit'`);
+  assert.equal(exitIssue(), null);
+});
+
+test('nudges: a planned inject can be a nudge, carried through normalisation, templates, writing, the editor and Play', () => {
+  const h = harness();
+  assert.equal(h.json(`sbNormalizeBeat({ title: 'a', kind: 'nudge' })`).kind, 'nudge');
+  assert.equal(h.json(`sbNormalizeBeat({ title: 'a', nudge: true })`).kind, 'nudge');
+  assert.ok(!('kind' in h.json(`sbNormalizeBeat({ title: 'a', kind: 'other' })`)), 'only nudges are marked');
+  h.run(`{ const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
+    appState.scenario.cells = [sbMakeCell('decision', { id: 'cell_a', name: 'Decision cell' }), sbMakeCell('communication', { id: 'cell_b', name: 'Communication cell' }), sbMakeCell('it', { id: 'cell_c', name: 'IT cell' })];
+    sb.blocks.push(sbMakeBlock('trigger', { track_id: main, start_minutes: 0, duration_minutes: 60, brief: 'x', stimuli_target: 3, beats: [
+      { offset_minutes: 5, channel: 'email_internal', title: 'Alert', cell_id: 'cell_a' },
+      { offset_minutes: 30, channel: 'email_internal', title: 'CEO asks for a decision', cell_id: 'cell_a', kind: 'nudge' },
+      { offset_minutes: 40, channel: 'phone_call', title: 'Journalist calls', cell_id: 'cell_b' }] }, sb));
+    appState.scenario.stimuli.push(makeStimulus('email_internal', '', 10, null)); appState.scenario.stimuli.at(-1).cell_id = 'cell_c'; }`);
+  // Only cells with planned injects are flagged, and a nudge addressed to it clears the warning.
+  const nudgeCells = () => h.json(`sbExerciseChecks(appState.scenario).filter(i => i.code === 'cell_no_nudge').map(i => i.cell_id)`);
+  assert.deepEqual(nudgeCells(), ['cell_b']);
+  const issue = h.json(`sbExerciseChecks(appState.scenario).find(i => i.code === 'cell_no_nudge')`);
+  assert.equal(issue.severity, 'warning');
+  assert.ok(h.json('ccRuleIssues(appState.scenario).map(i => i.code)').includes('cell_no_nudge'), 'shown in Check & Challenge');
+  h.run(`sbStoryboard().blocks[0].beats.push(sbMakeBeat({ offset_minutes: 50, channel: 'email_internal', title: 'Deadline reminder', cell_id: 'all', kind: 'nudge' }))`);
+  assert.deepEqual(nudgeCells(), [], 'a nudge to all cells reaches every cell');
+  // Templates keep the flag both ways.
+  const template = h.json(`sbStoryboardToTemplate(sbStoryboard(), appState.scenario)`);
+  assert.equal(template.blocks[0].beats.filter(beat => beat.kind === 'nudge').length, 2);
+  assert.equal(h.json(`sbTemplateToStoryboard(${JSON.stringify(template)}).storyboard.blocks[0].beats.filter(b => b.kind === 'nudge').length`), 2);
+  // The writing prompt of a nudge says what it is for.
+  const nudge = h.json(`sbStoryboard().blocks[0].beats.find(b => b.title === 'CEO asks for a decision')`);
+  assert.match(h.run(`sbGenerationBrief(appState.scenario, sbStoryboard().blocks[0], sbStoryboard().blocks[0].beats.find(b => b.id === '${nudge.id}'))`), /This inject is a nudge/);
+  // Tagged in the Detailed storyline (card and editor) and in the Play chronogram.
+  h.run(`tabUI('detailed').cell = 'all'; tabUI('detailed').selected = 'beat:${nudge.id}'`);
+  const detailed = h.run('renderDetailedView()');
+  assert.ok(detailed.includes('sb-nudge-tag') && /data-ds-beat="kind" checked/.test(detailed), 'tag and checked toggle in the editor');
+  h.run(`appState.scenario.settings.language = 'fr'`);
+  assert.ok(h.run('renderDetailedView()').includes('>Relance<'));
+  h.run(`appState.scenario.settings.language = 'de'`);
+  const play = h.run(`playItems().filter(item => item.beat?.kind === 'nudge').map(item => renderPlayRow(item, 0)).join('')`);
+  assert.ok(play.includes('sb-nudge-tag') && play.includes('Impuls'));
+  assert.ok(!h.run(`playItems().filter(item => item.beat && !item.beat.kind).map(item => renderPlayRow(item, 0)).join('')`).includes('sb-nudge-tag'));
+});
+
+test('AI planning: the Scenario Builder asks for a closing phase and one nudge per cell, and keeps the nudge flag', async () => {
+  const h = harness();
+  assert.match(h.run('sbAISystemPrompt()'), /closing phase/);
+  assert.match(h.run('sbAISystemPrompt()'), /NUDGE/);
+  h.run(`{ const sb = sbStoryboard(); const main = sbMainTrack(sb).id;
+    appState.scenario.cells = [sbMakeCell('decision', { id: 'cell_a', name: 'Decision cell' })];
+    sb.blocks.push(sbMakeBlock('trigger', { id: 'block_a', track_id: main, start_minutes: 0, duration_minutes: 60, brief: 'x', narrative: 'y', stimuli_target: 2 }, sb)); }`);
+  const calls = mockAI(h, [{ blocks: [{ id: 'block_a', beats: [
+    { at: 5, channel: 'email_internal', cell: 'cell_a', title: 'Alert', intent: 'a' },
+    { at: 40, channel: 'email_internal', cell: 'cell_a', title: 'CEO follow-up', intent: 'Decide now', nudge: true }] }] }]);
+  await h.run(`SbAI.deepen(['block_a'], 3)`);
+  assert.ok(calls[0].payload.rules.some(rule => /Nudges: every player cell/.test(rule)));
+  assert.deepEqual(h.json(`sbStoryboard().blocks[0].beats.map(b => b.kind || '')`), ['', 'nudge']);
+  // The planning context shows the nudges already planned, in full or compact form.
+  assert.match(JSON.stringify(h.json(`sbAIContext(appState.scenario, {})`)), /"nudge":true/);
+  assert.match(JSON.stringify(h.json(`sbAIContext(appState.scenario, { focus: ['other'] })`)), /CEO follow-up \[nudge\]/);
 });
 
 test('AI: skeleton output is repaired, validated and applied as one undoable step on a single storyline', async () => {
