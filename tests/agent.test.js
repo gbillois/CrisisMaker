@@ -498,7 +498,9 @@ test('an inject created for AI writing carries no demo content of its template: 
     if ('from_name' in fields) assert.match(fields.from_name, /Nadia Belkacem/);
     if ('sender' in fields) assert.equal(fields.sender, 'Nadia Belkacem');
     if ('time' in fields) assert.equal(fields.time, '08:45');
-    if ('date' in fields) assert.equal(fields.date, '27/11/2026 08:45');
+    // Numeric dates show the simulated clock; a date in another style ("March 15, 2026") is left to the AI.
+    if ('date' in fields) assert.ok(['27/11/2026 08:45', ''].includes(fields.date), `${channel} date ${fields.date}`);
+    if (['email_internal', 'email_external', 'internal_memo'].includes(channel)) assert.equal(fields.date, '27/11/2026 08:45');
   }
 });
 

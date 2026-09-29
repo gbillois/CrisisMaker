@@ -275,6 +275,25 @@ function sbSimulatedDate(project, minutes) {
   return Number.isFinite(start) ? new Date(start + Math.round(Number(minutes) || 0) * 60000) : null;
 }
 
+/* The date and time fields that show the simulated clock as is (dd/mm/yyyy hh:mm, HH:MM), per
+   the template's own format; other date fields (a press dateline, "5h" on a post) are written
+   by the AI in the template's style. */
+function sbClockFields(stimulus) {
+  const defaults = getTemplateDefinition(stimulus)?.defaults || {};
+  return {
+    date: 'date' in (stimulus.fields || {}) && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(String(defaults.date || '')),
+    time: 'time' in (stimulus.fields || {}) && /^\d{1,2}:\d{2}$/.test(String(defaults.time || ''))
+  };
+}
+
+function sbSetClockFields(stimulus, project = appState.scenario) {
+  const when = sbSimulatedDate(project, stimulus.timestamp_offset_minutes);
+  if (!when) return;
+  const clock = sbClockFields(stimulus);
+  if (clock.date) stimulus.fields.date = formatLocalDateTime(when);
+  if (clock.time) stimulus.fields.time = `${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}`;
+}
+
 /* A new inject written by AI starts from its template's layout, not from the template's demo
    content (another company, other people, another date): text fields empty, the sender from its
    actor, the date and time from the simulated clock. A field the AI leaves out stays empty
@@ -282,8 +301,6 @@ function sbSimulatedDate(project, minutes) {
 function sbBlankForGeneration(stimulus, project = appState.scenario) {
   const fields = stimulus.fields || (stimulus.fields = {});
   const actor = getActor(stimulus.actor_id);
-  const when = sbSimulatedDate(project, stimulus.timestamp_offset_minutes);
-  const pad = (value) => String(value).padStart(2, '0');
   for (const field of getTemplateDefinition(stimulus)?.fields || []) {
     if (!(field.key in fields) || !['text', 'textarea'].includes(field.type)) continue;
     if (SB_MEDIA_FIELD.test(field.key) || /(color|colour|style|logo|avatar|icon|theme|variant|device)/.test(field.key)) continue;
@@ -295,10 +312,7 @@ function sbBlankForGeneration(stimulus, project = appState.scenario) {
     if ('organization' in fields && stimulus.channel !== 'press_release') fields.organization = actor.organization || '';
   }
   if (stimulus.channel === 'press_release' && 'organization' in fields) fields.organization = project.client?.name || '';
-  if (when) {
-    if ('date' in fields) fields.date = formatLocalDateTime(when);
-    if ('time' in fields) fields.time = `${pad(when.getHours())}:${pad(when.getMinutes())}`;
-  }
+  sbSetClockFields(stimulus, project);
   return stimulus;
 }
 
@@ -361,6 +375,9 @@ function sbGenerationBrief(project, block, beat, options = {}) {
 /* Generates template fields for one stimulus; unknown keys are ignored. */
 async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
   const project = appState.scenario;
+  // Rewritten from the plan (not adapted from manual edits): date and time follow the simulated clock,
+  // also when the inject has moved.
+  if (!options.preserve) sbSetClockFields(stimulus, project);
   const brief = sbGenerationBrief(project, block, beat, { actorId: stimulus.actor_id, preserve: options.preserve ? deepClone(stimulus.fields) : null });
   // 4500 output tokens: room for long HTML bodies and Japanese or Chinese text.
   const generated = await agentCall(
@@ -385,7 +402,11 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
     if (name) clean[key] = scrub(generated[name]);
   }
   // The time set from the simulated clock (HH:MM, shown in a small box) is kept over a long date text.
-  if (typeof clean.time === 'string' && /^\d{1,2}:\d{2}$/.test(String(stimulus.fields?.time || '')) && !/^\d{1,2}:\d{2}$/.test(clean.time.trim())) delete clean.time;
+  if (!options.preserve && sbSimulatedDate(project, stimulus.timestamp_offset_minutes)) {
+    const clock = sbClockFields(stimulus);
+    if (clock.time) delete clean.time;
+    if (clock.date) delete clean.date;
+  }
   if (!Object.keys(clean).length) throw new AgentValidationError('The AI returned no field of this template.');
   saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Storyline: adapted to scenario change' : 'Storyline: AI generation');
   Object.assign(stimulus.generated_text, clean);

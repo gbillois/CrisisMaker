@@ -1470,8 +1470,12 @@ Return this structure:
           const writable = (template?.fields || []).filter((item) => ['text', 'textarea', 'select', 'number'].includes(item.type) && !/(^|_)(photo|logo_image|avatar_url|audio|video)|_data$|_color$/.test(item.key));
           if (writable.length) {
             result.systemPrompt += `\n\nOUTPUT FORMAT: reply only with one JSON object whose keys are these template fields, each filled with content consistent with the scenario (other keys are ignored): ${writable.map((item) => {
-              // Date and time are already set from the simulated clock: kept as they are.
-              const keep = ['date', 'time'].includes(item.key) && stimulus.fields?.[item.key] ? `, keep exactly "${stimulus.fields[item.key]}"` : item.key === 'time' ? ', HH:MM' : '';
+              // Date and time shown as the simulated clock are set by the app; another date field is
+              // written in the template's own style.
+              const clock = typeof sbClockFields === 'function' ? sbClockFields(stimulus) : {};
+              const example = template.defaults?.[item.key];
+              const keep = clock[item.key] && stimulus.fields?.[item.key] ? `, keep exactly "${stimulus.fields[item.key]}"`
+                : ['date', 'time', 'post_date'].includes(item.key) && typeof example === 'string' && example ? `, the simulated ${item.key === 'time' ? 'time' : 'date'} written like "${example}"` : '';
               return `"${item.key}" (${item.label}${item.options ? `, one of ${item.options.join('|')}` : ''}${item.type === 'number' ? ', a number' : ''}${keep})`;
             }).join(', ')}. Long text fields such as "body" are HTML paragraphs (<p>).`;
           }
