@@ -854,11 +854,15 @@
       padding: 8px 12px;
       border-top: 1px solid var(--border);
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       gap: 6px;
     }
-    .library-card-actions { display: flex; gap: 4px; }
+    .library-card-footer .pill-status { white-space: nowrap; }
+    /* A long status (Brouillon, Entwurf) sends the actions to a second line instead of out of the card. */
+    .library-card-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+    .library-card-actions .btn { width: auto; padding: 3px 7px; }
     .btn-xs { padding: 3px 9px; min-height: 28px; font-size: 0.78rem; border-radius: 0; gap: 5px; }
 
     /* History modal */
@@ -1779,7 +1783,10 @@
       .page-title h2 {
         font-size: 1.12rem;
       }
-      .ai-status { font-size: 0; gap: 0; padding: 0 9px; margin-right: 0; }
+      /* Narrow screen: the status dot and a short "AI" instead of the full label. */
+      .ai-status { font-size: 0; gap: 5px; padding: 0 8px; margin-right: 0; }
+      .ai-status::before { width: 8px; height: 8px; }
+      .ai-status::after { content: attr(data-short); font-size: 0.72rem; }
 
       :root { --header-h: 96px; }
       .brand-bar { height: 48px; padding: 0 12px; gap: 10px; }
@@ -3454,8 +3461,10 @@ button.sb-now:hover { background: rgba(255, 255, 255, 0.12); }
 .sb-workspace .sb-snap-step { width: auto; min-height: 30px; padding: 3px 6px; border: none; background: transparent; font-size: 0.8rem; font-weight: 700; color: var(--primary-strong); }
 /* Main storyline: every tool on one line with the title. */
 .sl-workspace > .sb-toolbar { gap: 8px; }
-.sl-workspace > .sb-toolbar .sb-tb-title { min-width: 150px; flex: 1 1 150px; }
-.sb-workspace .sl-add select { max-width: 132px; }
+/* The title keeps a readable part of the project name: when the tools do not fit next to it, the last ones wrap to a second line. */
+.sl-workspace > .sb-toolbar .sb-tb-title { min-width: 240px; flex: 1 1 240px; }
+.sl-workspace > .sb-toolbar .sb-tb-group { flex-shrink: 0; }
+.sb-workspace .sl-add select { max-width: 190px; field-sizing: content; }
 .sb-tb-hint { font-size: 0.72rem; font-weight: 500; color: var(--muted); padding: 0 6px 0 2px; white-space: nowrap; }
 .sb-workspace .sb-tb-zoom .sb-zoom { width: 90px; }
 .sb-timeline-scroll { flex: 1; min-height: 0; overflow: auto; position: relative; background: #fcfbfd; overscroll-behavior: contain; }
@@ -3625,6 +3634,7 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sb-issue-title.is-warning { color: #8a5a00; }
 .sb-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
 .sb-issues li { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 7px 10px; border-radius: 0; background: #faf9fc; border-left: 3px solid var(--muted); font-size: 0.82rem; line-height: 1.4; }
+.sb-issues li > .btn { flex-shrink: 0; white-space: nowrap; }
 .sb-issues li.is-error { border-left-color: #b52c43; }
 .sb-issues li.is-warning { border-left-color: var(--warning); }
 .sb-issues li.is-info { border-left-color: var(--primary); }
@@ -3815,7 +3825,7 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sc-ai-draft .sb-mini-field textarea, .sc-ai-draft input { font-size: 0.88rem; }
 
 /* Cells & actors */
-.ce-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.ce-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 14px; }
 .ce-cell { display: grid; gap: 8px; padding: 12px; border-radius: 0; border: 1px solid var(--sb-line); border-top: 4px solid var(--cell-color); background: linear-gradient(180deg, color-mix(in srgb, var(--cell-color) 6%, #fff), #fff 70%); }
 .ce-cell-head { display: flex; align-items: center; gap: 8px; }
 .ce-cell-head input[type="color"] { width: 30px; height: 30px; min-height: 0; padding: 0; border: none; background: none; }
@@ -3824,12 +3834,12 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .ce-players { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 .ce-players th { text-align: left; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 2px 4px; }
 .ce-players td { padding: 2px; }
-.ce-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 12px; margin-top: 14px; align-items: start; }
+.ce-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(520px, 100%), 1fr)); gap: 12px; margin-top: 14px; align-items: start; }
 .ce-group { display: grid; gap: 6px; align-content: start; padding: 10px; border-radius: 0; border: 1px solid var(--sb-line); background: var(--sb-panel-alt); }
 .ce-group-head { display: flex; align-items: center; gap: 8px; }
 .ce-group-head .btn { margin-left: auto; }
 .ce-actor { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.8fr) auto; gap: 5px; align-items: center; }
-.ce-roles .sb-cast-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.ce-roles .sb-cast-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 10px; }
 
 /* Detailed storyline */
 .ds-workspace .ds-timeline { flex: 1 1 0; min-height: 80px; display: flex; flex-direction: column; background: var(--sb-panel); border: 1px solid var(--sb-line); border-radius: var(--sb-radius); overflow: hidden; }
@@ -3894,7 +3904,10 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .sl-ai .btn { justify-self: end; }
 .sb-workspace .sl-ai textarea { min-height: 56px; }
 /* Key stimuli row of the Main storyline timeline. */
-.sb-key-row .sb-track-head strong { display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; color: var(--primary-strong); }
+.sb-key-row .sb-track-head strong { display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; line-height: 1.2; color: var(--primary-strong); }
+.sb-key-row .sb-track-head strong svg { flex-shrink: 0; }
+/* One line of hint, so a one-row lane still shows the whole label. */
+.sb-key-row .sb-track-head small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-key-lane { background-color: rgba(214, 158, 0, 0.04); }
 .sb-key-card { position: absolute; z-index: 2; display: grid; gap: 1px; height: 38px; padding: 4px 8px 4px 9px; overflow: hidden; text-align: left; background: color-mix(in srgb, var(--clip-color) 8%, #fff); border: 1px dashed color-mix(in srgb, var(--beat-color) 60%, transparent); border-left: 4px solid var(--beat-color); box-shadow: 0 1px 3px rgba(33, 18, 72, 0.1); cursor: pointer; }
 .sb-key-card.is-written { border-style: solid; border-left-style: solid; }

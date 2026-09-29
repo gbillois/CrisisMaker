@@ -800,7 +800,8 @@ function sbBuildExampleStoryboard(project) {
       channel: stimulus.channel,
       template_id: stimulus.template_id,
       cast_id: castFor(stimulus.actor_id),
-      title: sbText(fields.subject || fields.headline || fields.title || fields.thread_title || fields.text || channelLabel(stimulus.channel), 140),
+      // A LinkedIn "title" is the author's job title, not the post's.
+      title: sbText(fields.subject || fields.headline || (stimulus.channel !== 'post_linkedin' && fields.title) || fields.thread_title || fields.text || channelLabel(stimulus.channel), 140),
       intent: ''
     });
     block.beats.push(beat);
