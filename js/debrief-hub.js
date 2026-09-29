@@ -141,10 +141,10 @@ const sdClip = (value, max) => {
 const SD_FIT = {
   phaseItems: 4, phaseWhat: 140, eventText: 64, injectTitle: 56, injectCell: 22,
   storyItems: 4, storyTitle: 60, storyText: 90,
-  scenario: 280, objectives: 4, objectiveText: 64,
+  scenario: 440, objectives: 4, objectiveText: 100,
   timelineEvents: 12, timelineText: 48,
   evaluationRows: 8, cells: 3, cellItems: 2, cellText: 56,
-  bulletItems: 5, bulletText: 120, columnItems: 4, columnText: 90
+  bulletItems: 5, bulletText: 160, columnItems: 4, columnText: 130
 };
 
 /* Splits a list into pages of at most `size` items; an empty list gives one empty page. */
@@ -170,12 +170,14 @@ function sdSlides(project = appState.scenario) {
   const t = (en, fr, de) => sdPick(lang, en, fr, de);
   const title = state.title || project.name || labels.crisisExercise;
   const date = project.scenario?.start_date ? String(project.scenario.start_date).slice(0, 10) : '';
-  const slides = [{ kind: 'title', title, subtitle: state.subtitle || labels.exerciseDebrief, meta: [project.client?.name, date].filter(Boolean).join(' · ') }];
+  const chips = [project.client?.name, date, phases.length ? sbFormatDuration(duration) : '', model.injects.length ? `${model.injects.length} ${labels.injectsLower}` : ''].filter(Boolean).map((chip) => sdClip(chip, 40));
+  const slides = [{ kind: 'title', eyebrow: labels.crisisExercise, title, subtitle: state.subtitle || labels.exerciseDebrief, meta: [project.client?.name, date].filter(Boolean).join(' · '), chips }];
   const on = state.sections;
+  const eyebrows = { exercise: t('The exercise', 'L’exercice', 'Die Übung'), evaluation: t('Evaluation', 'Évaluation', 'Bewertung'), debrief: t('Debrief', 'Debrief', 'Nachbesprechung') };
   if (on.overview) {
     const players = cells.reduce((sum, cell) => sum + (cell.players || []).length, 0) || Number(project.exercise?.players_count) || 0;
     slides.push({
-      kind: 'overview', title: t('The exercise at a glance', 'L’exercice en un coup d’œil', 'Die Übung auf einen Blick'),
+      kind: 'overview', eyebrow: eyebrows.exercise, title: t('The exercise at a glance', 'L’exercice en un coup d’œil', 'Die Übung auf einen Blick'),
       kpis: [[sbFormatDuration(duration), t('Duration', 'Durée', 'Dauer')], [phases.length, t('Phases', 'Phases', 'Phasen')], [model.injects.length, labels.injects], [cells.length, t('Cells', 'Cellules', 'Zellen')], [players, t('Players', 'Joueurs', 'Spieler')]],
       scenario: sdClip(project.scenario?.summary || storyboard?.meta?.brief || '', SD_FIT.scenario),
       objectives: sdLines(project.scenario?.learning_objectives).slice(0, SD_FIT.objectives).map((line) => sdClip(line, SD_FIT.objectiveText))
@@ -183,8 +185,8 @@ function sdSlides(project = appState.scenario) {
   }
   if (on.timeline && phases.length) {
     slides.push({
-      kind: 'timeline', title: t('Timeline of the exercise', 'Chronologie de l’exercice', 'Zeitlicher Ablauf der Übung'), duration,
-      phases: phases.map((block) => ({ title: block.title, start: block.start_minutes, end: sbBlockEnd(block), color: sbBlockColor(block), injects: model.injects.filter((inject) => inject.phase_id === block.id).length })),
+      kind: 'timeline', eyebrow: eyebrows.exercise, title: t('Timeline of the exercise', 'Chronologie de l’exercice', 'Zeitlicher Ablauf der Übung'), duration,
+      phases: phases.map((block) => ({ title: block.title, start: block.start_minutes, end: sbBlockEnd(block), color: sdPhaseColor(block), injects: model.injects.filter((inject) => inject.phase_id === block.id).length })),
       events: phases.flatMap((block) => (block.events || []).map((event) => ({ at: block.start_minutes + (event.offset_minutes || 0), text: sdClip(event.text, SD_FIT.timelineText) }))).sort((a, b) => a.at - b.at).slice(0, SD_FIT.timelineEvents)
     });
   }
@@ -198,8 +200,9 @@ function sdSlides(project = appState.scenario) {
       const stress = sbStressLevel(sbBlockStress(block));
       for (let page = 0; page < Math.max(eventPages.length, injectPages.length); page++) {
         slides.push({
-          kind: 'phase', title: sdContinued(title, page, lang), continued: page > 0, color: sbBlockColor(block),
+          kind: 'phase', title: sdContinued(title, page, lang), continued: page > 0, color: sdPhaseColor(block),
           span: `${sbFormatOffset(block.start_minutes)} ${t('to', 'à', 'bis')} ${sbFormatOffset(sbBlockEnd(block))}`,
+          eyebrow: `Phase ${index + 1} · ${sbFormatOffset(block.start_minutes)} ${t('to', 'à', 'bis')} ${sbFormatOffset(sbBlockEnd(block))}`, stressLabel: t('Stress', 'Stress', 'Stress'),
           stress: typeof SB_STRESS_TEXT === 'object' ? t(stress.label, SB_STRESS_TEXT[stress.level]?.[0] || stress.label, SB_STRESS_TEXT[stress.level]?.[1] || stress.label) : stress.label,
           what: page ? '' : sdClip(block.brief || block.narrative || '', SD_FIT.phaseWhat),
           events: eventPages[page] || [], injects: injectPages[page] || []
@@ -210,11 +213,11 @@ function sdSlides(project = appState.scenario) {
   const story = (project.debrief?.events || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
   if (on.story && story.length) {
     const items = story.map((event) => ({ when: sdClip(event.dateLabel, 30), title: sdClip(event.title, SD_FIT.storyTitle), text: sdClip(event.headline || event.body, SD_FIT.storyText) }));
-    sdPages(items, SD_FIT.storyItems).forEach((page, index) => slides.push({ kind: 'story', title: sdContinued(t('What really happened', 'Ce qui s’est réellement passé', 'Was wirklich geschah'), index, lang), continued: index > 0, items: page }));
+    sdPages(items, SD_FIT.storyItems).forEach((page, index) => slides.push({ kind: 'story', eyebrow: 'Story debrief', title: sdContinued(t('What really happened', 'Ce qui s’est réellement passé', 'Was wirklich geschah'), index, lang), continued: index > 0, items: page }));
   }
   if (on.evaluation && cells.length && typeof evTally === 'function') {
     const rows = cells.map((cell) => ({ name: cell.name, color: cell.color, tally: evTally(project, cell), injects: evReceivedInjects(project, cell).length }));
-    sdPages(rows, SD_FIT.evaluationRows).forEach((page, index) => slides.push({ kind: 'evaluation', title: sdContinued(t('Evaluation by cell', 'Évaluation par cellule', 'Bewertung nach Zelle'), index, lang), continued: index > 0, rows: page }));
+    sdPages(rows, SD_FIT.evaluationRows).forEach((page, index) => slides.push({ kind: 'evaluation', eyebrow: eyebrows.evaluation, title: sdContinued(t('Evaluation by cell', 'Évaluation par cellule', 'Bewertung nach Zelle'), index, lang), continued: index > 0, rows: page }));
     // Per cell, what the evaluators wrote: criteria rated M or U, strengths, improvements.
     const notes = cells.map((cell) => {
       const sheet = evSheet(project, cell);
@@ -222,23 +225,23 @@ function sdSlides(project = appState.scenario) {
       const clip = (lines) => lines.slice(0, SD_FIT.cellItems).map((line) => sdClip(line, SD_FIT.cellText));
       return { name: cell.name, color: cell.color, strengths: clip(sdLines(sheet.strengths)), improvements: clip([...sdLines(sheet.improvements), ...weak]) };
     }).filter((entry) => entry.strengths.length || entry.improvements.length);
-    if (notes.length) sdPages(notes, SD_FIT.cells).forEach((page, index) => slides.push({ kind: 'cells', title: sdContinued(t('What the evaluators observed', 'Ce que les évaluateurs ont observé', 'Was die Bewerter beobachtet haben'), index, lang), continued: index > 0, cells: page }));
+    if (notes.length) sdPages(notes, SD_FIT.cells).forEach((page, index) => slides.push({ kind: 'cells', eyebrow: eyebrows.evaluation, strengthsLabel: sdFieldText('went_well', lang).label, improvementsLabel: sdFieldText('to_improve', lang).label, title: sdContinued(t('What the evaluators observed', 'Ce que les évaluateurs ont observé', 'Was die Bewerter beobachtet haben'), index, lang), continued: index > 0, cells: page }));
   }
   if (on.messages) {
     const lists = SD_TEXT_FIELDS.map(([key]) => ({ key, label: sdFieldText(key, lang).label, items: sdLines(state[key]).slice(0, 12).map((line) => sdClip(line, key === 'key_messages' ? SD_FIT.bulletText : SD_FIT.columnText)) }));
     const byKey = Object.fromEntries(lists.map((list) => [list.key, list]));
-    if (byKey.key_messages.items.length) sdPages(byKey.key_messages.items, SD_FIT.bulletItems).forEach((items, index) => slides.push({ kind: 'bullets', title: sdContinued(sdFieldText('key_messages', lang).label, index, lang), continued: index > 0, items }));
+    if (byKey.key_messages.items.length) sdPages(byKey.key_messages.items, SD_FIT.bulletItems).forEach((items, index) => slides.push({ kind: 'bullets', eyebrow: eyebrows.debrief, title: sdContinued(sdFieldText('key_messages', lang).label, index, lang), continued: index > 0, items }));
     const columns = (title, left, right) => {
       if (!left.items.length && !right.items.length) return;
       const lefts = sdPages(left.items, SD_FIT.columnItems), rights = sdPages(right.items, SD_FIT.columnItems);
       for (let page = 0; page < Math.max(lefts.length, rights.length); page++) {
-        slides.push({ kind: 'columns', title: sdContinued(title, page, lang), continued: page > 0, left: { ...left, items: lefts[page] || [] }, right: { ...right, items: rights[page] || [] } });
+        slides.push({ kind: 'columns', eyebrow: eyebrows.debrief, title: sdContinued(title, page, lang), continued: page > 0, left: { ...left, items: lefts[page] || [] }, right: { ...right, items: rights[page] || [] } });
       }
     };
     columns(t('Strengths and areas for improvement', 'Points forts et axes d’amélioration', 'Stärken und Verbesserungsbereiche'), byKey.went_well, byKey.to_improve);
     columns(t('Recommendations and next steps', 'Recommandations et prochaines étapes', 'Empfehlungen und nächste Schritte'), byKey.recommendations, byKey.next_steps);
   }
-  slides.push({ kind: 'end', title: t('Thank you', 'Merci', 'Vielen Dank'), subtitle: t('Questions and discussion', 'Questions et échanges', 'Fragen und Diskussion') });
+  slides.push({ kind: 'end', eyebrow: labels.exerciseDebrief, title: t('Thank you', 'Merci', 'Vielen Dank'), subtitle: t('Questions and discussion', 'Questions et échanges', 'Fragen und Diskussion'), chips: [] });
   return slides;
 }
 
@@ -273,9 +276,64 @@ function renderSlideDebriefView() {
     </article>
     <article class="card sd-preview-card">
       <div class="section-header"><div><h3>${escapeHtml(tt('Slides', 'Slides', 'Folien'))} <small>${slides.length}</small></h3><p class="subtle">${escapeHtml(tt('Preview of the deck, updated with the exercise. The PowerPoint file has the same slides, ready to edit.', 'Aperçu du deck, mis à jour avec l’exercice. Le fichier PowerPoint contient les mêmes slides, prêtes à modifier.', 'Vorschau des Foliensatzes, mit der Übung aktualisiert. Die PowerPoint-Datei enthält dieselben Folien, bereit zum Bearbeiten.'))}${labels.lang !== ui ? ` ${escapeHtml(tt('The slides are in the language of the injects (Context).', 'Les slides sont dans la langue des injects (Contexte).', 'Die Folien sind in der Sprache der Injects (Kontext).'))}` : ''}</p></div></div>
-      <div class="sd-grid">${slides.map((slide, index) => `<figure class="sd-slide-wrap"><div class="sd-slide sd-${slide.kind}">${sdSlideHtml(slide, labels)}</div><figcaption>${index + 1}. ${escapeHtml(slide.title)}</figcaption></figure>`).join('')}</div>
+      <div class="sd-grid">${slides.map((slide, index) => sdSlideFigure(slide, index, slides.length, labels, sdKicker(project))).join('')}</div>
     </article>
   </section>`;
+}
+
+// ── Slide debrief: Wavestone slide format ───────────────────────────────────
+/* The slides follow the Wavestone slide format (HowToWavestone: wavestonedesign.css and its
+   1280 x 720 slide decks): cover and end slides on the brand gradient, white content slides
+   with the brandmark, an eyebrow, an indigo head title, a short green accent bar, cards with a
+   green left border, dark highlight blocks, a mono kicker and a page number. The preview and
+   the .pptx share one grid, in pixels of a 1280 x 720 slide: the preview scales it with
+   container units (--u), the .pptx maps 96 px to an inch. */
+const SD_COLORS = {
+  indigo: '451DC7', indigo400: '866CDB', indigo700: '36169B', indigo800: '2D1380', indigo950: '150939',
+  green: '04F06A', green300: '5CF59E', green50: 'E1FDED', teal: '228D95',
+  // White at 55%, 82% and 90% over the brand gradient, as solid colors (text transparency renders unevenly).
+  onDarkFaint: 'A99DDB', onDarkSoft: 'DCD6F5', onDarkText: 'EEEBFB',
+  ink: '16121F', muted: '6B6580', subtle: '817C95', faint: 'A8A4B8', line: 'E6E4EE', panel: 'F5F4F9', white: 'FFFFFF',
+  success: '088A42', warning: 'C8861A', danger: 'D8412F',
+  // The evaluation marks, from the status colors: P success, S info (teal), M warning, U danger.
+  P: '088A42', S: '228D95', M: 'C8861A', U: 'D8412F'
+};
+const SD_FONTS = { display: 'Poppins', body: 'Inter', mono: 'IBM Plex Mono' };
+/* The phases take the brand colors by stress level, from teal (calm) to deep indigo (peak). */
+const SD_STRESS_COLORS = { 1: SD_COLORS.teal, 2: SD_COLORS.indigo400, 3: SD_COLORS.indigo, 4: SD_COLORS.indigo800, 5: SD_COLORS.indigo950 };
+function sdPhaseColor(block) {
+  return `#${SD_STRESS_COLORS[sbStressLevel(sbBlockStress(block)).level] || SD_COLORS.indigo}`;
+}
+/* The grid, in px of a 1280 x 720 slide. */
+const SD_GRID = { W: 1280, H: 720, X: 54, CW: 1172, top: 206, bottom: 648, col: 571, col2: 655, gap: 30 };
+const SD_TL = { label: 60, bar: 366, barH: 76, scale: 448, rows: [208, 480, 276, 552] };
+const SD_HEAD_MAX = 140, SD_COVER_MAX = 110;
+/* The head title and the cover title get smaller as they get longer, so they stay in their box. */
+const sdHeadSize = (title) => { const n = String(title || '').length; return n <= 50 ? 34 : n <= 64 ? 28 : 23; };
+const sdCoverSize = (title) => { const n = String(title || '').length; return n <= 26 ? 58 : n <= 44 ? 48 : n <= 72 ? 40 : 32; };
+/* The key word of a cover title, in green: its last word. */
+function sdAccentSplit(title) {
+  const text = String(title || '').trim();
+  const at = text.lastIndexOf(' ');
+  return at > 0 ? [text.slice(0, at + 1), text.slice(at + 1)] : ['', text];
+}
+const sdPageNumber = (index, total) => `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
+const sdKicker = (project) => sdClip(sdState(project).title || project.name || '', 70);
+const sdIsDark = (slide) => slide.kind === 'title' || slide.kind === 'end';
+/* The markers of the debrief lists, by field. */
+const SD_LIST_STYLE = {
+  went_well: { marker: '+', color: SD_COLORS.success }, to_improve: { marker: '→', color: SD_COLORS.warning },
+  recommendations: { numbered: true, color: SD_COLORS.indigo }, next_steps: { marker: '→', color: SD_COLORS.green300, dark: true }
+};
+/* The brand waves of the cover, from the Wavestone slide decks. */
+const SD_WAVES = [
+  ['M-50,560 Q360,420 700,520 T1330,460', 'rgba(255,255,255,.16)'],
+  ['M-50,610 Q380,470 720,560 T1330,510', 'rgba(4,240,106,.5)'],
+  ['M-50,500 Q340,380 680,470 T1330,410', 'rgba(255,255,255,.10)']
+];
+
+function sdSlideFigure(slide, index, total, labels, kicker) {
+  return `<figure class="sd-slide-wrap"><div class="sd-slide sd-${slide.kind}${sdIsDark(slide) ? ' is-dark' : ''}">${sdSlideHtml(slide, labels, { index, total, kicker })}</div><figcaption>${index + 1}. ${escapeHtml(slide.title)}</figcaption></figure>`;
 }
 
 function sdList(items, cls = '') {
@@ -291,30 +349,67 @@ function sdTimelineTick(at, duration) {
   const left = Math.min(100 - half, Math.max(half, x));
   return { left, tick: 50 + (100 * (x - left)) / SD_TL_LABEL };
 }
+/* Where an event label sits: rows 0 and 2 above the bar, 1 and 3 below; the tick joins it to the bar. */
+function sdTimelineRow(index) {
+  const row = index % 4, y = SD_TL.rows[row], up = row % 2 === 0;
+  return { row, y, up, tick: up ? SD_TL.bar - (y + SD_TL.label) : y - (SD_TL.bar + SD_TL.barH) };
+}
 
-function sdSlideHtml(slide, labels = sdDeckLabels()) {
-  const h = (text) => `<h4>${escapeHtml(text)}</h4>`;
-  switch (slide.kind) {
-    case 'title': return `<div class="sd-title-block"><span class="sd-eyebrow">${escapeHtml(labels.crisisExercise)}</span><h3>${escapeHtml(slide.title)}</h3><p>${escapeHtml(slide.subtitle)}</p><small>${escapeHtml(slide.meta)}</small></div>`;
-    case 'end': return `<div class="sd-title-block"><h3>${escapeHtml(slide.title)}</h3><p>${escapeHtml(slide.subtitle)}</p></div>`;
-    case 'overview': return `${h(slide.title)}<div class="sd-kpis">${slide.kpis.map(([value, label]) => `<span><b>${escapeHtml(String(value))}</b>${escapeHtml(label)}</span>`).join('')}</div>
-      <div class="sd-two"><div><em>${escapeHtml(labels.scenario)}</em><p>${escapeHtml(slide.scenario || labels.noScenario)}</p></div><div><em>${escapeHtml(labels.objectives)}</em>${slide.objectives.length ? sdList(slide.objectives) : `<p>${escapeHtml(labels.noneYet)}</p>`}</div></div>`;
-    case 'timeline': return `${h(slide.title)}<div class="sd-tl">
-      <div class="sd-tl-bar">${slide.phases.map((phase) => `<span style="left:${(100 * phase.start / slide.duration).toFixed(2)}%;width:${(100 * (phase.end - phase.start) / slide.duration).toFixed(2)}%;--phase:${escapeAttribute(phase.color)}"><b>${escapeHtml(phase.title)}</b><i>${phase.injects} ${escapeHtml(labels.injectsLower)}</i></span>`).join('')}</div>
-      <div class="sd-tl-scale"><span>${escapeHtml(sbFormatOffset(0))}</span><span>${escapeHtml(sbFormatOffset(slide.duration))}</span></div>
-      <div class="sd-tl-events">${slide.events.map((event, index) => { const tick = sdTimelineTick(event.at, slide.duration); return `<span class="row-${index % 4}" style="left:${tick.left.toFixed(2)}%;--tick:${tick.tick.toFixed(2)}%"><b>${escapeHtml(sbFormatOffset(event.at))}</b>${escapeHtml(event.text)}</span>`; }).join('')}</div>
-    </div>`;
-    case 'phase': return `<div class="sd-phase-band" style="--phase:${escapeAttribute(slide.color)}"><span>${escapeHtml(slide.span)} · ${escapeHtml(slide.stress)}</span></div>${h(slide.title)}
-      ${slide.what ? `<p class="sd-what">${escapeHtml(slide.what)}</p>` : ''}
-      <div class="sd-two"><div><em>${escapeHtml(labels.mainEvents)}</em>${slide.events.length ? `<ul>${slide.events.map((event) => `<li><b>${escapeHtml(event.at)}</b> ${escapeHtml(event.text)}</li>`).join('')}</ul>` : '<p>-</p>'}</div>
-      <div><em>${escapeHtml(labels.injects)}</em>${slide.injects.length ? `<ul>${slide.injects.map((inject) => `<li><b>${escapeHtml(inject.at)}</b> ${escapeHtml(inject.title)}${inject.to ? ` <i>→ ${escapeHtml(inject.to)}</i>` : ''}</li>`).join('')}</ul>` : '<p>-</p>'}</div></div>`;
-    case 'story': return `${h(slide.title)}<ol class="sd-story">${slide.items.map((item) => `<li><b>${escapeHtml(item.when || '')}</b><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.text)}</span></li>`).join('')}</ol>`;
-    case 'evaluation': return `${h(slide.title)}<table class="sd-eval"><thead><tr><th>${escapeHtml(labels.cell)}</th><th>${escapeHtml(labels.injects)}</th>${['P', 'S', 'M', 'U'].map((code) => `<th class="is-${code}">${code}</th>`).join('')}<th>${escapeHtml(labels.rated)}</th></tr></thead><tbody>${slide.rows.map((row) => `<tr><td><span class="cell-dot" style="background:${escapeAttribute(row.color)}"></span>${escapeHtml(row.name)}</td><td>${row.injects}</td>${['P', 'S', 'M', 'U'].map((code) => `<td class="is-${code}">${row.tally.counts[code]}</td>`).join('')}<td>${row.tally.rated}/${row.tally.total}</td></tr>`).join('')}</tbody></table>`;
-    case 'cells': return `${h(slide.title)}<div class="sd-cells">${slide.cells.map((cell) => `<div style="--cell:${escapeAttribute(cell.color)}"><strong>${escapeHtml(cell.name)}</strong>${cell.strengths.length ? `<em>+</em>${sdList(cell.strengths)}` : ''}${cell.improvements.length ? `<em>-</em>${sdList(cell.improvements)}` : ''}</div>`).join('')}</div>`;
-    case 'bullets': return `${h(slide.title)}${sdList(slide.items, 'sd-big')}`;
-    case 'columns': return `${h(slide.title)}<div class="sd-two">${[slide.left, slide.right].map((list) => `<div><em>${escapeHtml(list.label)}</em>${list.items.length ? sdList(list.items) : '<p>-</p>'}</div>`).join('')}</div>`;
-    default: return h(slide.title);
+function sdSlideHtml(slide, labels = sdDeckLabels(), frame = {}) {
+  const e = escapeHtml;
+  const chrome = `<div class="sd-brand"><i></i>Wavestone</div>${frame.kicker ? `<div class="sd-kicker">${e(frame.kicker)}</div>` : ''}${frame.total ? `<div class="sd-pagenum">${sdPageNumber(frame.index, frame.total)}</div>` : ''}`;
+  if (sdIsDark(slide)) {
+    const [lead, word] = sdAccentSplit(sdClip(slide.title, SD_COVER_MAX));
+    return `<svg class="sd-waves" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">${SD_WAVES.map(([d, color]) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.5"/>`).join('')}</svg>${chrome}
+      <div class="sd-cover">${slide.eyebrow ? `<span class="sd-eyebrow">${e(slide.eyebrow)}</span>` : ''}<h3 style="--size:${sdCoverSize(slide.title)}">${e(lead)}<span class="sd-ac">${e(word)}</span></h3>${slide.subtitle ? `<p>${e(sdClip(slide.subtitle, 160))}</p>` : ''}${(slide.chips || []).length ? `<div class="sd-chips">${slide.chips.map((chip) => `<span>${e(chip)}</span>`).join('')}</div>` : ''}</div>`;
   }
+  const tag = slide.kind === 'phase' ? `<span class="sd-tag" style="--tag:${e(slide.color)}">${e(slide.stressLabel || 'Stress')} · ${e(slide.stress)}</span>` : '';
+  const head = `<span class="sd-eyebrow">${e(slide.eyebrow || '')}</span>${tag}<h4 class="sd-headline" style="--size:${sdHeadSize(slide.title)}">${e(sdClip(slide.title, SD_HEAD_MAX))}</h4><div class="sd-accentbar"></div>`;
+  const label = (text, cls = '') => `<span class="sd-label ${cls}">${e(text)}</span>`;
+  const num = (index) => String(index + 1).padStart(2, '0');
+  const rows = (items) => (items.length ? `<ul class="sd-rows">${items.join('')}</ul>` : '<p class="sd-none">-</p>');
+  let body = '';
+  switch (slide.kind) {
+    case 'overview':
+      body = `<div class="sd-stats">${slide.kpis.map(([value, name]) => `<div class="sd-stat"><b>${e(String(value))}</b><span>${e(name)}</span></div>`).join('')}</div>
+        <div class="sd-split sd-overview-split"><div class="sd-dark">${label(labels.scenario)}<p>${e(slide.scenario || labels.noScenario)}</p></div>
+        <div class="sd-objectives">${label(labels.objectives, 'is-indigo')}${slide.objectives.length ? `<div class="sd-obj-grid">${slide.objectives.map((line, index) => `<div class="sd-card"><span class="sd-num">${num(index)}</span><p>${e(line)}</p></div>`).join('')}</div>` : `<p class="sd-none">${e(labels.noneYet)}</p>`}</div></div>`;
+      break;
+    case 'timeline':
+      body = `<div class="sd-tl">
+        <div class="sd-tl-bar">${slide.phases.map((phase) => `<span style="left:${(100 * phase.start / slide.duration).toFixed(2)}%;width:${(100 * (phase.end - phase.start) / slide.duration).toFixed(2)}%;--phase:${e(phase.color)}"><b>${e(phase.title)}</b><i>${phase.injects} ${e(labels.injectsLower)}</i></span>`).join('')}</div>
+        <div class="sd-tl-scale">${slide.phases.map((phase) => `<span style="left:${(100 * phase.start / slide.duration).toFixed(2)}%">${e(sbFormatOffset(phase.start))}</span>`).join('')}<span class="is-end">${e(sbFormatOffset(slide.duration))}</span></div>
+        <div class="sd-tl-events">${slide.events.map((event, index) => { const tick = sdTimelineTick(event.at, slide.duration), row = sdTimelineRow(index); return `<span class="row-${row.row} ${row.up ? 'is-up' : 'is-down'}" style="left:${tick.left.toFixed(2)}%;--tick:${tick.tick.toFixed(2)}%;--y:${row.y};--tick-h:${row.tick}"><b>${e(sbFormatOffset(event.at))}</b>${e(event.text)}</span>`; }).join('')}</div>
+      </div>`;
+      break;
+    case 'phase':
+      body = `${slide.what ? `<p class="sd-lede">${e(slide.what)}</p>` : ''}<div class="sd-split">
+        <div class="sd-card sd-col">${label(labels.mainEvents, 'is-indigo')}${rows(slide.events.map((event) => `<li><b>${e(event.at)}</b><span>${e(event.text)}</span></li>`))}</div>
+        <div class="sd-card sd-col">${label(labels.injects, 'is-indigo')}${rows(slide.injects.map((inject) => `<li><b>${e(inject.at)}</b><span>${e(inject.title)}${inject.to ? ` <i>→ ${e(inject.to)}</i>` : ''}</span></li>`))}</div></div>`;
+      break;
+    case 'story':
+      body = `<div class="sd-quad">${slide.items.map((item) => `<div class="sd-card sd-story-card">${label(item.when || '', 'is-indigo')}<strong>${e(item.title)}</strong><p>${e(item.text)}</p></div>`).join('')}</div>`;
+      break;
+    case 'evaluation':
+      body = `<table class="sd-eval"><thead><tr><th>${e(labels.cell)}</th><th>${e(labels.injects)}</th>${['P', 'S', 'M', 'U'].map((code) => `<th class="is-${code}">${code}</th>`).join('')}<th>${e(labels.rated)}</th></tr></thead><tbody>${slide.rows.map((row) => `<tr><td><span class="cell-dot" style="background:${e(row.color)}"></span>${e(row.name)}</td><td>${row.injects}</td>${['P', 'S', 'M', 'U'].map((code) => `<td class="is-${code}${row.tally.counts[code] > 0 ? ' is-on' : ''}">${row.tally.counts[code]}</td>`).join('')}<td>${row.tally.rated}/${row.tally.total}</td></tr>`).join('')}</tbody></table><p class="sd-legend">${e(labels.legend)}</p>`;
+      break;
+    case 'cells':
+      body = `<div class="sd-cell-grid" style="--cols:${Math.max(1, slide.cells.length)}">${slide.cells.map((cell) => `<div class="sd-card"><strong><i style="background:${e(cell.color)}"></i>${e(cell.name)}</strong>
+        ${cell.strengths.length ? `${label(slide.strengthsLabel || '+', 'is-good')}<ul class="sd-marks is-good">${cell.strengths.map((item) => `<li>${e(item)}</li>`).join('')}</ul>` : ''}
+        ${cell.improvements.length ? `${label(slide.improvementsLabel || '-', 'is-warn')}<ul class="sd-marks is-warn">${cell.improvements.map((item) => `<li>${e(item)}</li>`).join('')}</ul>` : ''}</div>`).join('')}</div>`;
+      break;
+    case 'bullets':
+      body = `<ol class="sd-keymsgs">${slide.items.map((item, index) => `<li class="sd-card"><b>${num(index)}</b><span>${e(item)}</span></li>`).join('')}</ol>`;
+      break;
+    case 'columns':
+      body = `<div class="sd-split">${[slide.left, slide.right].map((list) => {
+        const style = SD_LIST_STYLE[list.key] || { marker: '•', color: SD_COLORS.indigo };
+        return `<div class="sd-col ${style.dark ? 'sd-dark' : 'sd-card'}" style="--mark:#${style.color}">${label(list.label, style.dark ? '' : 'is-mark')}${rows(list.items.map((item, index) => `<li><b>${style.numbered ? num(index) : style.marker}</b><span>${e(item)}</span></li>`))}</div>`;
+      }).join('')}</div>`;
+      break;
+    default: break;
+  }
+  return `${chrome}<div class="sd-body">${head}<div class="sd-content">${body}</div></div>`;
 }
 
 function bindSlideDebriefEvents() {
@@ -349,7 +444,7 @@ function sdRefreshPreview() {
   if (!grid) return;
   const slides = sdSlides(appState.scenario);
   const labels = sdDeckLabels(appState.scenario);
-  grid.innerHTML = slides.map((slide, index) => `<figure class="sd-slide-wrap"><div class="sd-slide sd-${slide.kind}">${sdSlideHtml(slide, labels)}</div><figcaption>${index + 1}. ${escapeHtml(slide.title)}</figcaption></figure>`).join('');
+  grid.innerHTML = slides.map((slide, index) => sdSlideFigure(slide, index, slides.length, labels, sdKicker(appState.scenario))).join('');
   const count = document.querySelector('.sd-preview-card h3 small');
   if (count) count.textContent = String(slides.length);
 }
@@ -423,13 +518,77 @@ Write in the language requested. Each item is one short sentence (max 25 words).
 };
 
 // ── Slide debrief: PowerPoint ───────────────────────────────────────────────
-const SD_COLORS = { ink: '1D1934', muted: '6B6580', primary: '451DC7', accent: '04F06A', line: 'E6E4EE', panel: 'F5F4F9', P: '146C2E', S: '4D6410', M: '8A4B08', U: '9B1C1C' };
-const sdHex = (color, fallback = SD_COLORS.primary) => { const value = String(color || '').replace('#', ''); return /^[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : /^[0-9a-f]{3}$/i.test(value) ? value.split('').map((c) => c + c).join('').toUpperCase() : fallback; };
+const sdHex = (color, fallback = SD_COLORS.indigo) => { const value = String(color || '').replace('#', ''); return /^[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : /^[0-9a-f]{3}$/i.test(value) ? value.split('').map((c) => c + c).join('').toUpperCase() : fallback; };
+
+/* Text widths for the .pptx layout (cover lines, eyebrow underline, chips), measured with the
+   webfonts of the page; an estimate when no canvas is at hand. */
+const SdMeasure = {
+  ctx: null,
+  width(text, font, spacing = 0) {
+    const value = String(text || '');
+    try {
+      this.ctx = this.ctx || document.createElement('canvas').getContext('2d');
+      this.ctx.font = font;
+      return this.ctx.measureText(value).width + spacing * value.length;
+    } catch (_) {
+      const size = parseFloat((String(font).match(/([\d.]+)px/) || [])[1]) || 14;
+      return value.length * (size * 0.6 + spacing);
+    }
+  },
+  /* How many lines a text takes in a box of this width, wrapped at the words. */
+  lines(text, font, width) {
+    let lines = 1, line = '';
+    String(text || '').split(/\s+/).filter(Boolean).forEach((word) => {
+      const next = line ? `${line} ${word}` : word;
+      if (line && this.width(next, font) > width) { lines++; line = word; } else line = next;
+    });
+    return lines;
+  }
+};
+
+/* The brand gradient of the cover and end slides, with its waves, as an image: PowerPoint
+   slide backgrounds have no radial gradient. */
+function sdCoverBackground() {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1920; canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    const k = canvas.width / SD_GRID.W;
+    ctx.save();
+    ctx.translate(0.25 * canvas.width, 0.15 * canvas.height);
+    ctx.scale(1.2 * canvas.width, 1.2 * canvas.height);
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    glow.addColorStop(0, '#5226E0'); glow.addColorStop(0.38, '#451DC7'); glow.addColorStop(1, '#2D1380');
+    ctx.fillStyle = glow;
+    ctx.fillRect(-1, -1, 2, 2);
+    ctx.restore();
+    // The inner shadow of the slide edges.
+    const edge = 220 * k;
+    [[0, 0, canvas.width, edge, 0, 0, 0, edge], [0, canvas.height - edge, canvas.width, edge, 0, canvas.height, 0, canvas.height - edge],
+      [0, 0, edge, canvas.height, 0, 0, edge, 0], [canvas.width - edge, 0, edge, canvas.height, canvas.width, 0, canvas.width - edge, 0]].forEach(([x, y, w, h, x0, y0, x1, y1]) => {
+      const shade = ctx.createLinearGradient(x0, y0, x1, y1);
+      shade.addColorStop(0, 'rgba(8,4,26,0.32)'); shade.addColorStop(1, 'rgba(8,4,26,0)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(x, y, w, h);
+    });
+    ctx.save();
+    ctx.scale(k, k);
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1.5;
+    SD_WAVES.forEach(([d, color]) => { ctx.strokeStyle = color; ctx.stroke(new Path2D(d)); });
+    ctx.restore();
+    return canvas.toDataURL('image/jpeg', 0.92).replace(/^data:/, '');
+  } catch (_) {
+    return '';
+  }
+}
 
 async function sdLibraries() {
   if (typeof evLibraries === 'function') await evLibraries(true);
   if (typeof PptxGenJS === 'undefined' && typeof evLoadScript === 'function') await evLoadScript('PptxGenJS', 'js/lib/pptxgen.min.js');
   if (typeof PptxGenJS === 'undefined') throw new Error(tt('The PowerPoint library is not loaded. Reload the page and try again.', 'La bibliothèque PowerPoint n’est pas chargée. Rechargez la page et réessayez.', 'Die PowerPoint-Bibliothek ist nicht geladen. Laden Sie die Seite neu und versuchen Sie es erneut.'));
+  // The layout measures its texts with the fonts of the slides.
+  if (document.fonts?.load) await Promise.all(['700 20px Poppins', '800 20px Poppins', '700 12px Inter', '400 16px Inter', '600 11px "IBM Plex Mono"'].map((font) => document.fonts.load(font).catch(() => null)));
 }
 
 function sdBuildDeck(project) {
@@ -438,100 +597,195 @@ function sdBuildDeck(project) {
   const labels = sdDeckLabels(project);
   pres.title = sdState(project).title || project.name || labels.exerciseDebrief;
   pres.company = project.client?.name || '';
-  const W = 13.33, M = 0.6, font = 'Arial';
-  const text = (slide, value, options) => slide.addText(value, { fontFace: font, color: SD_COLORS.ink, valign: 'top', margin: 0, ...options });
-  const heading = (slide, value) => {
-    slide.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: W, h: 0.12, fill: { color: SD_COLORS.primary }, line: { color: SD_COLORS.primary } });
-    text(slide, value, { x: M, y: 0.4, w: W - 2 * M, h: 0.8, fontSize: 26, bold: true, valign: 'middle' });
+  const C = SD_COLORS, F = SD_FONTS, G = SD_GRID;
+  // The grid is in px of a 1280 x 720 slide: 96 px to an inch, 0.75 pt to a px.
+  const inch = (value) => value / 96;
+  const pt = (value) => Math.round(value * 0.75 * 10) / 10;
+  const run = (value, options = {}) => { const { size, ...rest } = options; return { text: String(value ?? ''), options: size ? { ...rest, fontSize: pt(size) } : rest }; };
+  const text = (slide, value, x, y, w, h, options = {}) => {
+    const { size = 14, ...rest } = options;
+    const runs = Array.isArray(value) ? value.map((part) => (part && typeof part === 'object' ? part : run(part))) : String(value ?? '');
+    slide.addText(runs, { x: inch(x), y: inch(y), w: inch(w), h: inch(h), margin: 0, valign: 'top', fontFace: F.body, color: C.ink, fontSize: pt(size), lineSpacingMultiple: 1.1, ...rest });
   };
-  const bullets = (items, size = 14) => items.map((item) => ({ text: item, options: { bullet: { indent: 14 }, paraSpaceAfter: 6, fontSize: size } }));
-  const label = (slide, value, x, y, w) => text(slide, value.toUpperCase(), { x, y, w, h: 0.3, fontSize: 11, bold: true, color: SD_COLORS.primary, charSpacing: 1 });
-  const footer = (slide, index) => text(slide, `${sdState(project).title || project.name || ''} · ${index}`, { x: M, y: 7.05, w: W - 2 * M, h: 0.3, fontSize: 9, color: SD_COLORS.muted, align: 'right' });
+  const rect = (slide, x, y, w, h, fill, line) => slide.addShape(pres.ShapeType.rect, {
+    x: inch(x), y: inch(y), w: inch(w), h: inch(h),
+    fill: typeof fill === 'object' ? fill : { color: fill },
+    line: line ? (typeof line === 'object' ? line : { color: line, width: 1 }) : { type: 'none' }
+  });
+  const hline = (slide, x, y, w, color = C.line) => slide.addShape(pres.ShapeType.line, { x: inch(x), y: inch(y), w: inch(w), h: 0, line: { color, width: 0.75 } });
+  const card = (slide, x, y, w, h) => { rect(slide, x, y, w, h, C.white, { color: C.line, width: 1 }); rect(slide, x, y, 4, h, C.green); };
+  const dark = (slide, x, y, w, h) => { rect(slide, x, y, w, h, C.indigo950); rect(slide, x, y, 5, h, C.green); };
+  const label = (slide, value, x, y, w, color = C.indigo) => text(slide, String(value || '').toUpperCase(), x, y, w, 16, { size: 11, fontFace: F.mono, bold: true, color, charSpacing: 1, fit: 'shrink' });
+  const eyebrow = (slide, value, y, color) => {
+    const caps = String(value || '').toUpperCase();
+    const width = Math.min(900, SdMeasure.width(caps, `700 12px ${F.body}`, 12 * 0.14) + 4);
+    text(slide, caps, G.X, y, 900, 18, { size: 12, bold: true, color, charSpacing: 1.3 });
+    rect(slide, G.X, y + 21, width, 2, C.green);
+  };
+  const chrome = (slide, index, total, onDark) => {
+    rect(slide, G.X - 3, 35.5, 15, 15, onDark ? { color: C.green, transparency: 78 } : C.green50);
+    rect(slide, G.X, 38.5, 9, 9, C.green);
+    text(slide, 'Wavestone', G.X + 18, 30, 300, 22, { size: 15, fontFace: F.display, bold: true, color: onDark ? C.white : C.indigo700, valign: 'middle' });
+    const kicker = sdKicker(project).toUpperCase();
+    if (kicker) text(slide, kicker, G.X, 672, 880, 18, { size: 11, fontFace: F.mono, color: onDark ? C.onDarkFaint : C.faint, charSpacing: 1.2, valign: 'middle', fit: 'shrink' });
+    text(slide, sdPageNumber(index, total), 1026, 672, 200, 18, { size: 12, fontFace: F.mono, color: onDark ? C.onDarkFaint : C.subtle, align: 'right', valign: 'middle' });
+  };
+  const listRows = (slide, items, x, y, w, h, style) => {
+    // Four rows per column, as in the preview: a marker (time, number or sign) and its text.
+    if (!items.length) { text(slide, '-', x + 22, y, w - 40, 24, { size: 15, color: style.textColor || C.muted }); return; }
+    const rowH = h / 4;
+    items.forEach((item, index) => {
+      const top = y + index * rowH;
+      if (index) hline(slide, x + 22, top, w - 40, style.lineColor || C.line);
+      text(slide, item.marker, x + 22, top + 10, style.markerW, 20, { size: style.markerSize || 12, fontFace: F.mono, bold: true, color: style.markerColor || C.indigo });
+      text(slide, item.text, x + 22 + style.markerW, top + 10, w - 40 - style.markerW, rowH - 16, { size: style.size || 14, color: style.textColor || C.ink, lineSpacingMultiple: 1.15, fit: 'shrink' });
+    });
+  };
 
-  sdSlides(project).forEach((data, index) => {
+  const slides = sdSlides(project);
+  const background = slides.some(sdIsDark) ? sdCoverBackground() : '';
+  slides.forEach((data, index) => {
     const slide = pres.addSlide();
-    slide.background = { color: 'FFFFFF' };
-    if (data.kind === 'title' || data.kind === 'end') {
-      slide.background = { color: SD_COLORS.ink };
-      slide.addShape(pres.ShapeType.rect, { x: M, y: 2.3, w: 0.12, h: 2.4, fill: { color: SD_COLORS.accent }, line: { color: SD_COLORS.accent } });
-      if (data.kind === 'title') text(slide, labels.crisisExercise.toUpperCase(), { x: M + 0.4, y: 2.2, w: 11, h: 0.4, fontSize: 13, bold: true, color: SD_COLORS.accent, charSpacing: 2 });
-      text(slide, data.title, { x: M + 0.4, y: 2.65, w: 11.5, h: 1.4, fontSize: 38, bold: true, color: 'FFFFFF', valign: 'middle', fit: 'shrink' });
-      text(slide, data.subtitle, { x: M + 0.4, y: 4.05, w: 11.5, h: 0.6, fontSize: 20, color: 'D9D6E6' });
-      if (data.meta) text(slide, data.meta, { x: M + 0.4, y: 6.4, w: 11.5, h: 0.4, fontSize: 13, color: 'B4AFC8' });
+    if (sdIsDark(data)) {
+      slide.background = background ? { data: background } : { color: C.indigo800 };
+      chrome(slide, index, slides.length, true);
+      // The cover block is centred on the slide; its height comes from the measured lines.
+      const title = sdClip(data.title, SD_COVER_MAX), size = sdCoverSize(data.title), width = 1000;
+      const titleH = SdMeasure.lines(title, `700 ${size}px ${F.display}`, width - 20) * size * 1.12;
+      const subtitle = sdClip(data.subtitle || '', 160);
+      const subH = subtitle ? SdMeasure.lines(subtitle, `400 19px ${F.body}`, 760 - 10) * 19 * 1.5 : 0;
+      const chips = data.chips || [];
+      const total = 23 + 18 + titleH + (subH ? 22 + subH : 0) + (chips.length ? 34 + 26 : 0);
+      let y = Math.max(96, (G.H - total) / 2);
+      if (data.eyebrow) eyebrow(slide, data.eyebrow, y, C.white);
+      y += 23 + 18;
+      const [lead, word] = sdAccentSplit(title);
+      text(slide, [run(lead), run(word, { color: C.green })], G.X, y, width, titleH + 4, { size, fontFace: F.display, bold: true, color: C.white, lineSpacingMultiple: 0.98, charSpacing: -0.6, fit: 'shrink' });
+      y += titleH + 22;
+      if (subH) { text(slide, subtitle, G.X, y, 760, subH + 4, { size: 19, color: C.onDarkSoft, lineSpacingMultiple: 1.25, fit: 'shrink' }); y += subH + 34; }
+      let x = G.X;
+      chips.forEach((chip) => {
+        const w = SdMeasure.width(chip, `600 11px ${F.mono}`, 11 * 0.03) + 24;
+        if (x + w > G.X + width) return;
+        rect(slide, x, y, w, 26, { color: C.white, transparency: 92 }, { color: C.white, transparency: 84, width: 0.75 });
+        text(slide, chip, x, y, w, 26, { size: 11, fontFace: F.mono, bold: true, color: C.onDarkText, align: 'center', valign: 'middle' });
+        x += w + 10;
+      });
       return;
     }
-    heading(slide, data.title);
-    footer(slide, index + 1);
+    slide.background = { color: C.white };
+    chrome(slide, index, slides.length, false);
+    eyebrow(slide, data.eyebrow || '', 90, C.indigo700);
+    text(slide, sdClip(data.title, SD_HEAD_MAX), G.X, 122, G.CW, 52, { size: sdHeadSize(data.title), fontFace: F.display, bold: true, color: C.indigo700, lineSpacingMultiple: 0.95, charSpacing: -0.4, fit: 'shrink' });
+    rect(slide, G.X, 182, 54, 4, C.green);
+    const top = G.top, bottom = G.bottom, left = G.X, right = G.col2, col = G.col;
+
     if (data.kind === 'overview') {
-      const kw = (W - 2 * M - 4 * 0.2) / 5;
+      const kw = (G.CW - 4 * 14) / 5;
       data.kpis.forEach(([value, name], i) => {
-        const x = M + i * (kw + 0.2);
-        slide.addShape(pres.ShapeType.rect, { x, y: 1.4, w: kw, h: 1.1, fill: { color: SD_COLORS.ink }, line: { color: SD_COLORS.ink } });
-        text(slide, String(value), { x: x + 0.2, y: 1.5, w: kw - 0.4, h: 0.55, fontSize: 24, bold: true, color: 'FFFFFF' });
-        text(slide, name.toUpperCase(), { x: x + 0.2, y: 2.05, w: kw - 0.4, h: 0.3, fontSize: 10, bold: true, color: 'B4AFC8' });
+        const x = left + i * (kw + 14);
+        rect(slide, x, top, kw, 92, C.white, { color: C.line, width: 1 });
+        text(slide, String(value), x + 18, top + 16, kw - 36, 34, { size: 30, fontFace: F.display, bold: true, color: C.indigo, fit: 'shrink' });
+        text(slide, name, x + 18, top + 58, kw - 36, 20, { size: 13, color: C.muted, fit: 'shrink' });
       });
-      label(slide, labels.scenario, M, 2.9, 5.8);
-      text(slide, data.scenario || labels.noScenario, { x: M, y: 3.25, w: 5.8, h: 3.6, fontSize: 13, fit: 'shrink' });
-      label(slide, labels.objectives, 7, 2.9, 5.7);
-      text(slide, data.objectives.length ? bullets(data.objectives, 13) : labels.noneYet, { x: 7, y: 3.25, w: 5.7, h: 3.6, fit: 'shrink' });
+      const y = top + 92 + 20, h = bottom - y;
+      dark(slide, left, y, col, h);
+      label(slide, labels.scenario, left + 29, y + 22, col - 53, C.green300);
+      text(slide, data.scenario || labels.noScenario, left + 29, y + 48, col - 53, h - 66, { size: 16, color: C.onDarkText, lineSpacingMultiple: 1.3, fit: 'shrink' });
+      label(slide, labels.objectives, right, y, col);
+      if (!data.objectives.length) text(slide, labels.noneYet, right, y + 26, col, 24, { size: 15, color: C.muted });
+      const ow = (col - 12) / 2, oh = (h - 24 - 12) / 2;
+      data.objectives.forEach((line, i) => {
+        const x = right + (i % 2) * (ow + 12), oy = y + 24 + Math.floor(i / 2) * (oh + 12);
+        card(slide, x, oy, ow, oh);
+        text(slide, String(i + 1).padStart(2, '0'), x + 20, oy + 16, 60, 16, { size: 11, fontFace: F.mono, bold: true, color: C.indigo });
+        text(slide, line, x + 20, oy + 38, ow - 36, oh - 50, { size: 14, lineSpacingMultiple: 1.2, fit: 'shrink' });
+      });
     } else if (data.kind === 'timeline') {
-      const x0 = M, width = W - 2 * M, y = 3.1, h = 0.9;
-      const px = (minute) => x0 + width * minute / data.duration;
+      const px = (minute) => left + G.CW * minute / data.duration;
+      const y = SD_TL.bar, h = SD_TL.barH;
       data.phases.forEach((phase) => {
-        const x = px(phase.start), w = Math.max(0.05, px(phase.end) - x - 0.03);
-        slide.addShape(pres.ShapeType.rect, { x, y, w, h, fill: { color: sdHex(phase.color) }, line: { color: 'FFFFFF', width: 1 } });
-        text(slide, [{ text: phase.title, options: { bold: true, fontSize: 11, color: 'FFFFFF', breakLine: true } }, { text: `${phase.injects} ${labels.injectsLower}`, options: { fontSize: 9, color: 'FFFFFF' } }], { x: x + 0.06, y: y + 0.08, w: Math.max(0.2, w - 0.12), h: h - 0.16, fit: 'shrink' });
-        text(slide, sbFormatOffset(phase.start), { x: x, y: y + h + 0.05, w: 1, h: 0.25, fontSize: 9, color: SD_COLORS.muted });
+        const x = px(phase.start), w = Math.max(4, px(phase.end) - x - 2);
+        rect(slide, x, y, w, h, sdHex(phase.color));
+        if (w > 30) text(slide, [run(phase.title, { bold: true, fontFace: F.display, size: 13, breakLine: true }), run(`${phase.injects} ${labels.injectsLower}`, { size: 11 })], x + 10, y + 12, w - 20, h - 22, { color: C.white, valign: 'middle', fit: 'shrink' });
+        if (w > 64 || phase.start === 0) text(slide, sbFormatOffset(phase.start), x, SD_TL.scale, 70, 16, { size: 11, fontFace: F.mono, color: C.subtle });
       });
-      text(slide, sbFormatOffset(data.duration), { x: x0 + width - 1, y: y + h + 0.05, w: 1, h: 0.25, fontSize: 9, color: SD_COLORS.muted, align: 'right' });
+      text(slide, sbFormatOffset(data.duration), left + G.CW - 70, SD_TL.scale, 70, 16, { size: 11, fontFace: F.mono, color: C.subtle, align: 'right' });
+      const lw = G.CW * SD_TL_LABEL / 100;
       data.events.forEach((event, i) => {
-        const x = px(event.at), up = i % 2 === 0;
-        const boxW = 2.1, bx = Math.min(W - M - boxW, Math.max(M, x - boxW / 2));
-        slide.addShape(pres.ShapeType.line, { x, y: up ? 2.35 : y + h + 0.3, w: 0, h: up ? y - 2.35 : 0.55, line: { color: SD_COLORS.ink, width: 1, dashType: 'dash' } });
-        text(slide, [{ text: sbFormatOffset(event.at), options: { bold: true, fontSize: 9, color: SD_COLORS.primary, breakLine: true } }, { text: event.text, options: { fontSize: 9 } }],
-          { x: bx, y: up ? (i % 4 === 0 ? 1.35 : 1.75) : (i % 4 === 1 ? 4.75 : 5.55), w: boxW, h: 0.62, fit: 'shrink' });
+        const tick = sdTimelineTick(event.at, data.duration), row = sdTimelineRow(i);
+        const bx = left + G.CW * tick.left / 100 - lw / 2, tx = bx + lw * tick.tick / 100;
+        slide.addShape(pres.ShapeType.line, { x: inch(tx), y: inch(row.up ? row.y + SD_TL.label : y + h), w: 0, h: inch(row.tick), line: { color: C.faint, width: 1, dashType: 'dash' } });
+        text(slide, [run(sbFormatOffset(event.at), { bold: true, fontFace: F.mono, size: 11, color: C.indigo, breakLine: true }), run(event.text, { size: 11.5 })], bx, row.y, lw, SD_TL.label, { align: 'center', valign: row.up ? 'bottom' : 'top', lineSpacingMultiple: 1.05, fit: 'shrink' });
       });
     } else if (data.kind === 'phase') {
-      slide.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: W, h: 0.12, fill: { color: sdHex(data.color) }, line: { color: sdHex(data.color) } });
-      text(slide, `${data.span} · ${data.stress}`, { x: M, y: 1.15, w: 8, h: 0.3, fontSize: 12, bold: true, color: sdHex(data.color) });
-      if (data.what) text(slide, data.what, { x: M, y: 1.55, w: W - 2 * M, h: 1.1, fontSize: 14, italic: true, color: SD_COLORS.muted, fit: 'shrink' });
-      label(slide, labels.mainEvents, M, 2.85, 5.8);
-      text(slide, data.events.length ? data.events.map((event) => ({ text: `${event.at}  ${event.text}`, options: { bullet: { indent: 14 }, paraSpaceAfter: 6, fontSize: 13 } })) : '-', { x: M, y: 3.2, w: 5.8, h: 3.7, fit: 'shrink' });
-      label(slide, labels.injects, 7, 2.85, 5.7);
-      const lines = data.injects.map((inject) => ({ text: `${inject.at}  ${inject.title}${inject.to ? ` → ${inject.to}` : ''}`, options: { bullet: { indent: 14 }, paraSpaceAfter: 4, fontSize: 12 } }));
-      text(slide, lines.length ? lines : '-', { x: 7, y: 3.2, w: 5.7, h: 3.7, fit: 'shrink' });
+      const tagText = `${data.stressLabel || 'Stress'} · ${data.stress}`.toUpperCase();
+      const tagW = SdMeasure.width(tagText, `600 10px ${F.mono}`, 10 * 0.06) + 20;
+      rect(slide, G.X + G.CW - tagW, 88, tagW, 22, sdHex(data.color));
+      text(slide, tagText, G.X + G.CW - tagW, 88, tagW, 22, { size: 10, fontFace: F.mono, bold: true, color: C.white, align: 'center', valign: 'middle', charSpacing: 0.5 });
+      let y = top;
+      if (data.what) { text(slide, data.what, left, y, G.CW, 48, { size: 16, color: C.muted, lineSpacingMultiple: 1.25, fit: 'shrink' }); y += 58; }
+      const h = bottom - y;
+      [[labels.mainEvents, data.events.map((event) => ({ marker: event.at, text: event.text }))],
+        [labels.injects, data.injects.map((inject) => ({ marker: inject.at, text: [run(inject.title), ...(inject.to ? [run(`  → ${inject.to}`, { color: C.muted })] : [])] }))]].forEach(([name, items], i) => {
+        const x = i ? right : left;
+        card(slide, x, y, col, h);
+        label(slide, name, x + 22, y + 18, col - 40);
+        listRows(slide, items, x, y + 46, col, h - 58, { markerW: 64, size: 13.5 });
+      });
     } else if (data.kind === 'story') {
+      const h = (bottom - top - 14) / 2;
       data.items.forEach((item, i) => {
         // Two columns, read row by row as in the preview.
-        const col = i % 2, row = Math.floor(i / 2), x = M + col * 6.2, y = 1.5 + row * 2.6;
-        slide.addShape(pres.ShapeType.rect, { x, y, w: 0.08, h: 2.2, fill: { color: SD_COLORS.primary }, line: { color: SD_COLORS.primary } });
-        text(slide, [{ text: item.when || '', options: { bold: true, fontSize: 12, color: SD_COLORS.primary, breakLine: true } }, { text: item.title, options: { bold: true, fontSize: 16, breakLine: true, paraSpaceAfter: 4 } }, { text: item.text, options: { fontSize: 13, color: SD_COLORS.muted } }], { x: x + 0.25, y, w: 5.7, h: 2.2, fit: 'shrink' });
+        const x = i % 2 ? right : left, y = top + Math.floor(i / 2) * (h + 14);
+        card(slide, x, y, col, h);
+        label(slide, item.when || '', x + 22, y + 18, col - 40);
+        text(slide, item.title, x + 22, y + 42, col - 40, 46, { size: 17, fontFace: F.display, bold: true, lineSpacingMultiple: 1.05, fit: 'shrink' });
+        text(slide, item.text, x + 22, y + 94, col - 40, h - 108, { size: 14, color: C.muted, lineSpacingMultiple: 1.25, fit: 'shrink' });
       });
     } else if (data.kind === 'evaluation') {
-      const head = [labels.cell, labels.injects, 'P', 'S', 'M', 'U', labels.rated].map((value, i) => ({ text: value, options: { bold: true, color: i >= 2 && i <= 5 ? SD_COLORS[value] : SD_COLORS.muted, fill: { color: SD_COLORS.panel } } }));
+      const border = [{ type: 'none' }, { type: 'none' }, { type: 'solid', color: C.line, pt: 1 }, { type: 'none' }];
+      const head = [labels.cell, labels.injects, 'P', 'S', 'M', 'U', labels.rated].map((value, i) => ({ text: value.toUpperCase(), options: { bold: true, fontFace: F.mono, fontSize: pt(11), color: i >= 2 && i <= 5 ? C[value] : C.muted, fill: { color: C.panel }, align: i ? 'center' : 'left', border } }));
       const rows = data.rows.map((row) => [
-        { text: row.name, options: { bold: true } }, String(row.injects),
-        ...['P', 'S', 'M', 'U'].map((code) => ({ text: String(row.tally.counts[code]), options: { bold: row.tally.counts[code] > 0, color: SD_COLORS[code] } })),
-        `${row.tally.rated}/${row.tally.total}`
+        { text: [run('■  ', { color: sdHex(row.color, C.indigo) }), run(row.name, { bold: true })], options: { border } },
+        { text: String(row.injects), options: { align: 'center', border } },
+        ...['P', 'S', 'M', 'U'].map((code) => ({ text: String(row.tally.counts[code]), options: { align: 'center', bold: row.tally.counts[code] > 0, color: row.tally.counts[code] > 0 ? C[code] : C.faint, border } })),
+        { text: `${row.tally.rated}/${row.tally.total}`, options: { align: 'center', fontFace: F.mono, color: C.muted, border } }
       ]);
-      slide.addTable([head, ...rows], { x: M, y: 1.5, w: W - 2 * M, colW: [4.63, 1.3, 1.1, 1.1, 1.1, 1.1, 1.8], fontFace: font, fontSize: 13, color: SD_COLORS.ink, border: { type: 'solid', color: SD_COLORS.line, pt: 1 }, rowH: 0.45, valign: 'middle' });
-      text(slide, labels.legend, { x: M, y: 6.6, w: W - 2 * M, h: 0.3, fontSize: 10, color: SD_COLORS.muted });
+      slide.addTable([head, ...rows], { x: inch(left), y: inch(top), w: inch(G.CW), colW: [444, 125, 105, 105, 105, 105, 183].map(inch), rowH: [inch(38), ...rows.map(() => inch(42))], fontFace: F.body, fontSize: pt(14), color: C.ink, valign: 'middle', margin: [2, 8, 2, 12] });
+      text(slide, labels.legend, left, top + 38 + rows.length * 42 + 16, G.CW, 36, { size: 12, color: C.muted, fit: 'shrink' });
     } else if (data.kind === 'cells') {
-      const cols = Math.max(1, data.cells.length), cw = (W - 2 * M - (cols - 1) * 0.25) / cols, ch = 5.3;
+      const cols = Math.max(1, data.cells.length), cw = (G.CW - (cols - 1) * 20) / cols, h = bottom - top;
       data.cells.forEach((cell, i) => {
-        const x = M + (i % cols) * (cw + 0.25), y = 1.4 + Math.floor(i / cols) * (ch + 0.2);
-        slide.addShape(pres.ShapeType.rect, { x, y, w: cw, h: ch, fill: { color: SD_COLORS.panel }, line: { color: sdHex(cell.color), width: 2 } });
-        const lines = [{ text: cell.name, options: { bold: true, fontSize: 13, breakLine: true, paraSpaceAfter: 6 } }];
-        cell.strengths.forEach((item) => lines.push({ text: `+ ${item}`, options: { fontSize: 11, color: SD_COLORS.P, breakLine: true, paraSpaceAfter: 3 } }));
-        cell.improvements.forEach((item) => lines.push({ text: `- ${item}`, options: { fontSize: 11, color: SD_COLORS.U, breakLine: true, paraSpaceAfter: 3 } }));
-        text(slide, lines, { x: x + 0.15, y: y + 0.12, w: cw - 0.3, h: ch - 0.24, fit: 'shrink' });
+        const x = left + i * (cw + 20);
+        card(slide, x, top, cw, h);
+        rect(slide, x + 24, top + 26, 10, 10, sdHex(cell.color, C.indigo));
+        text(slide, cell.name, x + 42, top + 18, cw - 62, 26, { size: 16, fontFace: F.display, bold: true, valign: 'middle', fit: 'shrink' });
+        const lines = [];
+        const block = (name, items, color, marker) => {
+          if (!items.length) return;
+          lines.push(run(String(name).toUpperCase(), { size: 10.5, fontFace: F.mono, bold: true, color, charSpacing: 0.8, breakLine: true, paraSpaceBefore: lines.length ? 10 : 0, paraSpaceAfter: 4 }));
+          items.forEach((item) => { lines.push(run(`${marker}  `, { bold: true, color, size: 13.5 })); lines.push(run(item, { size: 13.5, breakLine: true, paraSpaceAfter: 4 })); });
+        };
+        block(data.strengthsLabel || '+', cell.strengths, C.success, '+');
+        block(data.improvementsLabel || '-', cell.improvements, C.warning, '→');
+        text(slide, lines, x + 24, top + 58, cw - 44, h - 74, { lineSpacingMultiple: 1.15, fit: 'shrink' });
       });
     } else if (data.kind === 'bullets') {
-      text(slide, bullets(data.items, 20), { x: M, y: 1.5, w: W - 2 * M, h: 5.3, fit: 'shrink' });
+      data.items.forEach((item, i) => {
+        const y = top + i * (76 + 12);
+        card(slide, left, y, G.CW, 76);
+        text(slide, String(i + 1).padStart(2, '0'), left + 24, y, 56, 76, { size: 24, fontFace: F.display, bold: true, color: C.indigo, valign: 'middle' });
+        text(slide, item, left + 84, y + 6, G.CW - 108, 64, { size: 17, bold: true, valign: 'middle', lineSpacingMultiple: 1.15, fit: 'shrink' });
+      });
     } else if (data.kind === 'columns') {
-      [[data.left, M], [data.right, 7]].forEach(([list, x]) => {
-        label(slide, list.label, x, 1.45, 5.7);
-        text(slide, list.items.length ? bullets(list.items, 16) : '-', { x, y: 1.85, w: 5.7, h: 5, fit: 'shrink' });
+      const h = bottom - top;
+      [data.left, data.right].forEach((list, i) => {
+        const x = i ? right : left, style = SD_LIST_STYLE[list.key] || { marker: '•', color: C.indigo };
+        if (style.dark) dark(slide, x, top, col, h); else card(slide, x, top, col, h);
+        label(slide, list.label, x + 22, top + 18, col - 40, style.dark ? C.green300 : style.color);
+        listRows(slide, list.items.map((item, n) => ({ marker: style.numbered ? String(n + 1).padStart(2, '0') : style.marker, text: item })), x, top + 48, col, h - 60,
+          { markerW: 36, markerSize: 14, size: 15, markerColor: style.color, textColor: style.dark ? C.onDarkText : C.ink, lineColor: style.dark ? '3A3550' : C.line });
       });
     }
   });
