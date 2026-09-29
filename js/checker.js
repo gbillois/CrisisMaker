@@ -1614,7 +1614,7 @@ IMPORTANT: Write your entire response in ${respondInLang}. All verdicts, finding
               <div class="checker-checklist-progress-bar">
                 <div class="checker-checklist-progress-fill" style="width:${pct}%"></div>
               </div>
-              <span class="checker-checklist-progress-text">${tt('Progress', 'Progression', 'Fortschritt')} : ${checkedCount} / ${totalItems} ${tt('items checked', 'éléments cochés', 'Elemente geprüft')}</span>
+              <span class="checker-checklist-progress-text">${tt('Progress:', 'Progression :', 'Fortschritt:')} ${checkedCount} / ${totalItems} ${tt('items checked', 'éléments cochés', 'Elemente geprüft')}</span>
             </div>
           </article>
         `;

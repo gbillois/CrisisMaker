@@ -359,7 +359,7 @@ function renderCellsView() {
               <div class="ce-cell-head">
                 <input type="color" data-ce-cell="${cell.id}.color" value="${cell.color}" aria-label="${escapeAttribute(tt('Cell colour', 'Couleur de la cellule', 'Zellenfarbe'))}">
                 <input type="text" class="ce-cell-name" data-ce-cell="${cell.id}.name" value="${escapeAttribute(cell.name)}" aria-label="${escapeAttribute(tt('Cell name', 'Nom de la cellule', 'Zellenname'))}">
-                <span class="sb-chip">${count} inject(s)</span>
+                <span class="sb-chip">${count} ${escapeHtml(tt('inject(s)', 'inject(s)', 'Inject(s)'))}</span>
                 <button class="sb-icon-btn is-danger" data-tab-action="delete-cell" data-tab-value="${cell.id}" title="${escapeAttribute(tt('Delete cell', 'Supprimer la cellule', 'Zelle löschen'))}">${sbUiIcon('trash', 14)}</button>
               </div>
               <textarea data-ce-cell="${cell.id}.description" rows="2" placeholder="${escapeAttribute(tt('Mission of this cell', 'Mission de cette cellule', 'Auftrag dieser Zelle'))}">${escapeHtml(cell.description)}</textarea>
@@ -513,7 +513,7 @@ function renderDetailedRow(project, row, items, width, ppm) {
   const height = Math.max(1, packing.rows) * DS_ROW_HEIGHT + 12;
   const players = row.players ? row.players.length : 0;
   return `<div class="sb-track-row ds-row" style="--track-color:${row.color}">
-    <div class="sb-track-head" style="height:${height}px"><strong>${escapeHtml(row.name)}</strong><small>${items.length} inject(s)${row.players ? ` · ${players} ${escapeHtml(tt('player(s)', 'joueur(s)', 'Spieler'))}` : ''}</small></div>
+    <div class="sb-track-head" style="height:${height}px"><strong>${escapeHtml(row.name)}</strong><small>${items.length} ${escapeHtml(tt('inject(s)', 'inject(s)', 'Inject(s)'))}${row.players ? ` · ${players} ${escapeHtml(tt('player(s)', 'joueur(s)', 'Spieler'))}` : ''}</small></div>
     <div class="sb-lane" data-ds-lane="${escapeAttribute(row.id)}" style="width:${width}px;height:${height}px">
       ${items.map((item) => {
         const color = sbChannelColor(item.channel);

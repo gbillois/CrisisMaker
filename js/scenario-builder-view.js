@@ -516,7 +516,7 @@ function renderSbVersionsModal(storyboard) {
         <ol>${versions.map((version) => `<li class="${selected?.id === version.id ? 'active' : ''} is-${version.kind}">
           <button data-sb-action="compare-version" data-sb-version="${version.id}">
             <strong>${escapeHtml(version.label)}</strong>
-            <small>${escapeHtml(kinds[version.kind] || version.kind)} · rev ${version.rev} · ${escapeHtml(new Date(version.created_at).toLocaleString())}</small>
+            <small>${escapeHtml(kinds[version.kind] || version.kind)} · rev ${version.rev} · ${escapeHtml(new Date(version.created_at).toLocaleString(uiLocale()))}</small>
             <small>${version.stats?.blocks ?? '?'} ${escapeHtml(tt('blocks', 'blocs', 'Blöcke'))} · ${version.stats?.beats ?? '?'} ${escapeHtml(tt('planned injects', 'injects prévus', 'geplante Injects'))}</small>
           </button>
         </li>`).join('') || `<li class="sb-empty">${escapeHtml(tt('No version yet. Versions are saved before every AI operation, restore and generation, every 5 minutes while you edit, and when you name one.', 'Aucune version pour l’instant. Une version est enregistrée avant chaque opération IA, restauration et génération, toutes les 5 minutes pendant vos modifications, et quand vous en nommez une.', 'Noch keine Version. Versionen werden vor jeder KI-Aktion, Wiederherstellung und Generierung gespeichert, alle 5 Minuten während der Bearbeitung und wenn Sie eine benennen.'))}</li>`}</ol>
