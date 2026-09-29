@@ -1276,6 +1276,10 @@ Return this structure:
 
       function parseStrictLLMJson(text) {
         let body = cleanLLMText(text).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        // An agent reply after other text (Claude may first write its native <invoke> tool syntax, whose
+        // parameters hold JSON): start at the agent object itself, not at the first brace.
+        const agentStart = body.startsWith('{') ? -1 : body.search(/\{\s*"type"\s*:\s*"(tool_call|question|final)"/);
+        if (agentStart > 0) body = body.slice(agentStart);
         if (!body.startsWith('{') && body.includes('{') && body.includes('}')) body = body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1);
         try {
           return JSON.parse(body);

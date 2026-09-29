@@ -697,3 +697,10 @@ test('tool arguments alone are not read as a final answer', () => {
   const h = harness();
   assert.throws(() => h.run(`agentNormalizeResponse({ summary: 'Scenario summary', type_label: 'ransomware', start_date: '2026-11-27T08:00' })`), /must be "tool_call"/);
 });
+
+test('a Claude reply with its native <invoke> syntax first: the agent object is read, not a parameter', () => {
+  const h = harness();
+  const reply = '<invoke name="setMainEvents">\n<parameter name="events">[{"at": 5, "text": "Ransom note"}]</parameter>\n</invoke>\n\nCorrection: here is the valid JSON object.\n\n{"type":"tool_call","tool":"setMainEvents","arguments":{"id":"b1","events":[{"at":5,"text":"Ransom note"}]},"reason":"Set events"}';
+  h.context.reply = reply;
+  assert.equal(h.run('parseStrictLLMJson(reply).tool'), 'setMainEvents');
+});
