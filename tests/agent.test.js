@@ -574,3 +574,14 @@ test('main events with a clock time are placed at that simulated time; the frame
   h.run(`sbBlock(appState.scenario.storyboard, '${blocks[1].id}').events[0].offset_minutes = 10`);
   assert.ok(h.json('sbExerciseChecks(appState.scenario)').some(issue => issue.code === 'event_time'));
 });
+
+test('consistency check: players and cells against the Context frame, default cell names against the learning objectives', async () => {
+  const h = harness();
+  h.run(`appState.scenario.exercise = { players_count: 15, cells_count: 4 }; appState.scenario.scenario.learning_objectives = 'Legal, compliance & business cell: meet the GDPR deadline.';`);
+  h.run(`appState.scenario.cells = [{ id: 'cell_a', name: 'Decision cell', color: '#222222', description: '', players: [{ name: '', role: 'CEO', email: '' }, { name: '', role: 'CFO', email: '' }] }]`);
+  const issues = h.json('agentConsistencyCheck()').issues || h.json('agentConsistencyCheck()');
+  const text = JSON.stringify(issues);
+  assert.match(text, /2 players are listed but the exercise expects 15/);
+  assert.match(text, /1 cells exist but the exercise expects 4/);
+  assert.match(text, /Decision cell.{0,3} still have their default names/);
+});

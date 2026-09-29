@@ -129,6 +129,13 @@ function agentConsistencyCheck() {
   if (!s.scenario.objectives?.trim()) issues.push('No explicit exercise objectives recorded.');
   if (!s.scenario.learning_objectives?.trim()) issues.push('No learning objectives: nothing says what the players must practise.');
   if (!s.scenario.attack_path?.trim()) issues.push('No incident timeline: technical phases and injects have no reference sequence.');
+  // The audience set in the Context tab: the number of cells and of players listed in them.
+  const expectedPlayers = Number(s.exercise?.players_count) || 0, expectedCells = Number(s.exercise?.cells_count) || 0;
+  const listedPlayers = (s.cells || []).reduce((sum, cell) => sum + cell.players.length, 0);
+  if (expectedPlayers && listedPlayers && listedPlayers !== expectedPlayers) issues.push(`Cells: ${listedPlayers} players are listed but the exercise expects ${expectedPlayers}; adjust the players of the cells (upsertCells).`);
+  if (expectedCells && (s.cells || []).length !== expectedCells) issues.push(`Cells: ${(s.cells || []).length} cells exist but the exercise expects ${expectedCells}.`);
+  const generic = (s.cells || []).filter(cell => /^(Decision|Operational crisis|Communication|IT & technical|Legal & compliance|Business continuity|HR & people) cell$/.test(cell.name));
+  if (generic.length && /cell/i.test(s.scenario.learning_objectives || '') && generic.some(cell => !(s.scenario.learning_objectives || '').toLowerCase().includes(cell.name.toLowerCase()))) issues.push(`Cells: ${generic.map(cell => `"${cell.name}"`).join(', ')} still have their default names while the learning objectives name the cells: rename them after the learning objectives (upsertCells).`);
   const beats = storyboard ? storyboard.blocks.flatMap(block => block.beats) : [];
   for (const cell of s.cells || []) {
     const count = beats.filter(beat => sbReaches(beat.cell_id, cell.id)).length + s.stimuli.filter(item => sbReaches(item.cell_id, cell.id) && !item.scenario_link?.beat_id).length;
