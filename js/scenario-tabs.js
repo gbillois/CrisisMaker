@@ -614,7 +614,9 @@ function renderInjectEditor(project, item) {
       <label class="be-inline">${escapeHtml(tt('Time (min)', 'Heure (min)', 'Zeit (Min.)'))} · ${sbFormatOffset(item.time)}<input type="number" min="0" step="1" data-ds-time value="${item.time}" ${readOnly}></label>
       <span class="be-phase">${escapeHtml(tt('Phase:', 'Phase :', 'Phase:'))} <b>${escapeHtml(phase?.title || '-')}</b></span>
       <span class="be-actions">
-        ${item.stimulus ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} ${escapeHtml(tt('Full editor', 'Éditeur complet', 'Vollständiger Editor'))}</button>` : ''}
+        ${item.stimulus
+          ? `<button class="btn btn-secondary btn-sm" data-sb-action="open-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}">${sbUiIcon('open', 13)} ${escapeHtml(tt('Full editor', 'Éditeur complet', 'Vollständiger Editor'))}</button>`
+          : `<button class="btn btn-secondary btn-sm" data-tab-action="ds-edit" title="${escapeAttribute(tt('Creates the inject from the plan, without AI, and opens it in the full editor', 'Crée l’inject à partir du plan, sans IA, et l’ouvre dans l’éditeur complet', 'Erstellt den Inject aus dem Plan, ohne KI, und öffnet ihn im vollständigen Editor'))}" ${readOnly}>${sbUiIcon('open', 13)} ${escapeHtml(tt('Full editor', 'Éditeur complet', 'Vollständiger Editor'))}</button>`}
         ${item.stimulus?.scenario_link ? `<button class="sb-icon-btn ${item.stimulus.scenario_link.locked ? 'is-on' : ''}" data-sb-action="lock-stimulus" data-sb-stimulus="${escapeAttribute(item.stimulus.id)}" title="${escapeAttribute(item.stimulus.scenario_link.locked ? tt('Unlock', 'Déverrouiller', 'Entsperren') : tt('Lock: never modified by sync', 'Verrouiller : jamais modifié par la synchronisation', 'Sperren: wird bei der Synchronisierung nie geändert'))}" ${readOnly}>${sbUiIcon(item.stimulus.scenario_link.locked ? 'lock' : 'unlock', 15)}</button>` : ''}
         <button class="sb-icon-btn is-danger" data-tab-action="ds-delete" title="${escapeAttribute(tt('Delete (Del)', 'Supprimer (Suppr)', 'Löschen (Entf)'))}" ${readOnly}>${sbUiIcon('trash', 15)}</button>
         <button class="sb-icon-btn" data-tab-action="ds-deselect" title="${escapeAttribute(tt('Close (Esc)', 'Fermer (Échap)', 'Schließen (Esc)'))}">${sbUiIcon('close', 15)}</button>
@@ -652,7 +654,10 @@ function renderInjectEditor(project, item) {
         <label class="sb-mini-field">${escapeHtml(tt('From', 'De', 'Von'))}<select data-ds-stim="actor_id" ${readOnly}>${project.actors.map((actor) => sbOption(actor.id, `${actor.name} · ${roleLabel(actor.role)}`, stimulus.actor_id)).join('')}</select></label>
         <label class="sb-mini-field ds-title">${escapeHtml(tt('Title', 'Titre', 'Titel'))}<input type="text" data-ds-stim="name" value="${escapeAttribute(stimulus.name || '')}" placeholder="${escapeAttribute(sbStimulusLabel(stimulus))}" ${readOnly}></label>
       </div>
-      <p class="sb-help">${escapeHtml(tt('This inject is not part of the storyline plan (created by hand, imported or orphan). It keeps its content; edit it in the full editor.', 'Cet inject ne fait pas partie du plan de la storyline (créé à la main, importé ou orphelin). Il garde son contenu ; modifiez-le dans l’éditeur complet.', 'Dieser Inject gehört nicht zum Plan der Storyline (manuell erstellt, importiert oder verwaist). Er behält seinen Inhalt; bearbeiten Sie ihn im vollständigen Editor.'))}</p>
+      <p class="sb-help">${escapeHtml(tt('This inject is not part of the storyline plan (created by hand, imported or orphan). It keeps its content; edit it in the full editor, by hand or with AI.', 'Cet inject ne fait pas partie du plan de la storyline (créé à la main, importé ou orphelin). Il garde son contenu ; modifiez-le dans l’éditeur complet, à la main ou avec l’IA.', 'Dieser Inject gehört nicht zum Plan der Storyline (manuell erstellt, importiert oder verwaist). Er behält seinen Inhalt; bearbeiten Sie ihn im vollständigen Editor, von Hand oder mit KI.'))}</p>
+      <div class="ds-editor-actions">
+        <button class="btn btn-secondary btn-sm" data-tab-action="ds-edit-ai" ${ai && !readOnly ? '' : 'disabled'} title="${escapeAttribute(ai ? tt('Opens the full editor on its “Edit with AI” panel', 'Ouvre l’éditeur complet sur son panneau « Modifier avec l’IA »', 'Öffnet den vollständigen Editor im Bereich „Mit KI bearbeiten“') : tt('Configure an AI connection in Settings to use this feature.', 'Configurez une connexion IA dans les Paramètres pour utiliser cette fonctionnalité.', 'Konfigurieren Sie eine KI-Verbindung in den Einstellungen, um diese Funktion zu nutzen.'))}">${sbUiIcon('wand', 13)} ${escapeHtml(tt('Edit with AI', 'Modifier avec l’IA', 'Mit KI bearbeiten'))}</button>
+      </div>
     </div>`;
 }
 
@@ -1343,6 +1348,21 @@ async function tabHandleAction(event) {
           ? (result.written ? tt('Inject created and written.', 'Inject créé et rédigé.', 'Inject erstellt und geschrieben.') : tt('Inject created.', 'Inject créé.', 'Inject erstellt.'))
           : tt('Nothing created.', 'Rien n’a été créé.', 'Nichts erstellt.'), result.created ? 'success' : 'info');
         break;
+      }
+      case 'ds-edit': {
+        const item = dsSelectedItem(project);
+        if (item) await openItemEditor(project, item.key);
+        break;
+      }
+      case 'ds-edit-ai': {
+        const item = dsSelectedItem(project);
+        if (!item?.stimulus) break;
+        appState.llmState.stimulus.collapsed = false;
+        appState.selectedStimulusId = item.stimulus.id;
+        appState.stimulusModalId = item.stimulus.id;
+        App.render();
+        document.querySelector('[data-llm-zone="stimulus"]')?.focus();
+        return;
       }
       case 'ds-rewrite': {
         const item = dsSelectedItem(project);
