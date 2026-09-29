@@ -93,172 +93,9 @@
         return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
       }
 
+      /* The demo project (js/demo-scenario.js): loaded on a first visit, when no autosave exists. */
       function defaultScenario() {
-        const actors = [
-          { id: uid('actor'), name: 'Sophie Delacroix', role: 'internal', organization: 'StonaWave', title: 'Chief Information Security Officer', language: 'fr', avatar_initials: 'SD', avatar_url: '' },
-          { id: uid('actor'), name: 'Jean-Luc Moreau', role: 'internal', organization: 'StonaWave', title: 'Chief Executive Officer', language: 'fr', avatar_initials: 'JM', avatar_url: '' },
-          { id: uid('actor'), name: 'Rachel Greenberg', role: 'journalist', organization: 'The New York Times', title: 'Cybersecurity Reporter', language: 'en', avatar_initials: 'RG', avatar_url: '' },
-          { id: uid('actor'), name: 'CERT-FR', role: 'authority', organization: 'ANSSI', title: 'Government Cyber Alert and Response Center', language: 'fr', avatar_initials: 'CF', avatar_url: '' },
-          { id: uid('actor'), name: 'David Chen', role: 'partner', organization: 'MediChem Manufacturing', title: 'VP Supply Chain Operations', language: 'en', avatar_initials: 'DC', avatar_url: '' },
-          { id: uid('actor'), name: 'PharmLeaks', role: 'attacker', organization: 'PharmLeaks Ransomware Group', title: 'Threat Actor', language: 'en', avatar_initials: 'PL', avatar_url: '' },
-          { id: uid('actor'), name: 'Elise Warren', role: 'analyst', organization: 'Delta Advisory', title: 'Senior Cybersecurity Analyst', language: 'en', avatar_initials: 'EW', avatar_url: '' },
-          { id: uid('actor'), name: 'Thomas Bergmann', role: 'internal', organization: 'StonaWave', title: 'IT Director', language: 'en', avatar_initials: 'TB', avatar_url: '' },
-          { id: uid('actor'), name: 'Camille Vasseur', role: 'journalist', organization: 'Le Monde', title: 'Cybersecurity Journalist', language: 'fr', avatar_initials: 'CV', avatar_url: '' },
-          { id: uid('actor'), name: 'Jonas Reinhardt', role: 'journalist', organization: 'Frankfurter Allgemeine Zeitung', title: 'Business Correspondent', language: 'de', avatar_initials: 'JR', avatar_url: '' }
-        ];
-        const scenario = {
-          id: uid('scenario'),
-          name: 'CrisisMaker - Ransomware exercise - StonaWave - Operation Bitter Pill',
-          client: { name: 'StonaWave', sector: 'Pharmaceutical', language: 'en', logo_url: '' },
-          scenario: { type: 'Ransomware', summary: 'The ransomware group PharmLeaks triggers a coordinated attack against StonaWave, a global pharmaceutical company headquartered near Paris with manufacturing sites in New Jersey, Frankfurt, and Hyderabad. After gaining initial access three weeks earlier via a compromised contractor VPN credential, the attackers moved laterally through Active Directory, mapped and sabotaged backup infrastructure, exfiltrated 2.4 TB of patient and clinical-trial data, and deployed ransomware across MES, CTMS, ERP, and identity platforms. The encryption is triggered at 07:45 ET on Sunday when staffing is minimal. The visible exercise covers the first six hours, but the full scenario continues through data publication, a clean-room rebuild, staged production recovery, and a board-level review of the structural weaknesses that enabled the crisis.', detailed_context: 'Operation Bitter Pill begins twenty-one days before the visible crisis when PharmLeaks purchases a valid contractor VPN credential from an initial access broker. The group discovers excessive trust between corporate identity, manufacturing systems, clinical research platforms, and backup administration. It exfiltrates 2.4 TB of patient records, clinical-trial results, regulatory submissions, and legal files, then deletes online backup catalogs and disables replication jobs before pre-positioning ransomware through software deployment tooling. At H0, coordinated encryption disrupts Active Directory, ERP, CTMS, and manufacturing execution systems across New Jersey, Frankfurt, and Hyderabad. The outage blocks quality release and partner supply-chain flows, while a $25 million double-extortion demand creates a parallel data-breach crisis. StonaWave refuses payment after finding a clean immutable backup and trusted services preserved by Hyderabad’s early isolation. PharmLeaks publishes a first data sample on Day +2; critical oncology production resumes in stages by Day +5. The final review concludes that the stolen credential was only the entry point: the scale of the crisis came from weak partner access controls, excessive shared trust, fragile backup governance, and insufficiently tested global recovery plans.', start_date: '2026-03-15T08:00', timezone: 'America/New_York' },
-          actors,
-          stimuli: [],
-          custom_templates: [],
-          settings: { language: 'en', inject_language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-5', ai_api_key: '', ollama_mode: 'local', ollama_endpoint: 'http://localhost:11434', azure_endpoint: '', azure_api_key: '', azure_deployment: '', azure_api_version: DEFAULT_AZURE_API_VERSION, azure_speech_key: '', azure_speech_region: 'westeurope', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0, watermark_audio_enabled: true, confidentiality_acknowledged: false }
-        };
-        // Each demo inject reads as its own message: the sender from its actor, the date and time
-        // from the simulated clock, then its own content where the template's sample does not fit.
-        const demoStimulus = (channel, actor, offsetMinutes, templateId = null, content = {}) => {
-          const stimulus = makeStimulus(channel, actor.id, offsetMinutes, templateId);
-          const fields = stimulus.fields;
-          if ('from_name' in fields) fields.from_name = channel === 'internal_memo' && actor.title ? `${actor.name}, ${actor.title}` : actor.name;
-          if ('sender' in fields) fields.sender = actor.name;
-          if (typeof sbSetClockFields === 'function') sbSetClockFields(stimulus, scenario);
-          Object.assign(fields, content);
-          return stimulus;
-        };
-        const itDirector = { from_email: 'thomas.bergmann@stonawave.com', to: 'Crisis Committee', cc: 'Sophie Delacroix (CISO), Jean-Luc Moreau (CEO)' };
-        const samples = [
-          demoStimulus('email_internal',    actors[0], 0),
-          demoStimulus('sms_notification',  actors[0], 15),
-          demoStimulus('email_external',    actors[4], 30),
-          demoStimulus('email_external',    actors[5], 45, null, {
-            from_email: 'negotiator@pharmleaks.example',
-            to: 'sophie.delacroix@stonawave.com; jean-luc.moreau@stonawave.com',
-            cc: '',
-            subject: 'Your systems are encrypted. 2.4 TB of your data is with us',
-            body: '<p>StonaWave management,</p><p>We are PharmLeaks. Your MES, ERP, CTMS and Active Directory are encrypted. Before that, we took 2.4 TB of your data: patient records, clinical trial results, regulatory submissions and legal files.</p><p><strong>Our terms:</strong></p><ul><li>25 million USD in Bitcoin</li><li>72 hours from this message</li><li>After payment: the decryption tool and proof that your data is deleted</li></ul><p>Proof: the attached file lists 50 patient records from your oncology trials. More samples are on our portal <code>pharmleaks[.]onion/stonawave</code>, chat key <code>SW-7731-QX</code>.</p><p>Do not contact the police or the press. Do not try to restore your systems: every attempt raises the price. When the timer reaches zero, everything is published and sent to your regulators, your partners and journalists.</p><p>PharmLeaks</p>',
-            has_attachment: true,
-            attachment_name: 'PROOF_stonawave_patients.txt'
-          }),
-          demoStimulus('post_reddit',       actors[6], 55, null, {
-            author: 'u/elise_warren_cti',
-            author_flair: 'Threat Intel Analyst',
-            upvotes: 412,
-            comments_count: 87,
-            date: '5 min ago',
-            top_comment: { ...TEMPLATE_LIBRARY.post_reddit.defaults.top_comment, upvotes: 96, date: '2 min ago' }
-          }),
-          demoStimulus('article_press',     actors[8], 65, 'lemonde', { author: 'Camille Vasseur', date: '15 mars 2026 à 09h05' }),
-          demoStimulus('post_twitter',      actors[6], 70, null, { date: '9:10 AM · Mar 15, 2026' }),
-          demoStimulus('email_authority',   actors[3], 80),
-          demoStimulus('email_internal',    actors[7], 88, null, {
-            ...itDirector,
-            subject: 'DECISION NEEDED - Cut the links between sites before 10:00',
-            body: '<p>All,</p><p>Delta Advisory has found signs that the attackers still hold domain administrator rights. The encryption keeps spreading through the links between our sites. Hyderabad isolated itself at 08:40 and is the only site that still looks clean.</p><p><strong>I propose to isolate now:</strong></p><ul><li>Cut the WAN links between Paris, New Jersey, Frankfurt and Hyderabad</li><li>Take Active Directory offline and switch to the break-glass accounts</li><li>Close every partner connection, including the MediChem EDI</li></ul><p><strong>What it costs:</strong></p><ul><li>Hyderabad keeps producing but can no longer release batches to the other sites</li><li>No email, ERP or badge system for 24 to 48 hours</li><li>Partners and hospitals fall back to phone and paper orders</li></ul><p>If we wait, we risk losing Hyderabad and the last backups. I need a go or no-go from the crisis committee by 10:00.</p><p>Thomas Bergmann<br>IT Director, StonaWave</p>',
-            attachment_name: 'Isolation_Options_and_Impacts.pdf'
-          }),
-          demoStimulus('article_press',     actors[2], 98, 'nyt', { author: 'Rachel Greenberg', update_time: 'Updated 9:38 a.m. ET' }),
-          demoStimulus('breaking_news_tv',  actors[2], 105, 'cnn'),
-          demoStimulus('internal_memo',     actors[1], 120),
-          demoStimulus('email_internal',    actors[7], 128, null, {
-            ...itDirector,
-            subject: 'Backup status - Online copies destroyed, immutable copies under verification',
-            body: '<p>All,</p><p>Status of our backups at 10:00:</p><ul><li>The online backup catalogs were deleted by the attackers two days ago and replication was disabled: these copies are lost</li><li>The immutable copies in the Frankfurt vault are intact but six days old; Delta Advisory is scanning them for implants</li><li>The Hyderabad systems were isolated early and look clean</li></ul><p><strong>Next steps:</strong></p><ul><li>Integrity results for the ERP and MES images around 10:30</li><li>Clean-room rebuild of Active Directory once a trusted image is confirmed</li><li>Nothing is restored on the production network before forensics clears it</li></ul><p>Expect up to six days of data loss on the systems restored from the vault. Business teams should start listing what will have to be entered again by hand.</p><p>Thomas Bergmann<br>IT Director, StonaWave</p>',
-            has_attachment: false,
-            attachment_name: '',
-            importance: 'normal'
-          }),
-          demoStimulus('press_release',     actors[1], 135, null, { date: 'Paris, March 15, 2026, 10:15 a.m. ET' }),
-          demoStimulus('post_linkedin',     actors[6], 145, null, { date: '10m', reactions_count: 318, comments_count: 42, reposts_count: 17 }),
-          demoStimulus('email_internal',    actors[7], 155, null, {
-            ...itDirector,
-            subject: 'Clean immutable backup confirmed - ERP restore can start in the clean room',
-            body: '<p>All,</p><p>Delta Advisory confirms that the immutable ERP backup of 9 March is clean: no implant, no attacker account, checksums verified.</p><p><strong>Recovery plan, subject to the committee\'s approval:</strong></p><ul><li>Today 13:00: rebuild Active Directory in the clean room from a trusted image</li><li>Tonight: restore the ERP and reconcile the order backlog with Supply Chain</li><li>From Tuesday: restart the oncology MES lines one site at a time, Hyderabad first, then Frankfurt and New Jersey</li></ul><p>Every restored system gets new credentials and EDR before it reconnects, which will slow down access for users. The partner links (MediChem EDI) stay closed until the ERP is validated.</p><p>Thomas Bergmann<br>IT Director, StonaWave</p>',
-            attachment_name: 'Recovery_Plan_ERP_v1.pdf'
-          }),
-          demoStimulus('article_press',     actors[9], 160, 'faz', { author: 'Von Jonas Reinhardt, Frankfurt', time: '10:40 Uhr' }),
-          demoStimulus('sms_notification',  actors[5], 165, null, {
-            text: 'PharmLeaks: 70 hours left. Tomorrow we publish the first batch: results of your oncology trials. Preview at pharmleaks[.]onion/stonawave. Pay, or your patients read about it in the press.',
-            device: 'android'
-          }),
-          demoStimulus('email_internal',    actors[0], 178, null, {
-            subject: 'Situation report 11:00 - Status and priorities for the next operational period',
-            body: '<p>All,</p><p>Situation at 11:00, three hours after the crisis cell was activated:</p><ul><li>The encryption is contained: the sites are isolated and Active Directory is offline</li><li>A clean immutable ERP backup is confirmed; the clean-room rebuild starts at 13:00</li><li>PharmLeaks demands $25M within 72 hours and now threatens to publish clinical-trial data; nobody has answered the attacker</li><li>CERT-FR is involved; the notifications to the CNIL and the health authorities are being prepared; the press release is out</li></ul><p><strong>Priorities for the next operational period (11:00 to 19:00):</strong></p><ol><li>Patient safety: secure the supply of critical oncology treatments with MediChem and partner hospitals</li><li>Recovery: Active Directory and ERP in the clean room, under forensic control</li><li>Data breach: scope the stolen data and prepare the notification of patients</li><li>Communication: next staff and media update at 15:00</li></ol><p>The recovery teams take over from the crisis cell at 11:30. Next crisis committee at 14:00.</p><p>Sophie Delacroix<br>CISO, StonaWave</p>',
-            attachment_name: 'Situation_Report_1100.pdf'
-          })
-        ];
-        scenario.stimuli = samples;
-        scenario.scenario.objectives = [
-          'Decide whether and how to isolate manufacturing sites while the scope is still unclear',
-          'Decide on the response to the ransom and data-publication threat',
-          'Notify authorities, regulators and partners on time',
-          'Communicate to staff, partners and media without premature disclosure',
-          'Prioritise the recovery of critical production from trusted backups'
-        ].join('\n');
-        scenario.scenario.learning_objectives = [
-          'Everyone: apply the crisis management procedure, take documented decisions under uncertainty and keep every cell aligned.',
-          'Operational crisis cell: qualify the incident quickly, decide on isolation of the manufacturing sites and keep a shared situation picture.',
-          'Communication cell: hold consistent internal, partner and media messages without premature disclosure of the data theft.',
-          'Legal & compliance cell: meet NIS2 and GDPR notification deadlines and document every legal decision.',
-          'Business continuity cell: run degraded production and prioritise the recovery of critical lines from trusted backups.'
-        ].join('\n');
-        scenario.scenario.attack_path = [
-          '1. Initial access: PharmLeaks logs in to the VPN with a stolen contractor credential (no MFA), three weeks before D-day',
-          '2. Discovery and privilege escalation: Active Directory enumeration, Kerberoasting of a service account, then domain administrator',
-          '3. Lateral movement: RDP and PsExec to file servers, MES servers and the backup console',
-          '4. Defense evasion: EDR disabled on key servers, backup jobs sabotaged and immutable copies deleted',
-          '5. Exfiltration: 2.4 TB of patient and clinical-trial data sent to cloud storage over two weeks',
-          '6. Impact: Sunday 08:00, ransomware pushed by group policy to MES, ERP and identity systems; ransom note and leak-site countdown'
-        ].join('\n');
-        scenario.storyboard_versions = [];
-        if (storyboardModelLoaded()) {
-          scenario.storyboard = sbBuildExampleStoryboard(scenario);
-          const objectiveList = sbObjectivesList(scenario);
-          scenario.storyboard.blocks.forEach((block, index) => { block.objectives = [objectiveList[[0, 1, 0, 4, 4, 3, 3, 2][index] ?? 0]]; });
-          scenario.cells = [];
-          scenario.exercise = { players_count: 12, cells_count: '' };
-          sbFlattenWorkstreams(scenario);
-          scenario.exercise.cells_count = scenario.cells.length;
-          // The designer's context, the players of each cell, the main events of each phase and
-          // one inject for every cell: the demo shows every tab at work.
-          scenario.storyboard.meta.brief = 'Three-hour executive exercise for StonaWave, a global pharmaceutical group. Test the isolation decision under uncertainty, patient safety, the regulatory notifications (NIS2, GDPR, health authorities) and media pressure in three languages. Players are experienced crisis managers; the attacker escalates in the last hour.';
-          const demoPlayers = {
-            operational: [['Claire Martin', 'Crisis director'], ['Tom Becker', 'IT operations lead'], ['Nadia Haddad', 'Site manager, New Jersey']],
-            communication: [['Sofia Rossi', 'Head of communications'], ['Mark Chen', 'Social media lead'], ['Julie Moreau', 'Internal communications']],
-            legal: [['Laura Schmidt', 'General counsel'], ['Hugo Lefèvre', 'Data protection officer'], ['Priya Nair', 'Regulatory affairs']],
-            business: [['Anika Patel', 'Head of manufacturing'], ['James Carter', 'Supply chain director'], ['Elena Vogel', 'Customer service director']]
-          };
-          scenario.cells.forEach((cell) => { cell.players = (demoPlayers[cell.key] || []).map(([name, role]) => sbNormalizePlayer({ name, role })); });
-          const demoEvents = [
-            [[0, 'Ransomware detonates across the MES, ERP and identity systems'], [10, 'Production lines stop in New Jersey and Frankfurt']],
-            [[5, 'PharmLeaks ransom note: $25M, 72-hour deadline'], [20, 'The leak site shows a countdown and sample patient files']],
-            [[10, 'IT asks to cut the interconnections between sites'], [30, 'A partner hospital reports missing deliveries']],
-            [[10, 'The CEO addresses all staff; manual production procedures start'], [30, 'International press coverage in French, English and German']],
-            [[5, 'Clean backups confirmed for the ERP'], [15, 'PharmLeaks threatens to publish clinical-trial data']],
-            [[5, 'Crisis exit criteria met; handover to the recovery teams']]
-          ];
-          sbMainBlocks(scenario.storyboard).forEach((block, index) => {
-            block.events = (demoEvents[index] || []).map(([at, text]) => sbMakeEvent({ offset_minutes: Math.min(at, Math.max(0, block.duration_minutes - 1)), text }));
-          });
-          const ceo = sbMainBlocks(scenario.storyboard).flatMap((block) => block.beats).find((beat) => /CEO/i.test(beat.title));
-          if (ceo) ceo.cell_id = SB_ALL_CELLS;
-          const ceoStimulus = ceo && scenario.stimuli.find((stimulus) => stimulus.scenario_link?.beat_id === ceo.id);
-          if (ceoStimulus) ceoStimulus.cell_id = SB_ALL_CELLS;
-          // The ransom email goes to the crisis cell, not to the cell of partner emails.
-          const ransom = samples[3];
-          const ransomBeat = sbMainBlocks(scenario.storyboard).flatMap((block) => block.beats).find((beat) => beat.id === ransom.scenario_link?.beat_id);
-          const operational = scenario.cells.find((cell) => cell.key === 'operational');
-          if (ransomBeat && operational) ransomBeat.cell_id = ransom.cell_id = operational.id;
-          scenario.scenario.phases = sbDerivePhases(scenario.storyboard);
-          sbSealLinks(scenario);
-        }
-        scenario.debrief = buildDebriefFromScenario(scenario);
-        scenario.video_debrief = normalizeVideoDebrief(
-          { source_material: scenario.scenario.summary },
-          scenario.settings.inject_language || scenario.client.language || scenario.settings.language
-        );
-        return scenario;
+        return buildStonaWaveDemo();
       }
 
       // Storyboard helpers live in scenario-model.js; some tools load data.js alone.
@@ -294,6 +131,10 @@
           video_debrief: normalizeVideoDebrief(null, settingsOverrides.inject_language || settingsOverrides.language || 'en'),
           evaluation: typeof normalizeEvaluation === 'function' ? normalizeEvaluation(null) : { sheets: {} },
           slide_debrief: typeof normalizeSlideDebrief === 'function' ? normalizeSlideDebrief(null) : {},
+          checklist: normalizeChecklist(null),
+          player_pool: [],
+          actor_categories: [],
+          framing_validation: null,
           settings: { ...base.settings, ...settingsOverrides }
         };
       }

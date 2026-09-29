@@ -14,6 +14,7 @@ context.globalThis = context;
 vm.createContext(context);
 
 for (const file of [
+  'js/demo-scenario.js',
   'js/data.js',
   'js/config.js',
   'js/debrief-renderer.js',

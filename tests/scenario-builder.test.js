@@ -68,13 +68,13 @@ test('model: example project ships a single linked storyline with recipient cell
   const info = h.json(`({ blocks: appState.scenario.storyboard.blocks.length, tracks: appState.scenario.storyboard.tracks.length, cells: appState.scenario.cells.map(c => c.key), beatsWithoutCell: appState.scenario.storyboard.blocks.flatMap(b => b.beats).filter(b => !sbHasRecipient(appState.scenario, b.cell_id)).length, stimuliWithoutCell: appState.scenario.stimuli.filter(s => !s.cell_id).length, linked: appState.scenario.stimuli.filter(s => s.scenario_link).length, impacts: sbComputeImpacts(appState.scenario).length, issues: sbStructuralChecks(appState.scenario.storyboard, appState.scenario).filter(i => i.severity !== 'info').map(i => i.message), exercise: appState.scenario.exercise })`);
   assert.equal(info.tracks, 1);
   assert.equal(info.blocks, 6);
-  assert.deepEqual(info.cells, ['operational', 'communication', 'legal', 'business']);
+  assert.deepEqual(info.cells, ['decision', 'it', 'communication', 'legal', 'business']);
   assert.equal(info.beatsWithoutCell, 0);
   assert.equal(info.stimuliWithoutCell, 0);
-  assert.equal(info.linked, 19);
+  assert.equal(info.linked, 40);
   assert.equal(info.impacts, 0);
   assert.deepEqual(info.issues, []);
-  assert.deepEqual(info.exercise, { players_count: 12, cells_count: 4 });
+  assert.deepEqual(info.exercise, { players_count: 17, cells_count: 5 });
 });
 
 test('model: workstreams flatten into the main storyline with recipient cells, links and objectives kept', () => {
@@ -112,7 +112,7 @@ test('model: cell count adds presets without dropping cells in use, and cell cha
   h.run('sbSetCellsCount(appState.scenario, 6)');
   assert.equal(h.run('appState.scenario.cells.length'), 6);
   h.run('sbSetCellsCount(appState.scenario, 1)');
-  assert.equal(h.run('appState.scenario.cells.length'), 4, 'cells with injects are kept');
+  assert.equal(h.run('appState.scenario.cells.length'), 5, 'cells with injects are kept');
   const before = h.run('sbComputeImpacts(appState.scenario).length');
   assert.equal(before, 0);
   h.run(`(() => { const block = sbStoryboard().blocks.find(b => b.beats.length); block.beats[0].cell_id = appState.scenario.cells.find(c => c.id !== block.beats[0].cell_id).id; })()`);
@@ -364,6 +364,8 @@ test('AI: skeleton output is repaired, validated and applied as one undoable ste
 test('AI: reviewExercise merges rules with AI findings', async () => {
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); Object.assign(appState.scenario.settings, { ai_api_key: 'TEST-SECRET', ai_provider: 'openai' }); StoryboardHistory.ensure();`);
+  // The demo passes every rule: one planned inject without recipient gives the rules a finding.
+  h.run(`appState.scenario.storyboard.blocks[0].beats[0].cell_id = ''`);
   const target = h.json(`({ cell: appState.scenario.cells[1].id, name: appState.scenario.cells[1].name })`);
   const calls = mockAI(h, [
     () => ({ score: 71, summary: 'Rhythm is uneven.', issues: [{ severity: 'warning', at: 90, cell: target.name, message: 'Two floods in a row.', suggestion: 'Spread them.' }, { severity: 'bogus', message: '' }] })
@@ -577,6 +579,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   const inject = h.run('renderDetailedView()');
   for (const marker of ['data-ds-time', 'data-rcpt=', 'data-tab-action="ds-add"']) assert.ok(inject.includes(marker), marker);
   assert.ok(!inject.includes('data-tab-action="ds-plan"') && !inject.includes('ds-cell-chip is-add'), 'no "Plan with AI", no "+ Cell"');
+  h.run(`appState.scenario.storyboard.blocks[0].beats[0].cell_id = ''`);
   h.run(`tabUI('summary').review = { score: null, summary: '', issues: sbExerciseChecks(appState.scenario) }; tabUI('summary').time = 120`);
   const summary = h.run('renderSummaryView()');
   for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'cc-launch', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
@@ -660,7 +663,7 @@ test('play: clock, numbering, timing, statuses both ways with the log, on-the-fl
   assert.equal(h.run(`playNumbers().get('${first}')`), 1);
   assert.ok(h.run(`ExportEngine.filenameForStimulus(getSortedStimuli()[0])`).startsWith('01_H+00-00_'));
   const csv = h.run(`ExportEngine.chronogramCsv(getSortedStimuli())`);
-  assert.ok(csv.includes('"#";"Time";"Simulated time";"Phase"') && csv.includes('"Encryption hits on Sunday morning"'));
+  assert.ok(csv.includes('"#";"Time";"Simulated time";"Phase"') && csv.includes('"Monday 08:30: the plants stop"'));
   // Clock: paused at H+1:06, the right items are due, late and soon.
   h.run(`Object.assign(playState(), { offset_min: 66, running: false })`);
   assert.equal(Math.round(h.run('playNow()')), 66);
@@ -1079,7 +1082,7 @@ test('inject editor: the phase it belongs to and the cells that receive it', () 
 
 test('evaluation: one sheet per cell, default criteria by type, editable, saved, exported to Excel', () => {
   const h = harness();
-  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.scenario.evaluation = normalizeEvaluation(null);`);
   const cells = h.json('appState.scenario.cells.map((cell) => ({ id: cell.id, key: cell.key, name: cell.name }))');
   const legal = cells.find((cell) => cell.key === 'legal');
   const sheet = h.json(`evSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
@@ -1145,7 +1148,7 @@ function escapeForTest(text) { return String(text).replace(/&/g, '&amp;'); }
 
 test('debrief: one tab with three parts; the slide deck shows the timeline, the phases, the evaluation and the debrief messages', async () => {
   const h = harness();
-  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.route = 'debrief';`);
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.scenario.evaluation = normalizeEvaluation(null); appState.scenario.slide_debrief = normalizeSlideDebrief(null); appState.route = 'debrief';`);
   const hub = h.run('renderDebriefView()');
   for (const part of ['slides', 'story', 'video']) assert.ok(hub.includes(`data-db-part="${part}"`), part);
   assert.ok(hub.includes('data-sd-action="download"') && hub.includes('sd-grid'), 'slide debrief by default');
@@ -1201,10 +1204,11 @@ test('cells: a deleted cell stays deleted after reload, injects for several cell
   const recipients = () => h.json(`[...appState.scenario.storyboard.blocks.flatMap((block) => block.beats.map((beat) => beat.cell_id)), ...appState.scenario.stimuli.map((stimulus) => stimulus.cell_id)]`);
   const beatCell = (id) => h.run(`appState.scenario.storyboard.blocks.flatMap((block) => block.beats).find((beat) => beat.id === '${id}').cell_id`);
   const before = recipients();
+  const shared = h.json(`sbExerciseItems(appState.scenario).filter((item) => item.cell_id !== '${target}' && sbRecipientIds(item.cell_id).includes('${target}')).map((item) => item.key)`);
   await h.run(`tabHandleAction({ currentTarget: { dataset: { tabAction: 'delete-cell', tabValue: '${target}' } } })`);
   const message = h.run('lastConfirm');
-  assert.ok(message.includes(`It receives ${alone.length + 1} inject(s)`), message);
-  assert.ok(message.includes(`${alone.length} become unassigned`) && message.includes('1 keep their other recipient cells'), message);
+  assert.ok(message.includes(`It receives ${alone.length + shared.length} inject(s)`), message);
+  assert.ok(message.includes(`${alone.length} become unassigned`) && message.includes(`${shared.length} keep their other recipient cells`), message);
   assert.deepEqual(h.json('appState.scenario.cells.map((cell) => cell.id)'), cells.filter((id) => id !== target));
   assert.ok(!recipients().some((value) => value.split('+').includes(target)), 'no reference to the deleted cell is left');
   assert.equal(beatCell(multi.beat), first);
@@ -1292,7 +1296,7 @@ test('actors: deleting an actor asks first, leaves its injects without sender, u
 
 test('check & challenge: the ready-to-play checklist is saved with each project, the old shared one migrates once', () => {
   const h = harness();
-  h.run(`saveLocal = () => {}; appState.scenario = defaultScenario(); StoryboardHistory.ensure()`);
+  h.run(`saveLocal = () => {}; appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.scenario.checklist = normalizeChecklist(null)`);
   const key = h.run('checkerLegacyChecklistKey()');
   h.storage.set(key, JSON.stringify({ checked: { playability_0: true, bogus: 'yes' }, customItems: { playability: ['Book the room', ''] } }));
   assert.equal(h.run('checkerLoadChecklist()'), true);
@@ -1373,7 +1377,7 @@ test('slide debrief: long lists continue on extra slides; nothing is dropped and
   assert.deepEqual(h.json('sdTimelineTick(180, 180)'), { left: 91, tick: 100 });
   assert.deepEqual(h.json('sdTimelineTick(90, 180)'), { left: 50, tick: 50 });
 
-  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.scenario.slide_debrief = normalizeSlideDebrief(null);`);
   const blockId = h.run('sbMainBlocks(sbStoryboard())[0].id');
   const phaseInjects = h.run(`ExerciseModel.of(appState.scenario).injects.filter((inject) => inject.phase_id === '${blockId}').length`);
   // Nine main events in phase 1: 4 + 4 + 1 over three slides.
