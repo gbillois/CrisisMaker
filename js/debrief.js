@@ -1,7 +1,7 @@
       const DEBRIEF_PHASE_PRESETS = [
-        { id: 'prelude', label: 'Before the crisis · Silent compromise', range: 'Weeks before H0', start: 0, end: 0.34, color: '#d4a03c' },
-        { id: 'detonation', label: 'The crisis · Detonation and escalation', range: 'H0 · Crisis day', start: 0.34, end: 0.76, color: '#dc3c28' },
-        { id: 'fallout', label: 'After the crisis · Recovery and lessons', range: 'Days and weeks after', start: 0.76, end: 1, color: '#b4afa5' }
+        { id: 'prelude', label: 'Before the crisis · Silent compromise', range: 'Weeks before H0', start: 0, end: 0.34, color: '#451DC7' },
+        { id: 'detonation', label: 'The crisis · Detonation and escalation', range: 'H0 · Crisis day', start: 0.34, end: 0.76, color: '#D8412F' },
+        { id: 'fallout', label: 'After the crisis · Recovery and lessons', range: 'Days and weeks after', start: 0.76, end: 1, color: '#088A42' }
       ];
       const DEBRIEF_KIND_LABELS = { context:'Context',intrusion:'Intrusion',exfiltration:'Exfiltration',attack:'Attack',impact:'Impact',threat:'Threat',regulatory:'Regulatory',media:'Media',decision:'Decision',recovery:'Recovery',leak:'Leak',lessons:'Lessons',milestone:'Milestone' };
 
@@ -61,6 +61,12 @@
           phases: Array.isArray(input.phases) && input.phases.length ? input.phases.map((phase, index) => ({ ...deepClone(DEBRIEF_PHASE_PRESETS[index] || DEBRIEF_PHASE_PRESETS[2]), ...phase, id: phase.id || `phase_${index + 1}` })) : base.phases,
           events: Array.isArray(input.events) ? input.events.map(normalizeDebriefEvent) : []
         };
+        // Wavestone theme: the default phase colours of the dark theme (gold, red, grey) follow the
+        // Wavestone palette; colours chosen by the designer stay.
+        if (normalized.theme.preset === 'wavestone') {
+          const palette = { '#d4a03c': '#451DC7', '#dc3c28': '#D8412F', '#b4afa5': '#088A42' };
+          normalized.phases = normalized.phases.map((phase) => ({ ...phase, color: palette[String(phase.color || '').toLowerCase()] || phase.color }));
+        }
         return normalized;
       }
 

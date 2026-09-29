@@ -1,7 +1,7 @@
 /* Debrief tab: one place, three ways to debrief the exercise.
    - Slide debrief: a slide deck (PowerPoint) showing the timeline and debriefing the exercise:
      context, phases and main events, the injects, the evaluation marks, the key messages.
-   - Story debrief: the interactive HTML page that reveals what really happened (CrisisDebrifier).
+   - Animated debrief: the interactive HTML page that reveals what really happened (CrisisDebrifier).
    - Video debrief: the documentary video studio.
    The slide deck is described once (sdSlides) and drawn twice: as an on-screen preview and
    as a .pptx file (PptxGenJS). */
@@ -9,7 +9,7 @@
 /* The part names stay as they are in every language (like the tab names); the hints are translated. */
 const DEBRIEF_PARTS = [
   { id: 'slides', label: 'Slide debrief', hint: ['A slide deck with the timeline and the debrief of the exercise', 'Un deck de slides avec la timeline et le debrief de l’exercice', 'Ein Foliensatz mit dem Zeitablauf und der Nachbesprechung der Übung'] },
-  { id: 'story', label: 'Story debrief', hint: ['An interactive HTML page revealing what really happened', 'Une page HTML interactive qui révèle ce qui s’est réellement passé', 'Eine interaktive HTML-Seite, die zeigt, was wirklich geschah'] },
+  { id: 'story', label: 'Animated debrief', hint: ['An interactive HTML page revealing what really happened', 'Une page HTML interactive qui révèle ce qui s’est réellement passé', 'Eine interaktive HTML-Seite, die zeigt, was wirklich geschah'] },
   { id: 'video', label: 'Video debrief', hint: ['A documentary video of the crisis, produced in your browser', 'Une vidéo documentaire de la crise, produite dans votre navigateur', 'Ein Dokumentarvideo der Krise, in Ihrem Browser erstellt'] }
 ];
 
@@ -268,7 +268,7 @@ function renderSlideDebriefView() {
       <div class="sd-sections" role="group" aria-label="${escapeAttribute(tt('Slides to include', 'Slides à inclure', 'Einzubeziehende Folien'))}">${SD_SECTIONS.map(([key, label]) => `<label><input type="checkbox" data-sd-section="${key}" ${state.sections[key] ? 'checked' : ''}> ${escapeHtml(tt(label, SD_SECTION_I18N[key]?.[0] || label, SD_SECTION_I18N[key]?.[1] || label))}</label>`).join('')}</div>
     </article>
     <article class="card sd-messages">
-      <div class="section-header"><div><h3>${escapeHtml(tt('Debrief messages', 'Messages du debrief', 'Debrief-Botschaften'))}</h3><p class="subtle">${escapeHtml(tt('One point per line. Written by you or by the AI from the exercise, the evaluation sheets and the story debrief, then shown on the last slides.', 'Un point par ligne. Rédigés par vous ou par l’IA à partir de l’exercice, des grilles d’évaluation et du Story debrief, puis affichés sur les dernières slides.', 'Ein Punkt pro Zeile. Von Ihnen oder der KI aus der Übung, den Bewertungsbögen und dem Story debrief geschrieben, dann auf den letzten Folien gezeigt.'))}</p></div></div>
+      <div class="section-header"><div><h3>${escapeHtml(tt('Debrief messages', 'Messages du debrief', 'Debrief-Botschaften'))}</h3><p class="subtle">${escapeHtml(tt('One point per line. Written by you or by the AI from the exercise, the evaluation sheets and the story debrief, then shown on the last slides.', 'Un point par ligne. Rédigés par vous ou par l’IA à partir de l’exercice, des grilles d’évaluation et du Animated debrief, puis affichés sur les dernières slides.', 'Ein Punkt pro Zeile. Von Ihnen oder der KI aus der Übung, den Bewertungsbögen und dem Animated debrief geschrieben, dann auf den letzten Folien gezeigt.'))}</p></div></div>
       <div class="sd-fields">${SD_TEXT_FIELDS.map(([key]) => { const field = sdFieldText(key, ui); return `<label class="field">${escapeHtml(field.label)}<textarea rows="5" data-sd-field="${key}" placeholder="${escapeAttribute(field.hint)}" ${locked}>${escapeHtml(state[key])}</textarea></label>`; }).join('')}</div>
     </article>
     <article class="card sd-preview-card">
