@@ -1405,6 +1405,43 @@ test('slide debrief: long lists continue on extra slides; nothing is dropped and
   assert.ok(h.run('sdSlideHtml(sdSlides(appState.scenario).find((slide) => slide.kind === "timeline"))').includes('--tick:'));
 });
 
+test('planning: nudges are capped per cell, the latest of each phase kept first', () => {
+  const h = harness();
+  const beats = (block, n) => Array.from({ length: n }, (_, i) => ({ id: `${block}_${i}`, offset_minutes: i * 5, cell_id: i % 2 ? 'cell_b' : 'cell_a', kind: 'nudge' }));
+  h.context.sb = { blocks: [{ id: 'p1', start_minutes: 0, beats: beats('p1', 8) }, { id: 'p2', start_minutes: 60, beats: beats('p2', 8) }] };
+  assert.equal(h.run('sbCapNudges(sb)'), 12);
+  const kept = h.json(`sb.blocks.flatMap(b => b.beats.filter(x => x.kind === 'nudge').map(x => x.id))`);
+  // 8 injects per cell: 2 nudges each, the last one of each phase.
+  assert.deepEqual(kept.sort(), ['p1_6', 'p1_7', 'p2_6', 'p2_7']);
+  // A cell with one nudge among few injects keeps it.
+  h.context.sb = { blocks: [{ id: 'p1', start_minutes: 0, beats: [{ id: 'x', offset_minutes: 1, cell_id: 'cell_a', kind: 'nudge' }, { id: 'y', offset_minutes: 2, cell_id: 'cell_a' }] }] };
+  assert.equal(h.run('sbCapNudges(sb)'), 0);
+});
+
+test('players: a job title given as the name is not replaced in the injects by a real name', async () => {
+  const h = harness();
+  h.run(`StoryboardHistory.ensure();
+    const project = appState.scenario;
+    project.cells = [sbMakeCell('decision', { id: 'c1' })];
+    project.cells[0].players.push(sbNormalizePlayer({ id: 'p1', name: 'CEO', role: 'Chief Executive Officer' }));
+    project.stimuli = [makeStimulus('email_internal', project.actors[0]?.id || '', 10)];
+    project.stimuli[0].fields.body = '<p>The CEO wants a decision before the CEO office call.</p>';
+    ceEditPlayer(ceFindPlayer(project, 'p1').player, 'name', 'Camille Dubreuil');`);
+  assert.equal(h.json('ceRenameImpacts(appState.scenario)').length, 0);
+  assert.equal(h.run(`ceApplyPlayerRename(appState.scenario, 'p1')`), 0);
+  assert.match(h.run('appState.scenario.stimuli[0].fields.body'), /The CEO wants a decision before the CEO office call/);
+  // A name is found as a whole word: "Marc Abel" is not named by "Marc Abella".
+  h.run(`appState.scenario.cells[0].players.push(sbNormalizePlayer({ id: 'p2', name: 'Marc Abel', role: 'CFO' }));
+    appState.scenario.stimuli[0].fields.to = 'Marc Abella, COO';
+    ceEditPlayer(ceFindPlayer(appState.scenario, 'p2').player, 'name', 'Lea Roux');`);
+  assert.equal(h.json('ceRenameImpacts(appState.scenario)').length, 0);
+  assert.equal(h.run(`ceIsTitleLike('Player 3', 'CFO')`), true);
+  // The builder agent does not store a job title as a player name.
+  const tool = h.run(`createAgentToolRegistry().get('upsertCells')`);
+  await tool.execute({ cells: [{ id: 'c1', name: 'Decision cell', players: [{ name: 'CISO', role: 'Chief Information Security Officer' }, { name: 'Press Officer', role: 'Press Officer' }, { name: 'Lina Haddad', role: 'CFO' }] }] });
+  assert.deepEqual(h.json('appState.scenario.cells[0].players.map(p => p.name)'), ['', '', 'Lina Haddad']);
+});
+
 test('press templates: the byline and reading-time prefixes are never doubled', () => {
   const h = harness();
   const text = (html) => html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');

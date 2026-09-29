@@ -9,6 +9,19 @@ const AgentLog = {
     run.notify();
   }
 };
+/* What stage 1 of the Build flow must leave in place before its final answer. */
+function agentFramingGaps(project) {
+  const gaps = [];
+  const main = sbMainBlocks(project.storyboard);
+  if (!main.length) return ['no phase in the main storyline (buildMainStoryline or setPhases)'];
+  const empty = main.filter(block => !(block.events || []).length);
+  if (empty.length) gaps.push(`no main events in ${empty.map(block => `"${block.title}" (${block.id})`).join(', ')} (setMainEvents)`);
+  if (!sbEndsWithClosing(project.storyboard)) gaps.push('the last phase is not a closing phase');
+  if (!project.cells.some(cell => cell.players.length)) gaps.push('no player in the cells (upsertCells)');
+  if (!project.storyboard.cast.length) gaps.push('no cast role (upsertCast)');
+  return gaps;
+}
+
 function agentSnapshot() {
   const { settings, ...exercise } = appState.scenario;
   return deepClone(exercise);
@@ -43,10 +56,21 @@ function agentNormalizeResponse(value, registry = null) {
       value.arguments = { ...value.arguments };
       // Only an argument the tool declares moves; anything else stays and is refused below.
       const declared = registry?.get?.(value.tool)?.inputSchema?.properties || {};
+      const empty = (item) => item === '' || item === null || (typeof item === 'object' && !Object.keys(item).length);
       for (const key of Object.keys(value)) {
-        if (['type', 'tool', 'arguments', 'reason'].includes(key) || !Object.prototype.hasOwnProperty.call(declared, key) || key in value.arguments) continue;
+        if (['type', 'tool', 'arguments', 'reason'].includes(key)) continue;
+        // A stray empty key (GLM writes "id": "" next to "arguments"), or a copy of an argument
+        // already given, carries nothing: it is dropped.
+        if (empty(value[key]) || (key in value.arguments && JSON.stringify(value[key]) === JSON.stringify(value.arguments[key]))) { delete value[key]; continue; }
+        if (!Object.prototype.hasOwnProperty.call(declared, key) || key in value.arguments) continue;
         value.arguments[key] = value[key];
         delete value[key];
+      }
+      // Main events carry only their time and text: other keys a model adds are dropped.
+      if (value.tool === 'setMainEvents' && Array.isArray(value.arguments.events)) {
+        value.arguments.events = value.arguments.events.map((event) => event && typeof event === 'object' && !Array.isArray(event)
+          ? Object.fromEntries(Object.entries(event).filter(([key]) => ['at', 'exercise_minute', 'text'].includes(key)))
+          : event);
       }
       if (value.reason !== undefined) value.reason = clip(value.reason, 500);
     } else if (value.type === 'final') {
@@ -232,6 +256,22 @@ class AgentRunner {
             AgentLog.append(this, 'info', answers ? 'Answers sent to the agent.' : 'Questions skipped: the agent will make assumptions.', answers || '');
             continue;
           }
+          // A build or a fix that ends before changing anything (DeepSeek may "review" and stop at
+          // step 1) is sent back once to do the work.
+          if (call.type === 'final' && !this.changed && ['builder', 'reviewer'].includes(kind) && !calls.has('final-without-change')) {
+            calls.set('final-without-change', 1);
+            this.history.push({ final: call.summary.slice(0, 600), instruction: 'Nothing has been changed yet: the objective asks you to change the exercise. Call the write tools now (read tools first if needed); give the final answer only once the work is applied.' }); this.history = this.history.slice(-8);
+            AgentLog.append(this, 'warning', 'The agent ended before changing anything: asked to do the work.');
+            continue;
+          }
+          // A framing that ends with parts missing (DeepSeek may skip the main events) is sent back once.
+          const gaps = call.type === 'final' && this.scope === 'framing' && !calls.has('framing-gaps') ? agentFramingGaps(appState.scenario) : [];
+          if (gaps.length) {
+            calls.set('framing-gaps', 1);
+            this.history.push({ final: call.summary.slice(0, 600), instruction: `The framing is not complete: ${gaps.join('; ')}. Fix these with the tools, then give the final answer.` }); this.history = this.history.slice(-8);
+            AgentLog.append(this, 'warning', `The framing is not complete: ${gaps.join('; ')}. Asked to finish it.`);
+            continue;
+          }
           if (call.type === 'final') {
             this.final = { summary: call.summary, issues: call.issues, changes: call.changes };
             this.status = 'complete'; AgentLog.append(this, 'success', call.summary, { issues: call.issues, reportedChanges: call.changes, appliedOperations: this.changed }); return;
@@ -242,6 +282,14 @@ class AgentRunner {
           // The same call again with no change in between is a loop; after an edit it is a re-check.
           const signature = JSON.stringify([call.tool, call.arguments, this.changed]);
           calls.set(signature, (calls.get(signature) || 0) + 1);
+          // A model that keeps re-reading (DeepSeek v4 pro reads the storyboard again and again)
+          // is told once to act on what it has; a loop after that stops the run.
+          if (calls.get(signature) > 3 && tool.risk === 'read' && !calls.has('read-loop')) {
+            calls.set('read-loop', 1);
+            this.history.push({ tool: call.tool, instruction: `You already read ${call.tool} with these arguments and nothing changed since: its result is above. Do not read it again; make the changes now with the write tools, or give the final answer.` }); this.history = this.history.slice(-8);
+            AgentLog.append(this, 'warning', `Repeated read of ${call.tool}: asked to act on it.`);
+            continue;
+          }
           if (calls.get(signature) > 3) { this.status = 'limit'; AgentLog.append(this, 'warning', 'Repeated tool loop detected. Stopped for review.'); return; }
           const needsApproval = tool.risk === 'destructive' || (tool.risk !== 'read' && mode === 'assist') || (tool.risk === 'broad' && mode === 'agent');
           if (needsApproval && !await this.approval(call)) {

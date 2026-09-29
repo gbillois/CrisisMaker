@@ -56,7 +56,9 @@ test('completion, MAX_STEPS, repeated-loop detection and bounded history', async
   const h = harness();
   let r = runner(h, [final]); await r.start({ objective: 'Review' }); assert.equal(r.status, 'complete');
   r = runner(h, [call('getScenario')], 2); await r.start({ objective: 'Review' }); assert.equal(r.status, 'limit'); assert.equal(r.step, 2);
-  r = runner(h, [call('getScenario')]); await r.start({ objective: 'Review' }); assert.equal(r.status, 'limit'); assert.equal(r.step, 4);
+  // A read loop is first told to act on what it has, then stopped.
+  r = runner(h, [call('getScenario')]); await r.start({ objective: 'Review' }); assert.equal(r.status, 'limit'); assert.equal(r.step, 5);
+  assert.ok(r.log.some(entry => /Repeated read of getScenario/.test(entry.message)));
   assert.ok(r.history.length <= 8);
 });
 
@@ -87,6 +89,13 @@ test('validation rejects missing actors, invalid content fields, overlapping pha
   const s = await execute(h, 'createStimulus', { name: 'Decision', actor_id: a.id, channel: 'email_internal', timestamp_offset_minutes: 0 });
   const before = h.json('agentSnapshot()');
   await assert.rejects(execute(h, 'updateStimulus', { id: s.id, patch: { fields: { javascript: 'alert(1)' } } }), /not editable/);
+  // A protected field sent back unchanged is skipped; a changed one is still refused.
+  const post = await execute(h, 'createStimulus', { name: 'Post', actor_id: a.id, channel: 'post_reddit', timestamp_offset_minutes: 5 });
+  const link = h.json(`getStimulus('${post.id}').fields.link_url ?? ''`);
+  await execute(h, 'updateStimulus', { id: post.id, patch: { fields: { title: 'New title', link_url: link } } });
+  assert.equal(h.json(`getStimulus('${post.id}').fields.title`), 'New title');
+  await assert.rejects(execute(h, 'updateStimulus', { id: post.id, patch: { fields: { link_url: 'https://evil.example/' } } }), /not editable/);
+  h.run(`deleteStimulus('${post.id}')`);
   await assert.rejects(execute(h, 'updateStimulus', { id: s.id, patch: { fields: { has_attachment: 'yes' } } }), /boolean/);
   await assert.rejects(execute(h, 'updateStimulus', { id: s.id, patch: { fields: { body: { code: 'invalid' } } } }), /text/);
   await assert.rejects(execute(h, 'reorderStimuli', { positions: [{ id: s.id, timestamp_offset_minutes: 80 }, { id: 'missing', timestamp_offset_minutes: 90 }] }), /Unknown/);
@@ -571,7 +580,19 @@ test('main events with a clock time are placed at that simulated time; the frame
   // The text's clock wins over a wrong at; an event in another phase is refused with that phase.
   const set = await execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 5, text: '09:30 - The attacker emails the CEO' }] });
   assert.equal(set.key_events[0].exercise_minute, 90);
-  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 20, text: '10:15 - Sample on the leak site' }] }), /inside phase "Leak"/);
+  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 20, text: '10:15 - Sample on the leak site' }] }), new RegExp(`inside phase "Leak" \\(id ${blocks[2].id}.*Set it on phase ${blocks[2].id} with at = 15`));
+  // GLM slips: a stray empty "id" next to "arguments" and extra keys in an event are dropped;
+  // exercise_minute places an event that has no at.
+  const registry = h.run('createAgentToolRegistry()');
+  h.context.registry = registry;
+  const normalized = h.json(`agentNormalizeResponse({ type: 'tool_call', tool: 'setMainEvents', id: '', arguments: { id: '${blocks[2].id}', events: [{ exercise_minute: 150, text: 'Press calls about the leak', importance: 'high' }] } }, registry)`);
+  assert.equal(normalized.id, undefined);
+  assert.equal(JSON.stringify(Object.keys(normalized.arguments.events[0]).sort()), JSON.stringify(['exercise_minute', 'text']));
+  h.run(`ToolValidator.validate(${JSON.stringify(normalized.arguments)}, registry.get('setMainEvents').inputSchema)`);
+  const placed = await execute(h, 'setMainEvents', normalized.arguments);
+  assert.equal(placed.key_events.find(event => /Press calls/.test(event.text)).exercise_minute, 150);
+  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[2].id, events: [{ exercise_minute: 30, text: 'Too early' }] }), /inside phase "Opening"/);
+  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[2].id, events: [{ text: 'No time' }] }), /has no time/);
   // A main event moved by hand away from its time is flagged.
   h.run(`sbBlock(appState.scenario.storyboard, '${blocks[1].id}').events[0].offset_minutes = 10`);
   assert.ok(h.json('sbExerciseChecks(appState.scenario)').some(issue => issue.code === 'event_time'));
@@ -603,11 +624,46 @@ test('AI field values: plain text keeps its characters, HTML is sanitized, entit
 test('cast: a staff actor cannot also play the attacker; each kind of sender gets its own actor', async () => {
   const h = harness();
   await execute(h, 'upsertCast', { cast: [{ label: 'SOC analyst', role: 'internal', actor: { name: 'Théo Renaud', title: 'SOC analyst' } }] });
-  await assert.rejects(execute(h, 'upsertCast', { cast: [{ label: 'Ransomware group', role: 'attacker', actor: { name: 'Théo Renaud' } }] }), /needs its own actor/);
+  // A clash does not fail the call: the role gets its own actor and the note says so.
+  const clash = await execute(h, 'upsertCast', { cast: [{ label: 'Ransomware group', role: 'attacker', actor: { name: 'Théo Renaud' } }] });
+  assert.match(clash.cast[0].note, /got its own actor/);
+  assert.equal(clash.cast[0].actor_name, 'Ransomware group');
+  assert.equal(h.json(`appState.scenario.actors.filter(a => a.name === 'Théo Renaud').length`), 1);
   // Two staff roles may share a person; a new attacker gets its own actor.
   await execute(h, 'upsertCast', { cast: [{ label: 'On-call manager', role: 'internal', actor: { name: 'Théo Renaud' } }, { label: 'Ransomware group', role: 'attacker', actor: { name: 'VEIL-9' } }] });
   const roles = h.json(`appState.scenario.storyboard.cast.map(c => [c.label, getActor(c.actor_id)?.name])`);
   assert.equal(JSON.stringify(roles.find(r => r[0] === 'Ransomware group')), JSON.stringify(['Ransomware group', 'VEIL-9']));
+});
+
+test('a build that ends before changing anything is sent back once to do the work', async () => {
+  const h = harness();
+  let r = runner(h, [final, call('updateExerciseObjectives', { objectives: 'Decide on isolation' }), final]);
+  await r.start({ kind: 'builder', objective: 'Build the framing' });
+  assert.equal(r.status, 'complete'); assert.equal(r.changed, 1);
+  assert.ok(r.log.some(entry => /ended before changing anything/.test(entry.message)));
+  // Only once: a second empty final ends the run; an assistant question is never sent back.
+  r = runner(h, [final]); await r.start({ kind: 'builder', objective: 'Build' });
+  assert.equal(r.status, 'complete'); assert.equal(r.step, 2);
+  r = runner(h, [final]); await r.start({ kind: 'assistant', objective: 'Which cell?' });
+  assert.equal(r.status, 'complete'); assert.equal(r.step, 1);
+});
+
+test('framing: a final answer with phases lacking main events is sent back once', async () => {
+  const h = harness();
+  const gaps = h.json('agentFramingGaps(appState.scenario)');
+  assert.ok(gaps.length);
+  const r = runner(h, [call('updateExerciseObjectives', { objectives: 'Decide on isolation' }), final, final]);
+  await r.start({ kind: 'builder', objective: 'Build the framing', scope: 'framing' });
+  assert.equal(r.status, 'complete'); assert.equal(r.step, 3);
+  assert.ok(r.log.some(entry => /framing is not complete/.test(entry.message)));
+});
+
+test('validation errors name the reason, so the model can correct its next call', () => {
+  const h = harness();
+  const reason = (args) => h.run(`(() => { try { ToolValidator.validate(${JSON.stringify(args)}, createAgentToolRegistry().get('upsertCast').inputSchema); return ''; } catch (error) { return error.message; } })()`);
+  assert.match(reason({ cast: [{ role: 'attacker' }] }), /arguments\.cast\[0\]: missing required field "label"/);
+  assert.match(reason({ cast: [{ label: 'X', role: 'pirate' }] }), /cast\[0\]\.role: expected one of .*attacker/);
+  assert.match(reason({ cast: [{ label: 'X', mood: 'calm' }] }), /unknown field "mood"/);
 });
 
 test('nudges and closing phase: planned by the agent tools, reported by the consistency check until fixed', async () => {

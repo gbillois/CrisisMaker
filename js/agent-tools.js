@@ -9,21 +9,24 @@ const AgentSchema = {
 };
 const ToolValidator = {
   validate(value, schema, path = 'arguments') {
-    const fail = () => { throw new AgentValidationError(`Invalid ${path}`); };
+    // The reason tells the model what to correct on its next call.
+    const fail = (reason = '') => { throw new AgentValidationError(`Invalid ${path}${reason ? `: ${reason}` : ''}`); };
     if (schema.type === 'object') {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) fail();
-      for (const key of schema.required || []) if (!Object.hasOwn(value, key)) fail();
+      if (!value || typeof value !== 'object' || Array.isArray(value)) fail('expected an object');
+      for (const key of schema.required || []) if (!Object.hasOwn(value, key)) fail(`missing required field "${key}"`);
       for (const [key, item] of Object.entries(value)) {
         if (['__proto__', 'constructor', 'prototype'].includes(key)) fail();
         const child = schema.properties?.[key] || schema.additionalProperties;
-        if (!child || child === false) fail();
+        if (!child || child === false) fail(`unknown field "${String(key).slice(0, 60)}"`);
         this.validate(item, child, `${path}.${key}`);
       }
     } else if (schema.type === 'array') {
-      if (!Array.isArray(value) || value.length > schema.maxItems || value.length < (schema.minItems || 0)) fail();
+      if (!Array.isArray(value)) fail('expected an array');
+      if (value.length > schema.maxItems || value.length < (schema.minItems || 0)) fail(`expected ${schema.minItems || 0} to ${schema.maxItems} items`);
       value.forEach((item, i) => this.validate(item, schema.items, `${path}[${i}]`));
     } else if (schema.type === 'string') {
-      if (typeof value !== 'string' || value.length > schema.maxLength || value.length < (schema.minLength || 0)) fail();
+      if (typeof value !== 'string') fail('expected a string');
+      if (value.length > schema.maxLength || value.length < (schema.minLength || 0)) fail(`expected ${schema.minLength || 0} to ${schema.maxLength} characters`);
     } else if (schema.type === 'integer' || schema.type === 'number') {
       if (typeof value !== 'number' || !Number.isFinite(value) || (schema.type === 'integer' && !Number.isInteger(value)) || value < schema.minimum || value > schema.maximum) fail();
     } else if (schema.type === 'boolean') {
@@ -39,7 +42,7 @@ const ToolValidator = {
         }
       }
     }
-    if (schema.enum && !schema.enum.includes(value)) fail();
+    if (schema.enum && !schema.enum.includes(value)) fail(`expected one of ${schema.enum.slice(0, 20).join(', ')}`);
     return value;
   }
 };
@@ -191,6 +194,8 @@ function agentCleanFields(stimulus, fields) {
     const def = defs.find(f => f.key === key);
     // Models often return numbers as text ("47"): accept them when they are clean numbers.
     if (def?.type === 'number' && typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) value = Number(value);
+    // A model that sends every field back (GLM does) repeats the protected ones unchanged: skip them.
+    if (def && (/upload/.test(def.type) || /url|_data|audio|video/.test(key)) && JSON.stringify(value) === JSON.stringify(stimulus.fields?.[key] ?? '')) continue;
     if (!def || /upload/.test(def.type) || /url|_data|audio|video/.test(key)) throw new AgentValidationError(`Field not editable by agents: ${key}`);
     if (def.type === 'checkbox' && typeof value !== 'boolean') throw new AgentValidationError(`Expected boolean field: ${key}`);
     if (def.type === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) throw new AgentValidationError(`Expected number field: ${key}`);
@@ -348,7 +353,7 @@ function createAgentToolRegistry() {
     sbAfterStoryboardChange(project, { save: false });
     return agentStoryboardSummary();
   }, 'broad');
-  add('upsertCells', 'Create or update player cells (groups of participants who receive injects) and, when known, their players. Supply id to update an existing cell; players replaces that cell\'s player list.', {
+  add('upsertCells', 'Create or update player cells (groups of participants who receive injects) and, when known, their players. Supply id to update an existing cell; players replaces that cell\'s player list. A player name is a person\'s name (empty when unknown, never a job title such as CEO).', {
     cells: S.array(S.object({ id: S.id, name: S.text(160), description: S.text(1000), players: S.array(S.object({ name: S.text(200), role: S.text(200) }, ['role']), 200) }, ['name']), 20)
   }, ['cells'], args => {
     const project = appState.scenario;
@@ -363,7 +368,9 @@ function createAgentToolRegistry() {
       }
       cell.name = sbText(input.name, 160) || cell.name;
       if (input.description !== undefined) cell.description = sbText(input.description, 1000);
-      if (input.players) cell.players = input.players.map(player => sbNormalizePlayer({ id: uid('player'), ...player }));
+      // A job title given as the name ("CEO", or the role repeated) is not a person: the name stays
+      // empty, so a real name typed later does not replace the title everywhere in the injects.
+      if (input.players) cell.players = input.players.map(player => sbNormalizePlayer({ id: uid('player'), ...player, name: ceIsTitleLike(player.name, player.role) ? '' : player.name }));
       return { id: cell.id, name: cell.name, players: cell.players.length };
     });
     project.exercise = { ...(project.exercise || {}), cells_count: project.cells.length };
@@ -383,16 +390,25 @@ function createAgentToolRegistry() {
       if (input.actor) {
         // One named actor per kind of sender: an actor who is staff, or who already plays another
         // role of another kind, cannot also be the attacker, the bank or the journalist.
-        const existing = sbFindActorForCast(project, { ...cast, actor_id: '', label: input.actor.name });
-        if (existing) {
-          const other = storyboard.cast.find(item => item.id !== cast.id && item.actor_id === existing.id);
-          if (sbRoleValue(existing.role) !== sbRoleValue(cast.role) || (other && sbRoleValue(other.role) !== sbRoleValue(cast.role))) {
-            throw new AgentValidationError(`"${existing.name}" is a ${existing.role} actor${other ? ` who already plays "${other.label}"` : ''}: role "${cast.label}" (${cast.role}) needs its own actor with a distinct name.`);
-          }
+        // A clash no longer fails the whole call (models such as DeepSeek give one "facilitator"
+        // several roles and then retry the same call): the role gets its own actor, named after
+        // it, and the note tells the model.
+        const fits = (actor) => {
+          const other = storyboard.cast.find(item => item.id !== cast.id && item.actor_id === actor.id);
+          return sbRoleValue(actor.role) === sbRoleValue(cast.role) && !(other && sbRoleValue(other.role) !== sbRoleValue(cast.role));
+        };
+        let existing = sbFindActorForCast(project, { ...cast, actor_id: '', label: input.actor.name });
+        let note = '';
+        if (existing && !fits(existing)) {
+          const clash = existing;
+          const own = sbFindActorForCast(project, { ...cast, actor_id: '' });
+          existing = own && fits(own) ? own : null;
+          note = `"${clash.name}" already plays another kind of role: role "${cast.label}" (${cast.role}) got its own actor instead; rename it with updateActor if needed.`;
         }
-        const actor = existing || sbCreateActorForCast(project, cast, { ...input.actor, role: cast.role });
+        const actor = existing || sbCreateActorForCast(project, cast, { ...input.actor, ...(note ? { name: cast.label } : {}), role: cast.role });
         Object.assign(actor, agentPick(input.actor, ['title', 'organization', 'language']));
         cast.actor_id = actor.id;
+        if (note) return { id: cast.id, label: cast.label, actor_id: actor.id, actor_name: actor.name, note };
       }
       return { id: cast.id, label: cast.label, actor_id: cast.actor_id || null };
     });
@@ -461,21 +477,31 @@ function createAgentToolRegistry() {
     return { phase_id: target.id, phase: target.title, id: beat.id, at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(target, beat), cell_id: beat.cell_id || null, cast_id: beat.cast_id, channel: beat.channel, title: beat.title, nudge: beat.kind === 'nudge' || undefined };
   }, 'write');
   add('setMainEvents', 'Set the main events of one main-storyline phase: the key moments of the incident timeline that happen during play (the ransom note, the leak going public, a regulator call). They are not injects: injects are planned and written around them, and never reveal one before it happens. at = minutes from the phase start. replace=true replaces the phase\'s events, otherwise they are added.', {
-    ...id, replace: { type: 'boolean' }, events: S.array(S.object({ at: S.minutes, text: S.text(600) }, ['at', 'text']), 12)
+    ...id, replace: { type: 'boolean' }, events: S.array(S.object({ at: S.minutes, exercise_minute: S.minutes, text: S.text(600) }, ['text']), 12)
   }, ['id', 'events'], args => {
     const project = appState.scenario;
     StoryboardHistory.ensure(project); StoryboardHistory.flush();
     const block = sbBlock(project.storyboard, args.id);
     if (!block) throw new AgentValidationError('Unknown item ID.');
     if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
-    // An event whose text starts with a clock time ("09:30 – …") is placed at that simulated time.
+    // An event whose text starts with a clock time ("09:30 – …") is placed at that simulated time;
+    // otherwise at, or the informative exercise_minute when at is missing.
     const duration = project.storyboard.duration_minutes;
-    const timed = args.events.map(event => {
-      const minute = sbTextClockMinute(event.text, project.scenario.start_date, duration);
-      if (minute === null) return event;
-      if (minute >= block.start_minutes && minute < sbBlockEnd(block)) return { ...event, at: minute - block.start_minutes };
+    const outside = (event, minute) => {
       const owner = sbMainBlockAt(project.storyboard, minute);
-      throw new AgentValidationError(`Main event "${agentExcerpt(event.text, 80)}" happens at ${sbFormatOffset(minute)} (exercise minute ${minute}), inside phase "${owner?.title || '?'}" (${owner ? `${owner.start_minutes} to ${sbBlockEnd(owner) - 1}` : 'none'}), not in "${block.title}" (${block.start_minutes} to ${sbBlockEnd(block) - 1}). Set it on that phase, or move the phase boundaries first (updateStoryboardBlock).`);
+      return new AgentValidationError(`Main event "${agentExcerpt(event.text, 80)}" happens at ${sbFormatOffset(minute)} (exercise minute ${minute}), inside phase "${owner?.title || '?'}"${owner ? ` (id ${owner.id}, minutes ${owner.start_minutes} to ${sbBlockEnd(owner) - 1})` : ''}, not in "${block.title}" (${block.start_minutes} to ${sbBlockEnd(block) - 1}). Set it on ${owner ? `phase ${owner.id}` : 'the phase of that time'} with at = ${owner ? minute - owner.start_minutes : 'minutes from its start'}, or move the phase boundaries first (updateStoryboardBlock).`);
+    };
+    const timed = args.events.map(event => {
+      const { exercise_minute: absolute, ...rest } = event;
+      const minute = sbTextClockMinute(event.text, project.scenario.start_date, duration);
+      if (minute === null) {
+        if (rest.at !== undefined) return rest;
+        if (absolute === undefined) throw new AgentValidationError(`Main event "${agentExcerpt(event.text, 80)}" has no time: give at, minutes from the phase start (0 to ${block.duration_minutes - 1}).`);
+        if (absolute < block.start_minutes || absolute >= sbBlockEnd(block)) throw outside(event, absolute);
+        return { ...rest, at: absolute - block.start_minutes };
+      }
+      if (minute >= block.start_minutes && minute < sbBlockEnd(block)) return { ...rest, at: minute - block.start_minutes };
+      throw outside(event, minute);
     });
     const added = agentBeatsInPhase(block, timed.map(event => ({ ...event, title: event.text }))).map(event => sbMakeEvent({ offset_minutes: event.at, text: event.text }));
     // An event already there (same text, as the agent may set a phase twice) is not added again.
