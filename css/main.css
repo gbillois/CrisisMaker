@@ -3887,6 +3887,9 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; user-select:
 .stimulus-recipients { grid-column: 1 / -1; display: grid; gap: 7px; font-size: 0.875rem; font-weight: 600; color: var(--text); }
 
 .sl-ai { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--sb-line); }
+/* The last rows of the bottom editors stay clear of the assistant button (bottom right). */
+.sl-ai, .ds-editor-actions { padding-right: 76px; }
+@media (max-width: 720px) { .sl-ai, .ds-editor-actions { padding-right: 64px; } }
 .sl-ai-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--primary-strong); }
 .sl-ai .btn { justify-self: end; }
 .sb-workspace .sl-ai textarea { min-height: 56px; }

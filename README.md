@@ -301,7 +301,7 @@ Exercise objectives, narrative arc and timed phases are optional fields inside
 Existing project files remain compatible, including projects with no actors.
 
 Implementation is separated into `js/agent-prompts.js` (editable builder/designer/reviewer
-instructions), `js/agent-tools.js` (32 controlled tools, including the exercise frame, main storyline,
+instructions), `js/agent-tools.js` (33 controlled tools, including the exercise frame, main storyline,
 cells, cast and per-cell inject plan, validation and bounded context), `js/agent-runner.js` (execution, approvals, cancellation and checkpoint),
 and `js/agent-view.js` (UI) and `js/assistant.js` (the support chat). Tools reuse existing actor/stimulus constructors,
 stimulus version history, generation prompts, provider transport and persistence.

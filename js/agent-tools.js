@@ -229,7 +229,7 @@ function createAgentToolRegistry() {
       synopsis: agentExcerpt(storyboard.meta.synopsis, 2000),
       cells: (appState.scenario.cells || []).map(cell => ({ id: cell.id, name: cell.name, description: agentExcerpt(cell.description, 300), players: cell.players.map(player => agentPick(player, ['name', 'role'])) })),
       cast: storyboard.cast.map(cast => ({ ...agentPick(cast, ['id', 'label', 'role', 'organization']), actor_id: cast.actor_id || null })),
-      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })), key_events: (block.events || []).map(event => ({ at: block.start_minutes + event.offset_minutes, text: agentExcerpt(event.text, 400) })) }))
+      blocks: sbSortedBlocks(storyboard).slice(0, 40).map(block => ({ id: block.id, type: block.type, title: block.title, start_minutes: block.start_minutes, duration_minutes: block.duration_minutes, stimuli_target: block.stimuli_target, locked: block.locked, brief: agentExcerpt(block.brief, 700), narrative: agentExcerpt(block.narrative, 900), objectives: block.objectives, beats: block.beats.map(beat => ({ id: beat.id, at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(block, beat), cell_id: beat.cell_id || null, channel: beat.channel, cast_id: beat.cast_id, title: agentExcerpt(beat.title, 160), intent: agentExcerpt(beat.intent, 300), stimulus_id: sbStimulusForBeat(appState.scenario, beat.id)?.id || null })), key_events: (block.events || []).map(event => ({ at: event.offset_minutes, exercise_minute: block.start_minutes + event.offset_minutes, text: agentExcerpt(event.text, 400) })) }))
     };
   });
   add('updateStoryboardBlock', 'Patch one Scenario Builder block (title, brief, narrative, timing, inject count, notes). Locked blocks are refused.', { ...id, patch: S.object({ title: S.text(200), brief: S.text(4000), narrative: S.text(8000), notes: S.text(4000), start_minutes: S.minutes, duration_minutes: { type: 'integer', minimum: 5, maximum: 525600 }, stimuli_target: { type: 'integer', minimum: 0, maximum: 24 } }) }, ['id', 'patch'], args => {
@@ -410,6 +410,19 @@ function createAgentToolRegistry() {
     const target = project.storyboard.blocks.find(item => item.beats.includes(beat)) || block;
     target.key_cast = [...new Set(target.beats.map(item => item.cast_id).filter(Boolean))];
     return { phase_id: target.id, phase: target.title, id: beat.id, at: beat.offset_minutes, exercise_minute: sbBeatAbsolute(target, beat), cell_id: beat.cell_id || null, cast_id: beat.cast_id, channel: beat.channel, title: beat.title };
+  }, 'write');
+  add('setMainEvents', 'Set the main events of one main-storyline phase: the key moments of the incident timeline that happen during play (the ransom note, the leak going public, a regulator call). They are not injects: injects are planned and written around them, and never reveal one before it happens. at = minutes from the phase start. replace=true replaces the phase\'s events, otherwise they are added.', {
+    ...id, replace: { type: 'boolean' }, events: S.array(S.object({ at: S.minutes, text: S.text(600) }, ['at', 'text']), 12)
+  }, ['id', 'events'], args => {
+    const project = appState.scenario;
+    StoryboardHistory.ensure(project); StoryboardHistory.flush();
+    const block = sbBlock(project.storyboard, args.id);
+    if (!block) throw new AgentValidationError('Unknown item ID.');
+    if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
+    const added = agentBeatsInPhase(block, args.events.map(event => ({ ...event, title: event.text }))).map(event => sbMakeEvent({ offset_minutes: event.at, text: event.text }));
+    block.events = [...(args.replace ? [] : block.events || []), ...added].sort((a, b) => a.offset_minutes - b.offset_minutes).slice(0, 12);
+    StoryboardHistory.commit('Agent: main events');
+    return { id: block.id, title: block.title, key_events: block.events.map(event => ({ at: event.offset_minutes, exercise_minute: block.start_minutes + event.offset_minutes, text: event.text })) };
   }, 'write');
   add('listActors', 'Read actors with pagination.', page, [], args => paginate(appState.scenario.actors, args, agentActor));
   add('getActor', 'Read a single actor.', id, ['id'], args => agentActor(requireItem(getActor, args.id)));

@@ -36,7 +36,7 @@ async function execute(h, name, args) {
 test('registry exposes expected operations with strict schemas, no credential or code tools', () => {
   const h = harness();
   const catalog = h.json('[...createAgentToolRegistry().values()].map(({name, description, inputSchema, risk}) => ({name, description, inputSchema, risk}))');
-  assert.equal(catalog.length, 32);
+  assert.equal(catalog.length, 33);
   for (const name of ['getExerciseFrame', 'setExerciseFrame', 'updateStorylineMeta', 'buildMainStoryline', 'upsertCells', 'upsertCast', 'planPhaseInjects', 'getPhase', 'updatePlannedInject', 'getScenario', 'createActor', 'updateStimulus', 'deleteStimulus', 'reorderStimuli', 'generateStimulusContent', 'improveStimulusContent', 'analyzeExerciseQuality']) assert.ok(catalog.some(t => t.name === name));
   for (const tool of catalog) { assert.ok(tool.description); assert.equal(tool.inputSchema.additionalProperties, false); }
   assert.ok(!JSON.stringify(catalog).includes('ai_api_key'));
@@ -520,4 +520,17 @@ test('planned injects: the channel fits the sender (no internal email from a reg
   assert.equal(byTitle['Fraud pattern'], 'email_external');
   assert.equal(byTitle['SOC escalation'], 'email_internal');
   assert.equal(byTitle['Call me back'], 'sms_notification');
+});
+
+test('main events: set per phase from the incident timeline, at from the phase start or converted from the exercise start', async () => {
+  const h = harness();
+  await execute(h, 'buildMainStoryline', { phases: [{ type: 'trigger', title: 'Detection', start_minutes: 0, duration_minutes: 60, brief: 'Alerts.' }, { type: 'crisis_cell', title: 'Ransom', start_minutes: 60, duration_minutes: 60, brief: 'Demand.' }] });
+  const blocks = h.json('sbMainBlocks(appState.scenario.storyboard).map(b => b.id)');
+  const [start, duration] = h.json(`(b => [b.start_minutes, b.duration_minutes])(sbBlock(appState.scenario.storyboard, '${blocks[1]}'))`);
+  // An exercise minute inside the phase (beyond its duration from its start) is converted; a small one is from the phase start.
+  const set = await execute(h, 'setMainEvents', { id: blocks[1], replace: true, events: [{ at: start + duration - 5, text: 'Ransom email to the CEO' }, { at: 10, text: 'Sample published on the leak site' }] });
+  assert.equal(JSON.stringify(set.key_events.map(e => [e.at, e.exercise_minute])), JSON.stringify([[10, start + 10], [duration - 5, start + duration - 5]]));
+  const brief = h.run(`sbGenerationBrief(appState.scenario, sbBlock(appState.scenario.storyboard, '${blocks[1]}'), null)`);
+  assert.match(brief, /Main events still to come.*Sample published/);
+  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[0], events: [{ at: 5000, text: 'Too late' }] }), /outside phase/);
 });
