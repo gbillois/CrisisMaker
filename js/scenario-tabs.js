@@ -652,9 +652,29 @@ async function ccChallenge() {
     })());
   }
   await Promise.all(tasks);
+  // The last challenge of the scenario is saved with the project: reopened the next day, the
+  // exercise keeps its findings and its readiness score.
+  if (cs.mode !== 'file' && appState.scenario === project && (cs.analysisResult || summary.review)) {
+    project.challenge = { result: cs.analysisResult || null, review: summary.review || null, at: new Date().toISOString() };
+    cs.challengeRestoredFor = project.id;
+    saveLocal(false);
+  }
+}
+
+/* Puts back the last saved challenge of the project once per opening, when none is in memory. */
+function ccRestoreChallenge(project) {
+  const cs = appState.checkerState;
+  if (cs.challengeRestoredFor === project.id || cs.mode === 'file' || cs.analysisLoading) return;
+  cs.challengeRestoredFor = project.id;
+  const saved = project.challenge;
+  if (!saved || typeof saved !== 'object') return;
+  if (!cs.analysisResult && saved.result && typeof checkerNormalizeResult === 'function') cs.analysisResult = checkerNormalizeResult(saved.result);
+  const summary = tabUI('summary');
+  if (!summary.review && saved.review && typeof saved.review === 'object') summary.review = saved.review;
 }
 
 function renderSummaryView() {
+  ccRestoreChallenge(tabProject());
   return sbWithRenderMemo(() => {
     const project = tabProject();
     const storyboard = project.storyboard;

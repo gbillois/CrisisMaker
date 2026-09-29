@@ -258,7 +258,7 @@ class AgentRunner {
             throw error;
           }
           this.assertActive();
-          if (tool.risk !== 'read') { this.changed++; appState.checkerState.analysisResult = null; saveLocal(false); }
+          if (tool.risk !== 'read') { this.changed++; appState.checkerState.analysisResult = null; delete appState.scenario.challenge; saveLocal(false); }
           this.remember(call, result); invalidCount = 0;
           AgentLog.append(this, 'success', `${call.tool}: ${tool.risk === 'read' ? 'reviewed' : 'applied'}`, result);
         } catch (error) {

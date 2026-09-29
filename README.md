@@ -141,9 +141,9 @@ The menu follows the design workflow, from left to right:
    structure, pacing, actors, realism) with priority actions and verdicts, plus the
    cell-by-cell timing review, whose findings join the automatic checks. The challenge
    targets the current scenario, or the existing exercise file loaded in Context; the
-   last result of each is kept. The report exports to Markdown or Word. Then the
-   checklist and, folded, **Rehearse cell by cell** (accelerated playback where
-   injects reach each cell, with preview).
+   last result of each is kept, and the last challenge of the scenario is saved with the
+   project (it is cleared when the agent changes the exercise). The report exports to
+   Markdown or Word. Then the ready-to-play checklist, also saved with the project.
 
 7. **Play**: runs the exercise live, for its pilot.
    - The stimuli to send come from the Injects library (**Download all stimuli**: a ZIP
