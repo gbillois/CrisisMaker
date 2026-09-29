@@ -191,6 +191,7 @@
           ai_provider: localStorage.getItem(PROVIDER_STORAGE_KEYS.aiProvider) || undefined,
           ollama_mode: localStorage.getItem(PROVIDER_STORAGE_KEYS.ollamaMode) || undefined,
           ollama_endpoint: localStorage.getItem(PROVIDER_STORAGE_KEYS.ollamaEndpoint) || undefined,
+          local_server_url: localStorage.getItem(PROVIDER_STORAGE_KEYS.localServerUrl) || undefined,
           azure_endpoint: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureEndpoint) || undefined,
           azure_deployment: localStorage.getItem(PROVIDER_STORAGE_KEYS.azureDeployment) || undefined,
           confidentiality_acknowledged: localStorage.getItem(PROVIDER_STORAGE_KEYS.confidentialityAcknowledged) === 'true'
@@ -225,6 +226,7 @@
         localStorage.setItem(PROVIDER_STORAGE_KEYS.aiProvider, settings.ai_provider || 'anthropic');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.ollamaMode, settings.ollama_mode || 'local');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.ollamaEndpoint, settings.ollama_endpoint || 'http://localhost:11434');
+        localStorage.setItem(PROVIDER_STORAGE_KEYS.localServerUrl, settings.local_server_url || DEFAULT_LOCAL_SERVER_URL);
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureEndpoint, settings.azure_endpoint || '');
         localStorage.setItem(PROVIDER_STORAGE_KEYS.azureDeployment, settings.azure_deployment || '');
         // API keys are stored in dedicated keys, separate from project data (never exported in project files)

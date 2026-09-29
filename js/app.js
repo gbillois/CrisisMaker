@@ -226,12 +226,13 @@
 
       function videoDebriefAISettings() {
         const settings = appState.scenario.settings;
-        const supported = ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama'].includes(settings.ai_provider);
+        const supported = ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama', 'local_server'].includes(settings.ai_provider);
         return {
           provider: supported ? settings.ai_provider : 'none',
           model: supported ? settings.ai_model : '',
           apiKey: supported && (settings.ai_provider !== 'ollama' || settings.ollama_mode === 'cloud') ? settings.ai_api_key : '',
-          baseUrl: settings.ai_provider === 'ollama' ? (settings.ollama_mode === 'cloud' ? 'https://ollama.com' : settings.ollama_endpoint) : '',
+          baseUrl: settings.ai_provider === 'ollama' ? (settings.ollama_mode === 'cloud' ? 'https://ollama.com' : settings.ollama_endpoint)
+            : settings.ai_provider === 'local_server' ? String(settings.local_server_url || DEFAULT_LOCAL_SERVER_URL).trim().replace(/\/+$/, '') : '',
           proxyUrl: settings.ai_provider === 'ollama' && settings.ollama_mode === 'cloud' ? 'https://deckseeder.pages.dev/api/llm' : '',
           sourceProvider: settings.ai_provider,
           supported,
@@ -398,12 +399,15 @@
           input.addEventListener('change', () => {
             let val = input.value;
             if (input.dataset.bind === 'settings.watermark_enabled' || input.dataset.bind === 'settings.watermark_audio_enabled') val = (val === 'true');
+            else if (input.dataset.bind === 'settings.local_server_url') val = String(val).trim().replace(/\/+$/, '');
             else if (input.dataset.bind === 'settings.watermark_opacity' || input.dataset.bind === 'settings.watermark_rotation' || input.dataset.bind === 'settings.watermark_text_size') val = Number(val);
             const previousProvider = appState.scenario.settings.ai_provider;
             setByPath(appState.scenario, input.dataset.bind, val);
             if (input.dataset.bind === 'settings.ai_provider') {
               const models = DEFAULT_MODELS[input.value];
               if (models?.length) appState.scenario.settings.ai_model = models[0];
+              // No default list (AI local server): the model comes from the server's list, not from another provider.
+              else if (models && previousProvider !== input.value) appState.scenario.settings.ai_model = '';
               // A key belongs to one provider: never send it to another provider's API (model list, test, calls).
               if (previousProvider !== input.value) appState.scenario.settings.ai_api_key = '';
             }
@@ -424,7 +428,7 @@
               if (input.dataset.bind === 'name') document.querySelectorAll('.nav-project-name').forEach((element) => { element.textContent = input.value; });
               return;
             }
-            const refreshModels = ['settings.ai_provider', 'settings.ai_api_key', 'settings.ollama_mode', 'settings.ollama_endpoint'].includes(input.dataset.bind);
+            const refreshModels = ['settings.ai_provider', 'settings.ai_api_key', 'settings.ollama_mode', 'settings.ollama_endpoint', 'settings.local_server_url'].includes(input.dataset.bind);
             if (refreshModels) resetAIModelCatalog();
             App.render();
             if (refreshModels) refreshAIModelCatalog();
@@ -2361,12 +2365,13 @@
       }
 
       function normalizeProviderSettingsInPlace(settings) {
-        if (!['anthropic', 'openai', 'openrouter', 'azure_openai', 'google_gemini', 'mistral', 'ollama'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
+        if (!['anthropic', 'openai', 'openrouter', 'azure_openai', 'google_gemini', 'mistral', 'ollama', 'local_server'].includes(settings.ai_provider)) settings.ai_provider = 'anthropic';
         settings.ollama_mode = ['local', 'cloud'].includes(settings.ollama_mode) ? settings.ollama_mode : 'local';
         const providerModels = DEFAULT_MODELS[settings.ai_provider] || DEFAULT_MODELS.anthropic;
-        if (!settings.ai_model) settings.ai_model = settings.ai_provider === 'ollama' && settings.ollama_mode === 'cloud' ? 'gpt-oss:120b' : providerModels[0];
+        if (!settings.ai_model) settings.ai_model = settings.ai_provider === 'ollama' && settings.ollama_mode === 'cloud' ? 'gpt-oss:120b' : providerModels[0] || '';
         settings.ai_api_key = settings.ai_api_key || '';
         settings.ollama_endpoint = settings.ollama_endpoint || 'http://localhost:11434';
+        settings.local_server_url = settings.local_server_url || DEFAULT_LOCAL_SERVER_URL;
         settings.azure_endpoint = settings.azure_endpoint || '';
         settings.azure_api_key = settings.azure_api_key || '';
         settings.azure_deployment = settings.azure_deployment || '';

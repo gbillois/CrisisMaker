@@ -799,7 +799,10 @@
         const isMistral = settings.ai_provider === 'mistral';
         const isOllama = settings.ai_provider === 'ollama';
         const isOllamaCloud = isOllama && settings.ollama_mode === 'cloud';
-        const providerLabel = isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isMistral ? 'Mistral' : isOllama ? 'Ollama' : isOpenRouter ? 'OpenRouter' : isOpenAI ? 'OpenAI' : 'Anthropic';
+        const isLocalServer = settings.ai_provider === 'local_server';
+        const providerLabel = isAzure ? 'Azure OpenAI' : isGemini ? 'Google Gemini' : isMistral ? 'Mistral' : isOllama ? 'Ollama' : isLocalServer ? 'AI local server' : isOpenRouter ? 'OpenRouter' : isOpenAI ? 'OpenAI' : 'Anthropic';
+        // The address CoPro's Local API must list: "null" for the standalone file opened from disk.
+        const pageAddress = typeof location !== 'undefined' && location.origin ? escapeHtml(String(location.origin)) : 'null';
         const modelCatalog = appState.aiModelCatalog || makeDefaultAIModelCatalog();
         const modelCatalogApplies = modelCatalog.provider === settings.ai_provider;
         const modelCatalogStatus = modelCatalogApplies ? modelCatalog.status : 'idle';
@@ -853,7 +856,7 @@
                 <div class="st-row">
                   <label class="field">${tt('AI provider', 'Fournisseur IA', 'KI-Anbieter')}
                     <select data-bind="settings.ai_provider">
-                      ${[['anthropic', 'Anthropic'], ['openai', 'OpenAI'], ['openrouter', 'OpenRouter'], ['azure_openai', 'Azure OpenAI'], ['google_gemini', 'Google Gemini'], ['mistral', 'Mistral'], ['ollama', 'Ollama']].map(([value, label]) => `<option value="${value}" ${settings.ai_provider === value ? 'selected' : ''}>${label}</option>`).join('')}
+                      ${[['anthropic', 'Anthropic'], ['openai', 'OpenAI'], ['openrouter', 'OpenRouter'], ['azure_openai', 'Azure OpenAI'], ['google_gemini', 'Google Gemini'], ['mistral', 'Mistral'], ['ollama', 'Ollama'], ['local_server', 'AI local server']].map(([value, label]) => `<option value="${value}" ${settings.ai_provider === value ? 'selected' : ''}>${label}</option>`).join('')}
                     </select>
                   </label>
                   ${isOllama ? `<label class="field">${tt('Ollama service', 'Service Ollama', 'Ollama-Dienst')}
@@ -866,10 +869,15 @@
                 ${isOllama && !isOllamaCloud ? `<label class="field">${tt('Local Ollama server URL', 'URL du serveur Ollama local', 'Lokale Ollama-Server-URL')}
                   <input type="url" data-bind="settings.ollama_endpoint" value="${escapeAttribute(settings.ollama_endpoint || 'http://localhost:11434')}" placeholder="http://localhost:11434">
                 </label>` : ''}
-                ${!isAzure && (!isOllama || isOllamaCloud) ? keyField(isOllamaCloud ? tt('Ollama Cloud API key', 'Clé API Ollama Cloud', 'Ollama-Cloud-API-Schlüssel') : isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel'), 'settings.ai_api_key', settings.ai_api_key, isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...', keyHelper) : ''}
+                ${isLocalServer ? `<label class="field">${tt('Server URL', 'URL du serveur', 'Server-URL')}
+                  <input type="url" data-bind="settings.local_server_url" value="${escapeAttribute(settings.local_server_url || DEFAULT_LOCAL_SERVER_URL)}" placeholder="${DEFAULT_LOCAL_SERVER_URL}">
+                </label>
+                ${keyField(tt('API key', 'Clé API', 'API-Schlüssel'), 'settings.ai_api_key', settings.ai_api_key, tt('Optional', 'Facultative', 'Optional'), keyHelper)}` : ''}
+                ${!isAzure && !isLocalServer && (!isOllama || isOllamaCloud) ? keyField(isOllamaCloud ? tt('Ollama Cloud API key', 'Clé API Ollama Cloud', 'Ollama-Cloud-API-Schlüssel') : isGemini ? tt('Google Gemini API key', 'Clé API Google Gemini', 'Google Gemini-API-Schlüssel') : isMistral ? tt('Mistral API key', 'Clé API Mistral', 'Mistral-API-Schlüssel') : isOpenRouter ? tt('OpenRouter API key', 'Clé API OpenRouter', 'OpenRouter-API-Schlüssel') : isOpenAI ? tt('OpenAI API key', 'Clé API OpenAI', 'OpenAI-API-Schlüssel') : tt('Anthropic API key', 'Clé API Anthropic', 'Anthropic-API-Schlüssel'), 'settings.ai_api_key', settings.ai_api_key, isOllamaCloud ? 'Ollama Cloud API key' : isGemini ? 'AIza...' : isMistral ? 'Mistral API key' : isOpenRouter ? 'sk-or-v1-...' : isOpenAI ? 'sk-proj-...' : 'sk-ant-...', keyHelper) : ''}
                 ${!isAzure ? `<label class="field">${tt('Model', 'Modèle', 'Modell')}
                   <div class="st-inline">
                     <select data-bind="settings.ai_model">
+                      ${!models.length ? `<option value="" selected>${tt('Refresh the list to load the models', 'Actualisez la liste pour charger les modèles', 'Liste aktualisieren, um die Modelle zu laden')}</option>` : ''}
                       ${models.map((model) => `<option value="${escapeAttribute(model)}" ${settings.ai_model === model ? 'selected' : ''}>${escapeHtml(model)}</option>`).join('')}
                     </select>
                     <button class="btn btn-secondary st-icon-btn" data-action="refresh-ai-models" title="${tt('Refresh model list', 'Actualiser la liste des modèles', 'Modellliste aktualisieren')}" aria-label="${escapeAttribute(tt('Refresh model list', 'Actualiser la liste des modèles', 'Modellliste aktualisieren'))}" ${modelCatalogStatus === 'loading' ? 'disabled' : ''}>${sbUiIcon('refresh', 15)}</button>
@@ -891,7 +899,7 @@
                   <p class="helper">${tt('The API version is used for resource-root endpoints; Foundry endpoints and URLs ending in /openai/v1 use v1. If the browser blocks a direct Azure request, it is retried through the DeckSeeder Cloudflare relay, including the API key and prompt.', 'La version de l\'API sert aux endpoints racine ; les endpoints Foundry et les URL finissant par /openai/v1 utilisent v1. Si le navigateur bloque une requête Azure directe, elle est réessayée via le relais Cloudflare DeckSeeder, avec la clé API et le prompt.', 'Die API-Version gilt für Ressourcen-Endpunkte; Foundry-Endpunkte und URLs mit /openai/v1 verwenden v1. Blockiert der Browser eine direkte Azure-Anfrage, wird sie über das DeckSeeder-Cloudflare-Relay wiederholt, samt API-Schlüssel und Prompt.')}</p>
                   ${keyField(tt('Azure API key', 'Clé API Azure', 'Azure-API-Schlüssel'), 'settings.azure_api_key', settings.azure_api_key, 'Azure API key', keyHelper)}
                 ` : ''}
-                ${!isOllama ? wavestoneKey : ''}
+                ${!isOllama && !isLocalServer ? wavestoneKey : ''}
               </div>
               <div class="st-actions">
                 <button class="btn btn-primary" data-action="test-connection" ${connectionTest.status === 'testing' || locked ? 'disabled' : ''}>${connectionTest.status === 'testing' ? `<span class="ai-spinner"></span>${tt('Testing…', 'Test en cours…', 'Wird getestet…')}` : `${sbUiIcon('checkCircle', 15)} ${tt('Test connection', 'Tester la connexion', 'Verbindung testen')}`}</button>
@@ -905,6 +913,16 @@
               ${isAzure ? `<p class="helper">${tt('Azure OpenAI uses your deployment name; availability depends on your Azure resource and region.', 'Azure OpenAI utilise le nom de votre déploiement ; la disponibilité dépend de votre ressource Azure et de votre région.', 'Azure OpenAI verwendet Ihren Bereitstellungsnamen; die Verfügbarkeit hängt von Ihrer Azure-Ressource und Region ab.')}</p>` : ''}
               ${isGemini ? `<p class="helper">${tt('Get your Gemini API key from Google AI Studio (aistudio.google.com).', 'Obtenez votre clé API Gemini depuis Google AI Studio (aistudio.google.com).', 'Holen Sie sich Ihren Gemini-API-Schlüssel von Google AI Studio (aistudio.google.com).')}</p>` : ''}
               ${isMistral ? `<p class="helper">${tt('Get your Mistral API key from La Plateforme / Mistral AI Console.', 'Obtenez votre clé API Mistral depuis La Plateforme / la console Mistral AI.', 'Holen Sie sich Ihren Mistral-API-Schlüssel über La Plateforme / die Mistral AI Console.')}</p>` : ''}
+              ${isLocalServer ? `<p class="helper">${tt(
+                'Any OpenAI-compatible server: CoPro Desktop (Settings > Local API), LM Studio, llama.cpp, vLLM or Ollama (http://127.0.0.1:11434/v1). The API key is only needed if the server asks for one. Requests go straight from this page to the server, never through a relay.',
+                'Tout serveur compatible OpenAI : CoPro Desktop (Paramètres > Local API), LM Studio, llama.cpp, vLLM ou Ollama (http://127.0.0.1:11434/v1). La clé API n’est utile que si le serveur en demande une. Les requêtes vont directement de cette page au serveur, jamais par un relais.',
+                'Jeder OpenAI-kompatible Server: CoPro Desktop (Einstellungen > Local API), LM Studio, llama.cpp, vLLM oder Ollama (http://127.0.0.1:11434/v1). Der API-Schlüssel wird nur benötigt, wenn der Server einen verlangt. Anfragen gehen direkt von dieser Seite an den Server, nie über ein Relay.'
+              )}</p>
+              <p class="helper">${tt(
+                `For CoPro: in Settings > Local API, turn it on and add this page's address to the allowed web pages: ${pageAddress}`,
+                `Pour CoPro : dans Paramètres > Local API, activez-la et ajoutez l’adresse de cette page aux pages web autorisées : ${pageAddress}`,
+                `Für CoPro: Aktivieren Sie unter Einstellungen > Local API die Schnittstelle und fügen Sie die Adresse dieser Seite zu den erlaubten Webseiten hinzu: ${pageAddress}`
+              )}</p>` : ''}
               ${isOllama ? `<p class="helper">${isOllamaCloud
                 ? tt('Create an API key at ollama.com/settings/keys. Cloud requests use the same Cloudflare relay as DeckSeeder.', 'Créez une clé API sur ollama.com/settings/keys. Les requêtes Cloud utilisent le même relais Cloudflare que DeckSeeder.', 'Erstellen Sie einen API-Schlüssel unter ollama.com/settings/keys. Cloud-Anfragen verwenden denselben Cloudflare-Relay wie DeckSeeder.')
                 : `${tt('Local Ollama does not require an API key. Start Ollama, pull a model, then refresh the model list.', 'Ollama local ne nécessite pas de clé API. Démarrez Ollama, téléchargez un modèle, puis actualisez la liste.', 'Lokales Ollama benötigt keinen API-Schlüssel. Starten Sie Ollama, laden Sie ein Modell herunter und aktualisieren Sie dann die Modellliste.')} ${tt('For GitHub Pages, allow OLLAMA_ORIGINS=https://gbillois.github.io in Ollama.', 'Pour GitHub Pages, autorisez OLLAMA_ORIGINS=https://gbillois.github.io dans Ollama.', 'Für GitHub Pages muss OLLAMA_ORIGINS=https://gbillois.github.io in Ollama erlaubt sein.')}`}</p>` : ''}

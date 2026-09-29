@@ -83,7 +83,7 @@ const CrisisTechLog = {
     const settings = typeof appState !== 'undefined' ? appState?.scenario?.settings || {} : {};
     const head = [
       `CrisisMaker technical log · ${new Date().toISOString()}`,
-      `Provider: ${settings.ai_provider || '-'} · model: ${settings.ai_provider === 'azure_openai' ? settings.azure_deployment || '-' : settings.ai_model || '-'}${settings.ai_provider === 'ollama' ? ` · Ollama ${settings.ollama_mode === 'cloud' ? 'Cloud (relay)' : 'local'}` : ''}`,
+      `Provider: ${settings.ai_provider || '-'} · model: ${settings.ai_provider === 'azure_openai' ? settings.azure_deployment || '-' : settings.ai_model || '-'}${settings.ai_provider === 'ollama' ? ` · Ollama ${settings.ollama_mode === 'cloud' ? 'Cloud (relay)' : 'local'}` : ''}${settings.ai_provider === 'local_server' ? ` · AI local server ${this.where(settings.local_server_url || '') || '-'} (direct)` : ''}`,
       `Browser: ${typeof navigator !== 'undefined' ? navigator.userAgent || '' : ''}`,
       `Entries: ${this.entries.length} (the prompts are never logged, only their size)`, ''
     ];

@@ -27,6 +27,61 @@
       const OLLAMA_CLOUD_BASE = 'https://ollama.com';
       const AI_PROVIDER_PROXY = 'https://deckseeder.pages.dev/api/llm';
 
+      /* The AI local server's base URL as typed, without its trailing slash. A URL without /v1 is
+         kept as it is: LM Studio, llama.cpp, vLLM and CoPro all serve /v1, but a proxy may not. */
+      function localServerBase(settings = appState.scenario.settings) {
+        const raw = String(settings.local_server_url || DEFAULT_LOCAL_SERVER_URL).trim().replace(/\/+$/, '');
+        try {
+          const url = new URL(raw);
+          if (!['http:', 'https:'].includes(url.protocol)) throw new Error('protocol');
+        } catch (_) {
+          throw new Error(tt('Invalid local server URL. Example: http://127.0.0.1:11434/v1', 'URL du serveur local invalide. Exemple : http://127.0.0.1:11434/v1', 'Ungültige URL des lokalen Servers. Beispiel: http://127.0.0.1:11434/v1'));
+        }
+        return raw;
+      }
+
+      /* OpenAI, OpenRouter and the AI local server (CoPro Desktop's Local API, LM Studio,
+         llama.cpp, vLLM, Ollama's /v1) speak the same Chat Completions API: only the base URL, the
+         name and the headers differ. The local server's key is optional, and it is always called
+         directly: never through the relay, which cannot reach the user's machine anyway. */
+      const OPENAI_COMPATIBLE_PROVIDERS = ['openai', 'openrouter', 'local_server'];
+
+      function openAICompatibleTarget(settings = appState.scenario.settings) {
+        const provider = settings.ai_provider;
+        const key = String(settings.ai_api_key || '').trim();
+        return {
+          provider,
+          label: provider === 'local_server' ? 'AI local server' : provider === 'openrouter' ? 'OpenRouter' : 'OpenAI',
+          base: provider === 'local_server' ? localServerBase(settings) : provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1',
+          // A chat request carries JSON and OpenRouter's app attribution; the model list only the key.
+          headers: (chat = true) => ({
+            ...(chat ? { 'Content-Type': 'application/json' } : {}),
+            ...(key ? { 'Authorization': `Bearer ${key}` } : {}),
+            ...(chat && provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker' } : {})
+          })
+        };
+      }
+
+      /* A fetch that failed without an HTTP reply: the local server is not running, or it refused
+         this page at the CORS preflight (CoPro only answers the pages listed in its Local API). A
+         server that is down stays down for the next seconds, so this is said at once, not retried.
+         A page opened from disk has the address "null". */
+      function localServerUnreachable(networkError, settings, details = {}) {
+        let base = String(settings.local_server_url || DEFAULT_LOCAL_SERVER_URL).trim();
+        try { base = localServerBase(settings); } catch (_) { /* reported as typed */ }
+        const origin = typeof location !== 'undefined' && location.origin ? String(location.origin) : 'null';
+        return CrisisError.wrap(networkError, {
+          ...details,
+          provider: 'local_server',
+          code: 'unreachable',
+          message: tt(
+            `The local server is not reachable at ${base}. Check that it is running and, for CoPro, that Settings > Local API is on and lists this page's address (${origin}; for a file opened from disk the address is null).`,
+            `Le serveur local est injoignable à l’adresse ${base}. Vérifiez qu’il est démarré et, pour CoPro, que Paramètres > Local API est activé et liste l’adresse de cette page (${origin} ; pour un fichier ouvert depuis le disque, l’adresse est null).`,
+            `Der lokale Server ist unter ${base} nicht erreichbar. Prüfen Sie, ob er läuft und, für CoPro, ob Einstellungen > Local API aktiviert ist und die Adresse dieser Seite enthält (${origin}; für eine vom Datenträger geöffnete Datei lautet die Adresse null).`
+          )
+        });
+      }
+
       function azureChatUrl(settings = appState.scenario.settings) {
         let endpoint;
         try {
@@ -207,7 +262,8 @@
       async function fetchAIModels(settings = appState.scenario.settings) {
         const { ai_provider: provider, ai_api_key: apiKey } = settings;
         const ollamaBase = provider === 'ollama' ? ollamaEndpoint(settings) : '';
-        if (!apiKey?.trim() && (provider !== 'ollama' || isOllamaCloud(settings))) {
+        const compatible = OPENAI_COMPATIBLE_PROVIDERS.includes(provider) ? openAICompatibleTarget(settings) : null;
+        if (!apiKey?.trim() && provider !== 'local_server' && (provider !== 'ollama' || isOllamaCloud(settings))) {
           throw new Error(tt(
             'Enter the provider API key to load its models.',
             'Saisissez la clé API du fournisseur pour charger ses modèles.',
@@ -219,6 +275,7 @@
           try {
             return await fetch(url, options);
           } catch (networkError) {
+            if (provider === 'local_server') throw localServerUnreachable(networkError, settings, { operation: 'Load AI model list' });
             throw CrisisError.wrap(networkError, {
               operation: 'Load AI model list',
               provider,
@@ -236,10 +293,8 @@
               'anthropic-dangerous-direct-browser-access': 'true'
             }
           });
-        } else if (provider === 'openai' || provider === 'openrouter') {
-          response = await requestModels(provider === 'openrouter' ? 'https://openrouter.ai/api/v1/models' : 'https://api.openai.com/v1/models', {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
-          });
+        } else if (compatible) {
+          response = await requestModels(`${compatible.base}/models`, { headers: compatible.headers(false) });
         } else if (provider === 'google_gemini') {
           response = await requestModels(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
         } else if (provider === 'mistral') {
@@ -301,10 +356,12 @@
           catalog.status = 'success';
           catalog.models = models;
           catalog.loadedAt = new Date().toISOString();
+          // A local server has no default list: its first model is chosen, as the list shows it selected.
+          if (!settings.ai_model) settings.ai_model = models[0];
         } catch (error) {
           if (appState.aiModelCatalog !== catalog || appState.scenario.settings.ai_provider !== provider) return;
-          const ollamaLocal = provider === 'ollama' && !isOllamaCloud(settings);
-          catalog.status = settings.ai_api_key?.trim() || ollamaLocal ? 'error' : 'missing-key';
+          const noKeyNeeded = (provider === 'ollama' && !isOllamaCloud(settings)) || provider === 'local_server';
+          catalog.status = settings.ai_api_key?.trim() || noKeyNeeded ? 'error' : 'missing-key';
           catalog.error = error.message || String(error);
         }
         App.render();
@@ -336,6 +393,9 @@
           }
           if (ai_provider === 'ollama' && isOllamaCloud() && !ai_api_key) {
             throw new Error(tt('Please enter an Ollama Cloud API key before testing the connection.', 'Veuillez saisir une clé API Ollama Cloud avant de tester la connexion.', 'Bitte geben Sie vor dem Verbindungstest einen Ollama-Cloud-API-Schlüssel ein.'));
+          }
+          if (ai_provider === 'local_server' && !appState.scenario.settings.ai_model?.trim()) {
+            throw new Error(tt('Choose a model before testing the connection: refresh the model list to load the models of the local server.', 'Choisissez un modèle avant de tester la connexion : actualisez la liste des modèles pour charger ceux du serveur local.', 'Wählen Sie vor dem Verbindungstest ein Modell: Aktualisieren Sie die Modellliste, um die Modelle des lokalen Servers zu laden.'));
           }
           const prompt = 'Reply only with a JSON object {"ok": true, "message": "valid connection"}';
           return this.generate('settings_test', prompt, null, true);
@@ -536,6 +596,7 @@
             } catch (networkError) {
               if (timedOut) throw stalled(networkError);
               if (networkError?.name === 'AbortError') throw networkError;
+              if (context.provider === 'local_server') throw localServerUnreachable(networkError, appState.scenario.settings, context);
               throw CrisisError.wrap(networkError, {
                 ...context,
                 message: `${context.provider || 'LLM'} streaming network error: ${networkError.message}`
@@ -558,12 +619,13 @@
             return finishStream(fullText, 'anthropic', ai_model);
           }
 
-          if (ai_provider === 'openai' || ai_provider === 'openrouter') {
-            const label = ai_provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
-            if (!ai_api_key) throw new Error(tt(`Missing ${label} API key.`, `Clé API ${label} manquante.`, `Fehlender ${label}-API-Schlüssel.`));
-            const response = await requestStream(ai_provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions', {
+          if (OPENAI_COMPATIBLE_PROVIDERS.includes(ai_provider)) {
+            const target = openAICompatibleTarget(appState.scenario.settings);
+            const label = target.label;
+            if (!ai_api_key && ai_provider !== 'local_server') throw new Error(tt(`Missing ${label} API key.`, `Clé API ${label} manquante.`, `Fehlender ${label}-API-Schlüssel.`));
+            const response = await requestStream(`${target.base}/chat/completions`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}`, ...(ai_provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker' } : {}) },
+              headers: target.headers(),
               body: JSON.stringify({ model: ai_model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }], response_format: { type: 'json_object' }, stream: true })
             }, { operation: `Stream ${label} response`, provider: ai_provider, model: ai_model });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
@@ -755,13 +817,14 @@
             if (!quiet) pushToast(tt('Content generated with Anthropic.', 'Contenu généré avec Anthropic.', 'Inhalt mit Anthropic generiert.'), 'success');
             return parsed;
           }
-          if (ai_provider === 'openai' || ai_provider === 'openrouter') {
-            const label = ai_provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
+          if (OPENAI_COMPATIBLE_PROVIDERS.includes(ai_provider)) {
+            const target = openAICompatibleTarget(appState.scenario.settings);
+            const label = target.label;
             let response;
             try {
-              response = await fetch(ai_provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions', {
+              response = await fetch(`${target.base}/chat/completions`, {
                 method: 'POST', signal: options.signal,
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ai_api_key}`, ...(ai_provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker' } : {}) },
+                headers: target.headers(),
                 body: JSON.stringify({
                   model: ai_model,
                   messages: [{ role: 'system', content: systemPrompt }, ...(userPrompt ? [{ role: 'user', content: userPrompt }] : [{ role: 'user', content: 'Reply in strict JSON.' }])],
@@ -769,6 +832,7 @@
                 })
               });
             } catch (networkError) {
+              if (ai_provider === 'local_server' && !options.signal?.aborted) throw localServerUnreachable(networkError, appState.scenario.settings, { operation: `Call ${label}`, model: ai_model });
               throw CrisisError.wrap(networkError, { operation: `Call ${label}`, provider: ai_provider, model: ai_model, message: `${label} network error: ${networkError.message}` });
             }
             const data = await CrisisError.responseJson(response, { operation: `Call ${label}`, provider: ai_provider, model: ai_model });
@@ -1199,7 +1263,8 @@ Return this structure:
         const settings = appState.scenario.settings;
         const provider = settings.ai_provider;
         const host = provider === 'ollama' ? (isOllamaCloud(settings) ? 'ollama.com (relay)' : CrisisTechLog.where(settings.ollama_endpoint || 'http://localhost:11434'))
-          : provider === 'azure_openai' ? CrisisTechLog.where(settings.azure_endpoint || '') : '';
+          : provider === 'azure_openai' ? CrisisTechLog.where(settings.azure_endpoint || '')
+          : provider === 'local_server' ? CrisisTechLog.where(settings.local_server_url || DEFAULT_LOCAL_SERVER_URL) : '';
         return CrisisTechLog.start({
           kind: 'ai', op: channel, provider, model: provider === 'azure_openai' ? settings.azure_deployment : settings.ai_model, host, stream, attempt,
           reqChars: String(systemPrompt || '').length + String(userPrompt || '').length, maxTokens,

@@ -545,5 +545,7 @@
           const endpoint = s.ollama_endpoint?.trim().replace(/\/+$/, '');
           return !!(s.ai_model?.trim() && (s.ollama_mode === 'cloud' ? s.ai_api_key?.trim() : endpoint));
         }
+        // The AI local server needs no key: its address and a model are enough.
+        if (s.ai_provider === 'local_server') return !!(s.ai_model?.trim() && s.local_server_url?.trim());
         return !!(s.ai_api_key?.trim());
       }

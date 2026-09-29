@@ -81,7 +81,7 @@
           actor_categories: categories,
           stimuli: [],
           custom_templates: [],
-          settings: { language: 'en', inject_language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-5', ai_api_key: '', ollama_mode: 'local', ollama_endpoint: 'http://localhost:11434', azure_endpoint: '', azure_api_key: '', azure_deployment: '', azure_api_version: DEFAULT_AZURE_API_VERSION, azure_speech_key: '', azure_speech_region: 'westeurope', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0, watermark_audio_enabled: true, confidentiality_acknowledged: false }
+          settings: { language: 'en', inject_language: 'en', ai_provider: 'anthropic', ai_model: 'claude-sonnet-5', ai_api_key: '', ollama_mode: 'local', ollama_endpoint: 'http://localhost:11434', local_server_url: DEFAULT_LOCAL_SERVER_URL, azure_endpoint: '', azure_api_key: '', azure_deployment: '', azure_api_version: DEFAULT_AZURE_API_VERSION, azure_speech_key: '', azure_speech_region: 'westeurope', max_versions: 3, auto_save_interval_seconds: 30, template_quality: 'hd', watermark_enabled: true, watermark_text: 'EXERCISE EXERCISE EXERCISE', watermark_text_size: 16, watermark_position_v: 'top', watermark_position_h: 'center', watermark_opacity: 50, watermark_rotation: 0, watermark_audio_enabled: true, confidentiality_acknowledged: false }
         };
 
         // The simulated clock: 08:30 on Monday 16 November 2026, Paris time.

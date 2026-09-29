@@ -183,7 +183,7 @@ test('checkpoint can be recovered after reload and cannot undo into another proj
 });
 
 test('all existing providers normalize the same structured response and forward cancellation', async () => {
-  for (const provider of ['anthropic', 'openai', 'openrouter', 'mistral', 'azure_openai', 'google_gemini', 'ollama']) {
+  for (const provider of ['anthropic', 'openai', 'openrouter', 'mistral', 'azure_openai', 'google_gemini', 'ollama', 'local_server']) {
     const h = harness(); const seen = [];
     h.context.fetch = async (url, init) => { seen.push({ url, init, before: init.signal.aborted, after: (h.context.abort.abort(), init.signal.aborted) }); return { ok: true, json: async () => ({ content: [{ type: 'text', text: JSON.stringify(final) }], choices: [{ message: { content: JSON.stringify(final) } }], candidates: [{ content: { parts: [{ text: JSON.stringify(final) }] } }], message: { content: JSON.stringify(final) } }) }; };
     h.run(`Object.assign(appState.scenario.settings, { ai_provider: '${provider}', azure_endpoint: 'https://example.openai.azure.com', azure_api_key: 'TEST-SECRET', azure_deployment: 'model' }); globalThis.abort = new AbortController();`);

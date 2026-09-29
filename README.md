@@ -48,6 +48,42 @@ For the deployed site, allow its origin in the Ollama service environment and re
 OLLAMA_ORIGINS=https://gbillois.github.io ollama serve
 ```
 
+## AI local server
+
+**AI local server** (in the AI provider list of Settings > AI connection) connects to an
+OpenAI-compatible server on your machine: CoPro Desktop's Local API, which relays to
+Microsoft 365, or LM Studio, the llama.cpp server, vLLM or Ollama's `/v1`.
+
+- **Server URL**: the base of the API, by default `http://127.0.0.1:11434/v1`. The app calls
+  `<Server URL>/models` and `<Server URL>/chat/completions`. A URL without `/v1` is used as typed.
+- **API key**: optional. It is sent as `Authorization: Bearer <key>` only when filled, and kept
+  like the other provider keys (for the browser session only, never in project files).
+- **Model**: the list loaded from the server; the refresh button loads it again. A model
+  already chosen stays selected when the list cannot be loaded.
+
+The provider is ready once the URL and the model are set. Requests go straight from the page
+to the server, never through the DeckSeeder relay. Replies are asked for in JSON mode; no
+native tool calling and no images are sent. The page's security policy allows servers on
+`localhost` and `127.0.0.1`.
+
+With CoPro Desktop:
+
+1. In CoPro, open Settings > Local API: turn it on, keep port 11434 (or note the port you
+   choose), and add this app's page address to the allowed web pages:
+   `https://gbillois.github.io` for the hosted version, `null` for the standalone HTML opened
+   from disk. Settings > AI connection in CrisisMaker shows the address of the open page.
+2. In CrisisMaker, Settings > AI connection: AI provider **AI local server**, Server URL
+   `http://127.0.0.1:11434/v1`, API key empty, then pick the model from the refreshed list
+   (for example `gpt-5.5`) and select **Test connection**.
+
+If Ollama also runs on the machine, it holds port 11434: choose another port in CoPro and use
+it in the Server URL (for example `http://127.0.0.1:11500/v1`).
+
+When the server cannot be reached, the error gives the URL tried: check that the server is
+running and, for CoPro, that Local API is on and lists the page's address. CoPro answers 401
+when it is not signed in to Microsoft 365, 403 when the page's address is not allowed, 404
+for an unknown model and 503 when it is not available.
+
 ## Video Debrief
 
 The **Video Debrief** tab embeds the documentary video studio from VideoMaker

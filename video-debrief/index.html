@@ -285,6 +285,7 @@
           <option value="openrouter">OpenRouter</option>
           <option value="mistral">Mistral</option>
           <option value="ollama">Ollama</option>
+          <option value="local_server">AI local server</option>
         </select>
         <select id="ai-model" hidden></select>
         <input type="password" id="ai-key" hidden>
@@ -611,6 +612,7 @@ const FALLBACK_MODELS = {
   openrouter: ['openrouter/auto', '~openai/gpt-latest', 'anthropic/claude-sonnet-4.6'],
   mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
   ollama: ['llama3.2', 'gpt-oss:120b', 'gpt-oss:20b'],
+  local_server: [],
 };
 async function fetchOllamaApi(url, init){
   const proxy = $('ai-proxy-url').value;
@@ -640,7 +642,7 @@ async function fetchModels(){
   const baseUrl = ($('ai-base-url').value || 'http://localhost:11434').replace(/\/+$/, '');
   const status = $('models-status');
   if (provider === 'none'){ fillModels([]); status.textContent = ''; return; }
-  if (!key && (provider !== 'ollama' || baseUrl === 'https://ollama.com')){
+  if (!key && provider !== 'local_server' && (provider !== 'ollama' || baseUrl === 'https://ollama.com')){
     fillModels(FALLBACK_MODELS[provider] || []);
     status.textContent = 'Liste par défaut — entrez votre clé puis ⟳ pour la liste complète.';
     return;
@@ -668,6 +670,11 @@ async function fetchModels(){
           : provider === 'openrouter' ? Boolean(id) : /^(gpt-|o\d|chatgpt)/.test(id)
             && !/(audio|realtime|search|transcribe|tts|embed|image|moderation|instruct)/i.test(id))
         .sort().reverse();
+    } else if (provider === 'local_server') {
+      // CoPro Desktop's Local API, LM Studio, llama.cpp, vLLM or Ollama's /v1: called directly, key optional.
+      const r = await fetch(baseUrl + '/models', { headers: key ? { 'Authorization': 'Bearer ' + key } : {} });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      ids = ((await r.json()).data || []).map(m => m.id).filter(Boolean).sort();
     } else if (provider === 'ollama') {
       const r = await fetchOllamaApi(baseUrl + '/api/tags', {
         method: 'GET',
@@ -696,7 +703,7 @@ fetchModels();
 function applyCrisisMakerAISettings(settings){
   if (settings?.uiLanguage) applyInterfaceLanguage(settings.uiLanguage);
   const provider = settings && settings.provider;
-  const supported = settings && settings.supported && ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama'].includes(provider);
+  const supported = settings && settings.supported && ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama', 'local_server'].includes(provider);
   if (!supported){
     $('ai-provider').value = 'none';
     $('ai-key').value = '';
@@ -720,9 +727,9 @@ function applyCrisisMakerAISettings(settings){
   $('ai-base-url').value = settings.baseUrl || 'http://localhost:11434';
   $('ai-proxy-url').value = settings.proxyUrl || '';
   fillModels(FALLBACK_MODELS[provider] || [], settings.model || '');
-  const providerLabel = provider === 'anthropic' ? 'Anthropic' : provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : provider === 'ollama' ? 'Ollama' : 'OpenAI';
+  const providerLabel = provider === 'anthropic' ? 'Anthropic' : provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : provider === 'ollama' ? 'Ollama' : provider === 'local_server' ? 'AI local server' : 'OpenAI';
   const modelLabel = settings.model ? ` · ${settings.model}` : '';
-  $('models-status').textContent = settings.apiKey || (provider === 'ollama' && settings.baseUrl !== 'https://ollama.com')
+  $('models-status').textContent = settings.apiKey || provider === 'local_server' || (provider === 'ollama' && settings.baseUrl !== 'https://ollama.com')
     ? uiText(
         `${providerLabel}${modelLabel} · réglages repris depuis CrisisMaker.`,
         `${providerLabel}${modelLabel} · settings inherited from CrisisMaker.`,
@@ -738,13 +745,14 @@ function storedCrisisMakerAISettings(){
   try {
     const saved = JSON.parse(localStorage.getItem('crisismaker_settings_v1') || '{}');
     const sourceProvider = localStorage.getItem('aiProvider') || saved.ai_provider || 'anthropic';
-    const supported = ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama'].includes(sourceProvider);
+    const supported = ['anthropic', 'openai', 'openrouter', 'mistral', 'ollama', 'local_server'].includes(sourceProvider);
     const ollamaCloud = sourceProvider === 'ollama' && (localStorage.getItem('crisismaker_ollama_mode') || saved.ollama_mode) === 'cloud';
     return {
       provider: supported ? sourceProvider : 'none',
       model: supported ? (saved.ai_model || '') : '',
       apiKey: supported && (sourceProvider !== 'ollama' || ollamaCloud) ? ((typeof sessionStorage !== 'undefined' ? sessionStorage : localStorage).getItem('crisismaker_api_key') || '') : '',
-      baseUrl: sourceProvider === 'ollama' ? (ollamaCloud ? 'https://ollama.com' : (localStorage.getItem('crisismaker_ollama_endpoint') || saved.ollama_endpoint || 'http://localhost:11434')) : '',
+      baseUrl: sourceProvider === 'ollama' ? (ollamaCloud ? 'https://ollama.com' : (localStorage.getItem('crisismaker_ollama_endpoint') || saved.ollama_endpoint || 'http://localhost:11434'))
+        : sourceProvider === 'local_server' ? (localStorage.getItem('crisismaker_local_server_url') || saved.local_server_url || 'http://127.0.0.1:11434/v1').trim().replace(/\/+$/, '') : '',
       proxyUrl: ollamaCloud ? 'https://deckseeder.pages.dev/api/llm' : '',
       sourceProvider,
       supported
@@ -929,7 +937,7 @@ async function callAI(systemPrompt, userPrompt){
 async function callAIOnce(systemPrompt, userPrompt, signal){
   const provider = $('ai-provider').value, key = $('ai-key').value.trim(), model = $('ai-model').value.trim();
   const baseUrl = ($('ai-base-url').value || 'http://localhost:11434').replace(/\/+$/, '');
-  if (!key && (provider !== 'ollama' || baseUrl === 'https://ollama.com')) throw new Error(uiText('Configurez une clé API dans les réglages CrisisMaker, ou choisissez la création manuelle.', 'Add an API key in the CrisisMaker settings, or choose manual creation.', 'Hinterlegen Sie einen API-Schlüssel in den CrisisMaker-Einstellungen oder wählen Sie die manuelle Erstellung.'));
+  if (!key && provider !== 'local_server' && (provider !== 'ollama' || baseUrl === 'https://ollama.com')) throw new Error(uiText('Configurez une clé API dans les réglages CrisisMaker, ou choisissez la création manuelle.', 'Add an API key in the CrisisMaker settings, or choose manual creation.', 'Hinterlegen Sie einen API-Schlüssel in den CrisisMaker-Einstellungen oder wählen Sie die manuelle Erstellung.'));
   if (provider === 'anthropic'){
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', signal,
@@ -942,15 +950,26 @@ async function callAIOnce(systemPrompt, userPrompt, signal){
     if (!r.ok) throw new Error('Anthropic ' + r.status + ' : ' + (await r.text()).slice(0, 300));
     const d = await r.json();
     return d.content.map(c => c.text || '').join('');
-  } else if (provider === 'openai' || provider === 'openrouter' || provider === 'mistral') {
-    const endpoint = provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
-    const providerLabel = provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
-    const r = await fetch(endpoint, {
-      method: 'POST', signal,
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, ...(provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker Video Debrief' } : {}) },
-      body: JSON.stringify({ model, response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
-    });
+  } else if (provider === 'openai' || provider === 'openrouter' || provider === 'mistral' || provider === 'local_server') {
+    const endpoint = provider === 'local_server' ? baseUrl + '/chat/completions' : provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+    const providerLabel = provider === 'local_server' ? 'AI local server' : provider === 'mistral' ? 'Mistral' : provider === 'openrouter' ? 'OpenRouter' : 'OpenAI';
+    let r;
+    try {
+      r = await fetch(endpoint, {
+        method: 'POST', signal,
+        headers: { 'Content-Type': 'application/json', ...(key ? { 'Authorization': 'Bearer ' + key } : {}), ...(provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-OpenRouter-Title': 'CrisisMaker Video Debrief' } : {}) },
+        body: JSON.stringify({ model, response_format: { type: 'json_object' },
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
+      });
+    } catch (error) {
+      // No HTTP reply from the local server: not running, or this page is not allowed by it.
+      if (provider !== 'local_server' || signal.aborted) throw error;
+      throw new Error(uiText(
+        `Le serveur local est injoignable à l’adresse ${baseUrl}. Vérifiez qu’il est démarré et, pour CoPro, que Paramètres > Local API est activé et liste l’adresse de cette page (${location.origin} ; pour un fichier ouvert depuis le disque, l’adresse est null).`,
+        `The local server is not reachable at ${baseUrl}. Check that it is running and, for CoPro, that Settings > Local API is on and lists this page's address (${location.origin}; for a file opened from disk the address is null).`,
+        `Der lokale Server ist unter ${baseUrl} nicht erreichbar. Prüfen Sie, ob er läuft und, für CoPro, ob Einstellungen > Local API aktiviert ist und die Adresse dieser Seite enthält (${location.origin}; für eine vom Datenträger geöffnete Datei lautet die Adresse null).`
+      ));
+    }
     if (!r.ok) throw new Error(providerLabel + ' ' + r.status + ' : ' + (await r.text()).slice(0, 300));
     const d = await r.json();
     return d.choices[0].message.content;

@@ -10,13 +10,18 @@
         azure_openai: ['gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'o3', 'o4-mini', 'o3-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
         google_gemini: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
         mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
-        ollama: ['llama3.2', 'gpt-oss:120b', 'gpt-oss:20b']
+        ollama: ['llama3.2', 'gpt-oss:120b', 'gpt-oss:20b'],
+        // A local server serves its own models: no guess, the list comes from {base}/models.
+        local_server: []
       };
       const DEFAULT_AZURE_API_VERSION = '2024-10-21';
+      // CoPro Desktop's Local API listens here by default (Ollama's /v1 too).
+      const DEFAULT_LOCAL_SERVER_URL = 'http://127.0.0.1:11434/v1';
       const PROVIDER_STORAGE_KEYS = {
         aiProvider: 'aiProvider',
         ollamaMode: 'crisismaker_ollama_mode',
         ollamaEndpoint: 'crisismaker_ollama_endpoint',
+        localServerUrl: 'crisismaker_local_server_url',
         azureEndpoint: 'azureEndpoint',
         azureApiKey: 'azureApiKey',       // legacy key - cleaned up on load
         azureDeployment: 'azureDeployment',
