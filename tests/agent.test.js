@@ -530,6 +530,9 @@ test('main events: set per phase from the incident timeline, at from the phase s
   // An exercise minute inside the phase (beyond its duration from its start) is converted; a small one is from the phase start.
   const set = await execute(h, 'setMainEvents', { id: blocks[1], replace: true, events: [{ at: start + duration - 5, text: 'Ransom email to the CEO' }, { at: 10, text: 'Sample published on the leak site' }] });
   assert.equal(JSON.stringify(set.key_events.map(e => [e.at, e.exercise_minute])), JSON.stringify([[10, start + 10], [duration - 5, start + duration - 5]]));
+  // Set twice: not duplicated.
+  const again = await execute(h, 'setMainEvents', { id: blocks[1], events: [{ at: 10, text: 'Sample published on the leak site' }] });
+  assert.equal(again.key_events.length, 2);
   const brief = h.run(`sbGenerationBrief(appState.scenario, sbBlock(appState.scenario.storyboard, '${blocks[1]}'), null)`);
   assert.match(brief, /Main events still to come.*Sample published/);
   await assert.rejects(execute(h, 'setMainEvents', { id: blocks[0], events: [{ at: 5000, text: 'Too late' }] }), /outside phase/);

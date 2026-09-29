@@ -428,7 +428,10 @@ function createAgentToolRegistry() {
     if (!block) throw new AgentValidationError('Unknown item ID.');
     if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
     const added = agentBeatsInPhase(block, args.events.map(event => ({ ...event, title: event.text }))).map(event => sbMakeEvent({ offset_minutes: event.at, text: event.text }));
-    block.events = [...(args.replace ? [] : block.events || []), ...added].sort((a, b) => a.offset_minutes - b.offset_minutes).slice(0, 12);
+    // An event already there (same text, as the agent may set a phase twice) is not added again.
+    const kept = args.replace ? [] : block.events || [];
+    const known = new Set(kept.map(event => String(event.text).trim().toLowerCase()));
+    block.events = [...kept, ...added.filter(event => !known.has(String(event.text).trim().toLowerCase()) && known.add(String(event.text).trim().toLowerCase()))].sort((a, b) => a.offset_minutes - b.offset_minutes).slice(0, 12);
     StoryboardHistory.commit('Agent: main events');
     return { id: block.id, title: block.title, key_events: block.events.map(event => ({ at: event.offset_minutes, exercise_minute: block.start_minutes + event.offset_minutes, text: event.text })) };
   }, 'write');
