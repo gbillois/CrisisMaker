@@ -37,12 +37,12 @@
                   <div><strong>${tt('Estimated data rows', 'Lignes de données estimées', 'Geschätzte Datenzeilen')} :</strong> ~${totalRows}</div>
                 </div>
 
-                ${hasExisting ? `<div class="chronogram-warning-banner">
-                  ${sbUiIcon('alert', 14)} ${tt(
-                    'This project already has stimuli and/or actors. Existing imported content will be replaced, new content will be added.',
-                    'Ce projet contient déjà des stimuli et/ou des acteurs. Le contenu importé existant sera remplacé, le nouveau contenu sera ajouté.',
-                    'Dieses Projekt enthält bereits Stimuli und/oder Akteure. Vorhandene importierte Inhalte werden ersetzt, neue Inhalte werden hinzugefügt.'
-                  )}
+                ${hasExisting ? `<div class="chronogram-field">
+                  <label>${tt('Import into', 'Importer dans', 'Importieren in')}</label>
+                  <select data-chrono-option="target">
+                    <option value="new" ${state.options.target !== 'current' ? 'selected' : ''}>${tt('A new project (the current one is replaced: export it first to keep it)', 'Un nouveau projet (le projet actuel est remplacé : exportez-le d’abord pour le garder)', 'Ein neues Projekt (das aktuelle wird ersetzt: vorher exportieren, um es zu behalten)')}</option>
+                    <option value="current" ${state.options.target === 'current' ? 'selected' : ''}>${tt('The current exercise (its injects are kept, the file’s injects are added)', 'L’exercice actuel (ses injects sont conservés, ceux du fichier sont ajoutés)', 'Die aktuelle Übung (ihre Injects bleiben, die der Datei kommen hinzu)')}</option>
+                  </select>
                 </div>` : ''}
 
                 <div class="chronogram-options">

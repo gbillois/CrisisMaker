@@ -640,6 +640,14 @@
               const body = JSON.parse(init.body); delete body.think;
               fullText = await read(await send({ ...init, body: JSON.stringify(body) }));
             }
+            // Only reasoning and no answer (the reasoning used the whole budget): once more with the
+            // other reasoning setting, as the non-streamed calls do.
+            if (!fullText.trim() && thinking && !thinking.includes('{') && !controller.signal.aborted) {
+              const body = JSON.parse(init.body);
+              body.think = body.think === false ? 'low' : false;
+              thinking = ''; doneReason = '';
+              fullText = await read(await send({ ...init, body: JSON.stringify(body) }));
+            }
             if (!fullText.trim() && thinking.includes('{')) fullText = firstJsonObject(thinking.slice(thinking.lastIndexOf('{"'))) || '';
             if (!fullText.trim()) {
               throw CrisisError.create(thinking

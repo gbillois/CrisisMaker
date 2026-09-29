@@ -23,9 +23,41 @@ function agentRestore(snapshot) {
   appState.historyModalStimulusId = null;
   appState.checkerState.analysisResult = null;
 }
-function agentNormalizeResponse(value) {
+function agentNormalizeResponse(value, registry = null) {
   if (typeof value === 'string') {
     try { value = JSON.parse(value); } catch (_) { throw new AgentValidationError('Response must be strict JSON.'); }
+  }
+  // Harmless slips of a model, fixed before the strict check (the tool's own schema still checks
+  // every argument): a tool argument written next to "arguments", other names for "arguments",
+  // a reason or summary too long, a final answer without its lists, a single question as text.
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    value = { ...value };
+    const clip = (text, max) => (typeof text === 'string' && text.length > max ? `${text.slice(0, max - 1)}…` : text);
+    if (value.type === 'tool_call') {
+      if (!value.arguments || typeof value.arguments !== 'object') {
+        const alias = ['args', 'parameters', 'input'].find((key) => value[key] && typeof value[key] === 'object' && !Array.isArray(value[key]));
+        value.arguments = alias ? value[alias] : {};
+        if (alias) delete value[alias];
+      }
+      value.arguments = { ...value.arguments };
+      // Only an argument the tool declares moves; anything else stays and is refused below.
+      const declared = registry?.get?.(value.tool)?.inputSchema?.properties || {};
+      for (const key of Object.keys(value)) {
+        if (['type', 'tool', 'arguments', 'reason'].includes(key) || !Object.prototype.hasOwnProperty.call(declared, key) || key in value.arguments) continue;
+        value.arguments[key] = value[key];
+        delete value[key];
+      }
+      if (value.reason !== undefined) value.reason = clip(value.reason, 500);
+    } else if (value.type === 'final') {
+      if (typeof value.summary !== 'string') value.summary = typeof value.message === 'string' ? value.message : typeof value.answer === 'string' ? value.answer : '';
+      delete value.message; delete value.answer;
+      value.summary = clip(value.summary, 5000);
+      for (const key of ['issues', 'changes']) value[key] = (Array.isArray(value[key]) ? value[key] : value[key] ? [value[key]] : []).map((item) => clip(typeof item === 'string' ? item : JSON.stringify(item), 1500));
+    } else if (value.type === 'question') {
+      if (typeof value.questions === 'string') value.questions = [value.questions];
+      if (Array.isArray(value.questions)) value.questions = value.questions.map((item) => clip(String(item), 600)).slice(0, 5);
+      if (value.reason !== undefined) value.reason = clip(value.reason, 500);
+    }
   }
   const S = AgentSchema;
   const schema = value?.type === 'tool_call'
@@ -184,7 +216,7 @@ class AgentRunner {
             while (input.length + system.length > 100000 && recent.length) { recent = recent.slice(1); input = build(recent); }
             if (input.length + system.length > 100000) throw new AgentValidationError('The exercise is too large for one agent step. Narrow the objective to a phase or a cell.');
           }
-          call = agentNormalizeResponse(await agentCall((signal) => this.request(system, input, signal), this.controller.signal));
+          call = agentNormalizeResponse(await agentCall((signal) => this.request(system, input, signal), this.controller.signal), this.registry);
           this.assertActive();
           if (call.type === 'question') {
             if (this.questionRounds >= AGENT_MAX_QUESTION_ROUNDS) {

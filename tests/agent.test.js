@@ -534,3 +534,15 @@ test('main events: set per phase from the incident timeline, at from the phase s
   assert.match(brief, /Main events still to come.*Sample published/);
   await assert.rejects(execute(h, 'setMainEvents', { id: blocks[0], events: [{ at: 5000, text: 'Too late' }] }), /outside phase/);
 });
+
+test('agent replies: harmless slips are fixed before the strict check, tool arguments are still validated', () => {
+  const h = harness();
+  const call = h.json(`agentNormalizeResponse({ type: 'tool_call', tool: 'getStimulus', id: 'stimulus_1', arguments: {}, reason: 'x'.repeat(900) }, createAgentToolRegistry())`);
+  assert.equal(call.arguments.id, 'stimulus_1'); assert.ok(!('id' in call)); assert.equal(call.reason.length, 500);
+  assert.equal(h.json(`agentNormalizeResponse({ type: 'tool_call', tool: 'getScenario', args: {} })`).tool, 'getScenario');
+  const final = h.json(`agentNormalizeResponse({ type: 'final', summary: 'Done' })`);
+  assert.equal(final.issues.length, 0); assert.equal(final.changes.length, 0);
+  assert.equal(h.json(`agentNormalizeResponse({ type: 'question', questions: 'Who plays?' })`).questions[0], 'Who plays?');
+  // A key no tool declares is still refused.
+  assert.throws(() => h.run(`agentNormalizeResponse({ type: 'tool_call', tool: 'getScenario', arguments: {}, javascript: 'alert(1)' }, createAgentToolRegistry())`), /Invalid/);
+});

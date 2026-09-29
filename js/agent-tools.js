@@ -64,6 +64,9 @@ function agentActor(actor) {
 }
 function agentStimulus(stimulus, full = false) {
   const result = agentPick(stimulus, ['id', 'name', 'channel', 'template_id', 'actor_id', 'timestamp_offset_minutes', 'status', 'generation_mode', 'generation_prompt', 'cell_id']);
+  // Its number in Play and the Injects library (#07) and its time, to cite it to the user.
+  if (typeof ExerciseModel !== 'undefined') { const numbers = ExerciseModel.numbers(appState.scenario); if (numbers.has(stimulus.id)) result.number = ExerciseModel.numberLabel(numbers.get(stimulus.id), ExerciseModel.numberTop(numbers)); }
+  result.time = sbFormatOffset(stimulus.timestamp_offset_minutes);
   result.fields = Object.fromEntries(Object.entries(stimulus.fields || {}).filter(([key]) => !/photo|avatar_url|audio|video|_data/.test(key)).map(([key, value]) => [key, full ? value : agentExcerpt(value, 180)]));
   if (full) result.editableFields = (getTemplateDefinition(stimulus).fields || []).filter(f => !/upload/.test(f.type)).map(f => agentPick(f, ['key', 'type', 'options']));
   return result;
@@ -90,7 +93,12 @@ const AgentContext = {
   build() {
     const s = agentScenario();
     s.scenario = Object.fromEntries(Object.entries(s.scenario).map(([k, v]) => [k, typeof v === 'string' ? agentExcerpt(v, 2500) : v]));
-    return { ...s, language: appState.scenario.settings.inject_language, frame: agentExerciseFrame(), storyboard: agentStoryboardSummary(), actors: appState.scenario.actors.slice(0, 12).map(agentActor), timeline: getSortedStimuli().slice(0, 20).map(s => ({ id: s.id, at: s.timestamp_offset_minutes, name: agentExcerpt(s.name || s.fields.subject || s.fields.headline || s.fields.text, 100) })), note: 'Actor/timeline/storyboard previews are limited. Use paginated list tools and getStoryboard for details.' };
+    return { ...s, language: appState.scenario.settings.inject_language, frame: agentExerciseFrame(), storyboard: agentStoryboardSummary(), actors: appState.scenario.actors.slice(0, 12).map(agentActor), timeline: (() => {
+      // Every inject in compact form (up to 60): the agent sees the whole exercise without paging.
+      const numbers = typeof ExerciseModel !== 'undefined' ? ExerciseModel.numbers(appState.scenario) : new Map();
+      const top = numbers.size ? ExerciseModel.numberTop(numbers) : 0;
+      return getSortedStimuli().slice(0, 60).map(s => ({ id: s.id, number: numbers.has(s.id) ? ExerciseModel.numberLabel(numbers.get(s.id), top) : undefined, at: s.timestamp_offset_minutes, cell: typeof sbRecipientName === 'function' ? sbRecipientName(appState.scenario, s.cell_id) || undefined : undefined, channel: s.channel, name: agentExcerpt(s.name || s.fields.subject || s.fields.headline || s.fields.text, 90) }));
+    })(), note: 'Actor and storyboard previews are limited; the timeline lists up to 60 injects. Use getStimulus for the content of one inject and getStoryboard or getPhase for the plan.' };
   }
 };
 /* Scenario Builder storyboard, compact: the designer's plan the injects should follow. */

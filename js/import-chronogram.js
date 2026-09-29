@@ -68,7 +68,7 @@
             } catch (err) {
               // Network, rate limit and overload are already retried by AITextGenerator; a key,
               // quota, cut-off reply or cancel would fail again: only an unreadable reply is retried.
-              const unreadable = err instanceof SyntaxError || err?.name === 'SyntaxError' || /not valid JSON|malformed|pas un JSON|kein gültiges/i.test(String(err?.message || ''));
+              const unreadable = err instanceof SyntaxError || err?.name === 'SyntaxError' || /not valid JSON|malformed|pas un JSON|kein gültiges|only returned its reasoning|empty .*response|response was empty/i.test(String(err?.message || ''));
               if (err?.name === 'AbortError') throw err;
               if (attempt === maxRetries || !unreadable) {
                 if (onLog) onLog({ type: 'error', message: err.message });

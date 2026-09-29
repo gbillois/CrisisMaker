@@ -700,6 +700,20 @@
         return true;
       }
 
+      /* Where an Excel chronogram is imported: a new project named after the file (the default when
+         the open project already has content), or the current exercise. Created once per import. */
+      function chronogramImportTarget() {
+        const state = appState.chronogramImport;
+        const hasExisting = appState.scenario.stimuli.length > 0 || appState.scenario.actors.length > 0;
+        if (!state || state.projectCreated || state.options?.target === 'current' || !hasExisting) return appState.scenario;
+        confirmReplaceProject('new', { ask: false });
+        startProject(emptyScenario({ ...appState.scenario.settings }));
+        appState.scenario.name = String(state.fileName || '').replace(/\.[^.]+$/, '');
+        appState.chronogramImport = state;
+        state.projectCreated = true;
+        return appState.scenario;
+      }
+
       /* Puts a fresh project in place of the current one (New, demo, library). */
       function startProject(scenario) {
         appState.scenario = scenario;
@@ -1380,7 +1394,7 @@
                   const autonomy = appState.chronogramImportAutonomy;
                   if (autonomy === 'fully_autonomous') {
                     // Auto-apply
-                    const summary = ChronogramImport.applyImport(appState.scenario, result);
+                    const summary = ChronogramImport.applyImport(chronogramImportTarget(), result);
                     state.phase = 'result';
                     state.appliedSummary = summary;
                     saveLocal(false);
@@ -1420,7 +1434,7 @@
             case 'chronogram-accept-all': {
               const state = appState.chronogramImport;
               if (!state || !state.result) break;
-              const summary = ChronogramImport.applyImport(appState.scenario, state.result);
+              const summary = ChronogramImport.applyImport(chronogramImportTarget(), state.result);
               appState.chronogramImport = null;
               saveLocal(false);
               App.render();
@@ -1440,7 +1454,7 @@
             case 'chronogram-modify': {
               const state = appState.chronogramImport;
               if (!state || !state.result) break;
-              const summary = ChronogramImport.applyImport(appState.scenario, state.result);
+              const summary = ChronogramImport.applyImport(chronogramImportTarget(), state.result);
               appState.chronogramImport = null;
               appState.route = 'library';
               saveLocal(false);
@@ -1487,7 +1501,7 @@
                 skipped_rows: state.result?.skipped_rows || [],
                 synopsis: state.result?.synopsis
               };
-              const summary = ChronogramImport.applyImport(appState.scenario, filteredResult);
+              const summary = ChronogramImport.applyImport(chronogramImportTarget(), filteredResult);
               appState.chronogramImport = null;
               saveLocal(false);
               App.render();
