@@ -33,6 +33,8 @@ function agentNormalizeResponse(value, registry = null) {
   // a reason or summary too long, a final answer without its lists, a single question as text.
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     value = { ...value };
+    // A reply without its "type" (seen with GPT models): inferred from its keys.
+    if (value.type === undefined) value.type = typeof value.tool === 'string' ? 'tool_call' : value.questions !== undefined ? 'question' : typeof value.summary === 'string' ? 'final' : undefined;
     const clip = (text, max) => (typeof text === 'string' && text.length > max ? `${text.slice(0, max - 1)}…` : text);
     if (value.type === 'tool_call') {
       if (!value.arguments || typeof value.arguments !== 'object') {
@@ -196,7 +198,7 @@ class AgentRunner {
     const execution = { controller: runController, assertActive: () => {
       if (runController.signal.aborted || runProject !== appState.scenario) throw new DOMException('Stopped', 'AbortError');
     } };
-    const calls = new Map(); let invalidCount = 0;
+    const calls = new Map(); let invalidCount = 0, refusedFinals = 0;
     const catalog = [...this.registry.values()].map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
     const system = AgentPrompts.protocol + '\n' + AgentPrompts[kind] + '\nTools:\n' + JSON.stringify(catalog);
     try {
@@ -233,6 +235,13 @@ class AgentRunner {
             continue;
           }
           if (call.type === 'final') {
+            // Stage 1 ends with phases: a model that stops before building them is sent back (twice at most).
+            if (this.scope === 'framing' && typeof sbMainBlocks === 'function' && !sbMainBlocks(appState.scenario.storyboard).length && refusedFinals < 2) {
+              refusedFinals++;
+              this.history.push({ finalRefused: call.summary, instruction: 'The framing is not built yet: the storyboard has no phase. Do not stop: build the phases and main events now (buildMainStoryline), then the cells and the cast, and only then give the final answer.' }); this.history = this.history.slice(-8);
+              AgentLog.append(this, 'warning', 'The agent stopped before building the phases: asked to continue.');
+              continue;
+            }
             this.final = { summary: call.summary, issues: call.issues, changes: call.changes };
             this.status = 'complete'; AgentLog.append(this, 'success', call.summary, { issues: call.issues, reportedChanges: call.changes, appliedOperations: this.changed }); return;
           }

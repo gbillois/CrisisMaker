@@ -9,21 +9,24 @@ const AgentSchema = {
 };
 const ToolValidator = {
   validate(value, schema, path = 'arguments') {
-    const fail = () => { throw new AgentValidationError(`Invalid ${path}`); };
+    // The reason tells the model what to correct on its retry.
+    const fail = (reason = '') => { throw new AgentValidationError(`Invalid ${path}${reason ? `: ${reason}` : ''}`); };
     if (schema.type === 'object') {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) fail();
-      for (const key of schema.required || []) if (!Object.hasOwn(value, key)) fail();
+      if (!value || typeof value !== 'object' || Array.isArray(value)) fail(Array.isArray(value) ? 'expected one object, not an array' : 'expected an object');
+      for (const key of schema.required || []) if (!Object.hasOwn(value, key)) fail(`missing "${key}"`);
       for (const [key, item] of Object.entries(value)) {
         if (['__proto__', 'constructor', 'prototype'].includes(key)) fail();
         const child = schema.properties?.[key] || schema.additionalProperties;
-        if (!child || child === false) fail();
+        if (!child || child === false) fail(`unexpected key "${String(key).slice(0, 60)}"`);
         this.validate(item, child, `${path}.${key}`);
       }
     } else if (schema.type === 'array') {
-      if (!Array.isArray(value) || value.length > schema.maxItems || value.length < (schema.minItems || 0)) fail();
+      if (!Array.isArray(value)) fail('expected an array');
+      if (value.length > schema.maxItems || value.length < (schema.minItems || 0)) fail(`expected ${schema.minItems || 0} to ${schema.maxItems} items`);
       value.forEach((item, i) => this.validate(item, schema.items, `${path}[${i}]`));
     } else if (schema.type === 'string') {
-      if (typeof value !== 'string' || value.length > schema.maxLength || value.length < (schema.minLength || 0)) fail();
+      if (typeof value !== 'string') fail('expected a string');
+      if (value.length > schema.maxLength || value.length < (schema.minLength || 0)) fail(`expected ${schema.minLength || 0} to ${schema.maxLength} characters`);
     } else if (schema.type === 'integer' || schema.type === 'number') {
       if (typeof value !== 'number' || !Number.isFinite(value) || (schema.type === 'integer' && !Number.isInteger(value)) || value < schema.minimum || value > schema.maximum) fail();
     } else if (schema.type === 'boolean') {
@@ -39,7 +42,7 @@ const ToolValidator = {
         }
       }
     }
-    if (schema.enum && !schema.enum.includes(value)) fail();
+    if (schema.enum && !schema.enum.includes(value)) fail(`expected one of ${schema.enum.slice(0, 8).map((item) => JSON.stringify(item)).join(', ')}`);
     return value;
   }
 };

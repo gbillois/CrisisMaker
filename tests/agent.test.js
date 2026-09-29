@@ -647,3 +647,17 @@ test('nudges and closing phase: planned by the agent tools, reported by the cons
   assert.doesNotMatch(issues(), /closing phase/);
   await assert.rejects(execute(h, 'updateStoryboardBlock', { id: last, patch: { type: 'bogus' } }), /Invalid/);
 });
+
+test('validation errors say what to correct, so the model can fix its retry', () => {
+  const h = harness();
+  assert.throws(() => h.run(`agentNormalizeResponse({ type: 'tool_call', tool: 'getScenario', arguments: {}, javascript: 'alert(1)' }, createAgentToolRegistry())`), /unexpected key "javascript"/);
+  assert.throws(() => h.run(`agentNormalizeResponse([{ type: 'final' }])`), /not an array/);
+  assert.throws(() => h.run(`ToolValidator.validate({}, AgentSchema.object({ id: AgentSchema.id }, ['id']))`), /missing "id"/);
+});
+
+test('a reply without its type is read from its keys', () => {
+  const h = harness();
+  assert.equal(h.run(`agentNormalizeResponse({ summary: 'Done', issues: [], changes: [] }).type`), 'final');
+  assert.equal(h.run(`agentNormalizeResponse({ tool: 'getScenario', arguments: {} }).type`), 'tool_call');
+  assert.equal(h.run(`agentNormalizeResponse({ questions: ['Which cell?'] }).type`), 'question');
+});
