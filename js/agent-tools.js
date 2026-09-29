@@ -190,7 +190,7 @@ function agentCleanFields(stimulus, fields) {
       } else if (typeof value !== 'string') throw new AgentValidationError(`Expected text field: ${key}`);
     }
     if (def.options && !def.options.includes(value)) throw new AgentValidationError(`Invalid field option: ${key}`);
-    const scrub = v => typeof v === 'string' ? sanitizeBody(v) : Array.isArray(v) ? v.map(scrub) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrub(x)])) : v;
+    const scrub = v => typeof v === 'string' ? sanitizeFieldValue(v) : Array.isArray(v) ? v.map(scrub) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrub(x)])) : v;
     clean[key] = scrub(value);
   }
   return clean;

@@ -387,7 +387,7 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
   if (options.assertActive) options.assertActive();
   if (!generated || typeof generated !== 'object' || Array.isArray(generated)) throw new AgentValidationError('The AI returned no usable content.');
   const allowed = new Set([...(getTemplateDefinition(stimulus).fields || []).map((field) => field.key), ...Object.keys(stimulus.fields || {})]);
-  const scrub = (value) => typeof value === 'string' ? sanitizeBody(value) : Array.isArray(value) ? value.map(scrub) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrub(item)])) : value;
+  const scrub = (value) => typeof value === 'string' ? sanitizeFieldValue(value) : Array.isArray(value) ? value.map(scrub) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrub(item)])) : value;
   const clean = {};
   for (const [key, value] of Object.entries(generated)) {
     if (!allowed.has(key) || SB_MEDIA_FIELD.test(key) || ['__proto__', 'constructor', 'prototype'].includes(key)) continue;

@@ -585,3 +585,15 @@ test('consistency check: players and cells against the Context frame, default ce
   assert.match(text, /1 cells exist but the exercise expects 4/);
   assert.match(text, /Decision cell.{0,3} still have their default names/);
 });
+
+test('AI field values: plain text keeps its characters, HTML is sanitized, entities left by older versions are decoded', async () => {
+  const h = harness();
+  const actorId = h.run(`addActor({ name: 'Nadia', role: 'internal' }, false).id`);
+  h.run(`sanitizeBody = value => 'SANITIZED:' + value`); // the harness stubs the DOM sanitizer: check the routing
+  const created = await execute(h, 'createStimulus', { name: 'T', actor_id: actorId, timestamp_offset_minutes: 5, channel: 'email_internal', fields: { to: 'IT & Cyber Cell <soc@example.com>', subject: 'Checks & balances', body: '<p>Hi</p><img src=x onerror=alert(1)>' } });
+  const fields = h.json(`getStimulus('${created.id}').fields`);
+  assert.equal(fields.subject, 'Checks & balances');
+  assert.match(fields.body, /^SANITIZED:/);
+  const merged = h.json(`mergeScenario({ ...appState.scenario, stimuli: [{ ...getStimulus('${created.id}'), fields: { ...getStimulus('${created.id}').fields, to: 'IT &amp; Cyber Cell' } }] }).stimuli[0].fields.to`);
+  assert.equal(merged, 'IT & Cyber Cell');
+});

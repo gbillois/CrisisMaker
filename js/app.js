@@ -2427,6 +2427,13 @@
       }
       function escapeAttribute(value) { return escapeHtml(value).replace(/`/g, '&#96;'); }
 
+      /* A value written by the AI for a template field: HTML is sanitized, plain text (no tag) is
+         kept as it is, since templates escape plain fields when they show them. */
+      function sanitizeFieldValue(value) {
+        const text = String(value ?? '');
+        return /<[a-z!\/][^>]*>/i.test(text) ? sanitizeBody(text) : text;
+      }
+
       function sanitizeBody(html) {
         const raw = String(html ?? '');
         if (!raw) return '';

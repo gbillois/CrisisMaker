@@ -434,6 +434,18 @@
         return typeof value === 'string' && SAFE_TOKEN.test(value) ? value : fallback;
       }
 
+      /* One-line text fields are plain text, escaped when shown: HTML entities left in them by an
+         earlier sanitizing ("IT &amp; cyber cell") are decoded, or they show as such. */
+      function plainTextFields(library, fields) {
+        const entities = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#x27;': "'", '&nbsp;': ' ' };
+        for (const field of library?.fields || []) {
+          const value = fields[field.key];
+          if (field.type !== 'text' || typeof value !== 'string' || !/&(amp|lt|gt|quot|#39|#x27|nbsp);/.test(value) || /<[a-z!\/][^>]*>/i.test(value)) continue;
+          fields[field.key] = value.replace(/&(amp|lt|gt|quot|#39|#x27|nbsp);/g, (entity) => entities[entity]);
+        }
+        return fields;
+      }
+
       function normalizeStimulus(stimulus, fallbackActorId = appState?.scenario?.actors?.[0]?.id || '') {
         const channel = safeToken(stimulus.channel, 'email_internal');
         const templateId = channel === 'article_press'
@@ -456,7 +468,7 @@
           status: ['draft', 'ready', 'sent'].includes(stimulus.status) ? stimulus.status : 'draft',
           created_at: stimulus.created_at || now,
           updated_at: stimulus.updated_at || now,
-          fields: { ...deepClone(library.defaults), ...(stimulus.fields || {}) },
+          fields: plainTextFields(library, { ...deepClone(library.defaults), ...(stimulus.fields || {}) }),
           generated_text: stimulus.generated_text || {},
           manual_overrides: stimulus.manual_overrides || {},
           watermark: stimulus.watermark || null,
