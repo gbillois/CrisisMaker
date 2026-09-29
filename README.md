@@ -80,7 +80,13 @@ If Ollama also runs on the machine, it holds port 11434: choose another port in 
 it in the Server URL (for example `http://127.0.0.1:11500/v1`).
 
 When the server cannot be reached, the error gives the URL tried: check that the server is
-running and, for CoPro, that Local API is on and lists the page's address. CoPro answers 401
+running and, for CoPro, that Local API is on and lists the page's address.
+
+Chrome also asks each site for permission to reach programs on this computer. If the page
+says "Failed to fetch" while `http://127.0.0.1:11434/v1/models` opens fine in a tab, allow
+**Apps on device** ("Applis sur l'appareil" in French) for the page: icon left of the address,
+then Site settings. **Local network access** alone is not enough: it covers other machines of
+the network, not this one. CoPro answers 401
 when it is not signed in to Microsoft 365, 403 when the page's address is not allowed, 404
 for an unknown model and 503 when it is not available.
 
