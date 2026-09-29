@@ -12,7 +12,7 @@ const ToolValidator = {
     // The reason tells the model what to correct on its next call.
     const fail = (reason = '') => { throw new AgentValidationError(`Invalid ${path}${reason ? `: ${reason}` : ''}`); };
     if (schema.type === 'object') {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) fail('expected an object');
+      if (!value || typeof value !== 'object' || Array.isArray(value)) fail(Array.isArray(value) ? 'expected one object, not an array' : 'expected an object');
       for (const key of schema.required || []) if (!Object.hasOwn(value, key)) fail(`missing required field "${key}"`);
       for (const [key, item] of Object.entries(value)) {
         if (['__proto__', 'constructor', 'prototype'].includes(key)) fail();

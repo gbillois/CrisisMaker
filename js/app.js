@@ -399,10 +399,13 @@
             let val = input.value;
             if (input.dataset.bind === 'settings.watermark_enabled' || input.dataset.bind === 'settings.watermark_audio_enabled') val = (val === 'true');
             else if (input.dataset.bind === 'settings.watermark_opacity' || input.dataset.bind === 'settings.watermark_rotation' || input.dataset.bind === 'settings.watermark_text_size') val = Number(val);
+            const previousProvider = appState.scenario.settings.ai_provider;
             setByPath(appState.scenario, input.dataset.bind, val);
             if (input.dataset.bind === 'settings.ai_provider') {
               const models = DEFAULT_MODELS[input.value];
               if (models?.length) appState.scenario.settings.ai_model = models[0];
+              // A key belongs to one provider: never send it to another provider's API (model list, test, calls).
+              if (previousProvider !== input.value) appState.scenario.settings.ai_api_key = '';
             }
             if (input.dataset.bind === 'settings.ollama_mode') {
               appState.scenario.settings.ai_model = input.value === 'cloud' ? 'gpt-oss:120b' : 'llama3.2';

@@ -648,14 +648,14 @@ test('a build that ends before changing anything is sent back once to do the wor
   assert.equal(r.status, 'complete'); assert.equal(r.step, 1);
 });
 
-test('framing: a final answer with phases lacking main events is sent back once', async () => {
+test('framing: a final answer with phases lacking main events is sent back, twice at most', async () => {
   const h = harness();
   const gaps = h.json('agentFramingGaps(appState.scenario)');
   assert.ok(gaps.length);
-  const r = runner(h, [call('updateExerciseObjectives', { objectives: 'Decide on isolation' }), final, final]);
+  const r = runner(h, [call('updateExerciseObjectives', { objectives: 'Decide on isolation' }), final, final, final]);
   await r.start({ kind: 'builder', objective: 'Build the framing', scope: 'framing' });
-  assert.equal(r.status, 'complete'); assert.equal(r.step, 3);
-  assert.ok(r.log.some(entry => /framing is not complete/.test(entry.message)));
+  assert.equal(r.status, 'complete'); assert.equal(r.step, 4);
+  assert.ok(r.log.some(entry => /framing is not complete|stopped before building the phases/.test(entry.message)));
 });
 
 test('validation errors name the reason, so the model can correct its next call', () => {
@@ -702,4 +702,61 @@ test('nudges and closing phase: planned by the agent tools, reported by the cons
   await execute(h, 'updateStoryboardBlock', { id: last, patch: { type: 'exit' } });
   assert.doesNotMatch(issues(), /closing phase/);
   await assert.rejects(execute(h, 'updateStoryboardBlock', { id: last, patch: { type: 'bogus' } }), /Invalid/);
+});
+
+test('validation errors say what to correct, so the model can fix its retry', () => {
+  const h = harness();
+  assert.throws(() => h.run(`agentNormalizeResponse({ type: 'tool_call', tool: 'getScenario', arguments: {}, javascript: 'alert(1)' }, createAgentToolRegistry())`), /(unexpected key|unknown field) "javascript"/);
+  assert.throws(() => h.run(`ToolValidator.validate([{}], AgentSchema.object())`), /not an array/);
+  assert.throws(() => h.run(`ToolValidator.validate({}, AgentSchema.object({ id: AgentSchema.id }, ['id']))`), /missing (required field )?"id"/);
+});
+
+test('a reply without its type is read from its keys', () => {
+  const h = harness();
+  assert.equal(h.run(`agentNormalizeResponse({ summary: 'Done', issues: [], changes: [] }).type`), 'final');
+  assert.equal(h.run(`agentNormalizeResponse({ tool: 'getScenario', arguments: {} }).type`), 'tool_call');
+  assert.equal(h.run(`agentNormalizeResponse({ questions: ['Which cell?'] }).type`), 'question');
+});
+
+test('reliability: a success status with a cut, non-JSON body is retried', async () => {
+  const h = harness();
+  h.run(`llmRetryDelay = () => 0; Object.assign(appState.scenario.settings, { ai_provider: 'openrouter', ai_api_key: 'sk-or-v1-SECRETSECRET', ai_model: 'anthropic/claude-sonnet-5.5' });`);
+  const cut = { ok: true, status: 200, statusText: '', headers: { get: () => null }, clone() { return this; }, text: async () => '{"choices":[{"mess', json: async () => { throw new SyntaxError('cut'); } };
+  const good = { ok: true, status: 200, statusText: '', headers: { get: () => null }, clone() { return this; }, text: async () => JSON.stringify({ choices: [{ message: { content: '{"summary":"ok"}' }, finish_reason: 'stop' }] }), json: async () => ({ choices: [{ message: { content: '{"summary":"ok"}' }, finish_reason: 'stop' }] }) };
+  let calls = 0;
+  h.context.fetch = async () => (calls++ ? good : cut);
+  const result = await h.run(`AITextGenerator.generate('agent', 'system', 'user', true, 2000, {})`);
+  assert.equal(result.summary, 'ok');
+  assert.equal(calls, 2);
+});
+
+test('stage 1 framing: a final before the phases are built is sent back, twice at most', async () => {
+  const h = harness();
+  let requests = 0;
+  const r = runner(h, [final]);
+  const request = h.context.request; h.context.request = async (...args) => { requests++; return request(...args); };
+  h.run('runner.request = request');
+  await r.start({ kind: 'builder', mode: 'agent', objective: 'Frame', scope: 'framing' });
+  assert.equal(r.status, 'complete');
+  assert.equal(requests, 3, 'two refusals, then the final is accepted');
+  assert.ok(r.log.some((entry) => /stopped before building the phases/.test(entry.message)));
+});
+
+test('several calls in one reply: the first one runs', () => {
+  const h = harness();
+  assert.equal(h.run(`agentNormalizeResponse([{ type: 'tool_call', tool: 'getScenario', arguments: {} }, { type: 'final', summary: 'x' }]).tool`), 'getScenario');
+  assert.equal(h.run(`agentNormalizeResponse({ tool_calls: [{ name: 'getStoryboard', arguments: {} }] }).tool`), 'getStoryboard');
+  assert.throws(() => h.run(`agentNormalizeResponse({ type: 'plan', steps: [] })`), /must be "tool_call", "question" or "final"/);
+});
+
+test('tool arguments alone are not read as a final answer', () => {
+  const h = harness();
+  assert.throws(() => h.run(`agentNormalizeResponse({ summary: 'Scenario summary', type_label: 'ransomware', start_date: '2026-11-27T08:00' })`), /must be "tool_call"/);
+});
+
+test('a Claude reply with its native <invoke> syntax first: the agent object is read, not a parameter', () => {
+  const h = harness();
+  const reply = '<invoke name="setMainEvents">\n<parameter name="events">[{"at": 5, "text": "Ransom note"}]</parameter>\n</invoke>\n\nCorrection: here is the valid JSON object.\n\n{"type":"tool_call","tool":"setMainEvents","arguments":{"id":"b1","events":[{"at":5,"text":"Ransom note"}]},"reason":"Set events"}';
+  h.context.reply = reply;
+  assert.equal(h.run('parseStrictLLMJson(reply).tool'), 'setMainEvents');
 });

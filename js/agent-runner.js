@@ -44,8 +44,23 @@ function agentNormalizeResponse(value, registry = null) {
   // Harmless slips of a model, fixed before the strict check (the tool's own schema still checks
   // every argument): a tool argument written next to "arguments", other names for "arguments",
   // a reason or summary too long, a final answer without its lists, a single question as text.
+  // Several calls in one reply (an array, or a list under "tool_calls"): the first one runs, the next ones come in later steps.
+  if (Array.isArray(value) && value[0] && typeof value[0] === 'object') value = value[0];
+  const batch = value && typeof value === 'object' && !value.type && [value.tool_calls, value.calls].find((list) => Array.isArray(list) && list[0] && typeof list[0] === 'object');
+  if (batch) value = { type: 'tool_call', ...batch[0] };
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     value = { ...value };
+    if (typeof value.tool !== 'string' && typeof value.name === 'string' && (value.type === 'tool_call' || value.arguments)) { value.tool = value.name; delete value.name; }
+    // A reply without its "type", or with another name for it (seen with GPT and Claude models): inferred from its keys.
+    if (!['tool_call', 'question', 'final'].includes(value.type)) {
+      // Only the keys of that kind of reply: tool arguments picked out of a cut reply are never read as a final answer.
+      const only = (keys) => Object.keys(value).every((key) => key === 'type' || keys.includes(key));
+      const inferred = typeof value.tool === 'string' ? 'tool_call'
+        : value.questions !== undefined && only(['questions', 'reason']) ? 'question'
+        : typeof value.summary === 'string' && only(['summary', 'issues', 'changes']) ? 'final' : '';
+      if (!inferred) throw new AgentValidationError('Invalid response: "type" must be "tool_call", "question" or "final".');
+      value.type = inferred;
+    }
     const clip = (text, max) => (typeof text === 'string' && text.length > max ? `${text.slice(0, max - 1)}…` : text);
     if (value.type === 'tool_call') {
       if (!value.arguments || typeof value.arguments !== 'object') {
@@ -119,6 +134,7 @@ function agentFailureText(error) {
   if (agentTruncated(error)) return 'The AI reply was cut off at its length limit. Ask for a smaller change, for example one inject at a time.';
   if (error instanceof SyntaxError) return 'The AI reply was not valid JSON. Retry, or choose a more capable model in Settings.';
   const reason = agentProviderReason(error);
+  if (error?.code === 'invalid_body') return 'The AI provider sent an unreadable or cut reply (connection reset?), even after retries. Retry in a moment. Completed edits are recoverable with Undo.';
   if (error?.status) return `The AI provider refused the request (HTTP ${error.status})${reason ? `: ${reason}` : '.'} Completed edits are recoverable with Undo.`;
   if (/failed to fetch|network|load failed/i.test(reason)) return 'The AI provider could not be reached (network or connection settings). Completed edits are recoverable with Undo.';
   return `AI request or tool failed${reason ? `: ${reason}` : '.'} Check the AI connection settings and retry. Completed edits are recoverable with Undo.`;
@@ -220,7 +236,7 @@ class AgentRunner {
     const execution = { controller: runController, assertActive: () => {
       if (runController.signal.aborted || runProject !== appState.scenario) throw new DOMException('Stopped', 'AbortError');
     } };
-    const calls = new Map(); let invalidCount = 0;
+    const calls = new Map(); let invalidCount = 0, refusedFinals = 0;
     const catalog = [...this.registry.values()].map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
     const system = AgentPrompts.protocol + '\n' + AgentPrompts[kind] + '\nTools:\n' + JSON.stringify(catalog);
     try {
@@ -258,18 +274,24 @@ class AgentRunner {
           }
           // A build or a fix that ends before changing anything (DeepSeek may "review" and stop at
           // step 1) is sent back once to do the work.
-          if (call.type === 'final' && !this.changed && ['builder', 'reviewer'].includes(kind) && !calls.has('final-without-change')) {
+          // A framing is checked below, with what it misses.
+          if (call.type === 'final' && !this.changed && ['builder', 'reviewer'].includes(kind) && this.scope !== 'framing' && !calls.has('final-without-change')) {
             calls.set('final-without-change', 1);
             this.history.push({ final: call.summary.slice(0, 600), instruction: 'Nothing has been changed yet: the objective asks you to change the exercise. Call the write tools now (read tools first if needed); give the final answer only once the work is applied.' }); this.history = this.history.slice(-8);
             AgentLog.append(this, 'warning', 'The agent ended before changing anything: asked to do the work.');
             continue;
           }
-          // A framing that ends with parts missing (DeepSeek may skip the main events) is sent back once.
-          const gaps = call.type === 'final' && this.scope === 'framing' && !calls.has('framing-gaps') ? agentFramingGaps(appState.scenario) : [];
+          // Stage 1 ends with a complete framing: a model that stops before (GPT-6 and DeepSeek may
+          // skip the main events, or stop before building the phases) is sent back, twice at most.
+          const gaps = call.type === 'final' && this.scope === 'framing' && refusedFinals < 2 ? agentFramingGaps(appState.scenario) : [];
           if (gaps.length) {
-            calls.set('framing-gaps', 1);
-            this.history.push({ final: call.summary.slice(0, 600), instruction: `The framing is not complete: ${gaps.join('; ')}. Fix these with the tools, then give the final answer.` }); this.history = this.history.slice(-8);
-            AgentLog.append(this, 'warning', `The framing is not complete: ${gaps.join('; ')}. Asked to finish it.`);
+            refusedFinals++;
+            const unbuilt = !sbMainBlocks(appState.scenario.storyboard).length;
+            const instruction = unbuilt
+              ? 'The framing is not built yet: the storyboard has no phase. Do not stop: build the phases and main events now (buildMainStoryline), then the cells and the cast, and only then give the final answer.'
+              : `The framing is not complete: ${gaps.join('; ')}. Do not stop: fix these with the tools, then give the final answer.`;
+            this.history.push({ finalRefused: call.summary.slice(0, 600), instruction }); this.history = this.history.slice(-8);
+            AgentLog.append(this, 'warning', unbuilt ? 'The agent stopped before building the phases: asked to continue.' : `The framing is not complete: ${gaps.join('; ')}. Asked to finish it.`);
             continue;
           }
           if (call.type === 'final') {

@@ -1173,7 +1173,7 @@ Return this structure:
         if (!error || error.name === 'AbortError' || error.code === 'timeout' || error.code === 'truncated') return false;
         const text = `${error.message || ''} ${error.code || ''} ${error.detail || ''}`;
         if (/insufficient_quota|billing|credit balance|exceeded your current quota|can only afford|payment required/i.test(text)) return false;
-        if ([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529].includes(Number(error.status))) return true;
+        if ([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529].includes(Number(error.status)) || error.code === 'invalid_body') return true;
         return !error.status && /network error|failed to fetch|networkerror|load failed|overloaded|econnreset|socket hang up|stream error/i.test(text);
       }
 
@@ -1276,6 +1276,10 @@ Return this structure:
 
       function parseStrictLLMJson(text) {
         let body = cleanLLMText(text).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        // An agent reply after other text (Claude may first write its native <invoke> tool syntax, whose
+        // parameters hold JSON): start at the agent object itself, not at the first brace.
+        const agentStart = body.startsWith('{') ? -1 : body.search(/\{\s*"type"\s*:\s*"(tool_call|question|final)"/);
+        if (agentStart > 0) body = body.slice(agentStart);
         if (!body.startsWith('{') && body.includes('{') && body.includes('}')) body = body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1);
         try {
           return JSON.parse(body);

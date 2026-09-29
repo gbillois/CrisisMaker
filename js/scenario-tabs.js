@@ -384,7 +384,7 @@ function renderCeCell(project, cell, items) {
       <span class="sb-chip">${count} ${escapeHtml(tt('inject(s)', 'inject(s)', 'Inject(s)'))}</span>
       <button class="sb-icon-btn is-danger" data-tab-action="delete-cell" data-tab-value="${cell.id}" title="${escapeAttribute(tt('Delete cell', 'Supprimer la cellule', 'Zelle löschen'))}">${sbUiIcon('trash', 14)}</button>
     </div>
-    <textarea data-ce-cell="${cell.id}.description" rows="2" placeholder="${escapeAttribute(tt('Mission of this cell', 'Mission de cette cellule', 'Auftrag dieser Zelle'))}">${escapeHtml(cell.description)}</textarea>
+    <textarea data-ce-cell="${cell.id}.description" rows="2" placeholder="${escapeAttribute(tt('Mission of this cell', 'Mission de cette cellule', 'Auftrag dieser Zelle'))}" aria-label="${escapeAttribute(tt('Mission of this cell', 'Mission de cette cellule', 'Auftrag dieser Zelle'))}">${escapeHtml(cell.description)}</textarea>
     <ul class="ce-members">${cell.players.map((player) => `<li><span>${escapeHtml(label(player))}</span><button class="sb-icon-btn" data-tab-action="unassign-player" data-tab-value="${player.id}" title="${escapeAttribute(tt('Remove from this cell (the player stays in the list)', 'Retirer de cette cellule (le joueur reste dans la liste)', 'Aus dieser Zelle entfernen (der Spieler bleibt in der Liste)'))}">${sbUiIcon('close', 12)}</button></li>`).join('') || `<li class="is-empty">${escapeHtml(tt('No player yet.', 'Aucun joueur pour l’instant.', 'Noch kein Spieler.'))}</li>`}</ul>
     ${picker}
   </div>`;
