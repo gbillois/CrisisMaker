@@ -1064,9 +1064,12 @@
               const s = getStimulus(event.currentTarget.dataset.stimulusId);
               if (s) {
                 const tpl = getTemplateDefinition(s);
-                s.fields = deepClone(tpl.defaults);
+                // A version first: the cleared content can be restored from the history.
+                saveStimulus(s, tpl.defaults, tt('Clear content', 'Effacer le contenu', 'Inhalt löschen'));
                 s.generated_text = {};
                 s.manual_overrides = {};
+                appState.llmState.stimulus.lastFilledCount = 0;
+                appState.llmState.stimulus.error = null;
                 await autoSave();
                 App.render();
               }
