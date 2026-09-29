@@ -184,7 +184,7 @@
                       || (appState.aiModelCatalog?.provider === provider && appState.aiModelCatalog.status === 'error'));
                     const tone = !isLLMAvailable() ? 'is-off' : unreachable ? 'is-error' : 'is-live';
                     const label = !isLLMAvailable() ? tt('AI disconnected', 'IA déconnectée', 'KI getrennt') : unreachable ? tt('AI unreachable', 'IA injoignable', 'KI nicht erreichbar') : tt('AI connected', 'IA connectée', 'KI verbunden');
-                    return `<button class="ai-status ${tone}" data-action="toggle-settings-drawer" title="${tt('AI connection settings', 'Paramètres de connexion IA', 'KI-Verbindungseinstellungen')}">${label}</button>`;
+                    return `<button class="ai-status ${tone}" data-action="toggle-settings-drawer" data-short="${tt('AI', 'IA', 'KI')}" title="${tt('AI connection settings', 'Paramètres de connexion IA', 'KI-Verbindungseinstellungen')}">${label}</button>`;
                   })()}
                   <button class="nav-gear-btn" data-action="show-launch-screen" title="${tt('Home', 'Accueil', 'Startseite')}">
                     ${svgHome()}

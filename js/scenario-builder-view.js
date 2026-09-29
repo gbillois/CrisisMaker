@@ -391,7 +391,8 @@ const SB_KEY_CARD_WIDTH = 150;
 function renderSbKeyRow(storyboard, width, ppm) {
   const events = sbMainBlocks(storyboard).flatMap((block) => (block.events || []).map((event) => ({ block, event, at: block.start_minutes + event.offset_minutes })));
   const packing = sbPackTrack(events.map(({ event, at }) => ({ id: event.id, start_minutes: at, duration_minutes: (SB_KEY_CARD_WIDTH + 6) / ppm })));
-  const height = Math.max(1, packing.rows) * 44 + 10;
+  // At least the height of its label on two lines (a narrow header, a longer language).
+  const height = Math.max(64, Math.max(1, packing.rows) * 44 + 10);
   return `<div class="sb-track-row sb-key-row">
     <div class="sb-track-head" style="height:${height}px"><strong>${sbUiIcon('star', 12)} ${escapeHtml(tt('Main events', 'Événements principaux', 'Hauptereignisse'))}</strong><small>${escapeHtml(events.length
       ? tt(`${events.length} main event${events.length > 1 ? 's' : ''} · click to edit`, `${events.length} événement${events.length > 1 ? 's' : ''} principa${events.length > 1 ? 'ux' : 'l'} · cliquez pour modifier`, `${events.length} Hauptereignis${events.length > 1 ? 'se' : ''} · zum Bearbeiten klicken`)

@@ -148,7 +148,7 @@ function renderStorylineView() {
         </div>
         ${storyboard.blocks.length ? renderSbTimelineTools() : ''}
         <div class="sb-tb-group">
-          <label class="sl-add" title="${escapeAttribute(tt('Add a phase', 'Ajouter une phase', 'Phase hinzufügen'))}">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="${escapeAttribute(tt('Add a phase', 'Ajouter une phase', 'Phase hinzufügen'))}"><option value="">${escapeHtml(tt('Add phase…', 'Ajouter…', 'Hinzufügen…'))}</option>${stages.map(([key]) => `<option value="${key}">${escapeHtml(sbBlockTypeLabel(key))}</option>`).join('')}</select></label>
+          <label class="sl-add" title="${escapeAttribute(tt('Add a phase', 'Ajouter une phase', 'Phase hinzufügen'))}">${sbUiIcon('plus', 14)}<select data-sl-add ${readOnly ? 'disabled' : ''} aria-label="${escapeAttribute(tt('Add a phase', 'Ajouter une phase', 'Phase hinzufügen'))}"><option value="">${escapeHtml(tt('Add phase…', 'Ajouter une phase…', 'Phase hinzufügen…'))}</option>${stages.map(([key]) => `<option value="${key}">${escapeHtml(sbBlockTypeLabel(key))}</option>`).join('')}</select></label>
         </div>
         <div class="sb-tb-group sb-tb-output">${renderUpdateButton(project, undefined, tt('Update next tabs', 'Mettre à jour les onglets suivants', 'Folgende Tabs aktualisieren'))}</div>
       </header>
