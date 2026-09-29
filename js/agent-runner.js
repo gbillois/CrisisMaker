@@ -282,6 +282,14 @@ class AgentRunner {
           // The same call again with no change in between is a loop; after an edit it is a re-check.
           const signature = JSON.stringify([call.tool, call.arguments, this.changed]);
           calls.set(signature, (calls.get(signature) || 0) + 1);
+          // A model that keeps re-reading (DeepSeek v4 pro reads the storyboard again and again)
+          // is told once to act on what it has; a loop after that stops the run.
+          if (calls.get(signature) > 3 && tool.risk === 'read' && !calls.has('read-loop')) {
+            calls.set('read-loop', 1);
+            this.history.push({ tool: call.tool, instruction: `You already read ${call.tool} with these arguments and nothing changed since: its result is above. Do not read it again; make the changes now with the write tools, or give the final answer.` }); this.history = this.history.slice(-8);
+            AgentLog.append(this, 'warning', `Repeated read of ${call.tool}: asked to act on it.`);
+            continue;
+          }
           if (calls.get(signature) > 3) { this.status = 'limit'; AgentLog.append(this, 'warning', 'Repeated tool loop detected. Stopped for review.'); return; }
           const needsApproval = tool.risk === 'destructive' || (tool.risk !== 'read' && mode === 'assist') || (tool.risk === 'broad' && mode === 'agent');
           if (needsApproval && !await this.approval(call)) {

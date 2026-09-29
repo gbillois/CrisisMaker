@@ -56,7 +56,9 @@ test('completion, MAX_STEPS, repeated-loop detection and bounded history', async
   const h = harness();
   let r = runner(h, [final]); await r.start({ objective: 'Review' }); assert.equal(r.status, 'complete');
   r = runner(h, [call('getScenario')], 2); await r.start({ objective: 'Review' }); assert.equal(r.status, 'limit'); assert.equal(r.step, 2);
-  r = runner(h, [call('getScenario')]); await r.start({ objective: 'Review' }); assert.equal(r.status, 'limit'); assert.equal(r.step, 4);
+  // A read loop is first told to act on what it has, then stopped.
+  r = runner(h, [call('getScenario')]); await r.start({ objective: 'Review' }); assert.equal(r.status, 'limit'); assert.equal(r.step, 5);
+  assert.ok(r.log.some(entry => /Repeated read of getScenario/.test(entry.message)));
   assert.ok(r.history.length <= 8);
 });
 

@@ -69,14 +69,20 @@ function ceEscapeRegExp(text) {
 
 /* Replacements for one player: full name, then (in an inject naming the player) the first name,
    the role and the email. Short or empty values are never replaced on their own. */
+/* A name that is really a job title: the role repeated, an acronym such as CEO or CISO, or a placeholder such as Player 3. */
+function ceIsTitleLike(name, role) {
+  const text = String(name || '').trim();
+  return !!text && (text.toLowerCase() === String(role || '').trim().toLowerCase() || /^[A-Z]{2,5}$/.test(text) || /^(player|participant|joueur|spieler)\s*\d+$/i.test(text));
+}
+
 function ceRenamePairs(player) {
   const from = player.synced || {};
   const pairs = [];
   const add = (a, b, word = true) => { if (a && b !== undefined && a !== b && a.length >= 3) pairs.push({ from: a, to: b || '', word }); };
-  add(from.name, player.name);
+  if (!ceIsTitleLike(from.name, from.role)) add(from.name, player.name);
   add(from.email, player.email, false);
   const first = (text) => String(text || '').trim().split(/\s+/)[0] || '';
-  if (from.name && player.name && first(from.name) !== first(player.name) && from.name.trim().includes(' ')) add(first(from.name), first(player.name));
+  if (from.name && !ceIsTitleLike(from.name, from.role) && player.name && first(from.name) !== first(player.name) && from.name.trim().includes(' ')) add(first(from.name), first(player.name));
   add(from.role, player.role);
   return pairs;
 }
@@ -99,10 +105,11 @@ function ceMapStrings(value, fn) {
 
 /* The injects that still name the player as the injects knew them. */
 function ceRenameTargets(project, player) {
-  const name = player.synced?.name;
+  // A job title kept as the name ("CEO") is not searched: every inject citing the role would match.
+  const name = ceIsTitleLike(player.synced?.name, player.synced?.role) ? '' : player.synced?.name;
   const email = player.synced?.email;
   if (!name && !email) return [];
-  const mentions = (text) => (name && name.length >= 3 && text.includes(name)) || (email && email.length >= 3 && text.includes(email));
+  const mentions = (text) => (name && name.length >= 3 && ceReplaceText(text, [{ from: name, to: '\u0000', word: true }]) !== text) || (email && email.length >= 3 && text.includes(email));
   return project.stimuli.filter((stimulus) => mentions(JSON.stringify(stimulus.fields || {})));
 }
 

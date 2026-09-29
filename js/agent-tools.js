@@ -353,7 +353,7 @@ function createAgentToolRegistry() {
     sbAfterStoryboardChange(project, { save: false });
     return agentStoryboardSummary();
   }, 'broad');
-  add('upsertCells', 'Create or update player cells (groups of participants who receive injects) and, when known, their players. Supply id to update an existing cell; players replaces that cell\'s player list.', {
+  add('upsertCells', 'Create or update player cells (groups of participants who receive injects) and, when known, their players. Supply id to update an existing cell; players replaces that cell\'s player list. A player name is a person\'s name (empty when unknown, never a job title such as CEO).', {
     cells: S.array(S.object({ id: S.id, name: S.text(160), description: S.text(1000), players: S.array(S.object({ name: S.text(200), role: S.text(200) }, ['role']), 200) }, ['name']), 20)
   }, ['cells'], args => {
     const project = appState.scenario;
@@ -368,7 +368,9 @@ function createAgentToolRegistry() {
       }
       cell.name = sbText(input.name, 160) || cell.name;
       if (input.description !== undefined) cell.description = sbText(input.description, 1000);
-      if (input.players) cell.players = input.players.map(player => sbNormalizePlayer({ id: uid('player'), ...player }));
+      // A job title given as the name ("CEO", or the role repeated) is not a person: the name stays
+      // empty, so a real name typed later does not replace the title everywhere in the injects.
+      if (input.players) cell.players = input.players.map(player => sbNormalizePlayer({ id: uid('player'), ...player, name: ceIsTitleLike(player.name, player.role) ? '' : player.name }));
       return { id: cell.id, name: cell.name, players: cell.players.length };
     });
     project.exercise = { ...(project.exercise || {}), cells_count: project.cells.length };

@@ -138,6 +138,33 @@ function sbChannelForSender(channel, cast) {
   return channel;
 }
 
+/* A nudge relaunches a cell that stalls: a few per cell, not most of its injects (DeepSeek
+   tagged 33 of 36 planned injects). Per cell, about one planned inject in four stays a nudge,
+   the latest of each phase first; the others become ordinary injects. */
+function sbCapNudges(storyboard) {
+  const byCell = new Map();
+  for (const block of storyboard.blocks || []) {
+    for (const beat of block.beats || []) {
+      const key = beat.cell_id || '';
+      if (!byCell.has(key)) byCell.set(key, []);
+      byCell.get(key).push({ beat, block });
+    }
+  }
+  let cleared = 0;
+  for (const entries of byCell.values()) {
+    const nudges = entries.filter((entry) => entry.beat.kind === 'nudge');
+    const cap = Math.max(1, Math.ceil(entries.length / 4));
+    if (nudges.length <= cap) continue;
+    // The latest nudge of each phase is kept first, then the latest ones overall.
+    const rank = (entry) => entry.block.start_minutes + entry.beat.offset_minutes;
+    const lastOfPhase = new Map();
+    for (const entry of nudges) if (!lastOfPhase.has(entry.block.id) || rank(entry) > rank(lastOfPhase.get(entry.block.id))) lastOfPhase.set(entry.block.id, entry);
+    const ordered = [...nudges].sort((a, b) => Number(lastOfPhase.get(b.block.id) === b) - Number(lastOfPhase.get(a.block.id) === a) || rank(b) - rank(a));
+    for (const entry of ordered.slice(cap)) { delete entry.beat.kind; cleared++; }
+  }
+  return cleared;
+}
+
 /* Beats returned by the AI, mapped onto existing or new cast entries. */
 function sbBeatsFromAI(storyboard, items, castMap, project = appState.scenario, forcedCell = '') {
   return (Array.isArray(items) ? items : []).filter((beat) => beat && typeof beat === 'object').map((beat) => {
@@ -310,6 +337,7 @@ const SbAI = {
       }
     }
     if (!changed) throw new AgentValidationError('The AI did not return any of the requested blocks.');
+    sbCapNudges(storyboard);
     return changed;
   },
 
