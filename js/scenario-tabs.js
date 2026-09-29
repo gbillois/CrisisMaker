@@ -1140,19 +1140,25 @@ async function tabHandleAction(event) {
       }
       case 'add-player': {
         const cell = sbCell(project, value);
+        StoryboardHistory.track();
         if (cell) cell.players.push(sbNormalizePlayer({ id: uid('player') }));
+        StoryboardHistory.commit('Add player');
         saveLocal(false);
         break;
       }
       case 'delete-player': {
         const [cellId, playerId] = value.split('.');
         const cell = sbCell(project, cellId);
+        StoryboardHistory.track();
         if (cell) cell.players = cell.players.filter((player) => player.id !== playerId);
+        StoryboardHistory.commit('Delete player');
         saveLocal(false);
         break;
       }
       case 'add-actor':
+        StoryboardHistory.track();
         addActor({ role: value, name: tt(`New ${roleLabel(value).toLowerCase()}`, `${roleLabel(value)} (nouveau)`, `Neu: ${roleLabel(value)}`), title: roleLabel(value) }, false);
+        StoryboardHistory.commit('Add actor');
         saveLocal(false);
         break;
       case 'ds-cell':

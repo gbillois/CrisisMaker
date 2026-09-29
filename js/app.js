@@ -686,6 +686,7 @@
         const intro = {
           new: tt('Start a new blank project?', 'Démarrer un nouveau projet vierge ?', 'Neues leeres Projekt starten?'),
           demo: tt('Load the demo project?', 'Charger le projet de démonstration ?', 'Demoprojekt laden?'),
+          open: tt('Open a project file?', 'Ouvrir un fichier de projet ?', 'Projektdatei öffnen?'),
           library: tt('Start a new project from this library scenario?', 'Démarrer un nouveau projet à partir de ce scénario de la bibliothèque ?', 'Neues Projekt aus diesem Bibliotheksszenario starten?')
         }[kind];
         const detail = tt(
@@ -826,6 +827,7 @@
               });
               break;
             case 'load-json':
+              if (!confirmReplaceProject('open')) break;
               await loadScenarioFromFile();
               break;
             case 'export-all':

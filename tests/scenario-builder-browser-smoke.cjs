@@ -159,6 +159,15 @@ function answerFor(system, user) {
   await page.fill(playerInput, 'Dr Ana Ruiz');
   await page.dispatchEvent(playerInput, 'change');
   assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
+  // Ctrl+Z undoes the last player added, not an earlier change; the name typed before stays.
+  const playerCount = () => page.evaluate(() => appState.scenario.cells[0].players.length);
+  const players = await playerCount();
+  await page.click(`[data-tab-action="add-player"][data-tab-value="${firstCell}"]`);
+  assert.equal(await playerCount(), players + 1);
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('Control+z');
+  assert.equal(await playerCount(), players, 'Ctrl+Z removes the player just added');
+  assert.equal(await page.evaluate(() => appState.scenario.cells[0].players[0].name), 'Dr Ana Ruiz');
 
   // 4. Detailed storyline: pick a cell, add an inject, generate the cell (no "+ Cell", no "Plan with AI").
   assert.equal(await page.locator('.ds-cell-chip.is-add, [data-tab-action="ds-plan"]').count(), 0);

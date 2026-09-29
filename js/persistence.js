@@ -25,7 +25,7 @@
         try {
           _fileHandle = await window.showSaveFilePicker({
             suggestedName: `${slugify(appState.scenario.name || 'crisismaker')}.crisismaker.json`,
-            types: [{ description: 'CrisisMaker Project', accept: { 'application/json': ['.crisismaker.json', '.crisisstim.json', '.json'] } }]
+            types: [{ description: 'CrisisMaker Project', accept: { 'application/json': ['.json'] } }] // Chrome refuses an extension longer than 16 characters.
           });
           return await writeToFile();
         } catch (e) {
@@ -58,7 +58,7 @@
             types: [{
               description: 'CrisisMaker Project',
               accept: {
-                'application/json': ['.crisismaker.json', '.crisisstim.json', '.json'],
+                'application/json': ['.json'], // .crisismaker.json too: Chrome refuses a longer extension.
                 'application/zip': ['.zip']
               }
             }]
@@ -1033,8 +1033,11 @@
           if (Array.isArray(migrated.custom_templates)) {
             appState.scenario.custom_templates = migrated.custom_templates;
           }
+          // The interface stays in the language chosen here, whatever the language of the file's author.
+          const language = appState.scenario.settings?.language;
           try {
             appState.scenario = mergeScenario(migrated);
+            if (language) appState.scenario.settings.language = language;
           } catch (error) {
             appState.scenario.custom_templates = previousTemplates;
             throw error;
@@ -1043,6 +1046,9 @@
           appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
           restoreApiKeysFromStorage(appState.scenario.settings);
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
+          appState.checkerState.analysisResult = null;
+          appState.checkerState.analysisError = null;
+          appState.checkerState.challengeRestoredFor = null;
           // Restore LLM prompt texts from saved data
           appState.llmState = makeDefaultLLMState();
           restoreLLMPrompts(data.llm_prompts);

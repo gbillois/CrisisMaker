@@ -192,6 +192,15 @@ test('history: undo of a tracked edit restores only what it changed, and keeps a
   assert.equal(h.run('appState.scenario.stimuli[0].cell_id'), 'c2');
 });
 
+test('persistence: opening a project file keeps the interface language chosen here', () => {
+  const h = harness();
+  h.run(`appState.scenario.settings.language = 'fr'; appState.checkerState.challengeRestoredFor = 'x';
+    const file = JSON.parse(JSON.stringify(defaultScenario())); file.settings.language = 'en';
+    applyLoadedScenario(file);`);
+  assert.equal(h.run('appState.scenario.settings.language'), 'fr');
+  assert.equal(h.run('appState.checkerState.challengeRestoredFor'), null);
+});
+
 test('model: a time in the text of an event is read only on the day played', () => {
   const h = harness();
   const at = (text) => h.run(`sbTextClockMinute(${JSON.stringify(text)}, '2026-11-27T08:00:00', 180)`);
