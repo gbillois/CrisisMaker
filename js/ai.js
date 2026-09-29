@@ -686,6 +686,8 @@
               CrisisTechLog.end(trace, { error, finish: this.lastFinish || '', raw: this.lastRawResponse });
               if (options.signal?.aborted || error?.name === 'AbortError') throw error;
               if (budget > 4096 && error?.status === 400 && /max[_ ]?(output[_ ]?)?tokens|maxOutputTokens|num_predict/i.test(String(error.message || ''))) { budget = 4096; continue; }
+              // An unreadable reply (malformed JSON the repair could not fix): a new answer usually reads, once.
+              if (attempt === 1 && (error instanceof SyntaxError || /malformed JSON|not valid JSON|JSON mal formé|pas un JSON valide|fehlerhaftes JSON|kein gültiges JSON/i.test(String(error?.message || '')))) continue;
               if (attempt >= LLM_MAX_ATTEMPTS || !llmTransient(error)) throw error;
               await llmWait(llmRetryDelay(error, attempt), options.signal);
             } finally {

@@ -34,7 +34,8 @@ const CrisisTechLog = {
 
   add(entry) {
     const clean = { id: ++this.seq, ts: new Date().toISOString(), ...entry };
-    for (const key of ['raw', 'stack', 'message', 'detail']) if (clean[key]) clean[key] = this.clip(clean[key], key === 'raw' ? 2000 : 1500);
+    // A failed reply is kept longer: the flaw of a malformed answer is often past its start.
+    for (const key of ['raw', 'stack', 'message', 'detail']) if (clean[key]) clean[key] = this.clip(clean[key], key === 'raw' ? (clean.ok === false ? 8000 : 2000) : key === 'detail' && clean.ok === false ? 8000 : 1500);
     this.entries.push(clean);
     if (this.entries.length > this.max) this.entries.splice(0, this.entries.length - this.max);
     return clean;
