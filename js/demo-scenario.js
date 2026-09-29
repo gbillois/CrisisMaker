@@ -114,7 +114,7 @@
         });
         scenario.player_pool = [['Marion Leclerc', 'Deputy crisis manager (reserve)'], ['Samuel Okafor', 'Pharmacovigilance officer (observer)']]
           .map(([name, role], index) => ({ id: `player_demo_pool_${index + 1}`, name, role, email: mail(name) }));
-        scenario.exercise = { players_count: 17, cells_count: scenario.cells.length };
+        scenario.exercise = { players_count: 15, cells_count: scenario.cells.length };
 
         // ── Main storyline: six phases, exactly 180 minutes ──────────────────
         const phaseSpecs = [

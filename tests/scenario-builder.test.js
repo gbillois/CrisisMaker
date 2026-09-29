@@ -74,7 +74,7 @@ test('model: example project ships a single linked storyline with recipient cell
   assert.equal(info.linked, 40);
   assert.equal(info.impacts, 0);
   assert.deepEqual(info.issues, []);
-  assert.deepEqual(info.exercise, { players_count: 17, cells_count: 5 });
+  assert.deepEqual(info.exercise, { players_count: 15, cells_count: 5 });
 });
 
 test('model: workstreams flatten into the main storyline with recipient cells, links and objectives kept', () => {
