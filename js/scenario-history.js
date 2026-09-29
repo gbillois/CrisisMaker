@@ -59,10 +59,33 @@ function sbSerialize(storyboard) {
    calls StoryboardHistory.track() first: its undo step then keeps only the items that
    changed (by id, before and after) and the order of each list, not full copies. */
 const SB_SIDE_LISTS = ['cells', 'actors', 'stimuli'];
+const SB_SIDE_BIG = 4096;
+
+/* A long string (an image or a video as data URL) is not copied into the JSON of its item:
+   it stands there as a short token (length and a sample of its characters), and the string
+   itself, which JavaScript never copies, is kept beside it for the undo. */
+function sbSideToken(text) {
+  let hash = 2166136261;
+  const step = Math.max(1, Math.floor(text.length / 512));
+  for (let index = 0; index < text.length; index += step) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+  for (let index = Math.max(0, text.length - 64); index < text.length; index++) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+  return `\u0000sb:${text.length}:${(hash >>> 0).toString(36)}`;
+}
+
+function sbSideRecord(item) {
+  const bigs = new Map();
+  const json = JSON.stringify(item, (key, value) => {
+    if (typeof value !== 'string' || value.length < SB_SIDE_BIG) return value;
+    const token = sbSideToken(value);
+    bigs.set(token, value);
+    return token;
+  });
+  return { json, bigs };
+}
 
 function sbSideState(project) {
   const state = {};
-  for (const name of SB_SIDE_LISTS) state[name] = new Map((project[name] || []).map((item) => [item.id, JSON.stringify(item)]));
+  for (const name of SB_SIDE_LISTS) state[name] = new Map((project[name] || []).map((item) => [item.id, sbSideRecord(item)]));
   return state;
 }
 
@@ -71,9 +94,9 @@ function sbSideDiff(before, after) {
   for (const name of SB_SIDE_LISTS) {
     const changed = [];
     for (const id of new Set([...before[name].keys(), ...after[name].keys()])) {
-      const from = before[name].has(id) ? before[name].get(id) : null;
-      const to = after[name].has(id) ? after[name].get(id) : null;
-      if (from !== to) changed.push({ id, before: from, after: to });
+      const from = before[name].get(id) || null;
+      const to = after[name].get(id) || null;
+      if (from?.json !== to?.json) changed.push({ id, before: from, after: to });
     }
     const orderBefore = [...before[name].keys()];
     const orderAfter = [...after[name].keys()];
@@ -84,15 +107,38 @@ function sbSideDiff(before, after) {
   return diff;
 }
 
+function sbSideParse(record, withBigs = true) {
+  return JSON.parse(record.json, (key, value) => (withBigs && typeof value === 'string' && record.bigs.has(value) ? record.bigs.get(value) : value));
+}
+
+const sbIsPlainObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
+
+/* Changes in `current` only what the edit changed from `from` to `to`, down into nested
+   objects (the fields of an inject): an edit made later to another property stays. */
+function sbPatchItem(current, from, to, value) {
+  for (const key of new Set([...Object.keys(from), ...Object.keys(to)])) {
+    if (JSON.stringify(from[key]) === JSON.stringify(to[key])) continue;
+    if (sbIsPlainObject(from[key]) && sbIsPlainObject(to[key]) && sbIsPlainObject(current[key])) sbPatchItem(current[key], from[key], to[key], value[key]);
+    else if (to[key] === undefined) delete current[key];
+    else current[key] = value[key];
+  }
+}
+
 /* Puts the recorded items back as they were before (undo) or after (redo) the edit.
-   Items the edit did not touch are kept as they are now. */
+   Items the edit did not touch are kept as they are now, and so are the properties of a
+   touched item that the edit did not change. */
 function sbApplySide(project, diff, direction) {
   if (!diff) return;
+  const other = direction === 'before' ? 'after' : 'before';
   for (const name of Object.keys(diff)) {
     const byId = new Map((project[name] || []).map((item) => [item.id, item]));
     for (const entry of diff[name].changed) {
-      if (entry[direction] === null) byId.delete(entry.id);
-      else byId.set(entry.id, JSON.parse(entry[direction]));
+      const target = entry[direction];
+      const source = entry[other];
+      if (target === null) { byId.delete(entry.id); continue; }
+      const current = byId.get(entry.id);
+      if (current && source) sbPatchItem(current, sbSideParse(source, false), sbSideParse(target, false), sbSideParse(target));
+      else byId.set(entry.id, sbSideParse(target));
     }
     const order = diff[name][direction];
     const rank = new Map(order.map((id, index) => [id, index]));
@@ -324,6 +370,7 @@ function sbAfterStoryboardChange(project = appState.scenario, options = {}) {
   storyboard.duration_minutes = Math.max(30, storyboard.duration_minutes, sbStoryboardEnd(storyboard));
   project.scenario.phases = sbDerivePhases(storyboard);
   if (appState.checkerState) appState.checkerState.analysisResult = null;
+  delete project.challenge; // A challenge of an older version would come back on reload.
   if (options.save !== false && typeof saveLocal === 'function') saveLocal(false);
 }
 

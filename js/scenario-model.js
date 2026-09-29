@@ -160,6 +160,8 @@ function sbClockTime(minutes, startDate) {
 function sbTextClockMinute(text, startDate, duration) {
   const start = Date.parse(startDate || '');
   if (!Number.isFinite(start)) return null;
+  // "D+1 09:30", "J-1", "Day 2, 09:30": another day than the one played, never a time of the exercise.
+  if (/^\s*(?:[djt]\s*[+-]\s*\d|(?:day|jour|tag)\s*\d|[dj]\d)/i.test(String(text || ''))) return null;
   const match = String(text || '').match(/^\s*(?:(?:d|j|t)[- ]?(?:day|jour|tag)?\s*[,:–-]?\s*)?(\d{1,2})\s*[:h]\s*(\d{2})\b/i);
   if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) return null;
   const clock = new Date(start);

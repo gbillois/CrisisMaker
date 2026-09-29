@@ -22,6 +22,7 @@ function agentRestore(snapshot) {
   appState.stimulusModalId = null;
   appState.historyModalStimulusId = null;
   appState.checkerState.analysisResult = null;
+  appState.checkerState.challengeRestoredFor = null;
 }
 function agentNormalizeResponse(value, registry = null) {
   if (typeof value === 'string') {

@@ -172,6 +172,34 @@ test('history: undo/redo, debounced text edits, versions, restore and diff', () 
   assert.equal(h.run('appState.scenario.storyboard.blocks.length'), 1);
 });
 
+test('history: undo of a tracked edit restores only what it changed, and keeps a later edit and big media', () => {
+  const h = harness();
+  h.run(`StoryboardHistory.ensure();
+    const project = appState.scenario;
+    project.cells = [{ id: 'c1', name: 'IT', players: [] }, { id: 'c2', name: 'Comms', players: [] }];
+    project.stimuli = [{ id: 's1', cell_id: 'c1', fields: { body: 'first', date: 'd1' }, image_data: 'data:image/png;base64,' + 'A'.repeat(50000) }];
+    StoryboardHistory.track();
+    project.stimuli[0].cell_id = 'c2';
+    project.stimuli[0].fields.date = 'd2';
+    StoryboardHistory.commit('Move inject');
+    project.stimuli[0].fields.body = 'edited later';`);
+  assert.equal(h.run('StoryboardHistory.undo()'), 'Move inject');
+  assert.equal(h.run('appState.scenario.stimuli[0].cell_id'), 'c1');
+  assert.equal(h.run('appState.scenario.stimuli[0].fields.date'), 'd1');
+  assert.equal(h.run('appState.scenario.stimuli[0].fields.body'), 'edited later');
+  assert.equal(h.run('appState.scenario.stimuli[0].image_data.length'), 50022);
+  assert.equal(h.run('StoryboardHistory.redo()'), 'Move inject');
+  assert.equal(h.run('appState.scenario.stimuli[0].cell_id'), 'c2');
+});
+
+test('model: a time in the text of an event is read only on the day played', () => {
+  const h = harness();
+  const at = (text) => h.run(`sbTextClockMinute(${JSON.stringify(text)}, '2026-11-27T08:00:00', 180)`);
+  assert.equal(at('09:30 Leak posted'), 90);
+  assert.equal(at('D-Day 09h30'), 90);
+  for (const text of ['D+1 09:30', 'J-1: 09:30', 'Day 2, 09:30', 'Jour 2 09h30', 'Tag 2 10:00', 'D2 09:30', '12:00 too late']) assert.equal(at(text), null, text);
+});
+
 test('checks: deterministic coherence rules flag gaps, overlaps, coverage and plan mismatches', () => {
   const h = harness();
   h.run(`{ appState.scenario.scenario.objectives = 'Isolate on time\\nNotify the regulator';

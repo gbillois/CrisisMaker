@@ -666,11 +666,13 @@ function ccRestoreChallenge(project) {
   const cs = appState.checkerState;
   if (cs.challengeRestoredFor === project.id || cs.mode === 'file' || cs.analysisLoading) return;
   cs.challengeRestoredFor = project.id;
+  // Another project: the results in memory belong to the previous one.
+  const summary = tabUI('summary');
+  cs.analysisResult = null; cs.analysisError = null; summary.review = null;
   const saved = project.challenge;
   if (!saved || typeof saved !== 'object') return;
-  if (!cs.analysisResult && saved.result && typeof checkerNormalizeResult === 'function') cs.analysisResult = checkerNormalizeResult(saved.result);
-  const summary = tabUI('summary');
-  if (!summary.review && saved.review && typeof saved.review === 'object') summary.review = saved.review;
+  if (saved.result && typeof checkerNormalizeResult === 'function') cs.analysisResult = checkerNormalizeResult(saved.result);
+  if (saved.review && typeof saved.review === 'object') summary.review = saved.review;
 }
 
 function renderSummaryView() {

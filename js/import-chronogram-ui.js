@@ -20,7 +20,7 @@
         const ed = state.excelData;
         const totalRows = Object.values(ed.sheets).reduce((sum, s) => sum + s.row_count, 0);
         const detectedSheet = state.options.mainSheet || ChronogramImport.detectMainSheet(ed.sheet_names);
-        const hasExisting = appState.scenario.stimuli.length > 0 || appState.scenario.actors.length > 0;
+        const hasExisting = state.options.target === 'new' || state.options.target === 'current' && (appState.scenario.stimuli.length > 0 || appState.scenario.actors.length > 0);
         const autonomy = appState.chronogramImportAutonomy || 'mostly_autonomous';
 
         return `

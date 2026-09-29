@@ -377,13 +377,23 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
   const project = appState.scenario;
   // Rewritten from the plan (not adapted from manual edits): date and time follow the simulated clock,
   // also when the inject has moved.
+  // The clock is set on the inject while the AI writes (its prompt shows the fields), then the
+  // fields are put back: the version saved in the inject's history is the one before this call,
+  // and a failed call leaves the inject as it was.
+  const original = deepClone(stimulus.fields || {});
   if (!options.preserve) sbSetClockFields(stimulus, project);
-  const brief = sbGenerationBrief(project, block, beat, { actorId: stimulus.actor_id, preserve: options.preserve ? deepClone(stimulus.fields) : null });
-  // 4500 output tokens: room for long HTML bodies and Japanese or Chinese text.
-  const generated = await agentCall(
-    (signal) => AITextGenerator.generateForStimulus(stimulus, null, agentRedact(brief), { signal, quiet: true, maxTokens: 4500, promptFilter: agentRedact, timeoutMs: 150000 }),
-    options.signal, 150000
-  );
+  const clocked = deepClone(stimulus.fields || {});
+  let generated;
+  try {
+    const brief = sbGenerationBrief(project, block, beat, { actorId: stimulus.actor_id, preserve: options.preserve ? deepClone(stimulus.fields) : null });
+    // 4500 output tokens: room for long HTML bodies and Japanese or Chinese text.
+    generated = await agentCall(
+      (signal) => AITextGenerator.generateForStimulus(stimulus, null, agentRedact(brief), { signal, quiet: true, maxTokens: 4500, promptFilter: agentRedact, timeoutMs: 150000 }),
+      options.signal, 150000
+    );
+  } finally {
+    stimulus.fields = original;
+  }
   if (options.assertActive) options.assertActive();
   if (!generated || typeof generated !== 'object' || Array.isArray(generated)) throw new AgentValidationError('The AI returned no usable content.');
   const allowed = new Set([...(getTemplateDefinition(stimulus).fields || []).map((field) => field.key), ...Object.keys(stimulus.fields || {})]);
@@ -408,7 +418,7 @@ async function sbGenerateStimulusContent(stimulus, block, beat, options = {}) {
     if (clock.date) delete clean.date;
   }
   if (!Object.keys(clean).length) throw new AgentValidationError('The AI returned no field of this template.');
-  saveStimulus(stimulus, { ...stimulus.fields, ...clean }, options.preserve ? 'Storyline: adapted to scenario change' : 'Storyline: AI generation');
+  saveStimulus(stimulus, { ...clocked, ...clean }, options.preserve ? 'Storyline: adapted to scenario change' : 'Storyline: AI generation');
   Object.assign(stimulus.generated_text, clean);
   stimulus.status = 'ready';
   stimulus.updated_at = new Date().toISOString();

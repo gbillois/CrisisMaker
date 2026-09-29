@@ -704,8 +704,7 @@
          the open project already has content), or the current exercise. Created once per import. */
       function chronogramImportTarget() {
         const state = appState.chronogramImport;
-        const hasExisting = appState.scenario.stimuli.length > 0 || appState.scenario.actors.length > 0;
-        if (!state || state.projectCreated || state.options?.target === 'current' || !hasExisting) return appState.scenario;
+        if (!state || state.projectCreated || state.options?.target !== 'new') return appState.scenario;
         confirmReplaceProject('new', { ask: false });
         startProject(emptyScenario({ ...appState.scenario.settings }));
         appState.scenario.name = String(state.fileName || '').replace(/\.[^.]+$/, '');
@@ -723,6 +722,7 @@
         appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
         appState.checkerState.analysisResult = null;
         appState.checkerState.analysisError = null;
+        appState.checkerState.challengeRestoredFor = null; // Its saved challenge shows again, even under the same id.
         appState.route = 'scenario';
         appState.launchScreenOpen = false;
         _fileHandle = null; // Save must not write the new project over the file of the old one.
@@ -1299,7 +1299,9 @@
                       createActors: true,
                       detectImplicit: true,
                       mainSheet: ChronogramImport.detectMainSheet(workbook.SheetNames),
-                      userContext: ''
+                      userContext: '',
+                      // Decided now: the import itself adds injects, so the project is no longer empty later.
+                      target: appState.scenario.stimuli.length > 0 || appState.scenario.actors.length > 0 ? 'new' : 'current'
                     },
                     progress: null,
                     result: null,
@@ -2431,7 +2433,8 @@
          kept as it is, since templates escape plain fields when they show them. */
       function sanitizeFieldValue(value) {
         const text = String(value ?? '');
-        return /<[a-z!\/][^>]*>/i.test(text) ? sanitizeBody(text) : text;
+        // Anything that starts like a tag, closed or not (<img src=x onerror=…), is treated as HTML.
+        return /<[a-z!\/?]/i.test(text) ? sanitizeBody(text) : text;
       }
 
       function sanitizeBody(html) {

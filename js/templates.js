@@ -290,7 +290,7 @@
         reddit(f) {
           const awards = parseArrayField(f.awards);
           const topComment = parseObjectField(f.top_comment);
-          const postBody = String(f.body || '');
+          const postBody = sanitizeBody(String(f.body || ''));
           const hasTextBody = Boolean(postBody.trim());
           const truncated = postBody.replace(/<[^>]+>/g, '').length > 320;
           return `
@@ -501,7 +501,7 @@
           `;
         },
         linkedin(f) {
-          const reactions = parseArrayField(f.reaction_types).join(' ');
+          const reactions = parseArrayField(f.reaction_types).map((item) => escapeHtml(item)).join(' ');
           const trimmed = String(f.text || '');
           const showMore = trimmed.split(/\n/).length > 3 || trimmed.length > 280;
           return `
@@ -966,7 +966,7 @@
           `;
         },
         linkedinHD(f) {
-          const reactions = parseArrayField(f.reaction_types).join(' ');
+          const reactions = parseArrayField(f.reaction_types).map((item) => escapeHtml(item)).join(' ');
           const trimmed = String(f.text || '');
           const showMore = trimmed.split(/\n/).length > 3 || trimmed.length > 280;
           return `
@@ -995,7 +995,7 @@
         redditHD(f) {
           const awards = parseArrayField(f.awards);
           const topComment = parseObjectField(f.top_comment);
-          const postBody = String(f.body || '');
+          const postBody = sanitizeBody(String(f.body || ''));
           const hasTextBody = Boolean(postBody.trim());
           const truncated = postBody.replace(/<[^>]+>/g, '').length > 320;
           return `

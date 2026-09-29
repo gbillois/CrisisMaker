@@ -519,6 +519,8 @@
           document.body.appendChild(sandbox);
           const failures = [];
           const skipped = [];
+          // Exported another way (a video inject as a still image): listed, not counted as a failure.
+          const notes = [];
           try {
             for (let i = 0; i < stimuli.length; i++) {
               const stimulus = stimuli[i];
@@ -535,7 +537,7 @@
                     // A video this browser cannot read or encode: the inject is still exported, as a
                     // still image of its screen (headline, ticker), and the reason is listed.
                     CrisisError.log(videoError, { operation: 'Render video stimulus for ZIP export', detail: `Stimulus id=${stimulus?.id || 'unknown'}` });
-                    failures.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${tt('video not rendered, exported as a still image', 'vidéo non rendue, exportée en image fixe', 'Video nicht gerendert, als Standbild exportiert')} (${videoError?.message || videoError})`);
+                    notes.push(`${this.playPrefix(stimulus)} ${sbStimulusLabel(stimulus)}: ${tt('video not rendered, exported as a still image', 'vidéo non rendue, exportée en image fixe', 'Video nicht gerendert, als Standbild exportiert')} (${videoError?.message || videoError})`);
                     still = true;
                   }
                 }
@@ -564,13 +566,13 @@
                 skipped.push(this.skippedLabel(stimulus));
               }
             }
-            if (failures.length === stimuli.length) throw new Error(tt('No inject could be rendered.', 'Aucun inject n\'a pu être rendu.', 'Kein Inject konnte gerendert werden.') + ` ${failures[0] || ''}`);
+            if (skipped.length === stimuli.length) throw new Error(tt('No inject could be rendered.', 'Aucun inject n\'a pu être rendu.', 'Kein Inject konnte gerendert werden.') + ` ${failures[0] || ''}`);
             const exportData = buildProjectFileData({ forFile: true });
             const json = JSON.stringify(exportData, null, 2);
             const crisisSlug = slugify(appState.scenario.name);
             zip.file(`${crisisSlug}.json`, json);
             zip.file(`${crisisSlug}_chronogram.csv`, this.chronogramCsv(stimuli));
-            if (failures.length) zip.file('export_errors.txt', failures.join('\r\n'));
+            if (failures.length || notes.length) zip.file('export_errors.txt', [...failures, ...notes].join('\r\n'));
             const blob = await zip.generateAsync({ type: 'blob' });
             downloadBlob(blob, `${crisisSlug}.zip`);
             if (skipped.length) pushToast(this.skippedMessage(skipped), 'warning', 15000);
