@@ -147,6 +147,55 @@ function sbAutoLinkByTime(project) {
   return linked;
 }
 
+/* A project from before the storyline (CrisisMaker v1: a list of injects, no phases) gets a main
+   storyline that covers all its injects: its old phases when it has some, else one phase per
+   hour, to rename or to rebuild with AI. Each inject is linked to the phase of its time. */
+function sbStoryboardFromInjects(project) {
+  const storyboard = project.storyboard;
+  if (!storyboard || sbMainBlocks(storyboard).length || !(project.stimuli || []).length) return false;
+  const last = Math.max(0, ...project.stimuli.map((stimulus) => Number(stimulus.timestamp_offset_minutes) || 0));
+  const duration = Math.min(SB_MAX_DURATION, Math.max(storyboard.duration_minutes || 0, Math.ceil((last + 15) / 30) * 30));
+  storyboard.duration_minutes = duration;
+  const main = sbMainTrack(storyboard);
+  const count = Math.max(1, Math.round(duration / 60));
+  const size = Math.max(15, Math.round(duration / count / 5) * 5);
+  for (let index = 0, start = 0; index < count; index += 1, start += size) {
+    const length = index === count - 1 ? duration - start : size;
+    if (length < 5) break;
+    storyboard.blocks.push(sbMakeBlock('custom', {
+      track_id: main.id, start_minutes: start, duration_minutes: length, stimuli_target: 0,
+      title: `Phase ${index + 1} (${sbFormatOffset(start)} - ${sbFormatOffset(start + length)})`
+    }, storyboard));
+  }
+  for (const stimulus of project.stimuli) {
+    if (sbStimulusLink(stimulus)) continue;
+    const block = sbMainBlocks(storyboard).find((item) => stimulus.timestamp_offset_minutes >= item.start_minutes && stimulus.timestamp_offset_minutes < sbBlockEnd(item));
+    if (block) sbStampStimulus(stimulus, block, null, storyboard, project);
+  }
+  return true;
+}
+
+/* Injects that lost their link to the storyline (a project saved by CrisisMaker v1 keeps the
+   storyline but drops each inject's link and recipient): each goes back to the planned inject
+   with the same time and channel, and takes its recipient again. */
+function sbRelinkByBeats(project) {
+  const storyboard = project.storyboard;
+  if (!storyboard) return 0;
+  const linked = new Set(project.stimuli.map((stimulus) => sbStimulusLink(stimulus)?.beat_id).filter(Boolean));
+  const free = storyboard.blocks.flatMap((block) => block.beats.filter((beat) => !linked.has(beat.id)).map((beat) => ({ block, beat, time: sbBeatAbsolute(block, beat) })));
+  let count = 0;
+  for (const stimulus of project.stimuli) {
+    if (sbStimulusLink(stimulus)) continue;
+    const index = free.findIndex((item) => item.time === stimulus.timestamp_offset_minutes && item.beat.channel === stimulus.channel);
+    if (index < 0) continue;
+    const [{ block, beat }] = free.splice(index, 1);
+    if (!stimulus.cell_id && beat.cell_id) stimulus.cell_id = beat.cell_id;
+    sbStampStimulus(stimulus, block, beat, storyboard, project);
+    count++;
+  }
+  return count;
+}
+
 function sbLockStimulus(stimulus, locked) {
   const link = sbStimulusLink(stimulus);
   if (link) link.locked = !!locked;

@@ -1529,3 +1529,29 @@ test('play: the chronogram for Excel has one row per inject in play order, with 
   assert.ok(rows.slice(1).every((row) => row[3] && row[5] && row[10]), 'phase, channel and status on every row');
   assert.ok(rows.slice(1).some((row) => row[9]), 'nudges are marked');
 });
+
+test('v1 projects: a project without storyline gets phases covering all its injects, each inject linked', () => {
+  const h = harness();
+  h.run('appState.scenario = defaultScenario(); StoryboardHistory.ensure();');
+  const project = h.json(`(() => { const p = JSON.parse(JSON.stringify(buildProjectFileData())); delete p.storyboard; delete p.cells; delete p.storyboard_versions; delete p.exercise; p.scenario.phases = []; p.stimuli.forEach((s, i) => { delete s.scenario_link; delete s.cell_id; s.timestamp_offset_minutes = i * 30; }); return p; })()`);
+  const last = Math.max(...project.stimuli.map((s) => s.timestamp_offset_minutes));
+  h.context.v1 = project;
+  h.run('appState.scenario = mergeScenario(migrateScenario(v1)); StoryboardHistory.ensure();');
+  const blocks = h.json('sbMainBlocks(appState.scenario.storyboard).map((b) => [b.start_minutes, b.duration_minutes])');
+  assert.ok(blocks.length >= 1);
+  assert.ok(h.run('appState.scenario.storyboard.duration_minutes') > last, 'the storyline covers the last inject');
+  assert.equal(h.run('appState.scenario.stimuli.filter((s) => s.scenario_link?.block_id).length'), project.stimuli.length);
+  assert.equal(h.run('sbPendingSyncCount(appState.scenario)'), 0);
+});
+
+test('v2 project saved by v1: injects that lost their link find their planned inject and recipient again', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  const count = h.run('appState.scenario.stimuli.length');
+  const saved = h.json(`(() => { const p = JSON.parse(JSON.stringify(buildProjectFileData())); p.stimuli.forEach((s) => { delete s.scenario_link; delete s.cell_id; }); return p; })()`);
+  h.context.saved = saved;
+  h.run('appState.scenario = mergeScenario(migrateScenario(saved)); StoryboardHistory.ensure();');
+  assert.equal(h.run('appState.scenario.stimuli.filter((s) => s.scenario_link?.beat_id).length'), count);
+  assert.equal(h.run('appState.scenario.stimuli.filter((s) => !s.cell_id).length'), 0);
+  assert.equal(h.run('sbExerciseItems(appState.scenario).length'), count, 'no duplicate between planned and written injects');
+});

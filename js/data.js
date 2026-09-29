@@ -273,6 +273,9 @@
         // Recipient cells are only assigned when migrating a project from before cells: in a
         // project with cells, an inject without recipient stays so (the checks flag it).
         if (storyboardModelLoaded()) { sbFlattenWorkstreams(merged, { assignCells: !Array.isArray(input.cells) }); sbFoldCellObjectives(merged); }
+        // A project from before the storyline (v1): a storyline covering all its injects.
+        if (storyboardModelLoaded() && !input.storyboard && typeof sbStoryboardFromInjects === 'function') sbStoryboardFromInjects(merged);
+        if (storyboardModelLoaded() && input.storyboard && typeof sbRelinkByBeats === 'function') sbRelinkByBeats(merged);
         // The storyboard owns the timed phases; keep the legacy field derived from it.
         if (storyboardModelLoaded() && (merged.storyboard.blocks.length || !Array.isArray(input.scenario?.phases))) merged.scenario.phases = sbDerivePhases(merged.storyboard);
         if (!input.scenario || !('objectives' in input.scenario)) delete merged.scenario.objectives;
