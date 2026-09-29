@@ -84,13 +84,19 @@ iframe sub-app) and shows a placeholder instead; use the full app for it.
 
 ## Designing and running an exercise
 
-The menu follows the design workflow, from left to right:
+The tabs follow the life of an exercise, in three groups: **Prepare** (Context, Main
+storyline, Cells & actors, Detailed storyline, Injects library), **Run** (Check &
+Challenge, Play) and **After** (Evaluation, Debrief). The design itself is done in two
+stages, as with a client: first the **framing** (the phases of the Main storyline,
+their main events and the consequences to manage), reviewed and validated with the
+client; then the **stimuli of each cell** (Detailed storyline).
 
-1. **Project**: a summary with key figures; project data (new, create from the
-   library, open, import an Excel timeline, load the demo, save locally, export the
-   text content as JSON, export all injects); and the **scenario library** (preview,
-   load, export the current storyline as a template, import a template file). **Load**
-   selects a scenario and opens Context. Every built-in scenario plays in 3 hours.
+1. **Project** (the menu on the project name, in the header): a summary with key
+   figures; project data (new, create from the library, open, import an Excel
+   timeline, load the demo, save locally, export the text content as JSON, export all
+   injects); and the **scenario library** (preview, load, export the current storyline
+   as a template, import a template file). **Load** selects a scenario and opens
+   Context. Every built-in scenario plays in 3 hours.
 2. **Context**: the exercise frame (client, sector, logo; play duration, simulated
    start and end dates, timezone, number of crisis cells and players; primary and
    inject languages), then **Scenario generation**: your context, objectives and ideas;
@@ -99,11 +105,16 @@ The menu follows the design workflow, from left to right:
    every AI operation: the agent, the storyline AI, the writing of each stimulus
    (the recipient cell's objectives and the attack path) and the debrief. Then
    either **Load basic scenario from library** (the loaded library scenario as it is;
-   greyed when none is loaded) or **Generate with AI**. It starts the builder agent
-   with all of the above and adapts the loaded library scenario: the agent asks you a
-   few questions, then
-   builds the main storyline, the cells and players, the cast and its actors, and a
-   per-cell inject plan for every phase. The scenario details (name, type, summary,
+   greyed when none is loaded) or **Build my exercise**, in three steps:
+   **Build the framing** starts the builder agent with all of the above and adapts the
+   loaded library scenario: the agent asks you a few questions, then builds the main
+   storyline (ending with a closing phase), its main events, the cells and players,
+   the cast and its actors, without planning injects yet, and the Main storyline opens
+   for review. **Validate the framing** once the client agrees: a named version is
+   kept, and the Main and Detailed storylines then say whether a phase changed since
+   (with a comparison). **Build the stimuli** plans and writes the injects of every
+   cell, nudges included, then challenges the exercise in Check & Challenge.
+   **Everything at once** chains the three steps for a first draft. The scenario details (name, type, summary,
    objectives, synopsis, threat) stay editable in a collapsed block.
    **Existing crisis exercise file** (optional): load the chronogram of a previous
    exercise (.xlsx, .xls or .pptx). The agent uses it as a reference when it generates
@@ -142,8 +153,10 @@ The menu follows the design workflow, from left to right:
    cell-by-cell timing review, whose findings join the automatic checks. The challenge
    targets the current scenario, or the existing exercise file loaded in Context; the
    last result of each is kept, and the last challenge of the scenario is saved with the
-   project (it is cleared when the agent changes the exercise). The report exports to
-   Markdown or Word. Then the ready-to-play checklist, also saved with the project.
+   project (it is cleared when the exercise changes). On the scenario, each priority
+   action has a **Fix** button, and **Fix all with the agent** applies them all: the
+   agent edits the exercise within its autonomy mode (this is the only challenge of the
+   app). The report exports to Markdown or Word. Then the ready-to-play checklist, also saved with the project.
 
 7. **Play**: runs the exercise live, for its pilot.
    - The stimuli to send come from the Injects library (**Download all stimuli**: a ZIP
@@ -262,11 +275,12 @@ header) draws the letters from the bundled Poppins ExtraBold (SIL Open Font Lice
 ## Agent mode
 
 The agent is a core component rather than a tab. Tabs start it where the content
-lives (for example **Generate with AI** in Context) and show a compact panel with
-its progress, its questions, approvals, Stop and Undo. The full **agent console** is
-in **Settings → AI agent**; it offers **Build from the context**, **Build my
-exercise** and **Challenge my exercise**. Enter a brief or review objective, choose
-an autonomy mode, and select **Start**.
+lives (for example **Build the framing** in Context, or **Fix** on a priority action
+of Check & Challenge) and show a compact panel with its progress, its questions,
+approvals, Stop and Undo. The full **agent console** is in **Settings → AI agent**; it
+offers **Build from the context** and **Design the whole exercise**. Enter a brief,
+choose an autonomy mode, and select **Start**. To challenge the exercise, use Check &
+Challenge: its priority actions can be fixed with the agent, one by one or all at once.
 
 The agent knows the storyline model: the exercise frame, the main storyline phases,
 player cells and players, the cast of simulated senders and their actors, and the
