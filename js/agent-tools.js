@@ -86,6 +86,11 @@ function agentExerciseFrame() {
     designer_context: agentExcerpt(storyboard?.meta?.brief || '', 6000),
     learning_objectives: agentExcerpt(project.scenario.learning_objectives || '', 6000),
     attack_path: agentExcerpt(project.scenario.attack_path || '', 6000),
+    // The incident timeline events that happen during play, already at their exercise minute:
+    // phases are laid out around them and they become the main events of their phase.
+    incident_timeline_in_play: String(project.scenario.attack_path || '').split(/\n+/).map(line => line.trim()).filter(Boolean)
+      .map(line => ({ minute: sbTextClockMinute(line, project.scenario.start_date, storyboard?.duration_minutes), text: agentExcerpt(line, 300) }))
+      .filter(item => item.minute !== null).map(item => ({ exercise_minute: item.minute, time: sbFormatOffset(item.minute), text: item.text })),
     library_scenario: storyboard?.meta?.template_id && storyboard.meta.template_id !== 'agent' ? storyboard.meta.template_id : null
   };
 }
@@ -119,6 +124,7 @@ function agentConsistencyCheck() {
   // Scenario first: storyline and phases, cells, learning objectives, incident timeline; then injects.
   const storyboard = s.storyboard;
   if (storyboard) sbStructuralChecks(storyboard, s).forEach(issue => issues.push(`Storyline: ${issue.message}`));
+  if (storyboard) sbExerciseChecks(s).filter(issue => issue.code === 'event_time').forEach(issue => issues.push(`Storyline: ${issue.message}`));
   if (!s.scenario.summary?.trim()) issues.push('Missing scenario summary.');
   if (!s.scenario.objectives?.trim()) issues.push('No explicit exercise objectives recorded.');
   if (!s.scenario.learning_objectives?.trim()) issues.push('No learning objectives: nothing says what the players must practise.');
@@ -427,7 +433,16 @@ function createAgentToolRegistry() {
     const block = sbBlock(project.storyboard, args.id);
     if (!block) throw new AgentValidationError('Unknown item ID.');
     if (block.locked) throw new AgentValidationError('This storyboard block is locked by the designer.');
-    const added = agentBeatsInPhase(block, args.events.map(event => ({ ...event, title: event.text }))).map(event => sbMakeEvent({ offset_minutes: event.at, text: event.text }));
+    // An event whose text starts with a clock time ("09:30 – …") is placed at that simulated time.
+    const duration = project.storyboard.duration_minutes;
+    const timed = args.events.map(event => {
+      const minute = sbTextClockMinute(event.text, project.scenario.start_date, duration);
+      if (minute === null) return event;
+      if (minute >= block.start_minutes && minute < sbBlockEnd(block)) return { ...event, at: minute - block.start_minutes };
+      const owner = sbMainBlockAt(project.storyboard, minute);
+      throw new AgentValidationError(`Main event "${agentExcerpt(event.text, 80)}" happens at ${sbFormatOffset(minute)} (exercise minute ${minute}), inside phase "${owner?.title || '?'}" (${owner ? `${owner.start_minutes} to ${sbBlockEnd(owner) - 1}` : 'none'}), not in "${block.title}" (${block.start_minutes} to ${sbBlockEnd(block) - 1}). Set it on that phase, or move the phase boundaries first (updateStoryboardBlock).`);
+    });
+    const added = agentBeatsInPhase(block, timed.map(event => ({ ...event, title: event.text }))).map(event => sbMakeEvent({ offset_minutes: event.at, text: event.text }));
     // An event already there (same text, as the agent may set a phase twice) is not added again.
     const kept = args.replace ? [] : block.events || [];
     const known = new Set(kept.map(event => String(event.text).trim().toLowerCase()));

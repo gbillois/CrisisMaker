@@ -154,6 +154,19 @@ function sbClockTime(minutes, startDate) {
   return `${days[date.getDay()]} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/* The exercise minute of a clock time written at the start of a text ("09:30 – …", "D-day 09:30: …",
+   "J 9h30 …"), counted from the simulated start on the same day; null without a simulated start,
+   without such a time, or outside play. */
+function sbTextClockMinute(text, startDate, duration) {
+  const start = Date.parse(startDate || '');
+  if (!Number.isFinite(start)) return null;
+  const match = String(text || '').match(/^\s*(?:(?:d|j|t)[- ]?(?:day|jour|tag)?\s*[,:–-]?\s*)?(\d{1,2})\s*[:h]\s*(\d{2})\b/i);
+  if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) return null;
+  const clock = new Date(start);
+  const minute = Number(match[1]) * 60 + Number(match[2]) - (clock.getHours() * 60 + clock.getMinutes());
+  return minute >= 0 && minute < (Number(duration) || 0) ? minute : null;
+}
+
 // ── Stable hashing (used to detect manual edits and outdated content) ────────
 function sbStableStringify(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value ?? null);

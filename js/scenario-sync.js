@@ -829,6 +829,14 @@ function sbExerciseChecks(project = appState.scenario) {
   const items = sbExerciseItems(project);
   const duration = project.storyboard?.duration_minutes || Math.max(0, ...items.map((item) => item.time));
   const cells = project.cells || [];
+  // A main event whose text gives a clock time ("09:30 – ransom email") placed at another time.
+  for (const block of project.storyboard ? sbMainBlocks(project.storyboard) : []) {
+    for (const event of block.events || []) {
+      const minute = sbTextClockMinute(event.text, project.scenario?.start_date, duration);
+      const placed = block.start_minutes + event.offset_minutes;
+      if (minute !== null && Math.abs(minute - placed) > 2) add('warning', 'event_time', `Main event "${sbText(event.text, 80)}" is placed at ${sbFormatOffset(placed)} (${sbClockTime(placed, project.scenario.start_date).split(' ')[1]}) but its text says ${sbClockTime(minute, project.scenario.start_date).split(' ')[1]} (${sbFormatOffset(minute)}).`, { at: placed });
+    }
+  }
   if (!items.length) { add('warning', 'empty', 'No inject yet: plan injects in the Detailed storyline.'); return issues; }
   if (!cells.length) add('warning', 'no_cells', 'No player cell: create cells in Cells & actors.');
   for (const cell of cells) {

@@ -549,3 +549,28 @@ test('agent replies: harmless slips are fixed before the strict check, tool argu
   // A key no tool declares is still refused.
   assert.throws(() => h.run(`agentNormalizeResponse({ type: 'tool_call', tool: 'getScenario', arguments: {}, javascript: 'alert(1)' }, createAgentToolRegistry())`), /Invalid/);
 });
+
+test('main events with a clock time are placed at that simulated time; the frame lists the incident timeline in play', async () => {
+  const h = harness();
+  h.run(`appState.scenario.scenario.start_date = '2026-11-27T08:00'; appState.scenario.scenario.attack_path = 'D-24: phishing\\nD-day 05:50: hypervisors encrypted\\nD-day 09:30: the attacker emails the CEO\\nD-day 10:15: sample on the leak site';`);
+  await execute(h, 'setExerciseFrame', { duration_minutes: 180 });
+  assert.equal(h.run(`sbTextClockMinute('09:30 – ransom email', '2026-11-27T08:00', 180)`), 90);
+  assert.equal(h.run(`sbTextClockMinute('D-day 10:15: leak', '2026-11-27T08:00', 180)`), 135);
+  assert.equal(h.run(`sbTextClockMinute('D-24: phishing', '2026-11-27T08:00', 180)`), null);
+  assert.equal(h.run(`sbTextClockMinute('05:50 encryption', '2026-11-27T08:00', 180)`), null);
+  const frame = h.json('agentExerciseFrame()');
+  assert.equal(JSON.stringify(frame.incident_timeline_in_play.map(item => item.exercise_minute)), JSON.stringify([90, 135]));
+  await execute(h, 'buildMainStoryline', { phases: [
+    { type: 'trigger', title: 'Opening', start_minutes: 0, duration_minutes: 60, brief: 'x' },
+    { type: 'crisis_cell', title: 'Ransom', start_minutes: 60, duration_minutes: 60, brief: 'x' },
+    { type: 'twist', title: 'Leak', start_minutes: 120, duration_minutes: 60, brief: 'x' }
+  ] });
+  const blocks = h.json('sbMainBlocks(appState.scenario.storyboard).map(b => ({ id: b.id, start: b.start_minutes }))');
+  // The text's clock wins over a wrong at; an event in another phase is refused with that phase.
+  const set = await execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 5, text: '09:30 - The attacker emails the CEO' }] });
+  assert.equal(set.key_events[0].exercise_minute, 90);
+  await assert.rejects(execute(h, 'setMainEvents', { id: blocks[1].id, events: [{ at: 20, text: '10:15 - Sample on the leak site' }] }), /inside phase "Leak"/);
+  // A main event moved by hand away from its time is flagged.
+  h.run(`sbBlock(appState.scenario.storyboard, '${blocks[1].id}').events[0].offset_minutes = 10`);
+  assert.ok(h.json('sbExerciseChecks(appState.scenario)').some(issue => issue.code === 'event_time'));
+});

@@ -778,7 +778,7 @@ function renderSummaryReview(project, review = tabUI('summary').review) {
 const SU_ISSUE_LABELS = {
   ai: 'AI review', empty: 'No inject yet', no_cells: 'No player cell', cell_idle: 'Cells without inject', gap: 'Dead times', peak: 'Overloads',
   phase_empty: 'Phases without inject', no_cell: 'Injects without recipient cell', no_sender: 'Injects without sender', orphan: 'Injects no longer matching the storyline',
-  after_end: 'Injects after the end', other: 'Other'
+  after_end: 'Injects after the end', event_time: 'Main events at another time than they say', other: 'Other'
 };
 
 // ═══ Context tab helpers ══════════════════════════════════════════════
