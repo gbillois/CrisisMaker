@@ -1046,9 +1046,7 @@
           appState.videoFiles = makeDefaultVideoFiles(appState.scenario);
           restoreApiKeysFromStorage(appState.scenario.settings);
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
-          appState.checkerState.analysisResult = null;
-          appState.checkerState.analysisError = null;
-          appState.checkerState.challengeRestoredFor = null;
+          if (appState.checkerState) Object.assign(appState.checkerState, { analysisResult: null, analysisError: null, challengeRestoredFor: null });
           // Restore LLM prompt texts from saved data
           appState.llmState = makeDefaultLLMState();
           restoreLLMPrompts(data.llm_prompts);
