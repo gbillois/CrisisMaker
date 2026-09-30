@@ -120,7 +120,7 @@ function answerFor(system, user) {
   await page.fill('[data-sb-meta="brief"]', 'Three-hour hospital ransomware exercise for the executive cell');
   await page.dispatchEvent('[data-sb-meta="brief"]', 'change');
   await page.selectOption('[data-cx-mode]', 'auto');
-  assert.ok(await page.isDisabled('[data-bf-action="validate"]'), 'nothing to validate before the framing');
+  assert.equal(await page.locator('[data-bf-action]').count(), 0, 'no Build my exercise block in the Context');
   // Without the library scenario, the agent builds from the notes alone; the framing only (the
   // stimuli and the evaluation sheets come after the client review).
   await page.selectOption('[data-cx-library]', '');

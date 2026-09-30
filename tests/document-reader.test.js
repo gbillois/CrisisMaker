@@ -443,11 +443,12 @@ test('example deck: offered next to the upload, fictitious, and read with every 
   assert.ok(view.includes('data-cx-example-download') && view.includes('data-cx-example-load'));
   assert.ok(view.indexOf('checker-dropzone') < view.indexOf('data-cx-example-load') && view.indexOf('data-cx-example-load') < view.indexOf('Generic scenario'), 'next to the upload zone');
   await h.run('checkerHandleFile(cgExampleDeckFile())');
-  assert.equal(h.run('appState.checkerState.file.name'), 'exemple-support-exercice-crise.pptx');
+  assert.equal(h.run('appState.checkerState.file.name'), 'example-crisis-exercise-deck.pptx');
   const doc = h.json('appState.checkerState.parsedData.doc');
   const text = JSON.stringify(doc);
   assert.ok(!text.includes('@'), 'no e-mail address');
-  assert.ok(text.includes('entreprise fictive'));
+  assert.ok(text.includes('fictitious company'));
+  assert.ok(!/[éèàç’]/.test(text), 'entirely in English');
   assert.equal(doc.slides.length, 7);
   assert.ok(doc.slides.every((slide) => slide.title), 'every slide has its title');
   assert.deepEqual(h.json('cgSourceChecklist().map(i => [i.key, i.status])'), [['duration', 'found'], ['context', 'found'], ['objectives', 'found'], ['players', 'found'], ['phases', 'found'], ['incident', 'found'], ['injects', 'found']]);
@@ -457,8 +458,8 @@ test('example deck: offered next to the upload, fictitious, and read with every 
   assert.equal(analysis.chronogramRows, 0);
   assert.equal(analysis.listedStimuli, 14);
   const sequences = doc.slides[5].blocks.find((block) => block.kind === 'table');
-  assert.deepEqual(sequences.rows[0], ['Brief', 'Séquence 1', 'Séquence 2', 'Séquence 3']);
-  assert.deepEqual(sequences.rows.map((row) => row[0]), ['Brief', 'Horaire', 'Événement majeur', 'Présentation', 'Questionnements', 'Décisions attendues', 'Stimuli']);
+  assert.deepEqual(sequences.rows[0], ['Brief', 'Sequence 1', 'Sequence 2', 'Sequence 3']);
+  assert.deepEqual(sequences.rows.map((row) => row[0]), ['Brief', 'Time', 'Key event', 'Presentation', 'Questions', 'Expected decisions', 'Stimuli']);
   // The 14 stimulus ideas of the table: about 5 per sequence.
   h.run(`sbApplyTemplate(sbBuiltinTemplates()[0], 'replace'); appState.scenario.storyboard.blocks = sbMainBlocks(appState.scenario.storyboard).slice(0, 3).map((b, i) => ({ ...b, start_minutes: i * 15, duration_minutes: 15, beats: [], stimuli_target: 0 })); appState.scenario.cells = [sbMakeCell('decision')];`);
   assert.equal(h.run('sbWantedInjects(sbMainBlocks(appState.scenario.storyboard)[0], appState.scenario)'), 5);

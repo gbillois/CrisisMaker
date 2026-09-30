@@ -163,49 +163,8 @@ const BuildFlow = {
       App.render();
     }
     return true;
-  },
-
-  /* Everything at once, for a first draft without a client review in between. */
-  async all() {
-    if (await this.framing({ openStoryline: false })) return this.stimuli({ confirmUnvalidated: false });
-    return false;
   }
 };
-
-/* The Build card of the Context tab: the two stages and the validation between them. */
-function renderBuildFlow(project, { framingButton = true } = {}) {
-  const ai = isLLMAvailable();
-  const busy = BuildFlow.busy();
-  const phases = sbMainBlocks(project.storyboard).length;
-  const validation = bfFramingValidation(project);
-  const changes = bfFramingChanges(project);
-  const items = sbExerciseItems(project);
-  const written = items.filter((item) => item.stimulus).length;
-  const noAI = ai ? '' : `title="${escapeAttribute(tt('Configure an AI connection in Settings to generate with AI.', 'Configurez une connexion IA dans les Paramètres pour générer avec l’IA.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um mit KI zu generieren.'))}"`;
-  const running = (stage) => BuildFlow.stage === stage ? '<span class="ai-spinner ai-spinner-primary"></span>' : '';
-  const step = (n, state, title, text, actions) => `<li class="bf-step is-${state}">
-      <span class="bf-num">${state === 'done' ? sbUiIcon('check', 14) : n}</span>
-      <div class="bf-body"><strong>${escapeHtml(title)}</strong><span>${text}</span><div class="bf-actions">${actions}</div></div>
-    </li>`;
-  const validatedText = validation
-    ? escapeHtml(tt(`Validated on ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}`, `Validé le ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}`, `Freigegeben am ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}`))
-      + (changes?.total ? ` · <b class="bf-warn">${escapeHtml(bfChangesLabel(changes))}</b>` : '')
-    : escapeHtml(tt('Review the phases and main events with the client, then validate them.', 'Relisez les phases et les événements principaux avec le client, puis validez-les.', 'Phasen und Hauptereignisse mit dem Kunden prüfen, dann freigeben.'));
-  return `<div class="bf-card">
-    <div class="bf-head"><strong>${sbUiIcon('sparkles', 16)} ${escapeHtml(tt('Build my exercise', 'Construire mon exercice', 'Meine Übung erstellen'))}</strong>
-      <button class="btn btn-ghost btn-sm" data-bf-action="all" ${ai && !busy ? '' : 'disabled'} ${noAI} title="${escapeAttribute(tt('Framing, stimuli and challenge in one go, without a client review in between', 'Cadrage, stimuli et challenge d’un seul tenant, sans relecture client entre les deux', 'Rahmen, Stimuli und Challenge in einem Durchgang, ohne Kundenprüfung dazwischen'))}">${escapeHtml(tt('Everything at once', 'Tout d’un coup', 'Alles auf einmal'))}</button>
-    </div>
-    <ol class="bf-steps">
-      ${step(1, phases && BuildFlow.stage !== 'adapting' ? 'done' : 'todo', tt('Framing', 'Cadrage', 'Rahmen'), escapeHtml(BuildFlow.stage === 'adapting' ? tt(`Adapting the library scenario to the client${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`, `Adaptation du scénario de bibliothèque au client${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`, `Das Bibliotheksszenario wird an den Kunden angepasst${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`) : phases ? tt(`${phases} phases on the main storyline.`, `${phases} phases sur la storyline principale.`, `${phases} Phasen in der Haupt-Storyline.`) : tt('Phases, main events and their consequences, cells and senders, from the context above.', 'Phases, événements principaux et leurs conséquences, cellules et émetteurs, à partir du contexte ci-dessus.', 'Phasen, Hauptereignisse und ihre Folgen, Zellen und Absender, aus dem Kontext oben.')),
-        framingButton ? `<button class="btn ${phases ? 'btn-secondary' : 'btn-primary'} btn-sm" data-bf-action="framing" ${ai && !busy ? '' : 'disabled'} ${noAI}>${running('adapting') || running('framing')}${sbUiIcon('sparkles', 14)} ${escapeHtml(phases ? tt('Rebuild the framing', 'Reconstruire le cadrage', 'Rahmen neu erstellen') : tt('Build the framing', 'Construire le cadrage', 'Rahmen erstellen'))}</button>` : '')}
-      ${step(2, validation && !changes?.total ? 'done' : phases ? 'todo' : 'later', tt('Client validation', 'Validation client', 'Kundenfreigabe'), validatedText,
-        `<button class="btn btn-secondary btn-sm" data-route="storyline" ${phases ? '' : 'disabled'}>${escapeHtml(tt('Review', 'Relire', 'Prüfen'))} ${sbUiIcon('chevronRight', 14)}</button>
-         <button class="btn ${phases && !validation ? 'btn-primary' : 'btn-secondary'} btn-sm" data-bf-action="validate" ${phases && !busy ? '' : 'disabled'}>${sbUiIcon('checkCircle', 14)} ${escapeHtml(validation ? tt('Validate again', 'Valider à nouveau', 'Erneut freigeben') : tt('Validate the framing', 'Valider le cadrage', 'Rahmen freigeben'))}</button>`)}
-      ${step(3, items.length && written === items.length ? 'done' : validation ? 'todo' : 'later', tt('Stimuli by cell', 'Stimuli par cellule', 'Stimuli je Zelle'), escapeHtml(items.length ? tt(`${written} / ${items.length} injects written.`, `${written} / ${items.length} injects rédigés.`, `${written} / ${items.length} Injects geschrieben.`) : tt('Every cell’s injects, nudges included, written with AI, then challenged.', 'Les injects de chaque cellule, relances comprises, rédigés avec l’IA, puis challengés.', 'Die Injects jeder Zelle, Impulse inklusive, mit KI geschrieben und dann geprüft.')),
-        `<button class="btn ${validation ? 'btn-primary' : 'btn-secondary'} btn-sm" data-bf-action="stimuli" ${phases && ai && !busy ? '' : 'disabled'} ${noAI}>${running('stimuli') || running('challenge')}${sbUiIcon('play', 14)} ${escapeHtml(tt('Build the stimuli', 'Construire les stimuli', 'Stimuli erstellen'))}</button>`)}
-    </ol>
-  </div>`;
-}
 
 function bfChangesLabel(changes) {
   const parts = [];
@@ -246,16 +205,13 @@ function renderFramingBar(project, route) {
   return `<div class="bf-bar is-${tone}">${sbUiIcon(tone === 'ok' ? 'checkCircle' : tone === 'warn' ? 'alert' : 'info', 14)}<span>${escapeHtml(text)}</span><div class="bf-bar-actions">${compare}${validate}${next}</div></div>`;
 }
 
-/* One listener for the Build card and the framing bar (they are re-rendered with the page). */
+/* One listener for the framing bar of the storylines (it is re-rendered with the page). */
 if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('click', async (event) => {
   const button = event.target?.closest?.('[data-bf-action]');
   if (!button || button.disabled) return;
   const action = button.dataset.bfAction;
   try {
-    if (action === 'framing') {
-      if (sbMainBlocks(appState.scenario.storyboard).length && !window.confirm(tt('Rebuild the framing? The agent adapts the current phases; the next tabs follow when you update them.', 'Reconstruire le cadrage ? L’agent adapte les phases actuelles ; les onglets suivants suivent quand vous les mettez à jour.', 'Rahmen neu erstellen? Der Agent passt die aktuellen Phasen an; die folgenden Tabs folgen, wenn Sie sie aktualisieren.'))) return;
-      await BuildFlow.framing();
-    } else if (action === 'validate') {
+    if (action === 'validate') {
       if (bfValidateFraming()) pushToast(tt('Framing validated: a version of the storyline was kept. Later changes to the phases will show.', 'Cadrage validé : une version de la storyline a été conservée. Les modifications ultérieures des phases seront signalées.', 'Rahmen freigegeben: Eine Version der Storyline wurde gespeichert. Spätere Änderungen an den Phasen werden angezeigt.'), 'success');
       App.render();
     } else if (action === 'compare') {
@@ -266,10 +222,6 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
       App.render();
     } else if (action === 'stimuli') {
       await BuildFlow.stimuli();
-    } else if (action === 'all') {
-      // From the Context tab, the sources are read first, as the AI generation does.
-      if (typeof ContextGeneration !== 'undefined') await ContextGeneration.generate({ all: true });
-      else await BuildFlow.all();
     }
   } catch (error) {
     pushToast(sbErrorMessage(error), 'error');

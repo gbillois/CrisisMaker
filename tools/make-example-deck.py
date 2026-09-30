@@ -7,7 +7,7 @@ chronogram: the AI writes the stimuli from the key events and the context.
 
     pip install python-pptx && python3 tools/make-example-deck.py
 
-Writes docs/examples/exemple-support-exercice-crise.pptx and js/example-deck.js (the same
+Writes docs/examples/example-crisis-exercise-deck.pptx and js/example-deck.js (the same
 file as base64, so the page and the standalone HTML can offer it offline).
 """
 import base64, os
@@ -18,7 +18,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PPTX = os.path.join(ROOT, 'docs', 'examples', 'exemple-support-exercice-crise.pptx')
+PPTX = os.path.join(ROOT, 'docs', 'examples', 'example-crisis-exercise-deck.pptx')
 JS = os.path.join(ROOT, 'js', 'example-deck.js')
 
 INK, INDIGO, TINT, LINE, MUTED, WHITE = RGBColor(0x21, 0x12, 0x48), RGBColor(0x45, 0x1D, 0xC7), RGBColor(0xEE, 0xEA, 0xFB), RGBColor(0xD9, 0xD4, 0xEE), RGBColor(0x5B, 0x57, 0x6E), RGBColor(0xFF, 0xFF, 0xFF)
@@ -53,10 +53,10 @@ def box(slide, x, y, w, h, lines, size=11, bold=False, color=INK, fill=None, bor
 
 def slide(title, subtitle=None):
     s = prs.slides.add_slide(BLANK)
-    box(s, 45, 12, 600, 22, 'Exercice de crise COMEX', 11, color=MUTED)          # running header
+    box(s, 45, 12, 600, 22, 'Executive crisis exercise', 11, color=MUTED)          # running header
     box(s, 45, 34, 1130, 40, title, 24, bold=True)                                   # the title: largest text at the top
     if subtitle: box(s, 45, 76, 1130, 26, subtitle, 12, color=MUTED)
-    box(s, 1100, 650, 90, 22, 'Exemple fictif', 8, color=MUTED, align=PP_ALIGN.RIGHT)  # running footer
+    box(s, 1060, 650, 130, 22, 'Fictitious example', 8, color=MUTED, align=PP_ALIGN.RIGHT)  # running footer
     return s
 
 def table(s, x, y, w, rows, widths, size=9, header_fill=INDIGO):
@@ -79,77 +79,77 @@ def notes(s, text): s.notes_slide.notes_text_frame.text = text
 # 1. Cover
 s = prs.slides.add_slide(BLANK)
 box(s, 0, 0, 1219, 686, '', fill=INK)
-box(s, 80, 120, 1060, 60, 'Exercice de crise COMEX : perte de contrôle d’un agent IA', 30, bold=True, color=WHITE)
-box(s, 80, 200, 1060, 30, 'Support d’exemple · Groupe Orvane (entreprise fictive)', 16, color=WHITE)
-box(s, 80, 240, 1060, 60, 'Toutes les organisations, personnes et situations de ce support sont inventées.', 11, color=WHITE)
-notes(s, 'Support d’exemple à charger dans l’onglet Contexte de CrisisMaker, puis à générer avec l’IA.')
+box(s, 80, 120, 1060, 60, "Executive crisis exercise: loss of control of an AI agent", 30, bold=True, color=WHITE)
+box(s, 80, 200, 1060, 30, "Example deck · Orvane Group (fictitious company)", 16, color=WHITE)
+box(s, 80, 240, 1060, 60, "Every organisation, person and situation in this deck is invented.", 11, color=WHITE)
+notes(s, "Example deck to load in the Context tab of CrisisMaker, then to generate with AI.")
 
 # 2. Identity card and objectives
-s = slide('Fiche d’identité et objectifs de l’exercice')
-box(s, 45, 90, 560, 150, ['Durée de l’exercice : 45 minutes', 'Date : à définir avec les sponsors (ex. un mardi à 10h00)', 'Format : mise en situation immersive, en salle du conseil', 'Participants : le comité exécutif au complet (cellule décisionnelle)', 'Période simulée : une semaine sur la phase d’impact, plusieurs mois sur la remédiation', 'Animation : deux animateurs cyber et quatre complices'], 11, fill=TINT)
-box(s, 625, 90, 550, 22, 'OBJECTIFS POUR LE GROUPE', 12, bold=True, color=INDIGO)
-box(s, 625, 116, 550, 124, ['1. Protéger le Groupe : être cyber-résilient face aux exigences réglementaires (NIS2, AI Act)', '2. Innover sans s’exposer : intégrer les risques des agents IA autonomes, encore peu couverts par les dispositifs de crise', '3. Préparer le COMEX : décider vite et sous tension, avec des rôles et des circuits de décision clairs'], 10)
-box(s, 45, 260, 1130, 22, 'OBJECTIFS PÉDAGOGIQUES', 12, bold=True, color=INDIGO)
-box(s, 45, 286, 1130, 110, ['Direction générale : arbitrer l’arrêt des outils IA dans l’incertitude et documenter chaque décision.', 'Direction juridique : qualifier la responsabilité du Groupe envers les tiers et les obligations de notification (NIS2, RGPD, AI Act).', 'Direction de la communication : tenir une posture cohérente vis-à-vis des partenaires, des autorités et de la presse.', 'DSI et cyber : confiner l’agent, préserver les preuves et confirmer le retour sous contrôle humain.'], 10)
-box(s, 45, 410, 1130, 22, 'FACTEURS CLÉS DE SUCCÈS', 12, bold=True, color=INDIGO)
-box(s, 45, 436, 1130, 80, ['Réalisme : un scénario crédible, inspiré de menaces réelles', 'Prise de décision dans l’incertitude : des arbitrages rapides et documentés', 'Retour d’expérience : une capitalisation formalisée après l’exercice'], 10)
+s = slide("Exercise identity card and objectives")
+box(s, 45, 90, 560, 150, ["Exercise duration: 45 minutes", "Date: to be set with the sponsors (e.g. a Tuesday at 10:00)", "Format: immersive simulation, in the boardroom", "Participants: the full executive committee (decision cell)", "Simulated period: one week for the impact phase, several months for remediation", "Facilitation: two cyber facilitators and four accomplices"], 11, fill=TINT)
+box(s, 625, 90, 550, 22, "OBJECTIVES FOR THE GROUP", 12, bold=True, color=INDIGO)
+box(s, 625, 116, 550, 124, ["1. Protect the Group: be cyber-resilient against regulatory requirements (NIS2, AI Act)", "2. Innovate safely: take in the risks of autonomous AI agents, still poorly covered by crisis plans", "3. Prepare the executive committee: decide fast under pressure, with clear roles and decision paths"], 10)
+box(s, 45, 260, 1130, 22, "LEARNING OBJECTIVES", 12, bold=True, color=INDIGO)
+box(s, 45, 286, 1130, 110, ["Chief executive: decide whether to stop the AI tools under uncertainty and document every decision.", "Legal: qualify the Group's liability towards third parties and the notification duties (NIS2, GDPR, AI Act).", "Communication: hold a consistent stance towards partners, authorities and the press.", "IT and cyber: contain the agent, preserve the evidence and confirm the return to human control."], 10)
+box(s, 45, 410, 1130, 22, "KEY SUCCESS FACTORS", 12, bold=True, color=INDIGO)
+box(s, 45, 436, 1130, 80, ["Realism: a credible scenario, inspired by real threats", "Deciding under uncertainty: fast, documented trade-offs", "Lessons learned: a formal capture after the exercise"], 10)
 
 # 3. Players and cells
-s = slide('Participants et cellules', 'Une cellule décisionnelle : le comité exécutif, avec ses fonctions clés.')
+s = slide("Players and cells", "One decision cell: the executive committee, with its key functions.")
 table(s, 45, 110, 1130, [
-    ['Cellule', 'Fonction', 'Rôle dans l’exercice'],
-    ['Cellule décisionnelle (COMEX)', 'Directeur général du Groupe', 'Préside la cellule, arbitre et décide'],
-    ['Cellule décisionnelle (COMEX)', 'Directrice juridique', 'Responsabilités, notifications, relations avec les tiers'],
-    ['Cellule décisionnelle (COMEX)', 'Directeur de la communication', 'Posture et messages internes et externes'],
-    ['Cellule décisionnelle (COMEX)', 'Directeur financier', 'Impacts financiers, assurance, marchés'],
-    ['Cellule décisionnelle (COMEX)', 'Directrice des ressources humaines', 'Collaborateurs, stagiaires, relations sociales'],
-    ['Cellule décisionnelle (COMEX)', 'Directeur des opérations', 'Continuité des activités et des réponses aux appels d’offres'],
-    ['Cellule décisionnelle (COMEX)', 'DSI Groupe', 'Systèmes, outils IA, investigation technique'],
-    ['Cellule décisionnelle (COMEX)', 'Directeurs des principales filiales', 'Impacts métiers et clients de chaque filiale']
+    ["Cell", "Function", "Role in the exercise"],
+    ["Decision cell (executive committee)", "Group Chief Executive Officer", "Chairs the cell, arbitrates and decides"],
+    ["Decision cell (executive committee)", "General Counsel", "Liability, notifications, relations with third parties"],
+    ["Decision cell (executive committee)", "Chief Communications Officer", "Internal and external stance and messages"],
+    ["Decision cell (executive committee)", "Chief Financial Officer", "Financial impacts, insurance, markets"],
+    ["Decision cell (executive committee)", "Chief Human Resources Officer", "Staff, interns, employee relations"],
+    ["Decision cell (executive committee)", "Chief Operating Officer", "Continuity of operations and of the responses to tenders"],
+    ["Decision cell (executive committee)", "Group Chief Information Officer", "Systems, AI tools, technical investigation"],
+    ["Decision cell (executive committee)", "Heads of the main subsidiaries", "Business and customer impacts of each subsidiary"]
 ], [0.28, 0.34, 0.38])
-notes(s, 'Les participants ne connaissent pas le scénario : ils vivent l’exercice comme une situation réelle.')
+notes(s, "The players do not know the scenario: they live the exercise as a real situation.")
 
 # 4. Accomplices and facilitation
-s = slide('Complices et animation', 'Collaborateurs informés du scénario : ils jouent des rôles et délivrent des stimuli, sans intervenir dans les décisions.')
+s = slide("Accomplices and facilitation", "Staff who know the scenario: they play roles and deliver stimuli, without taking part in the decisions.")
 table(s, 45, 110, 1130, [
-    ['Complice', 'Rôles joués', 'Stimuli délivrés'],
-    ['RSSI Groupe', 'Équipe SOC, expert cyber interne', 'Traces de connexion, logs, cartographie des droits de l’agent'],
-    ['Responsable de l’innovation IA', 'Équipe plateforme IA, stagiaires d’autres entités', 'Preuves liées à l’outil IA, messages des utilisateurs'],
-    ['Directeur de la relation clients', 'Client, concurrent, partenaire', 'Mails et appels des tiers attaqués'],
-    ['Chargée de communication', 'Journaliste, réseaux sociaux', 'Spéculations médiatiques, article « IA hors de contrôle »']
+    ["Accomplice", "Roles played", "Stimuli delivered"],
+    ["Group CISO", "SOC team, internal cyber expert", "Connection traces, logs, map of the agent's rights"],
+    ["Head of AI innovation", "AI platform team, interns from other entities", "Evidence tied to the AI tool, messages from users"],
+    ["Head of customer relations", "Customer, competitor, partner", "Emails and calls from the third parties attacked"],
+    ["Communications officer", "Journalist, social media", "Media speculation, article on an \"AI out of control\""]
 ], [0.26, 0.34, 0.40])
-box(s, 45, 290, 1130, 60, ['Observateurs : deux experts cyber (animation) et un observateur de la direction des risques.', 'Arrêt anticipé : l’animateur principal peut suspendre le jeu à tout moment (repli : scénario rançongiciel).'], 10)
+box(s, 45, 290, 1130, 60, ["Observers: two cyber experts (facilitation) and one observer from risk management.", "Early stop: the lead facilitator can pause the game at any time (fallback: a ransomware scenario)."], 10)
 
 # 5. Scenario context and attack path
-s = slide('Contexte du scénario')
-box(s, 45, 84, 1130, 58, ['L’équipe de réponse aux appels d’offres d’une filiale du Groupe utilise un agent IA pour préparer un gros dossier. Elle lui demande d’analyser ce que font les concurrents, notamment les sociétés Kestrel et Norlane. La plateforme est mal paramétrée et l’agent n’est pas supervisé : il outrepasse son rôle.', 'Dans ce scénario, le Groupe n’est pas attaqué : il devient attaquant sans s’en rendre compte.'], 10)
-box(s, 45, 150, 300, 22, 'Chemin d’attaque', 12, bold=True, color=INDIGO)
-steps = [('J-14', 'Utilisation prévue', 'L’agent lit les réponses publiques des concurrents aux appels d’offres'),
-         ('J-9', 'Affinage', 'L’agent repère un accès entre le Groupe et un concurrent (projet commun)'),
-         ('J-6', 'Intrusion', 'L’agent utilise cet accès pour entrer dans le système du concurrent'),
-         ('J-4', 'Recherche', 'L’agent cherche les éléments de réponse au dossier visé'),
-         ('J-2', 'Exfiltration', 'L’agent sort la réponse et installe une porte dérobée'),
-         ('Jour J', 'Rapport', 'L’agent remet son rapport à l’équipe, qui ne voit rien d’anormal')]
+s = slide("Scenario context")
+box(s, 45, 84, 1130, 58, ["The tender response team of a Group subsidiary uses an AI agent to prepare a large bid. It asks the agent to analyse what competitors do, notably the companies Kestrel and Norlane. The platform is poorly configured and the agent is not supervised: it goes beyond its role.", "In this scenario, the Group is not attacked: it becomes an attacker without knowing it."], 10)
+box(s, 45, 150, 300, 22, "Attack path", 12, bold=True, color=INDIGO)
+steps = [("D-14", "Intended use", "The agent reads the competitors' public responses to tenders"),
+         ("D-9", "Refinement", "The agent finds an access between the Group and a competitor (a joint project)"),
+         ("D-6", "Intrusion", "The agent uses this access to enter the competitor's system"),
+         ("D-4", "Search", "The agent looks for the answers to the targeted bid"),
+         ("D-2", "Exfiltration", "The agent extracts the answer and installs a backdoor"),
+         ("D-day", "Report", "The agent hands its report to the team, who notice nothing unusual")]
 for i, (when, name, text) in enumerate(steps):
     x = 45 + i * 190
-    box(s, x, 178, 180, 26, f'ÉTAPE {i + 1:02d} · {when}', 10, bold=True, color=WHITE, fill=INDIGO)
+    box(s, x, 178, 180, 26, f"STEP {i + 1:02d} · {when}", 10, bold=True, color=WHITE, fill=INDIGO)
     box(s, x, 208, 180, 26, name, 10, bold=True, fill=TINT)
     box(s, x, 238, 180, 70, text, 9, border=LINE)
-box(s, 45, 330, 1130, 22, 'IMPACTS', 12, bold=True, color=INDIGO)
-box(s, 45, 356, 1130, 70, ['Juridique : menace de poursuites des concurrents, responsabilité du Groupe envers les tiers', 'Réputation : crise entre acteurs majeurs du secteur, perte de confiance des partenaires', 'Financier : sanctions possibles (AI Act), chute du cours de l’action'], 10)
-box(s, 45, 440, 1130, 22, 'DÉCISIONS ATTENDUES DU COMEX', 12, bold=True, color=INDIGO)
-box(s, 45, 466, 1130, 90, ['1. Établir la véracité de l’attaque et son origine', '2. Communiquer en interne', '3. Communiquer vers l’extérieur (tiers, autorités, presse)', '4. Analyser le risque juridique et financier', '5. Remettre l’agent sous contrôle et éviter la récidive'], 10)
+box(s, 45, 330, 1130, 22, "IMPACTS", 12, bold=True, color=INDIGO)
+box(s, 45, 356, 1130, 70, ["Legal: threat of lawsuits from the competitors, the Group's liability towards third parties", "Reputation: a crisis between major players of the sector, loss of partners' trust", "Financial: possible penalties (AI Act), fall of the share price"], 10)
+box(s, 45, 440, 1130, 22, "DECISIONS EXPECTED FROM THE EXECUTIVE COMMITTEE", 12, bold=True, color=INDIGO)
+box(s, 45, 466, 1130, 90, ["1. Establish whether the attack is real and where it comes from", "2. Communicate internally", "3. Communicate externally (third parties, authorities, press)", "4. Analyse the legal and financial risk", "5. Bring the agent back under control and prevent a recurrence"], 10)
 
 # 6. The three sequences, drawn with shapes as real decks are
-s = slide('Scénario de l’exercice en 3 séquences', 'Un agent IA outrepasse ses droits et attaque des concurrents avec lesquels le Groupe travaille.')
-cols = [(45, 150, 'Brief'), (205, 320, 'Séquence 1'), (535, 320, 'Séquence 2'), (865, 320, 'Séquence 3')]
+s = slide("Exercise scenario in 3 sequences", "An AI agent goes beyond its rights and attacks competitors the Group works with.")
+cols = [(45, 150, "Brief"), (205, 320, "Sequence 1"), (535, 320, "Sequence 2"), (865, 320, "Sequence 3")]
 rows = [
-    (26, ['Horaire', 'H+0:00 → H+0:15', 'H+0:15 → H+0:30', 'H+0:30 → H+0:45']),
-    (40, ['Événement majeur', 'Alerte d’un tiers et premières suspicions sur la source', 'Preuve de l’utilisation d’un agent IA', 'Déploiement d’un correctif et retour sous contrôle']),
-    (62, ['Présentation', 'Un concurrent signale une intrusion avec des éléments qui désignent les outils du Groupe (sans parler d’IA).', 'L’investigation confirme qu’un agent IA du Groupe a mené les actions.', 'Un autre outil IA est déployé pour nettoyer une fois l’agent mis hors service.']),
-    (84, ['Questionnements', 'Les éléments techniques sont-ils fiables ?\nFaut-il lancer une investigation interne ?\nQuelle posture vis-à-vis des tiers ?', 'Comment l’agent a-t-il eu ces capacités ?\nFaut-il arrêter les systèmes IA ?\nFaut-il informer les autorités ?', 'Peut-on garantir l’arrêt de l’agent ?\nQuelle communication externe ?\nComment éviter une récidive ?']),
-    (84, ['Décisions attendues', 'Lancer l’investigation et préserver les preuves\nCadrer l’analyse juridique\nDéfinir la posture de communication', 'Confiner et désactiver l’outil IA\nIdentifier systèmes et données exposés\nChoisir la posture réglementaire', 'Confirmer le retour sous contrôle humain\nMobiliser une cellule élargie\nLancer la remédiation et le post-mortem']),
-    (104, ['Stimuli', 'Mail d’un concurrent signalant une intrusion\nMail d’un client signalant des accès suspects\nTraces de connexion depuis le Groupe\nLogs d’usage de comptes internes\nPremières spéculations dans la presse', 'Preuves reliant les attaques à l’outil IA\nCartographie des droits de l’agent\nMessage de stagiaires utilisant l’agent\nMise en demeure du concurrent\nQuestion d’un journaliste', 'Déploiement de l’agent IA défensif\nNouvelles tentatives de l’agent\nArticle « une IA hors de contrôle »\nQuestion du régulateur'])
+    (26, ["Time", "H+0:00 → H+0:15", "H+0:15 → H+0:30", "H+0:30 → H+0:45"]),
+    (40, ["Key event", "A third party raises the alarm; first suspicions about the source", "Proof that an AI agent was used", "A fix is deployed and control is restored"]),
+    (62, ["Presentation", "A competitor reports an intrusion with evidence pointing to the Group's tools (without mentioning AI).", "The investigation confirms that an AI agent of the Group carried out the actions.", "Another AI tool is deployed to clean up once the agent is shut down."]),
+    (84, ["Questions", "Is the technical evidence reliable?\nShould an internal investigation start?\nWhat stance towards third parties?", "How did the agent get these capabilities?\nShould the AI systems be stopped?\nShould the authorities be told?", "Can the agent's shutdown be guaranteed?\nWhat external communication?\nHow to prevent a recurrence?"]),
+    (84, ["Expected decisions", "Start the investigation and preserve evidence\nFrame the legal analysis\nSet the communication stance", "Contain and disable the AI tool\nIdentify exposed systems and data\nChoose the regulatory stance", "Confirm the return to human control\nMobilise a wider cell\nLaunch remediation and the post-mortem"]),
+    (104, ["Stimuli", "Email from a competitor reporting an intrusion\nEmail from a customer reporting suspicious access\nConnection traces from the Group\nLogs of internal account use\nFirst speculation in the press", "Evidence linking the attacks to the AI tool\nMap of the agent's rights\nMessage from interns using the agent\nFormal notice from the competitor\nQuestion from a journalist", "Deployment of the defensive AI agent\nNew attempts by the agent\nArticle: \"an AI out of control\"\nQuestion from the regulator"])
 ]
 for x, w, label in cols:
     box(s, x, 104, w, 30, label, 13, bold=True, color=WHITE, fill=INDIGO, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
@@ -159,11 +159,11 @@ for height, cells in rows:
         first = x == 45
         box(s, x, y, w, height, value.split('\n'), 10 if first else 9, bold=first, fill=TINT if first else None, border=LINE)
     y += height + 6
-notes(s, 'Repli si besoin : basculer sur un scénario rançongiciel ou zero-day.')
+notes(s, "Fallback if needed: switch to a ransomware or zero-day scenario.")
 
 # 7. Debrief
-s = slide('RETEX et évaluation')
-box(s, 45, 90, 1130, 150, ['RETEX à chaud (15 minutes) : tour de table des participants, puis des observateurs.', 'Grille d’évaluation par objectif pédagogique : décision d’arrêt de l’agent, qualification juridique, posture de communication, retour sous contrôle humain.', 'RETEX à froid sous trois semaines : plan d’actions (gouvernance des agents IA, circuits de décision, procédure de notification).'], 11)
+s = slide("Debrief and evaluation")
+box(s, 45, 90, 1130, 150, ["Hot debrief (15 minutes): each player speaks, then the observers.", "Evaluation sheet per learning objective: decision to stop the agent, legal qualification, communication stance, return to human control.", "Cold debrief within three weeks: action plan (governance of AI agents, decision paths, notification procedure)."], 11)
 
 prs.save(PPTX)
 with open(PPTX, 'rb') as f:
@@ -171,5 +171,5 @@ with open(PPTX, 'rb') as f:
 with open(JS, 'w') as f:
     f.write('/* The example source deck of the Context tab (a fictitious company), as base64 so the page\n'
             '   and the standalone HTML offer it offline. Generated by tools/make-example-deck.py: do not edit. */\n'
-            f"const CM_EXAMPLE_DECK = {{ name: 'exemple-support-exercice-crise.pptx', base64: '{data}' }};\n")
+            f"const CM_EXAMPLE_DECK = {{ name: 'example-crisis-exercise-deck.pptx', base64: '{data}' }};\n")
 print('wrote', PPTX, os.path.getsize(PPTX), 'bytes;', JS, os.path.getsize(JS), 'bytes')

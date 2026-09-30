@@ -714,7 +714,6 @@ function renderContextUpdate(project) {
       <button class="btn ${status.changed ? 'btn-primary' : 'btn-secondary'}" data-cx-update ${status.phases && ai && !busy ? '' : 'disabled'} title="${escapeAttribute(tt('The agent carries the context changes into the phases, cells and cast, then the injects follow in cascade', 'L’agent reporte les modifications du contexte sur les phases, les cellules et la distribution, puis les injects suivent en cascade', 'Der Agent übernimmt die Kontextänderungen in Phasen, Zellen und Besetzung, dann folgen die Injects kaskadenartig'))}">${running ? '<span class="ai-spinner"></span>' : sbUiIcon('sync', 15)} ${escapeHtml(label)}</button>
     </div>
     ${state.panel === 'update' ? renderAgentPanel({ origin: 'context' }) : ''}
-    ${renderBuildFlow(project, { framingButton: false })}
   </article>`;
 }
 

@@ -4868,25 +4868,6 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .tech-log-pre { flex: 1; min-height: 240px; max-height: 62vh; overflow: auto; margin: 0; padding: 12px; background: #16121f; color: #e6e4ee; font: 12px/1.5 'IBM Plex Mono', ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; }
 .llm-error-banner { white-space: pre-line; }
 
-/* Build my exercise (Context): framing, client validation, then the stimuli of every cell. */
-.bf-card { margin-top: 14px; border: 1px solid var(--line); border-top: 3px solid var(--indigo); background: #fff; padding: 12px 14px 14px; }
-.bf-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-.bf-head strong { display: flex; align-items: center; gap: 6px; font-size: 0.95rem; color: var(--dark); }
-.bf-head strong svg { color: var(--indigo); }
-.bf-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.bf-step { display: flex; gap: 10px; padding: 10px; background: var(--surface-alt); border: 1px solid var(--line); min-width: 0; }
-.bf-step.is-later { opacity: 0.72; }
-.bf-step.is-done { background: #f1fdf6; border-color: #b7ecd0; }
-.bf-num { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--indigo); color: #fff; font-size: 0.78rem; font-weight: 700; }
-.bf-step.is-done .bf-num { background: #0f9f55; }
-.bf-step.is-later .bf-num { background: var(--muted); }
-.bf-body { display: grid; gap: 4px; min-width: 0; }
-.bf-body > strong { font-size: 0.88rem; }
-.bf-body > span { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
-.bf-warn { color: #b45309; font-weight: 600; }
-.bf-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.bf-actions .btn { display: inline-flex; align-items: center; gap: 5px; }
-@media (max-width: 1024px) { .bf-steps { grid-template-columns: 1fr; } }
 /* Where the framing stands, under the toolbar of the Main and Detailed storylines. */
 .bf-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 0.8rem; border: 1px solid var(--line); border-left: 3px solid var(--indigo); background: #f6f4fd; color: var(--text); flex-wrap: wrap; }
 .bf-bar > svg { flex: none; color: var(--indigo); }

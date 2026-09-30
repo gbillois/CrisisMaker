@@ -59,7 +59,7 @@ function answerFor(system, user) {
   // The example deck, offered next to the upload zone: downloaded, then loaded.
   const download = page.waitForEvent('download');
   await page.click('[data-cx-example-download]');
-  assert.equal((await download).suggestedFilename(), 'exemple-support-exercice-crise.pptx');
+  assert.equal((await download).suggestedFilename(), 'example-crisis-exercise-deck.pptx');
   await page.click('[data-cx-example-load]');
   await page.waitForSelector('.cx-file-loaded');
   assert.ok((await page.locator('.cx-essentials').innerText()).includes('7 of the 7 essential points'));

@@ -20,7 +20,7 @@ The Context tab starts with **Scenario generation**:
    rules, debrief, proposal). Chronogram tables continued over several slides are joined, and
    injects written one per slide ("From:", "To:", "Channel:", a time) become rows, so Check &
    Challenge can audit them.
-   An example deck of a fictitious company (`docs/examples/exemple-support-exercice-crise.pptx`,
+   An example deck of a fictitious company (`docs/examples/example-crisis-exercise-deck.pptx`,
    built by `tools/make-example-deck.py`) can be downloaded or loaded next to the upload zone: it
    holds every essential point and a table of sequences drawn with shapes, without a
    chronogram: the AI writes the stimuli from the key events and the context.
