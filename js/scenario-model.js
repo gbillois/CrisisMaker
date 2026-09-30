@@ -443,7 +443,8 @@ function sbDefaultInjectTarget(block, project) {
 /* The default target, raised to the injects the source file lists, shared over the phases. */
 function sbWantedInjects(block, project) {
   const analysis = typeof appState !== 'undefined' ? appState.checkerState?.parsedData?.analysis : null;
-  const listed = analysis ? (analysis.chronogramRows || 0) + (analysis.listedStimuli || 0) : 0;
+  // A deck often lists the same stimuli twice (a table of sequences, then the chronogram).
+  const listed = analysis ? Math.max(analysis.chronogramRows || 0, analysis.listedStimuli || 0) : 0;
   const perPhase = listed ? Math.ceil(listed / Math.max(1, sbMainBlocks(project.storyboard).length)) : 0;
   return Math.min(SB_MAX_BEATS, Math.max(sbDefaultInjectTarget(block, project), perPhase));
 }

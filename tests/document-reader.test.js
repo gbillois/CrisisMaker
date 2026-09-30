@@ -240,19 +240,19 @@ test('open points: the creation waits for the answers to what the sources leave 
   assert.ok(view.includes('What the AI understood') && view.includes('<li>Four cells</li>') && view.includes('data-cx-open-corrections'), 'what was understood, to correct');
   assert.ok(view.indexOf('data-cx-generate') < view.indexOf('cx-open-points') && view.indexOf('cx-open-points') < view.indexOf('data-sc-players'), 'under the generation button, above the fields');
   // One answer typed, the other left to the AI.
-  h.run(`ContextGeneration.pending.answers[0] = 'Contoso Build'; ContextGeneration.pending.corrections = 'Three cells, not four.'`);
+  h.run(`ContextGeneration.pending.answers[0] = 'Contoso'; ContextGeneration.pending.corrections = 'Three cells, not four.'`);
   await h.run('ContextGeneration.resume()');
   const call = h.json('framings[0]');
   assert.ok(call.brief.startsWith('Board-level exercise.'));
   assert.ok(call.brief.includes('Corrections by the designer (they override the sources):\nThree cells, not four.'));
-  assert.ok(call.brief.includes('Decisions on the points missing from the sources:\n- Which competitor is targeted → Contoso Build'));
+  assert.ok(call.brief.includes('Decisions on the points missing from the sources:\n- Which competitor is targeted → Contoso'));
   assert.ok(call.brief.includes('Left to the AI (make a reasonable assumption and say it):\n- Timing of the three sequences'));
   assert.equal(h.run('ContextGeneration.pending'), null);
   assert.ok(!h.run('renderScenarioView()').includes('cx-open-points'));
   // Skip: everything left to the AI.
   await h.run('ContextGeneration.generate()');
   await h.run('ContextGeneration.resume({ skip: true })');
-  assert.ok(!h.json('framings[1]').brief.includes('Contoso Build →') && h.json('framings[1]').brief.split('Left to the AI').length === 3);
+  assert.ok(!h.json('framings[1]').brief.includes('Contoso →') && h.json('framings[1]').brief.split('Left to the AI').length === 3);
 });
 
 test('check before the creation: always when asked before big changes, only for open points when built automatically', async () => {
@@ -434,4 +434,31 @@ test('creation report: what really exists, item by item, only for what was ticke
   const view = h.run('renderScenarioView()');
   assert.equal((view.match(/data-cx-create="[a-z]+" checked/g) || []).length, 5);
   assert.ok(view.indexOf('data-cx-create="evaluation"') < view.indexOf('data-cx-generate'));
+});
+
+test('example deck: offered next to the upload, fictitious, and read with every essential point', async () => {
+  const h = harness();
+  const view = h.run('renderScenarioView()');
+  assert.ok(view.includes('data-cx-example-download') && view.includes('data-cx-example-load'));
+  assert.ok(view.indexOf('checker-dropzone') < view.indexOf('data-cx-example-load') && view.indexOf('data-cx-example-load') < view.indexOf('Generic scenario'), 'next to the upload zone');
+  await h.run('checkerHandleFile(cgExampleDeckFile())');
+  assert.equal(h.run('appState.checkerState.file.name'), 'exemple-support-exercice-crise.pptx');
+  const doc = h.json('appState.checkerState.parsedData.doc');
+  const text = JSON.stringify(doc);
+  assert.ok(!text.includes('@'), 'no e-mail address');
+  assert.ok(text.includes('entreprise fictive'));
+  assert.equal(doc.slides.length, 7);
+  assert.ok(doc.slides.every((slide) => slide.title), 'every slide has its title');
+  assert.deepEqual(h.json('cgSourceChecklist().map(i => [i.key, i.status])'), [['duration', 'found'], ['context', 'found'], ['objectives', 'found'], ['players', 'found'], ['phases', 'found'], ['incident', 'found'], ['injects', 'found']]);
+  assert.equal(h.run('cgSourceDuration().minutes'), 45);
+  const analysis = h.json('appState.checkerState.parsedData.analysis');
+  // No chronogram: the AI writes the stimuli from the key events; the Stimuli row gives ideas.
+  assert.equal(analysis.chronogramRows, 0);
+  assert.equal(analysis.listedStimuli, 14);
+  const sequences = doc.slides[5].blocks.find((block) => block.kind === 'table');
+  assert.deepEqual(sequences.rows[0], ['Brief', 'Séquence 1', 'Séquence 2', 'Séquence 3']);
+  assert.deepEqual(sequences.rows.map((row) => row[0]), ['Brief', 'Horaire', 'Événement majeur', 'Présentation', 'Questionnements', 'Décisions attendues', 'Stimuli']);
+  // The 14 stimulus ideas of the table: about 5 per sequence.
+  h.run(`sbApplyTemplate(sbBuiltinTemplates()[0], 'replace'); appState.scenario.storyboard.blocks = sbMainBlocks(appState.scenario.storyboard).slice(0, 3).map((b, i) => ({ ...b, start_minutes: i * 15, duration_minutes: 15, beats: [], stimuli_target: 0 })); appState.scenario.cells = [sbMakeCell('decision')];`);
+  assert.equal(h.run('sbWantedInjects(sbMainBlocks(appState.scenario.storyboard)[0], appState.scenario)'), 5);
 });

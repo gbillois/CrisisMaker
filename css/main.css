@@ -4268,6 +4268,8 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .cx-duration-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 768px) { .cx-duration-conflict { grid-template-columns: 18px minmax(0, 1fr); } .cx-duration-actions { grid-column: 1 / -1; } }
 /* What the AI generation creates, and the report of what was created. */
+.cx-example { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 0.82rem; color: var(--muted); }
+.cx-example > svg { color: var(--indigo); }
 .cx-create { margin: 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface-alt); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .cx-create legend { padding: 0 4px; font-size: 0.8rem; font-weight: 700; color: var(--primary-strong); }
 .cx-create-item { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); background: #fff; font-size: 0.85rem; cursor: pointer; }

@@ -56,8 +56,13 @@ function answerFor(system, user) {
   await page.click('.launch-hero-close');
   await page.evaluate(() => { appState.scenario = emptyScenario({ ...appState.scenario.settings, ai_provider: 'openai', ai_api_key: 'sk-test', ai_model: 'gpt-test' }); appState.route = 'scenario'; App.render(); });
 
-  await page.setInputFiles('#checker-file-input', 'tests/fixtures/exercise-shapes.pptx');
+  // The example deck, offered next to the upload zone: downloaded, then loaded.
+  const download = page.waitForEvent('download');
+  await page.click('[data-cx-example-download]');
+  assert.equal((await download).suggestedFilename(), 'exemple-support-exercice-crise.pptx');
+  await page.click('[data-cx-example-load]');
   await page.waitForSelector('.cx-file-loaded');
+  assert.ok((await page.locator('.cx-essentials').innerText()).includes('7 of the 7 essential points'));
   // The five boxes, all ticked by default.
   assert.equal(await page.locator('[data-cx-create]:checked').count(), 5);
   await page.fill('[data-sb-meta="brief"]', 'Board exercise on an AI agent out of control.');
@@ -79,8 +84,8 @@ function answerFor(system, user) {
   }));
   assert.equal(state.duration, 45);
   assert.deepEqual(state.phases.map(([title]) => title), ['Sequence 1', 'Sequence 2', 'Sequence 3'], 'exactly the phases of the deck');
-  assert.ok(state.phases.every(([, beats]) => beats >= 2), `every phase got the injects the deck lists (2 each) although the agent planned none: ${JSON.stringify(state.phases)}`);
-  assert.ok(state.stimuli >= 3 && state.actors >= 1 && state.sheets === 1, JSON.stringify(state));
+  assert.ok(state.phases.every(([, beats]) => beats >= 5), `every phase got the injects the deck lists (14 over 3 sequences) although the agent planned none: ${JSON.stringify(state.phases)}`);
+  assert.ok(state.stimuli >= 15 && state.actors >= 1 && state.sheets === 1, JSON.stringify(state));
   assert.equal(state.route, 'scenario', 'back to the Context, on the report');
   assert.ok(await page.isVisible('.cx-report:not(.has-failed)'));
   assert.deepEqual(errors, []);

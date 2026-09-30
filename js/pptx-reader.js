@@ -293,7 +293,7 @@ const CrisisDocReader = (() => {
         .map(({ el }) => paragraphs(kids(el, 'txBody')[0]).map((p) => p.text).join('\n')).filter(Boolean).join('\n');
     }
     // Titles and positions are settled once the whole deck is read (running headers).
-    return { number, hidden: attr(first(doc, 'sld'), 'show') === '0', items: shapeGrids(dedupe(items), size), notes: clean(notes) };
+    return { number, hidden: attr(first(doc, 'sld'), 'show') === '0', items: dedupe(items), notes: clean(notes) };
   }
   const itemText = (item) => item.kind === 'text' ? item.paragraphs.map((p) => p.text).join('\n') : '';
   const norm = (text) => String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -356,7 +356,8 @@ const CrisisDocReader = (() => {
     slides.forEach((slide) => new Set(slide.items.filter((item) => item.kind === 'text' && item.role !== 'title').map((item) => norm(itemText(item)))).forEach((text) => counts.set(text, (counts.get(text) || 0) + 1)));
     const running = new Set([...counts].filter(([text, count]) => text && text.length <= 80 && slides.length >= 3 && count >= Math.max(3, slides.length * 0.6)).map(([text]) => text));
     return slides.map((slide) => {
-      let items = slide.items.filter((item) => !(item.kind === 'text' && running.has(norm(itemText(item)))));
+      // Tables drawn with shapes are rebuilt once the running header and footer are gone.
+      let items = shapeGrids(slide.items.filter((item) => !(item.kind === 'text' && running.has(norm(itemText(item))))), size);
       let title = items.find((item) => item.role === 'title');
       if (!title) {
         const candidates = items.filter((item) => item.kind === 'text' && item.box.y < size.cy * 0.3 && item.paragraphs.length <= 2 && itemText(item).length <= 120 && item.size);
@@ -505,10 +506,10 @@ const CrisisDocReader = (() => {
     ['facilitation', /animat|facilitat|r[ée]serv[ée] aux|contr[oô]leurs?\b|umpire|white cell|cellule d.animation|spielleitung|moderat|complices?\b|observateurs?|observers?/i],
     ['incident', /chronologie de l.(attaque|incident)|chemin d.attaque|attack path|attack|attaque|kill ?chain|mode op[ée]ratoire|threat actor|menace|angriff|vorfall|incident timeline|sc[ée]nario technique/i],
     ['objectives', /objecti|\bgoals?\b|\baims?\b|enjeux|\bziele?\b|lernziel|attendus|learning/i],
-    ['players', /particip|joueurs?|players?|cellules?|\bcells?\b|gouvernance|organisation de crise|crisis organi[sz]ation|r[oô]les?\b|teilnehm|spieler|zellen?\b|besetzung|rollen|trombinoscope|dispositif|audience|publics? cibles?/i],
+    ['context', /contexte|context|pr[ée]sentation (de|du)|entreprise|company|background|situation initiale|hypoth[eè]s|setting|kontext|ausgangslage|unternehmen|p[ée]rim[eè]tre|scope/i],
+    ['players', /particip|joueurs?|players?|cellules?|\bcells?\b|gouvernance|organisation de crise|crisis organi[sz]ation|\br[oô]les?\b|teilnehm|spieler|zellen?\b|besetzung|rollen|trombinoscope|dispositif|audience|publics? cibles?/i],
     ['phases', /\bphases?\b|trame|storyline|fil rouge|narrati|d[ée]roul[ée] du sc[ée]nario|synopsis|sc[ée]nario|handlung|s[ée]quen/i],
     ['chronogram', /chrono|inject|stimul|\bmsel\b|main courante|einspiel|timeline/i],
-    ['context', /contexte|context|pr[ée]sentation (de|du)|entreprise|company|background|situation initiale|hypoth[eè]s|setting|kontext|ausgangslage|unternehmen|p[ée]rim[eè]tre|scope/i],
     ['rules', /r[eè]gles?\b|rules|consignes|logisti|agenda|ordre du jour|d[ée]roul[ée] de la journ|planning|programme|schedule|hors.jeu|spielregeln|ablaufplan|convocation/i],
     ['proposal', /proposition|proposal|offre|budget|tarif|pricing|m[ée]thodologie|methodology|approche|approach|livrables?|deliverables?|calendrier|angebot/i]
   ];

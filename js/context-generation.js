@@ -740,8 +740,24 @@ if (typeof document !== 'undefined' && document.addEventListener) ['input', 'cha
   setTimeout(cgRefreshUpdateStatus, 0);
 }));
 
+/* The example deck (js/example-deck.js, a fictitious company) as a file. */
+function cgExampleDeckFile() {
+  const binary = atob(CM_EXAMPLE_DECK.base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const type = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  return typeof File === 'function' ? new File([bytes], CM_EXAMPLE_DECK.name, { type }) : Object.assign(new Blob([bytes], { type }), { name: CM_EXAMPLE_DECK.name });
+}
+
 /* Events of the generation and update cards (the page is re-rendered, so one listener). */
 if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('click', async (event) => {
+  const example = event.target?.closest?.('[data-cx-example-download], [data-cx-example-load]');
+  if (example) {
+    const file = cgExampleDeckFile();
+    if (example.hasAttribute('data-cx-example-download')) (typeof evSave === 'function' ? evSave : downloadBlob)(file, CM_EXAMPLE_DECK.name);
+    else await checkerHandleFile(file);
+    return;
+  }
   const box = event.target?.closest?.('[data-cx-create]');
   if (box) { cgCreateOptions()[box.dataset.cxCreate] = box.checked; box.closest('.cx-create-item')?.classList.toggle('is-on', box.checked); return; }
   const retry = event.target?.closest?.('[data-cx-retry]');

@@ -1004,6 +1004,9 @@ function renderContextExerciseFile() {
   if (typeof renderCheckerDropZone !== 'function') return '';
   return `<div class="cx-file ${loaded ? 'is-loaded' : ''}">
     ${loaded ? renderCheckerImported({ inner: true }) : renderCheckerDropZone({ inner: true, title: tt('Drop a deck, a proposal, a brief or a chronogram here', 'Déposez ici un support, une proposition, un cahier des charges ou un chronogramme', 'Foliensatz, Angebot, Briefing oder Chronogramm hier ablegen') })}
+    ${loaded || typeof CM_EXAMPLE_DECK === 'undefined' ? '' : `<p class="cx-example">${sbUiIcon('book', 14)} <span>${escapeHtml(tt('No deck at hand? An example deck of a fictitious company, with every essential point:', 'Pas de support sous la main ? Un support d’exemple d’une entreprise fictive, avec tous les points essentiels :', 'Kein Foliensatz zur Hand? Ein Beispiel-Foliensatz eines fiktiven Unternehmens mit allen wesentlichen Punkten:'))}</span>
+      <button class="btn btn-ghost btn-xs" data-cx-example-download>${sbUiIcon('download', 12)} ${escapeHtml(tt('Download the example (.pptx)', 'Télécharger l’exemple (.pptx)', 'Beispiel herunterladen (.pptx)'))}</button>
+      <button class="btn btn-secondary btn-xs" data-cx-example-load>${sbUiIcon('upload', 12)} ${escapeHtml(tt('Load the example', 'Charger l’exemple', 'Beispiel laden'))}</button></p>`}
   </div>`;
 }
 
