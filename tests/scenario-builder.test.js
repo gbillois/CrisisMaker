@@ -1667,3 +1667,99 @@ test('project file: everything saved in the JSON comes back identical after open
   assert.equal(data.evaluation.contributions[h.run('appState.scenario.cells[0].id')][0].evaluator, 'Bob');
   assert.equal(data.settings.ai_api_key, '', 'no API key in the file');
 });
+
+test('library: every scenario uses main events, recipient cells and nudges, with no foreign layout or demo data', () => {
+  const h = harness();
+  const report = h.json(`SCENARIO_LIBRARY.map(t => ({ id: t.id,
+    phasesWithoutEvents: t.blocks.filter(b => (b.track || 'main') === 'main' && !(b.events || []).length).map(b => b.key),
+    beatsWithoutCell: t.blocks.flatMap(b => b.beats.filter(beat => !SB_CELL_PRESETS.some(p => p.key === beat.cell)).map(beat => beat.title)),
+    templateIds: t.blocks.flatMap(b => b.beats.filter(beat => beat.template_id).map(beat => beat.template_id)),
+    nudges: t.blocks.reduce((sum, b) => sum + b.beats.filter(beat => beat.kind === 'nudge').length, 0),
+    cells: new Set(t.blocks.flatMap(b => b.beats.map(beat => beat.cell))).size,
+    unusedCast: t.cast.filter(c => !t.blocks.some(b => b.beats.some(beat => beat.cast === c.key))).map(c => c.key),
+    text: JSON.stringify(t) }))`);
+  for (const item of report) {
+    assert.deepEqual(item.phasesWithoutEvents, [], `${item.id}: main events`);
+    assert.deepEqual(item.beatsWithoutCell, [], `${item.id}: recipient cells`);
+    assert.deepEqual(item.templateIds, [], `${item.id}: press and TV layouts follow the exercise language`);
+    assert.ok(item.nudges >= 3, `${item.id}: nudges`);
+    assert.ok(item.cells >= 5, `${item.id}: cells reached`);
+    assert.deepEqual(item.unusedCast, [], `${item.id}: every role sends an inject`);
+    assert.doesNotMatch(item.text, /StonaWave|PharmLeaks|Sophie Delacroix|Jean-Luc Moreau|[぀-ヿ㐀-鿿]/, item.id);
+  }
+});
+
+test('library: a loaded scenario brings its main events, its recipient cells and its nudges', () => {
+  const h = harness();
+  const result = h.json(`(() => {
+    sbApplyTemplate(sbFindTemplate('ot-industrial-incident'), 'replace');
+    const project = appState.scenario;
+    const blocks = sbMainBlocks(project.storyboard);
+    const beats = blocks.flatMap(b => b.beats);
+    return { events: blocks.every(b => b.events.length > 0), cells: project.cells.map(c => c.key),
+      recipients: beats.every(beat => project.cells.some(c => c.id === beat.cell_id)),
+      itBeat: project.cells.find(c => c.id === beats.find(beat => beat.title === 'PLC logic differs from golden copy').cell_id).key,
+      nudges: beats.filter(beat => beat.kind === 'nudge').length };
+  })()`);
+  assert.ok(result.events);
+  assert.ok(result.recipients);
+  assert.equal(result.itBeat, 'it');
+  assert.equal(result.nudges, 3);
+  assert.ok(result.cells.length >= 5);
+});
+
+test('library: replacing the storyline removes the injects and actors of the old one, not those added by hand', () => {
+  const h = harness();
+  const result = h.json(`(() => {
+    sbApplyTemplate(sbFindTemplate('ransomware-double-extortion'), 'replace');
+    const project = appState.scenario;
+    const block = project.storyboard.blocks[0];
+    const cast = project.storyboard.cast.find(c => c.id === block.beats[0].cast_id);
+    const planned = sbCreateActorForCast(project, cast);
+    const linked = makeStimulus('email_internal', planned.id, 0); project.stimuli.push(linked);
+    sbStampStimulus(linked, block, block.beats[0], project.storyboard);
+    const manualActor = addActor({ name: 'Own actor', role: 'internal' }, false);
+    const manual = makeStimulus('email_internal', manualActor.id, 5); project.stimuli.push(manual);
+    sbApplyTemplate(sbFindTemplate('ot-industrial-incident'), 'replace');
+    return { stimuli: project.stimuli.map(s => s.id), actors: project.actors.map(a => a.name), linked: linked.id, manual: manual.id, planned: planned.name, cleanup: sbTemplateCleanup };
+  })()`);
+  assert.deepEqual(result.stimuli, [result.manual]);
+  assert.ok(!result.actors.includes(result.planned));
+  assert.ok(result.actors.includes('Own actor'));
+  assert.deepEqual(result.cleanup, { stimuli: 1, actors: 1 });
+});
+
+test('injects: new ones hold no template example content, press and audio follow the exercise', () => {
+  const h = harness();
+  const result = h.json(`(() => {
+    const actor = addActor({ name: 'Grid Wraith', role: 'attacker' }, false);
+    addStimulus();
+    const created = appState.scenario.stimuli[appState.scenario.stimuli.length - 1];
+    const retyped = makeStimulus('email_internal', actor.id, 0); retyped.fields.subject = 'Keep me';
+    replaceStimulusTemplate(retyped, 'internal_memo');
+    appState.scenario.settings.inject_language = 'fr';
+    const press = [sbMediaTemplateFor('article_press'), sbMediaTemplateFor('breaking_news_tv')];
+    appState.scenario.settings.inject_language = 'en';
+    press.push(sbMediaTemplateFor('article_press'), sbMediaTemplateFor('breaking_news_tv'), sbMediaTemplateFor('email_internal'));
+    const audio = makeStimulus('audio_message', actor.id, 0); sbSetAudioVoice(audio, actor);
+    const colleague = makeStimulus('audio_message', actor.id, 0); sbSetAudioVoice(colleague, { role: 'internal' });
+    return { created: JSON.stringify(created.fields), retyped: JSON.stringify(retyped.fields), subject: retyped.fields.subject, press, voices: [audio.fields.audio_character, colleague.fields.audio_character, colleague.fields.tts_language] };
+  })()`);
+  assert.doesNotMatch(result.created, /StonaWave|Sophie Delacroix|Jean-Luc Moreau/);
+  assert.doesNotMatch(result.retyped, /StonaWave|Jean-Luc Moreau/);
+  assert.equal(result.subject, 'Keep me');
+  assert.deepEqual(result.press, ['lemonde', 'bfm', 'nyt', 'cnn', '']);
+  assert.deepEqual(result.voices, ['attacker_best', 'male', 'en-US']);
+});
+
+test('injects: an AI answer in another script than the exercise language is asked again', async () => {
+  const h = harness();
+  const calls = mockAI(h, [{ subject: '緊急 ランサムウェア攻撃を確認', body: '<p>関係者各位</p>' }, { subject: 'Ransomware confirmed', body: '<p>All,</p>' }]);
+  h.run(`appState.scenario.settings.inject_language = 'en'; window.probe = makeStimulus('email_internal', null, 0);`);
+  const result = await h.run(`AITextGenerator.generateForStimulus(probe, null, null, { quiet: true })`);
+  assert.equal(result.subject, 'Ransomware confirmed');
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].system, /LANGUAGE: write every field in English only/);
+  h.run(`appState.scenario.settings.inject_language = 'ja'`);
+  assert.equal(h.run(`stimulusOffLanguage({ subject: '緊急 ランサムウェア攻撃を確認' }, probe, appState.scenario)`), '');
+});

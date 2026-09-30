@@ -474,18 +474,19 @@ const SbAI = {
     // at a time, and a phase that still fails keeps its original text instead of stopping it all.
     const adaptGroup = async (group) => {
       const part = await this.request('Adapting the library scenario', {
-        task: 'Rewrite the hidden story and the planned injects of these phases for the client, consistent with the adapted scenario.',
+        task: 'Rewrite the hidden story, the main events and the planned injects of these phases for the client, consistent with the adapted scenario.',
         rules,
         context,
         scenario: { name: copy.name, summary: copy.summary, threat: copy.threat, cast: copy.cast.map((cast) => ({ key: cast.key, label: cast.label, role: cast.role, organization: cast.organization })), phases: copy.blocks.map((block) => ({ key: block.key, title: block.title })) },
-        phases: group.map((block) => ({ key: block.key, title: block.title, brief: block.brief, narrative: block.narrative, beats: (block.beats || []).map((beat) => ({ at: beat.at, channel: beat.channel, cast: beat.cast, title: beat.title, intent: beat.intent })) })),
-        response_format: { phases: [{ key: 'same key', narrative: 'what really happens, 3-5 sentences', beats: [{ title: 'inject title', intent: 'what the inject says and what it forces the players to do, 1-2 sentences' }] }] }
+        phases: group.map((block) => ({ key: block.key, title: block.title, brief: block.brief, narrative: block.narrative, ...((block.events || []).length ? { main_events: block.events.map((event) => event.text) } : {}), beats: (block.beats || []).map((beat) => ({ at: beat.at, channel: beat.channel, cast: beat.cast, title: beat.title, intent: beat.intent })) })),
+        response_format: { phases: [{ key: 'same key', narrative: 'what really happens, 3-5 sentences', main_events: ['one line per input main event, same order: the fact of the story, not a message'], beats: [{ title: 'inject title', intent: 'what the inject says and what it forces the players to do, 1-2 sentences' }] }] }
       }, 9000, opts);
       const byKey = new Map((Array.isArray(part.phases) ? part.phases : []).filter((item) => item && typeof item === 'object').map((item) => [String(item.key), item]));
       group.forEach((block) => {
         const next = byKey.get(String(block.key));
         if (!next) return;
         block.narrative = text(next.narrative, block.narrative, 8000);
+        if (Array.isArray(next.main_events)) (block.events || []).forEach((event, eventIndex) => { event.text = text(next.main_events[eventIndex], event.text, 1000); });
         if (Array.isArray(next.beats)) (block.beats || []).forEach((beat, beatIndex) => {
           const item = next.beats[beatIndex];
           if (item && typeof item === 'object') { beat.title = text(item.title, beat.title, 300); beat.intent = text(item.intent, beat.intent, 2000); }

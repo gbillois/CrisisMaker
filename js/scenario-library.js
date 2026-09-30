@@ -42,12 +42,34 @@ function sbTemplateStats(template) {
   };
 }
 
+/* What a storyline leaves behind when it is replaced: the injects written from its plan (linked to
+   one of its phases) and the actors cast for its roles that no remaining inject sends. */
+function sbStaleStorylineContent(project, storyboard) {
+  const blockIds = new Set((storyboard?.blocks || []).map((block) => block.id));
+  const castIds = new Set((storyboard?.cast || []).map((cast) => cast.id));
+  const stimuli = new Set((project.stimuli || []).filter((stimulus) => blockIds.has(stimulus.scenario_link?.block_id)).map((stimulus) => stimulus.id));
+  const kept = new Set((project.stimuli || []).filter((stimulus) => !stimuli.has(stimulus.id)).map((stimulus) => stimulus.actor_id));
+  const cast = new Set([
+    ...(storyboard?.cast || []).map((item) => item.actor_id).filter(Boolean),
+    ...(project.actors || []).filter((actor) => castIds.has(actor.scenario_link?.cast_id)).map((actor) => actor.id)
+  ]);
+  const actors = new Set([...cast].filter((id) => !kept.has(id)));
+  return { stimuli, actors };
+}
+
+/* What the last template applied removed from the replaced storyline (see sbStaleStorylineContent). */
+let sbTemplateCleanup = { stimuli: 0, actors: 0 };
+
 /* Replaces the storyboard, or inserts the template blocks after the current main storyline. */
-function sbApplyTemplate(template, mode = 'replace') {
+function sbApplyTemplate(template, mode = 'replace', { clean = true } = {}) {
+  sbTemplateCleanup = { stimuli: 0, actors: 0 };
   const project = appState.scenario;
   StoryboardHistory.ensure(project);
   const repaired = sbRepairTemplate(deepClone(template), template.duration_minutes);
-  const { storyboard: incoming, objectives, title } = sbTemplateToStoryboard(repaired, { templateId: template.id });
+  // Recipients named by cell key become cells of this project (created when missing, or the closest
+  // one when the number of cells is set in Context).
+  const cellFor = (key) => (SB_CELL_PRESETS.some((preset) => preset.key === key) ? sbEnsureCell(project, key).id : '');
+  const { storyboard: incoming, objectives, title } = sbTemplateToStoryboard(repaired, { templateId: template.id, cellFor });
   const current = project.storyboard;
   if (mode === 'insert' && current.blocks.length) {
     const offset = sbNextMainStart(current);
@@ -72,11 +94,19 @@ function sbApplyTemplate(template, mode = 'replace') {
     incoming.rev = (current?.rev || 0) + 1;
     incoming.meta.brief = current?.meta?.brief || '';
     incoming.meta.library_id = current?.meta?.library_id || '';
+    // A library scenario replacing the storyline: the injects and actors of the replaced one
+    // belong to another story, they go and the new roles are never played by them. Injects and
+    // actors added by hand stay. The agent's own storylines (clean: false) keep them.
+    const stale = clean ? sbStaleStorylineContent(project, current) : { stimuli: new Set(), actors: new Set() };
+    project.stimuli = (project.stimuli || []).filter((stimulus) => !stale.stimuli.has(stimulus.id));
+    project.actors = (project.actors || []).filter((actor) => !stale.actors.has(actor.id));
     for (const cast of incoming.cast) {
       const actor = sbFindActorForCast(project, cast);
       if (actor) cast.actor_id = actor.id;
     }
     project.storyboard = incoming;
+    if (typeof appState !== 'undefined' && stale.stimuli.has(appState.selectedStimulusId)) appState.selectedStimulusId = project.stimuli[0]?.id || null;
+    sbTemplateCleanup = { stimuli: stale.stimuli.size, actors: stale.actors.size };
   }
   // Block objectives reference the template objectives: bring them along.
   if (objectives.length) {

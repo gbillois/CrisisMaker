@@ -153,7 +153,14 @@ function sbReplaceStoryboard(storyboard, label) {
 function sbUseTemplate(template, mode = 'replace') {
   const project = appState.scenario;
   const ui = sbUI();
-  if (mode === 'replace' && project.storyboard.blocks.length && !window.confirm(tt(`Replace the main storyline (its phases and objectives) with "${template.name}"? The client, context, cells, actors and injects of this project stay. A version is saved first and Undo is available.`, `Remplacer la storyline principale (ses phases et ses objectifs) par « ${template.name} » ? Le client, le contexte, les cellules, les acteurs et les injects de ce projet sont conservés. Une version est enregistrée avant et vous pouvez annuler.`, `Die Haupt-Storyline (Phasen und Ziele) durch „${template.name}“ ersetzen? Auftraggeber, Kontext, Zellen, Akteure und Injects dieses Projekts bleiben erhalten. Vorher wird eine Version gespeichert, und Rückgängig ist möglich.`))) return false;
+  if (mode === 'replace' && project.storyboard.blocks.length) {
+    // The injects and actors of the replaced storyline go with it (sbApplyTemplate).
+    const stale = sbStaleStorylineContent(project, project.storyboard);
+    const removed = stale.stimuli.size || stale.actors.size
+      ? tt(` Its ${stale.stimuli.size} inject(s) and the ${stale.actors.size} actor(s) cast for its roles are removed; injects and actors you added by hand stay.`, ` Ses ${stale.stimuli.size} inject(s) et les ${stale.actors.size} acteur(s) de ses rôles sont supprimés ; les injects et acteurs ajoutés à la main sont conservés.`, ` Ihre ${stale.stimuli.size} Inject(s) und die ${stale.actors.size} Akteur(e) ihrer Rollen werden entfernt; von Hand hinzugefügte Injects und Akteure bleiben.`)
+      : '';
+    if (!window.confirm(tt(`Replace the main storyline (its phases and objectives) with "${template.name}"? The client, context and cells of this project stay.${removed} A version of the storyline is saved first.`, `Remplacer la storyline principale (ses phases et ses objectifs) par « ${template.name} » ? Le client, le contexte et les cellules de ce projet sont conservés.${removed} Une version de la storyline est enregistrée avant.`, `Die Haupt-Storyline (Phasen und Ziele) durch „${template.name}“ ersetzen? Auftraggeber, Kontext und Zellen dieses Projekts bleiben erhalten.${removed} Vorher wird eine Version der Storyline gespeichert.`))) return false;
+  }
   StoryboardHistory.snapshot(`Before template "${template.name}"`, 'ai');
   const before = project.storyboard;
   sbApplyTemplate(template, mode);

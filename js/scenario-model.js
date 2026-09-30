@@ -650,7 +650,8 @@ function sbTemplateToStoryboard(template, options = {}) {
       channel: beat.channel,
       template_id: beat.template_id,
       cast_id: castIds.get(String(beat.cast ?? beat.cast_id ?? '')) || '',
-      cell_id: beat.cell_id || '',
+      // A library beat names its recipient by cell key (it, legal…): the project resolves it.
+      cell_id: beat.cell_id || (beat.cell && options.cellFor ? options.cellFor(beat.cell) : '') || '',
       title: beat.title,
       intent: beat.intent,
       kind: beat.kind
@@ -705,6 +706,11 @@ function sbValidateTemplate(template) {
       if (!(beat.at >= 0 && beat.at < block.duration)) errors.push(`Beat "${beat.title}" is outside block "${block.title}".`);
       if (!sbChannelKeys().includes(beat.channel)) errors.push(`Beat "${beat.title}" has unknown channel ${beat.channel}.`);
       if (beat.cast !== undefined && !castKeys.has(String(beat.cast))) errors.push(`Beat "${beat.title}" references unknown cast ${beat.cast}.`);
+      if (beat.cell !== undefined && !SB_CELL_PRESETS.some((preset) => preset.key === beat.cell)) errors.push(`Beat "${beat.title}" has unknown cell ${beat.cell}.`);
+    });
+    (block.events || []).forEach((event) => {
+      if (!(event.at >= 0 && event.at < block.duration)) errors.push(`Main event "${event.text}" is outside block "${block.title}".`);
+      if (typeof event.text !== 'string' || !event.text.trim()) errors.push(`Block "${block.title}" has an empty main event.`);
     });
     if (Array.isArray(block.beats) && block.stimuli !== undefined && block.beats.length !== block.stimuli) errors.push(`Block "${block.title}" plans ${block.stimuli} injects but has ${block.beats.length} beats.`);
   });
@@ -714,6 +720,8 @@ function sbValidateTemplate(template) {
 /* Converts the current storyboard back into the library/template shape. */
 function sbStoryboardToTemplate(storyboard, project, name = '') {
   const castKey = new Map(storyboard.cast.map((cast, index) => [cast.id, `c${index + 1}`]));
+  // Recipients travel as preset cell keys: cell ids only mean something in this project.
+  const cellKey = (cellId) => { const key = (project?.cells || []).find((cell) => cell.id === cellId)?.key; return SB_CELL_PRESETS.some((preset) => preset.key === key) ? key : undefined; };
   const objectives = sbTextList(project?.scenario?.objectives || '', 20, 600);
   const trackKey = (trackId) => {
     const track = sbTrack(storyboard, trackId);
@@ -744,7 +752,7 @@ function sbStoryboardToTemplate(storyboard, project, name = '') {
       objectives: block.objectives.map((objective) => objectives.indexOf(objective)).filter((index) => index >= 0),
       ...(block.stress ? { stress: block.stress } : {}),
       ...(block.events?.length ? { events: block.events.map((event) => ({ at: event.offset_minutes, text: event.text })) } : {}),
-      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), title: beat.title, intent: beat.intent, ...(beat.kind ? { kind: beat.kind } : {}) }))
+      beats: block.beats.map((beat) => ({ at: beat.offset_minutes, channel: beat.channel, ...(beat.template_id ? { template_id: beat.template_id } : {}), cast: castKey.get(beat.cast_id), ...(cellKey(beat.cell_id) ? { cell: cellKey(beat.cell_id) } : {}), title: beat.title, intent: beat.intent, ...(beat.kind ? { kind: beat.kind } : {}) }))
     })),
     created_at: new Date().toISOString()
   };
