@@ -161,6 +161,22 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.ok(widened.width >= liveBox.width + 150, `widened (${liveBox.width} → ${widened.width})`);
   assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.play-page')).getPropertyValue('--play-panes').trim()), `${Math.round(widened.width + logBox.width)}px`);
 
+  // Demo mode, for a booth: the stimuli follow each other at ×50 by themselves, in a loop, and
+  // the exercise clock, its log and the statuses stay as they are.
+  const frozen = await page.evaluate(() => ({ now: playNow(), log: playState().log.length, sent: playItems().filter((item) => item.status === 'sent').length }));
+  await page.check('[data-play-demo]');
+  const firstKey = await page.getAttribute('.play-live', 'data-play-live-key');
+  await page.waitForFunction((key) => document.querySelector('.play-live')?.dataset.playLiveKey !== key, firstKey, { timeout: 15000 });
+  assert.equal(await page.locator('.play-live [data-play-set]').count(), 0, 'no Mark as sent in demo mode');
+  // The chronogram on the left runs at the same pace: demo clock in the bar, NOW line moving.
+  assert.ok((await page.locator('.play-clock .play-label').innerText()).includes('×50'));
+  const clockA = await page.locator('[data-play-clock]').innerText();
+  const lineA = await page.evaluate(() => document.querySelector('[data-play-now]')?.nextElementSibling?.dataset.playAt);
+  await page.waitForFunction((before) => document.querySelector('[data-play-now]')?.nextElementSibling?.dataset.playAt !== before, lineA, { timeout: 15000 });
+  assert.notEqual(await page.locator('[data-play-clock]').innerText(), clockA);
+  assert.deepEqual(await page.evaluate(() => ({ now: playNow(), log: playState().log.length, sent: playItems().filter((item) => item.status === 'sent').length })), frozen);
+  await page.uncheck('[data-play-demo]');
+
   await browser.close();
   console.log('Play browser smoke passed.');
 })().catch((error) => { console.error(error); process.exit(1); });

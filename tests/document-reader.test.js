@@ -479,3 +479,19 @@ test('stimulus preview zoom: Auto by default, steps in and out, kept for the ses
   h.run(`appState.ui.previewZoom = 0.5`);
   assert.equal(h.run('previewZoomStep(-1)'), 0.5, 'no smaller than 50 %');
 });
+
+test('live stimuli demo mode: its own clock at ×50, from the first stimulus to the end, then again', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); playUI().demo = true; playUI().demoStart = 1000000; playUI().liveOpen = true;`);
+  const first = h.run(`Math.min(...playItems().filter((item) => item.stimulus).map((item) => item.time))`);
+  const duration = h.run('playDuration()');
+  assert.equal(h.run('playDemoNow(appState.scenario, 1000000)'), first, 'starts at the first stimulus');
+  assert.equal(Math.round(h.run('playDemoNow(appState.scenario, 1000000 + 60000)')), first + 50, 'one real minute is 50 exercise minutes');
+  const loopMs = (duration - first) / 50 * 60000;
+  assert.ok(Math.abs(h.run(`playDemoNow(appState.scenario, 1000000 + ${loopMs} + 60000)`) - (first + 50)) < 0.01, 'after the end, again from the first stimulus');
+  // The exercise clock and its log do not move.
+  assert.equal(h.run('playNow()'), 0);
+  assert.equal(h.run('playState().log.length'), 0);
+  const view = h.run('renderPlayView()');
+  assert.ok(view.includes('data-play-demo checked') && view.includes('×50') && !/play-live[\s\S]*data-play-set="sent"[\s\S]*<\/aside>/.test(view.slice(view.indexOf('class="play-live"'))), 'no Mark as sent in demo mode');
+});

@@ -211,7 +211,7 @@ function renderPlayView() {
   StoryboardHistory.ensure(project);
   const play = playState(project);
   const ui = playUI();
-  const now = playNow(project);
+  const now = playViewNow(project);
   const items = playItems(project);
   const written = items.filter((item) => item.stimulus);
   const counts = { total: written.length, sent: written.filter((i) => i.status === 'sent').length, ready: written.filter((i) => i.status === 'ready').length, draft: written.filter((i) => i.status === 'draft').length, planned: items.length - written.length };
@@ -288,7 +288,7 @@ function renderPlayBar(project, play, ui, items, now, counts, phases) {
         <label class="play-speed">${tt('Speed', 'Vitesse', 'Tempo')}<select data-play-speed>${PLAY_SPEEDS.map((speed) => `<option value="${speed}" ${play.speed === speed ? 'selected' : ''}>${speed === 1 ? tt('×1 real time', '×1 temps réel', '×1 Echtzeit') : `×${speed}`}</option>`).join('')}</select></label>
       </div>
       <div class="play-clock">
-        <span class="play-label">${tt('Exercise time', 'Temps d’exercice', 'Übungszeit')}</span>
+        <span class="play-label">${playDemoOn() ? `${tt('Demo time', 'Temps de démo', 'Demo-Zeit')} ×${PLAY_DEMO_SPEED}` : tt('Exercise time', 'Temps d’exercice', 'Übungszeit')}</span>
         <strong data-play-clock>${playClock(now)}</strong>
         <span class="play-sub" data-play-simulated>${clock ? `${tt('Simulated', 'Simulé', 'Simuliert')} ${escapeHtml(clock)}` : escapeHtml(sbFormatOffset(Math.floor(now)))}</span>
       </div>
@@ -393,6 +393,30 @@ function playPaneWidth(key) {
   return Math.round(Math.min(max, Math.max(300, ui[key] || PLAY_PANE_WIDTHS[key])));
 }
 
+/* Demo mode of the live stimuli (a booth at an event): its own clock at ×50, from the first
+   stimulus to the end of the exercise, then again from the first one, forever. It never
+   touches the exercise clock, its log or the statuses. */
+const PLAY_DEMO_SPEED = 50;
+function playDemoNow(project = appState.scenario, at = Date.now()) {
+  const ui = playUI();
+  const times = playItems(project).filter((item) => item.stimulus).map((item) => item.time);
+  const from = times.length ? Math.min(...times) : 0;
+  const loop = Math.max(1, playDuration(project) - from);
+  const elapsed = Math.max(0, (at - (ui.demoStart || at)) / 60000 * PLAY_DEMO_SPEED);
+  return from + (elapsed % loop);
+}
+/* The time the Play tab shows: in demo mode (live stimuli open), the demo clock drives the
+   whole tab (clock, phase, NOW line, following, live stimuli); otherwise the exercise clock.
+   Actions (start, pause, send, log) always use the exercise clock. */
+function playDemoOn() {
+  const ui = playUI();
+  return !!(ui.demo && ui.liveOpen);
+}
+function playViewNow(project = appState.scenario) {
+  return playDemoOn() ? playDemoNow(project) : playNow(project);
+}
+const playLiveNow = playViewNow;
+
 /* The stimuli of this moment, like a film: the latest ones whose time has come (all those of
    that same minute), replaced by the next ones when their time comes. */
 function playLiveItems(project, now) {
@@ -406,8 +430,9 @@ function playLiveItems(project, now) {
 
 /* Live stimuli: the visual of the stimulus of this moment, replaced by the next one when its
    time comes, as a demo of the whole exercise. */
-function renderPlayLive(project, ui, now) {
+function renderPlayLive(project, ui, exerciseNow) {
   if (!ui.liveOpen) return '';
+  const now = ui.demo ? playDemoNow(project) : exerciseNow;
   const width = playPaneWidth('liveWidth');
   const { current, next, key } = playLiveItems(project, now);
   // The previews are drawn for about 840 px (an email) and scaled to the pane.
@@ -416,7 +441,7 @@ function renderPlayLive(project, ui, now) {
       <header>
         <strong>${escapeHtml(item.numberLabel)} · ${escapeHtml(sbFormatOffset(Math.floor(item.time)))}</strong>
         <span>${escapeHtml(`${channelLabel(item.channel)}${item.cell ? ` → ${item.cell.name}` : ''}${item.sender ? ` · ${item.sender}` : ''}`)}</span>
-        ${item.status === 'sent' ? `<em class="is-sent">${sbUiIcon('check', 12)} ${escapeHtml(playStatusLabel('sent'))}</em>` : `<button class="btn btn-primary btn-xs" data-play-set="sent" data-stimulus-id="${item.stimulus.id}">${sbUiIcon('check', 12)} ${escapeHtml(tt('Mark as sent', 'Marquer envoyé', 'Als gesendet markieren'))}</button>`}
+        ${ui.demo ? '' : item.status === 'sent' ? `<em class="is-sent">${sbUiIcon('check', 12)} ${escapeHtml(playStatusLabel('sent'))}</em>` : `<button class="btn btn-primary btn-xs" data-play-set="sent" data-stimulus-id="${item.stimulus.id}">${sbUiIcon('check', 12)} ${escapeHtml(tt('Mark as sent', 'Marquer envoyé', 'Als gesendet markieren'))}</button>`}
       </header>
       <div class="play-live-preview"><div class="play-live-stage" style="zoom:${zoom}">${renderStimulusPreview(item.stimulus)}</div></div>
     </article>`;
@@ -425,6 +450,7 @@ function renderPlayLive(project, ui, now) {
     <div class="play-pane-resize" data-play-resize="liveWidth" title="${escapeAttribute(tt('Drag to widen', 'Glisser pour élargir', 'Ziehen zum Verbreitern'))}"></div>
     <div class="play-log-head">
       <h3>${sbUiIcon('image', 16)} ${tt('Live stimuli', 'Stimuli en direct', 'Live-Stimuli')}</h3>
+      <label class="play-live-demo ${ui.demo ? 'is-on' : ''}" title="${escapeAttribute(tt('For a booth: its own clock at ×50, from the first stimulus to the end, then again, forever. The exercise clock, its log and the statuses do not change.', 'Pour un stand : sa propre horloge à ×50, du premier stimulus à la fin, puis on recommence, sans fin. L’horloge de l’exercice, son journal et les statuts ne changent pas.', 'Für einen Messestand: eine eigene Uhr mit ×50, vom ersten Stimulus bis zum Ende, dann von vorn, endlos. Übungsuhr, Protokoll und Status bleiben unverändert.'))}"><input type="checkbox" data-play-demo ${ui.demo ? 'checked' : ''}> ${tt('Demo mode', 'Mode démo', 'Demo-Modus')}${ui.demo ? ` <span data-play-demo-clock>${escapeHtml(sbFormatOffset(Math.floor(now)))} · ×${PLAY_DEMO_SPEED}</span>` : ''}</label>
       <button class="assistant-close" data-play="live" aria-label="${escapeAttribute(tt('Close the live stimuli', 'Fermer les stimuli en direct', 'Live-Stimuli schließen'))}">${sbUiIcon('close', 18)}</button>
     </div>
     ${upcoming}
@@ -588,6 +614,11 @@ function bindPlayEvents() {
     handle.addEventListener('pointermove', move);
     handle.addEventListener('pointerup', up);
   }));
+  root.querySelector('[data-play-demo]')?.addEventListener('change', (event) => {
+    ui.demo = event.target.checked;
+    ui.demoStart = Date.now();
+    App.render();
+  });
   root.querySelector('[data-play-speed]')?.addEventListener('change', (event) => {
     const play = playState();
     play.offset_min = playNow();
@@ -640,7 +671,8 @@ function bindPlayEvents() {
     });
   }
   playTick(true);
-  if (playState().running) window._playTimer = setInterval(() => playTick(false), 1000);
+  // The clock ticks while the exercise runs, and for the demo mode of the live stimuli.
+  if (playState().running || (ui.demo && ui.liveOpen)) window._playTimer = setInterval(() => playTick(false), 1000);
 }
 
 /* Re-renders the tab, keeping the focus and caret in the note or search field. */
@@ -661,10 +693,12 @@ function playTick(initial) {
   const project = appState.scenario;
   const ui = playUI();
   const play = playState(project);
-  const now = playNow(project);
+  const demo = playDemoOn();
+  const now = playViewNow(project);
   const duration = playDuration(project);
-  // The exercise time is over: once, the clock pauses and the log says so.
-  if (now >= duration && !play.ended) {
+  // The exercise time is over: once, the clock pauses and the log says so (not in demo mode,
+  // whose clock loops).
+  if (!demo && now >= duration && !play.ended) {
     play.ended = true;
     if (play.running) { play.offset_min = now; play.running = false; play.run_since = null; clearInterval(window._playTimer); }
     playLog('end', tt('Exercise time is over', 'Le temps de l’exercice est écoulé', 'Die Übungszeit ist abgelaufen'), project);
@@ -679,7 +713,7 @@ function playTick(initial) {
   set('[data-play-simulated]', clock ? `${tt('Simulated', 'Simulé', 'Simuliert')} ${clock}` : sbFormatOffset(Math.floor(now)));
   const phase = playPhaseAt(project, now, duration);
   set('[data-play-phase]', phase?.title || (now >= duration ? tt('Exercise complete', 'Exercice terminé', 'Übung beendet') : '—'));
-  if (play.running && phase && play.last_phase !== phase.id) {
+  if (!demo && play.running && phase && play.last_phase !== phase.id) {
     play.last_phase = phase.id;
     playLog('phase', `${tt('Phase started', 'Début de phase', 'Phase begonnen')}: ${phase.title}`, project);
     saveLocal(false);
@@ -702,10 +736,12 @@ function playTick(initial) {
   }
   // Live stimuli follow the clock: when the next stimulus's time comes, it replaces the current one.
   const live = document.querySelector('[data-play-live-key]');
-  if (!initial && live && !playOverlayOpen() && live.dataset.playLiveKey !== playLiveItems(project, now).key) { playRenderKeepingFocus(); return; }
+  const liveNow = playLiveNow(project);
+  if (!initial && live && !playOverlayOpen() && live.dataset.playLiveKey !== playLiveItems(project, liveNow).key) { playRenderKeepingFocus(); return; }
   const countdown = document.querySelector('[data-play-live-countdown]');
-  const upcoming = countdown && playLiveItems(project, now).next;
-  if (upcoming) countdown.textContent = `${tt('in', 'dans', 'in')} ${playCountdown(upcoming.time - now)}`;
+  const upcoming = countdown && playLiveItems(project, liveNow).next;
+  if (upcoming) countdown.textContent = `${tt('in', 'dans', 'in')} ${playCountdown(upcoming.time - liveNow)}`;
+  set('[data-play-demo-clock]', `${sbFormatOffset(Math.floor(liveNow))} · ×${PLAY_DEMO_SPEED}`);
   document.querySelectorAll('[data-play-quick]').forEach((button) => {
     const count = button.querySelector('b'), value = String(playQuickCount(items, ui, button.dataset.playQuick, now));
     if (count && count.textContent !== value) count.textContent = value;
@@ -729,12 +765,12 @@ function playTick(initial) {
     const timing = playTiming(item, now);
     if (timing === 'is-due') due++;
     if (timing === 'is-late') late++;
-    if (!initial && play.running && (timing === 'is-due' || timing === 'is-late') && !ui.notified.has(item.key)) {
+    if (!initial && !demo && play.running && (timing === 'is-due' || timing === 'is-late') && !ui.notified.has(item.key)) {
       ui.notified.add(item.key);
       if (item.time > ui.alertedAt - PLAY_LATE_MINUTES) fresh.push(item);
     }
   }
-  if (!initial && play.running) ui.alertedAt = now;
+  if (!initial && !demo && play.running) ui.alertedAt = now;
   if (fresh.length === 1) {
     const [item] = fresh;
     pushToast(`${item.numberLabel} ${tt('to send now', 'à envoyer maintenant', 'jetzt senden')}: ${item.title}${item.cell ? ` → ${item.cell.name}` : ''}`, 'info');
@@ -756,7 +792,7 @@ function playTick(initial) {
       if (target) target.parentElement.insertBefore(line, target);
       else rows.at(-1)?.parentElement.appendChild(line);
     }
-    if (ui.follow && play.running && (moved || initial)) {
+    if (ui.follow && (play.running || demo) && (moved || initial)) {
       const bar = document.querySelector('[data-play-bar]');
       const offset = (bar?.getBoundingClientRect().bottom || 0) + 80;
       const top = line.getBoundingClientRect().top;

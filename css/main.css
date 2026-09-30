@@ -4636,6 +4636,10 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 @keyframes play-live-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .play-live-card { animation: none; } }
 .play-live-card header em.is-sent { display: inline-flex; align-items: center; gap: 4px; color: var(--success); }
+.play-live-demo { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--line); background: #fff; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+.play-live-demo.is-on { border-color: var(--green); background: #e1fded; }
+.play-live-demo input { margin: 0; accent-color: var(--green); }
+.play-live-demo span { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 500; }
 .play-live-next { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; background: #fff; border: 1px solid var(--line); font-size: 0.82rem; }
 .play-live-next span { flex: 1; min-width: 0; }
 .play-live-next em { font-style: normal; font-weight: 700; color: var(--indigo); font-variant-numeric: tabular-nums; }
