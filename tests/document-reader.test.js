@@ -464,3 +464,18 @@ test('example deck: offered next to the upload, fictitious, and read with every 
   h.run(`sbApplyTemplate(sbBuiltinTemplates()[0], 'replace'); appState.scenario.storyboard.blocks = sbMainBlocks(appState.scenario.storyboard).slice(0, 3).map((b, i) => ({ ...b, start_minutes: i * 15, duration_minutes: 15, beats: [], stimuli_target: 0 })); appState.scenario.cells = [sbMakeCell('decision')];`);
   assert.equal(h.run('sbWantedInjects(sbMainBlocks(appState.scenario.storyboard)[0], appState.scenario)'), 5);
 });
+
+test('stimulus preview zoom: Auto by default, steps in and out, kept for the session', () => {
+  const h = harness();
+  h.run(`appState.scenario = defaultScenario(); appState.stimulusModalId = appState.scenario.stimuli[0].id;`);
+  let view = h.run('renderStimulusModal(getStimulus(appState.stimulusModalId))');
+  assert.ok(view.includes('data-zoom="in"') && view.includes('data-zoom="out"') && /data-zoom="auto" disabled/.test(view), 'Auto is the default');
+  h.run(`appState.ui.previewZoom = previewZoomStep(1)`);
+  assert.equal(h.run('appState.ui.previewZoom'), 1);
+  h.run(`appState.ui.previewZoom = previewZoomStep(1)`);
+  assert.equal(h.run('appState.ui.previewZoom'), 1.1);
+  view = h.run('renderStimulusModal(getStimulus(appState.stimulusModalId))');
+  assert.ok(view.includes('110 %') && /class="preview-stage[^"]*" style="zoom:1\.100"/.test(view));
+  h.run(`appState.ui.previewZoom = 0.5`);
+  assert.equal(h.run('previewZoomStep(-1)'), 0.5, 'no smaller than 50 %');
+});

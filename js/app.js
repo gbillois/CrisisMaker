@@ -1055,6 +1055,12 @@
               App.render();
               break;
             }
+            case 'preview-zoom': {
+              const direction = event.currentTarget.dataset.zoom;
+              appState.ui.previewZoom = direction === 'auto' ? null : previewZoomStep(direction === 'in' ? 1 : -1);
+              App.render();
+              break;
+            }
             case 'toggle-mobile-preview': {
               appState.ui.mobilePreviewVisible = !appState.ui.mobilePreviewVisible;
               App.render();

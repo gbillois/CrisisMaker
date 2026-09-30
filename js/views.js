@@ -1076,6 +1076,27 @@
 
 
 
+      /* Zoom of the stimulus preview: Auto follows the screen width (as the stylesheet does), the
+         buttons set a level kept for the session. */
+      const PREVIEW_ZOOM_LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+      function previewZoomAuto() {
+        return typeof window !== 'undefined' && window.innerWidth <= 1680 ? 0.86 : 0.92;
+      }
+      function previewZoomStep(direction) {
+        const current = appState.ui.previewZoom || previewZoomAuto();
+        const next = direction > 0 ? PREVIEW_ZOOM_LEVELS.find((level) => level > current + 0.001) : [...PREVIEW_ZOOM_LEVELS].reverse().find((level) => level < current - 0.001);
+        return next || current;
+      }
+      function renderPreviewZoom() {
+        const zoom = appState.ui?.previewZoom || previewZoomAuto();
+        return `<span class="preview-zoom" role="group" aria-label="${escapeAttribute(tt('Preview zoom', 'Zoom de l’aperçu', 'Vorschau-Zoom'))}">
+          <button class="btn btn-secondary btn-sm" data-action="preview-zoom" data-zoom="out" ${zoom <= PREVIEW_ZOOM_LEVELS[0] ? 'disabled' : ''} title="${escapeAttribute(tt('Zoom out', 'Dézoomer', 'Verkleinern'))}">${sbUiIcon('minus', 13)}</button>
+          <span class="preview-zoom-value">${Math.round(zoom * 100)} %</span>
+          <button class="btn btn-secondary btn-sm" data-action="preview-zoom" data-zoom="in" ${zoom >= PREVIEW_ZOOM_LEVELS[PREVIEW_ZOOM_LEVELS.length - 1] ? 'disabled' : ''} title="${escapeAttribute(tt('Zoom in', 'Zoomer', 'Vergrößern'))}">${sbUiIcon('plus', 13)}</button>
+          <button class="btn btn-ghost btn-sm" data-action="preview-zoom" data-zoom="auto" ${appState.ui?.previewZoom ? '' : 'disabled'} title="${escapeAttribute(tt('Zoom set by the screen width', 'Zoom réglé selon la largeur de l’écran', 'Zoom nach Bildschirmbreite'))}">${escapeHtml(tt('Auto', 'Auto', 'Auto'))}</button>
+        </span>`;
+      }
+
       function renderStimulusEditorModal(stimulus) {
         const library = getTemplateDefinition(stimulus);
         const actorOptions = appState.scenario.actors.map((actor) => `<option value="${actor.id}" ${stimulus.actor_id === actor.id ? 'selected' : ''}>${escapeHtml(actor.name)} — ${escapeHtml(actor.title)}</option>`).join('');
@@ -1382,6 +1403,7 @@
                 <div class="resize-handle resize-handle-vertical" data-resize-handle="stimulus-modal-width" role="separator" aria-orientation="vertical" aria-label="${tt('Resize editor and preview', 'Redimensionner l\'éditeur et la prévisualisation', 'Editor und Vorschau in der Größe ändern')}"></div>
                 <div class="stimulus-modal-right">
                   <div class="preview-toolbar-inline">
+                    ${renderPreviewZoom()}
                     ${String(stimulus.channel || '').startsWith('email_') ? `<button class="btn btn-secondary" data-action="export-msg" data-stimulus-id="${stimulus.id}">${tt('Export .eml', 'Exporter .eml', '.eml exportieren')}</button>` : ''}
                     ${appState.videoFiles?.[stimulus.id] && stimulus.channel === 'breaking_news_tv' ? `<button class="btn btn-secondary" data-action="export-video" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-video'] ? 'disabled' : ''}>${actionButtonLabel('export-video', tt('Export video', 'Exporter la vidéo', 'Video exportieren'), tt('Encoding…', 'Encodage…', 'Wird codiert…'))}</button>` : ''}
                     ${stimulus.channel === 'audio_message' ? `
@@ -1398,7 +1420,7 @@
                     ${stimulus.channel !== 'audio_message' ? `<button class="btn btn-secondary" data-action="export-png" data-stimulus-id="${stimulus.id}" ${appState.ui?.actionLoading?.['export-png'] ? 'disabled' : ''}>${actionButtonLabel('export-png', tt('Export PNG', 'Exporter PNG', 'PNG exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…'))}</button>` : ''}
                   </div>
                   <div class="preview-shell stimuli-preview-shell" style="margin:0; border-radius:0; border:none; min-height:calc(100% - 44px);">
-                    <div class="preview-stage${stimulus.channel === 'breaking_news_tv' ? ' video-stimulus-preview' : ''}">
+                    <div class="preview-stage${stimulus.channel === 'breaking_news_tv' ? ' video-stimulus-preview' : ''}"${appState.ui?.previewZoom ? ` style="zoom:${(appState.ui.previewZoom * (stimulus.channel === 'breaking_news_tv' ? 0.7 : 1)).toFixed(3)}"` : ''}>
                       ${renderStimulusPreview(stimulus)}
                     </div>
                   </div>

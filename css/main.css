@@ -830,13 +830,17 @@
     .stimulus-modal-right .preview-stage {
       min-height: 100%;
       display: grid;
-      place-items: start center;
+      /* Safe: a preview zoomed wider than the pane starts at its left edge and scrolls. */
+      place-items: start safe center;
       zoom: 0.92;
       transform-origin: top center;
     }
     .stimulus-modal-right .preview-stage.video-stimulus-preview {
       zoom: 0.644;
     }
+    .preview-zoom { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; }
+    .preview-zoom .btn-sm { min-width: 30px; justify-content: center; }
+    .preview-zoom-value { min-width: 46px; text-align: center; font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 
     @media (max-width: 1680px) {
       .stimulus-modal-right .preview-stage {
