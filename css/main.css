@@ -4257,7 +4257,6 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .cx-essential.is-key { grid-column: 1 / -1; }
 .cx-essential.is-found > svg { color: var(--green); }
 .cx-essential.is-missing > svg, .cx-essential.is-estimated > svg { color: #d99a00; }
-.cx-essential.is-key.is-missing, .cx-essential.is-key.is-todo { padding: 4px 6px; background: #fff8e6; }
 .cx-essential .btn-xs { margin-left: 4px; vertical-align: baseline; }
 @media (max-width: 768px) { .cx-essentials ul { grid-template-columns: 1fr; } }
 /* The points the sources leave open, answered before the creation. */
