@@ -19,7 +19,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.equal(await page.locator('.play-phase-group').count(), await page.evaluate(() => sbMainBlocks(sbStoryboard()).length));
   // The log is hidden in a pane, opened from the control bar.
   assert.equal(await page.locator('.play-log').count(), 0);
-  await page.click('[data-play="log"]');
+  await page.check('[data-play-pane="logOpen"]');
   assert.ok(await page.isVisible('.play-log'));
 
   // Start at ×30: the clock runs, the log records the start.
@@ -134,6 +134,33 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.equal(await page.evaluate(() => playState().running), false);
   assert.equal(await page.evaluate(() => playState().log.filter((entry) => entry.text === 'Exercise time is over').length), 1);
   assert.deepEqual(errors, []);
+  // Live stimuli, like a film: the stimulus of this moment, replaced by the next one when its
+  // time comes; the pane sits left of the log and is widened by dragging its left edge.
+  await page.evaluate(() => { playState().running = false; playState().offset_min = 0; App.render(); });
+  await page.check('[data-play-pane="liveOpen"]');
+  assert.ok(await page.isVisible('.play-live'));
+  const [firstTime, secondTime] = await page.evaluate(() => [...new Set(playItems().filter((item) => item.stimulus).map((item) => item.time))].sort((a, b) => a - b).slice(0, 2));
+  await page.evaluate((t) => { playState().offset_min = t; App.render(); }, firstTime);
+  const firstShown = await page.locator('.play-live-card header strong').first().innerText();
+  assert.ok(firstShown.includes(`H+${Math.floor(firstTime / 60)}:${String(Math.floor(firstTime) % 60).padStart(2, '0')}`), firstShown);
+  assert.ok(await page.locator('.play-live-card .play-live-stage').count() >= 1, 'the visual of the stimulus');
+  assert.ok((await page.locator('.play-live-next').innerText()).includes('Next'));
+  // The clock reaches the next stimulus: the tick swaps it in without a click.
+  await page.evaluate((t) => { const play = playState(); play.offset_min = t - 0.05; play.speed = 30; play.running = true; play.run_since = Date.now(); App.render(); }, secondTime);
+  await page.waitForFunction((t) => [...document.querySelectorAll('.play-live-card header strong')].some((el) => el.textContent.includes(`H+${Math.floor(t / 60)}:${String(Math.floor(t) % 60).padStart(2, '0')}`)), secondTime, { timeout: 8000 });
+  await page.evaluate(() => { const play = playState(); play.offset_min = playNow(); play.running = false; playUI().logOpen = true; App.render(); });
+  const logBox = await page.locator('.play-log').boundingBox();
+  const liveBox = await page.locator('.play-live').boundingBox();
+  assert.ok(Math.abs(liveBox.x + liveBox.width - logBox.x) <= 2, 'the live pane sits left of the log');
+  const handle = await page.locator('.play-live .play-pane-resize').boundingBox();
+  await page.mouse.move(handle.x + 4, handle.y + 200);
+  await page.mouse.down();
+  await page.mouse.move(handle.x - 200, handle.y + 200, { steps: 5 });
+  await page.mouse.up();
+  const widened = await page.locator('.play-live').boundingBox();
+  assert.ok(widened.width >= liveBox.width + 150, `widened (${liveBox.width} → ${widened.width})`);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.play-page')).getPropertyValue('--play-panes').trim()), `${Math.round(widened.width + logBox.width)}px`);
+
   await browser.close();
   console.log('Play browser smoke passed.');
 })().catch((error) => { console.error(error); process.exit(1); });

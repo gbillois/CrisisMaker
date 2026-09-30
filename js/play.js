@@ -217,7 +217,8 @@ function renderPlayView() {
   const counts = { total: written.length, sent: written.filter((i) => i.status === 'sent').length, ready: written.filter((i) => i.status === 'ready').length, draft: written.filter((i) => i.status === 'draft').length, planned: items.length - written.length };
   const visible = playSort(playFilter(items, ui, now), ui.sort);
   const phases = project.storyboard ? sbMainBlocks(project.storyboard) : [];
-  return `<section class="tab-page play-page ${ui.logOpen ? 'has-log' : ''}" data-play-root>
+  const panes = (ui.logOpen ? playPaneWidth('logWidth') : 0) + (ui.liveOpen ? playPaneWidth('liveWidth') : 0);
+  return `<section class="tab-page play-page ${panes ? 'has-panes' : ''}" data-play-root style="--play-panes:${panes}px">
     ${renderPlayBar(project, play, ui, items, now, counts, phases)}
     <div class="play-main">
     <article class="card play-chrono">
@@ -226,6 +227,7 @@ function renderPlayView() {
       ${renderPlayChrono(project, visible, ui, now, phases)}
     </article>
     ${renderPlayLog(project, play, ui)}
+    ${renderPlayLive(project, ui, now)}
     </div>
   </section>`;
 }
@@ -271,7 +273,8 @@ function renderPlayBar(project, play, ui, items, now, counts, phases) {
     <div class="play-bar-top">
       <span class="play-bar-title">${sbUiIcon('play', 13)} ${tt('Exercise control', 'Pilotage de l’exercice', 'Übungssteuerung')}${play.started_at ? ` · ${tt('started at', 'démarré à', 'gestartet um')} ${escapeHtml(playWallClock(play.started_at))}` : ''}</span>
       <button class="play-export" data-play="export-xlsx" title="${escapeAttribute(tt('The whole chronogram in an Excel file, with a filter on every column', 'Tout le chronogramme dans un fichier Excel, avec un filtre sur chaque colonne', 'Das ganze Chronogramm als Excel-Datei, mit einem Filter in jeder Spalte'))}" ${items.length ? '' : 'disabled'}>${sbUiIcon('sheet', 13)} ${tt('Export chronogram (Excel)', 'Exporter le chronogramme (Excel)', 'Chronogramm exportieren (Excel)')}</button>
-      <button class="play-log-toggle ${ui.logOpen ? 'active' : ''}" data-play="log" aria-expanded="${ui.logOpen ? 'true' : 'false'}">${sbUiIcon('history', 13)} ${tt('Exercise log', 'Journal', 'Protokoll')} <b>${play.log.length}</b></button>
+      <label class="play-log-toggle ${ui.logOpen ? 'active' : ''}"><input type="checkbox" data-play-pane="logOpen" ${ui.logOpen ? 'checked' : ''}> ${sbUiIcon('history', 13)} ${tt('Display exercise log', 'Afficher le journal', 'Protokoll anzeigen')} <b>${play.log.length}</b></label>
+      <label class="play-log-toggle ${ui.liveOpen ? 'active' : ''}"><input type="checkbox" data-play-pane="liveOpen" ${ui.liveOpen ? 'checked' : ''}> ${sbUiIcon('image', 13)} ${tt('Display live stimuli', 'Afficher les stimuli en direct', 'Live-Stimuli anzeigen')}</label>
       <button class="play-reset" data-play="reset-all" ${started || play.log.length || counts.sent ? '' : 'disabled'} title="${escapeAttribute(tt('Clock back to H+0:00, sent injects back to Validated, log cleared', 'Horloge à H+0:00, injects envoyés repassés en Validé, journal effacé', 'Uhr auf H+0:00, gesendete Injects wieder Freigegeben, Protokoll gelöscht'))}">${sbUiIcon('refresh', 13)} ${tt('Reset play', 'Réinitialiser le jeu', 'Spiel zurücksetzen')}</button>
     </div>
     <div class="play-bar-main">
@@ -382,11 +385,61 @@ function renderPlayChrono(project, items, ui, now, phases) {
   return html + (nowPlaced ? '' : `<div class="play-list">${nowLine}</div>`);
 }
 
+/* The right panes (exercise log, live stimuli): widened by dragging their left edge. */
+const PLAY_PANE_WIDTHS = { logWidth: 400, liveWidth: 520 };
+function playPaneWidth(key) {
+  const ui = playUI();
+  const max = typeof window !== 'undefined' && window.innerWidth ? Math.max(320, window.innerWidth - 320) : 1600;
+  return Math.round(Math.min(max, Math.max(300, ui[key] || PLAY_PANE_WIDTHS[key])));
+}
+
+/* The stimuli of this moment, like a film: the latest ones whose time has come (all those of
+   that same minute), replaced by the next ones when their time comes. */
+function playLiveItems(project, now) {
+  const items = playItems(project).filter((item) => item.stimulus).sort((a, b) => a.time - b.time);
+  const past = items.filter((item) => item.time <= now);
+  const at = past.length ? past[past.length - 1].time : null;
+  const current = at === null ? [] : past.filter((item) => item.time === at);
+  const next = items.find((item) => item.time > now) || null;
+  return { current, next, key: [...current.map((item) => item.key), next ? `next:${next.key}` : ''].join('|') };
+}
+
+/* Live stimuli: the visual of the stimulus of this moment, replaced by the next one when its
+   time comes, as a demo of the whole exercise. */
+function renderPlayLive(project, ui, now) {
+  if (!ui.liveOpen) return '';
+  const width = playPaneWidth('liveWidth');
+  const { current, next, key } = playLiveItems(project, now);
+  // The previews are drawn for about 840 px (an email) and scaled to the pane.
+  const zoom = Math.min(1, (width - 40) / 840).toFixed(3);
+  const card = (item) => `<article class="play-live-card ${item.status === 'sent' ? 'is-sent' : playTiming(item, now)}">
+      <header>
+        <strong>${escapeHtml(item.numberLabel)} · ${escapeHtml(sbFormatOffset(Math.floor(item.time)))}</strong>
+        <span>${escapeHtml(`${channelLabel(item.channel)}${item.cell ? ` → ${item.cell.name}` : ''}${item.sender ? ` · ${item.sender}` : ''}`)}</span>
+        ${item.status === 'sent' ? `<em class="is-sent">${sbUiIcon('check', 12)} ${escapeHtml(playStatusLabel('sent'))}</em>` : `<button class="btn btn-primary btn-xs" data-play-set="sent" data-stimulus-id="${item.stimulus.id}">${sbUiIcon('check', 12)} ${escapeHtml(tt('Mark as sent', 'Marquer envoyé', 'Als gesendet markieren'))}</button>`}
+      </header>
+      <div class="play-live-preview"><div class="play-live-stage" style="zoom:${zoom}">${renderStimulusPreview(item.stimulus)}</div></div>
+    </article>`;
+  const upcoming = next ? `<p class="play-live-next">${sbUiIcon('clock', 13)} <span>${escapeHtml(tt('Next', 'Suivant', 'Nächster'))}: <b>${escapeHtml(next.numberLabel)}</b> ${escapeHtml(channelLabel(next.channel))}${next.cell ? ` → ${escapeHtml(next.cell.name)}` : ''}</span> <em data-play-live-countdown>${escapeHtml(tt('in', 'dans', 'in'))} ${playCountdown(next.time - now)}</em></p>` : '';
+  return `<aside class="play-live" style="width:${width}px;right:${ui.logOpen ? playPaneWidth('logWidth') : 0}px" data-play-live-key="${escapeAttribute(key)}" aria-label="${escapeAttribute(tt('Live stimuli', 'Stimuli en direct', 'Live-Stimuli'))}">
+    <div class="play-pane-resize" data-play-resize="liveWidth" title="${escapeAttribute(tt('Drag to widen', 'Glisser pour élargir', 'Ziehen zum Verbreitern'))}"></div>
+    <div class="play-log-head">
+      <h3>${sbUiIcon('image', 16)} ${tt('Live stimuli', 'Stimuli en direct', 'Live-Stimuli')}</h3>
+      <button class="assistant-close" data-play="live" aria-label="${escapeAttribute(tt('Close the live stimuli', 'Fermer les stimuli en direct', 'Live-Stimuli schließen'))}">${sbUiIcon('close', 18)}</button>
+    </div>
+    ${upcoming}
+    <div class="play-live-list">
+      ${current.length ? current.map(card).join('') : `<p class="play-live-empty">${escapeHtml(next ? tt(`The first stimulus appears at ${sbFormatOffset(Math.floor(next.time))}. Start the clock: each stimulus shows here when its time comes, then gives way to the next.`, `Le premier stimulus apparaît à ${sbFormatOffset(Math.floor(next.time))}. Lancez l’horloge : chaque stimulus s’affiche ici à son heure, puis laisse la place au suivant.`, `Der erste Stimulus erscheint um ${sbFormatOffset(Math.floor(next.time))}. Starten Sie die Uhr: Jeder Stimulus erscheint hier zu seiner Zeit und macht dann dem nächsten Platz.`) : tt('No written stimulus yet.', 'Aucun stimulus rédigé pour l’instant.', 'Noch kein geschriebener Stimulus.'))}</p>`}
+    </div>
+  </aside>`;
+}
+
 function renderPlayLog(project, play, ui) {
   if (!ui.logOpen) return '';
   const icons = { start: 'play', resume: 'play', pause: 'pause', clock: 'clock', speed: 'clock', phase: 'layers', status: 'edit', sent: 'check', note: 'message', reset: 'refresh', end: 'check' };
   const entries = [...play.log].reverse();
-  return `<aside class="play-log" aria-label="${escapeAttribute(tt('Exercise log', 'Journal de l’exercice', 'Übungsprotokoll'))}">
+  return `<aside class="play-log" style="width:${playPaneWidth('logWidth')}px" aria-label="${escapeAttribute(tt('Exercise log', 'Journal de l’exercice', 'Übungsprotokoll'))}">
+    <div class="play-pane-resize" data-play-resize="logWidth" title="${escapeAttribute(tt('Drag to widen', 'Glisser pour élargir', 'Ziehen zum Verbreitern'))}"></div>
     <div class="play-log-head">
       <h3>${sbUiIcon('history', 16)} ${tt('Exercise log', 'Journal de l’exercice', 'Übungsprotokoll')}</h3>
       <button class="btn btn-secondary btn-sm" data-play="save-log" ${play.log.length ? '' : 'disabled'}>${sbUiIcon('download', 13)} ${tt('Save log', 'Enregistrer le journal', 'Protokoll speichern')}</button>
@@ -516,11 +569,25 @@ function bindPlayEvents() {
       case 'reset-all': playResetAll(); return;
       case 'add': playAddInject(); return;
       case 'log': ui.logOpen = !ui.logOpen; App.render(); return;
+      case 'live': ui.liveOpen = !ui.liveOpen; App.render(); return;
       case 'save-log': playSaveLog(); return;
       case 'export-xlsx': playExportXlsx(); return;
     }
     saveLocal(false);
     App.render();
+  }));
+  root.querySelectorAll('[data-play-pane]').forEach((input) => input.addEventListener('change', () => { ui[input.dataset.playPane] = input.checked; App.render(); }));
+  // A pane is widened by dragging its left edge; the page makes room once it is released.
+  root.querySelectorAll('[data-play-resize]').forEach((handle) => handle.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    const pane = handle.parentElement;
+    const key = handle.dataset.playResize;
+    const startX = event.clientX, startWidth = pane.getBoundingClientRect().width;
+    handle.setPointerCapture?.(event.pointerId);
+    const move = (moveEvent) => { ui[key] = startWidth + startX - moveEvent.clientX; pane.style.width = `${playPaneWidth(key)}px`; };
+    const up = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); App.render(); };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
   }));
   root.querySelector('[data-play-speed]')?.addEventListener('change', (event) => {
     const play = playState();
@@ -634,6 +701,12 @@ function playTick(initial) {
     const shown = keys([...document.querySelectorAll('[data-play-key]')].map((row) => row.dataset.playKey));
     if (shown !== keys(playFilter(items, ui, now).map((item) => item.key))) { playRenderKeepingFocus(); return; }
   }
+  // Live stimuli follow the clock: when the next stimulus's time comes, it replaces the current one.
+  const live = document.querySelector('[data-play-live-key]');
+  if (!initial && live && !playOverlayOpen() && live.dataset.playLiveKey !== playLiveItems(project, now).key) { playRenderKeepingFocus(); return; }
+  const countdown = document.querySelector('[data-play-live-countdown]');
+  const upcoming = countdown && playLiveItems(project, now).next;
+  if (upcoming) countdown.textContent = `${tt('in', 'dans', 'in')} ${playCountdown(upcoming.time - now)}`;
   document.querySelectorAll('[data-play-quick]').forEach((button) => {
     const count = button.querySelector('b'), value = String(playQuickCount(items, ui, button.dataset.playQuick, now));
     if (count && count.textContent !== value) count.textContent = value;

@@ -4619,7 +4619,33 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .play-log-empty { display: block !important; color: var(--muted); padding: 14px 0 !important; }
 
 /* Docked log pane: on wide screens the page makes room for it instead of being covered. */
-@media (min-width: 1100px) { .play-page.has-log { padding-right: 404px; } }
+@media (min-width: 1100px) { .play-page.has-panes { padding-right: calc(var(--play-panes) + 4px); } }
+/* The right panes can be widened from their left edge. */
+.play-pane-resize { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; z-index: 2; }
+.play-pane-resize:hover, .play-pane-resize:active { background: rgba(69, 29, 199, 0.18); }
+.play-log-toggle input { margin: 0; accent-color: var(--green); }
+label.play-log-toggle { cursor: pointer; }
+/* Live stimuli: the visual of what is to be sent now, and the next one. */
+.play-live { position: fixed; top: var(--header-h); bottom: 0; z-index: 94; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: #f7f6fa; border-left: 1px solid var(--line); border-top: 3px solid var(--green); box-shadow: var(--shadow-lg); }
+.play-live-list { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 12px; }
+.play-live-label { margin: 0; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.play-live-empty { margin: 0; padding: 14px; background: #fff; border: 1px dashed var(--line-strong); color: var(--muted); font-size: 0.86rem; }
+.play-live-card { background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--indigo); }
+.play-live-card.is-late { border-left-color: var(--danger); }
+.play-live-card.is-due { border-left-color: #d99a00; }
+.play-live-card.is-sent { border-left-color: var(--success); }
+.play-live-card { animation: play-live-in 0.35s ease-out; }
+@keyframes play-live-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .play-live-card { animation: none; } }
+.play-live-card header em.is-sent { display: inline-flex; align-items: center; gap: 4px; color: var(--success); }
+.play-live-next { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; background: #fff; border: 1px solid var(--line); font-size: 0.82rem; }
+.play-live-next span { flex: 1; min-width: 0; }
+.play-live-next em { font-style: normal; font-weight: 700; color: var(--indigo); font-variant-numeric: tabular-nums; }
+.play-live-card header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 0.8rem; }
+.play-live-card header span { color: var(--muted); flex: 1; min-width: 0; }
+.play-live-card header em { font-style: normal; font-weight: 700; color: var(--indigo); }
+.play-live-preview { overflow: auto; max-height: 70vh; padding: 10px; }
+.play-live-stage { display: grid; place-items: start safe center; }
 .toast-stack { z-index: 160; }
 .play-adjust { display: grid; grid-template-columns: repeat(4, auto); gap: 3px; }
 .play-adjust .play-label { grid-column: 1 / -1; }
