@@ -1763,3 +1763,14 @@ test('injects: an AI answer in another script than the exercise language is aske
   h.run(`appState.scenario.settings.inject_language = 'ja'`);
   assert.equal(h.run(`stimulusOffLanguage({ subject: '緊急 ランサムウェア攻撃を確認' }, probe, appState.scenario)`), '');
 });
+
+test('demo: no email carries the template example attachment or a blanket high importance', () => {
+  const h = harness();
+  const emails = h.json(`defaultScenario().stimuli.filter(s => 'has_attachment' in s.fields).map(s => ({ name: s.name, attachment: s.fields.has_attachment, file: s.fields.attachment_name, importance: s.fields.importance }))`);
+  assert.ok(emails.length > 10);
+  for (const email of emails) {
+    assert.notEqual(email.file, 'Incident_Report_Preliminary.pdf', email.name);
+    assert.equal(email.attachment, !!email.file, email.name);
+  }
+  assert.ok(emails.some(email => email.importance === 'normal'));
+});

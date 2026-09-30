@@ -329,6 +329,10 @@
           if (typeof sbSetClockFields === 'function') sbSetClockFields(stimulus, scenario);
           if ('time' in fields && !('time' in content) && channel !== 'breaking_news_tv') fields.time = clock(minute);
           if (channel === 'breaking_news_tv') fields.time = clock(minute);
+          // Nothing of the template's example email: an attachment only when the inject names one,
+          // high importance only for an urgent subject or a nudge.
+          if ('has_attachment' in fields) { fields.has_attachment = !!content.attachment_name; fields.attachment_name = ''; }
+          if ('importance' in fields) fields.importance = nudge === true || /^(CRITICAL|URGENT|DECISION)\b/.test(content.subject || '') ? 'high' : 'normal';
           Object.assign(fields, content);
           stimulus.name = title;
           stimulus.status = minute <= 60 ? 'ready' : 'draft';
