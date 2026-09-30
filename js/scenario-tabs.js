@@ -954,7 +954,7 @@ function renderContextGlance(project) {
   const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
   const logo = project.client.logo_url || '';
   return `<article class="card cx-frame" data-sb-scope>
-    <div class="section-header"><div><h3>${escapeHtml(tt('Context', 'Contexte', 'Kontext'))}</h3><p class="subtle">${escapeHtml(tt('Who the exercise is for, how long it plays, the simulated clock and the audience.', 'Pour qui est l’exercice, combien de temps il dure, l’horloge simulée et le public.', 'Für wen die Übung ist, wie lange sie dauert, die simulierte Uhr und das Publikum.'))}</p></div></div>
+    <div class="section-header"><div><h3>${escapeHtml(tt('Context', 'Contexte', 'Kontext'))}</h3><p class="subtle">${escapeHtml(tt('Who the exercise is for, how long it plays, the simulated clock, the audience, what the players must learn and what really happened. The AI generation fills the empty fields; complete or correct any of them, then Update.', 'Pour qui est l’exercice, combien de temps il dure, l’horloge simulée, le public, ce que les joueurs doivent apprendre et ce qui s’est réellement passé. La génération IA remplit les champs vides ; complétez ou corrigez-les, puis Mettre à jour.', 'Für wen die Übung ist, wie lange sie dauert, die simulierte Uhr, das Publikum, was die Spieler lernen sollen und was wirklich passiert ist. Die KI-Erstellung füllt die leeren Felder; ergänzen oder korrigieren Sie sie, dann Aktualisieren.'))}</p></div></div>
     <div class="cx-row cx-row-client">
       <label class="field">${escapeHtml(tt('Exercise name', 'Nom de l’exercice', 'Name der Übung'))}<input type="text" data-bind="name" value="${escapeAttribute(project.name || '')}" placeholder="${escapeAttribute(tt('e.g. Operation Cold Chain', 'Ex. : Opération Chaîne du froid', 'z. B. Operation Kühlkette'))}"></label>
       <label class="field">${escapeHtml(tt('Client name', 'Nom du client', 'Name des Auftraggebers'))}<input type="text" data-bind="client.name" value="${escapeAttribute(project.client.name || '')}" placeholder="${escapeAttribute(tt('Organisation name', 'Nom de l’organisation', 'Name der Organisation'))}"></label>
@@ -980,27 +980,6 @@ function renderContextGlance(project) {
       <label class="field">${escapeHtml(tt('Primary language', 'Langue principale', 'Hauptsprache'))}<select data-bind="client.language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.client.language || 'en')).join('')}</select></label>
       <label class="field">${escapeHtml(tt('Default inject language', 'Langue par défaut des injects', 'Standardsprache der Injects'))}<select data-bind="settings.inject_language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.settings.inject_language || 'en')).join('')}</select></label>
     </div>
-  </article>`;
-}
-
-/* The designer's context, handed to the agent that builds the next tabs. */
-function renderContextBrief(project) {
-  const storyboard = project.storyboard;
-  const run = getCrisisAgent();
-  const ai = isLLMAvailable();
-  const busy = run.active || run.busy;
-  const template = contextLibraryTemplate(project);
-  const state = tabUI('context');
-  state.mode = state.mode || 'agent';
-  return `<article class="card cx-brief" data-sb-scope>
-    <div class="section-header"><div><h3>${escapeHtml(tt('Scenario generation', 'Génération du scénario', 'Szenario-Erstellung'))}</h3><p class="subtle">${escapeHtml(template
-      ? tt('Describe what you want to test, the audience, constraints and events you have in mind. Then load the basic library scenario as it is, or generate the scenario with AI: the agent reads this with the context above and the library scenario, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.', 'Décrivez ce que vous voulez tester, le public, les contraintes et les événements que vous avez en tête. Chargez ensuite le scénario de base de la bibliothèque tel quel, ou générez le scénario avec l’IA : l’agent lit ce texte avec le contexte ci-dessus et le scénario de la bibliothèque, vous pose des questions, puis construit la storyline principale, les cellules, les acteurs et le plan d’injects de chaque cellule.', 'Beschreiben Sie, was Sie testen möchten, das Publikum, die Rahmenbedingungen und die Ereignisse, die Sie im Sinn haben. Laden Sie dann das Basisszenario der Bibliothek unverändert oder erstellen Sie das Szenario mit KI: Der Agent liest dies zusammen mit dem Kontext oben und dem Bibliotheksszenario, stellt Ihnen Fragen und baut dann die Haupt-Storyline, die Zellen, die Akteure und den Inject-Plan jeder Zelle auf.')
-      : tt('Describe what you want to test, the audience, constraints and events you have in mind. Then load the basic library scenario as it is, or generate the scenario with AI: the agent reads this with the context above, asks you questions, then builds the main storyline, cells, actors and the inject plan of each cell.', 'Décrivez ce que vous voulez tester, le public, les contraintes et les événements que vous avez en tête. Chargez ensuite le scénario de base de la bibliothèque tel quel, ou générez le scénario avec l’IA : l’agent lit ce texte avec le contexte ci-dessus, vous pose des questions, puis construit la storyline principale, les cellules, les acteurs et le plan d’injects de chaque cellule.', 'Beschreiben Sie, was Sie testen möchten, das Publikum, die Rahmenbedingungen und die Ereignisse, die Sie im Sinn haben. Laden Sie dann das Basisszenario der Bibliothek unverändert oder erstellen Sie das Szenario mit KI: Der Agent liest dies zusammen mit dem Kontext oben, stellt Ihnen Fragen und baut dann die Haupt-Storyline, die Zellen, die Akteure und den Inject-Plan jeder Zelle auf.'))}</p></div></div>
-    ${template
-      ? `<p class="cx-template">${sbUiIcon('book', 14)} ${escapeHtml(tt('Library scenario loaded:', 'Scénario de la bibliothèque chargé :', 'Bibliotheksszenario geladen:'))} <strong>${escapeHtml(template.name)}</strong>. ${escapeHtml(tt('Generate with AI to adapt it to your context, or load it as it is.', 'Générez avec l’IA pour l’adapter à votre contexte, ou chargez-le tel quel.', 'Erstellen Sie es mit KI, um es an Ihren Kontext anzupassen, oder laden Sie es unverändert.'))} <button class="btn btn-ghost btn-xs" data-route="project">${escapeHtml(tt('Change in Project', 'Changer dans Projet', 'Im Projekt ändern'))}</button></p>`
-      : `<p class="cx-template is-empty">${sbUiIcon('book', 14)} ${escapeHtml(tt('No library scenario loaded. The AI builds the scenario from your context, or', 'Aucun scénario de la bibliothèque chargé. L’IA construit le scénario à partir de votre contexte, ou', 'Kein Bibliotheksszenario geladen. Die KI baut das Szenario aus Ihrem Kontext auf, oder'))} <button class="btn btn-ghost btn-xs" data-route="project">${escapeHtml(tt('load one from the Project library', 'chargez-en un depuis la bibliothèque du Projet', 'laden Sie eines aus der Projekt-Bibliothek'))}</button></p>`}
-    ${renderContextExerciseFile()}
-    <label class="field cx-field">${escapeHtml(tt('Context, objectives and ideas', 'Contexte, objectifs et idées', 'Kontext, Ziele und Ideen'))}<textarea class="cx-brief-text" data-sb-meta="brief" rows="5" placeholder="${escapeAttribute(tt('e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.', 'Ex. : cellule de crise de direction d’un groupe hospitalier régional. Tester la décision d’isolement dans l’incertitude, la sécurité des patients, les notifications réglementaires et la pression médiatique. Joueurs expérimentés ; prévoir un rebondissement dans la deuxième heure. Ne pas citer de fournisseurs réels.', 'Z. B. Krisenstab der Geschäftsleitung einer regionalen Klinikgruppe. Die Isolationsentscheidung unter Unsicherheit, die Patientensicherheit, behördliche Meldungen und den Mediendruck testen. Erfahrene Spieler; in der zweiten Stunde eine Wendung einbauen. Keine echten Lieferanten nennen.'))}">${escapeHtml(storyboard.meta.brief)}</textarea></label>
     <div class="cx-design">
       <div class="cx-design-col">
         <div class="cx-design-head"><strong>${escapeHtml(tt('Learning objectives', 'Objectifs pédagogiques', 'Lernziele'))}</strong><span class="helper">${escapeHtml(tt('What the players must practise or learn, in your own words. Name a cell or a category of players when an objective concerns only them: the AI works out who each objective is for and puts every cell in situations that test it.', 'Ce que les joueurs doivent pratiquer ou apprendre, avec vos propres mots. Nommez une cellule ou une catégorie de joueurs quand un objectif ne concerne qu’eux : l’IA détermine à qui s’adresse chaque objectif et place chaque cellule dans des situations qui le mettent à l’épreuve.', 'Was die Spieler üben oder lernen sollen, in Ihren eigenen Worten. Nennen Sie eine Zelle oder eine Spielergruppe, wenn ein Ziel nur sie betrifft: Die KI ermittelt, für wen jedes Ziel gilt, und bringt jede Zelle in Situationen, die es auf die Probe stellen.'))}</span></div>
@@ -1011,39 +990,31 @@ function renderContextBrief(project) {
         <textarea class="cx-attack" data-bind="scenario.attack_path" rows="12" placeholder="${escapeAttribute(tt('One event per line, in order, with its date or time when known. e.g.\nD-21: initial access, phishing email with a malicious attachment to an accounts payable clerk\nD-20: a loader installs a remote access beacon; nobody notices\nD-10: Kerberoasting of a service account, then lateral movement to the file servers\nD-3: 400 GB of HR and finance data sent to cloud storage\nD-day 06:40: hypervisors encrypted, backups deleted, ransom note\nD-day 07:15: the SOC escalates, the crisis cell is called at 08:00', 'Un événement par ligne, dans l’ordre, avec sa date ou son heure si elle est connue. Ex. :\nJ-21 : accès initial, e-mail d’hameçonnage avec une pièce jointe malveillante envoyé à un comptable fournisseurs\nJ-20 : un loader installe une balise d’accès à distance ; personne ne le remarque\nJ-10 : Kerberoasting d’un compte de service, puis mouvement latéral vers les serveurs de fichiers\nJ-3 : 400 Go de données RH et financières envoyés vers un stockage cloud\nJour J 06:40 : hyperviseurs chiffrés, sauvegardes supprimées, demande de rançon\nJour J 07:15 : le SOC escalade, la cellule de crise est convoquée à 08:00', 'Ein Ereignis pro Zeile, der Reihe nach, mit Datum oder Uhrzeit, falls bekannt. Z. B.:\nT-21: Erstzugriff, Phishing-E-Mail mit schädlichem Anhang an einen Kreditorenbuchhalter\nT-20: ein Loader installiert einen Fernzugriffs-Beacon; niemand bemerkt es\nT-10: Kerberoasting eines Dienstkontos, dann laterale Bewegung zu den Dateiservern\nT-3: 400 GB Personal- und Finanzdaten werden in einen Cloud-Speicher übertragen\nTag X 06:40: Hypervisoren verschlüsselt, Backups gelöscht, Lösegeldforderung\nTag X 07:15: das SOC eskaliert, der Krisenstab wird für 08:00 einberufen')).replace(/\n/g, '&#10;')}">${escapeHtml(project.scenario.attack_path || '')}</textarea>
       </div>
     </div>
-    <div class="cx-generate">
-      <label class="cx-mode">${escapeHtml(tt('AI autonomy', 'Autonomie de l’IA', 'KI-Autonomie'))}<select data-cx-mode ${busy ? 'disabled' : ''}>
-        <option value="agent" ${state.mode === 'agent' ? 'selected' : ''}>${escapeHtml(tt('Ask me before big changes', 'Me demander avant les gros changements', 'Vor größeren Änderungen fragen'))}</option>
-        <option value="auto" ${state.mode === 'auto' ? 'selected' : ''}>${escapeHtml(tt('Build automatically', 'Construire automatiquement', 'Automatisch aufbauen'))}</option>
-      </select></label>
-      <button class="btn btn-secondary" data-cx-load-basic ${template && !busy ? '' : 'disabled'} title="${escapeAttribute(template ? tt(`Replace the main storyline with "${template.name}" as it is in the library`, `Remplacer la storyline principale par « ${template.name} » tel qu’il est dans la bibliothèque`, `Die Haupt-Storyline durch „${template.name}“ ersetzen, so wie es in der Bibliothek steht`) : tt('Load a scenario from the library in the Project tab first', 'Chargez d’abord un scénario de la bibliothèque dans l’onglet Projet', 'Laden Sie zuerst ein Szenario aus der Bibliothek im Tab Projekt'))}">${sbUiIcon('book', 15)} ${escapeHtml(tt('Load basic scenario from library', 'Charger le scénario de base de la bibliothèque', 'Basisszenario aus der Bibliothek laden'))}</button>
-    </div>
-    ${renderBuildFlow(project)}
-    ${ai ? '' : `<p class="agent-warning">${escapeHtml(tt('Configure an AI connection in Settings to generate with AI.', 'Configurez une connexion IA dans les Paramètres pour générer avec l’IA.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um mit KI zu generieren.'))}</p>`}
-    ${renderAgentPanel({ origin: 'context' })}
   </article>`;
 }
 
-/* An existing crisis exercise (chronogram .xlsx/.xls or .pptx): a reference for the agent,
-   and a file Check & Challenge can audit as it is. */
+/* The designer's source file: an existing exercise (deck or chronogram), a proposal or an
+   exercise brief. The AI generation and the agent read it; Check & Challenge can audit its
+   chronogram as it is. */
 function renderContextExerciseFile() {
   const cs = appState.checkerState || {};
   const loaded = !!cs.parsedData;
+  if (typeof renderCheckerDropZone !== 'function') return '';
   return `<div class="cx-file ${loaded ? 'is-loaded' : ''}">
-    <div class="cx-design-head"><strong>${escapeHtml(tt('Existing crisis exercise file', 'Fichier d’exercice de crise existant', 'Bestehende Krisenübungsdatei'))}</strong><span class="helper">${escapeHtml(loaded
-      ? tt('The agent uses it as a reference when it generates the scenario. Challenge it to audit the file as it is.', 'L’agent s’en sert comme référence pour générer le scénario. Challengez-le pour auditer le fichier tel quel.', 'Der Agent nutzt sie als Referenz, wenn er das Szenario erstellt. Hinterfragen Sie sie, um die Datei so zu prüfen, wie sie ist.')
-      : tt('Optional. A chronogram from a previous exercise (.xlsx, .xls or .pptx): the agent uses it as a reference, and Check & Challenge can audit it.', 'Facultatif. Un chronogramme d’un exercice précédent (.xlsx, .xls ou .pptx) : l’agent s’en sert comme référence, et Check & Challenge peut l’auditer.', 'Optional. Ein Chronogramm einer früheren Übung (.xlsx, .xls oder .pptx): Der Agent nutzt es als Referenz, und Check & Challenge kann es prüfen.'))}</span></div>
-    ${typeof renderCheckerDropZone === 'function' ? (loaded ? renderCheckerImported({ inner: true }) : renderCheckerDropZone({ inner: true })) : ''}
+    ${loaded ? renderCheckerImported({ inner: true }) : renderCheckerDropZone({ inner: true, title: tt('Drop a deck, a proposal, a brief or a chronogram here', 'Déposez ici un support, une proposition, un cahier des charges ou un chronogramme', 'Foliensatz, Angebot, Briefing oder Chronogramm hier ablegen') })}
   </div>`;
 }
 
-/* A bounded excerpt of the loaded exercise file, for the agent. */
+/* A bounded excerpt of the loaded file, for the agent (getReferenceFile reads all of it). */
 function contextExerciseFileExcerpt() {
   const cs = appState.checkerState || {};
-  if (!cs.parsedData || typeof checkerSerializeChronogram !== 'function') return '';
-  const text = String(checkerSerializeChronogram()?.serialized || '');
+  const pd = cs.parsedData;
+  if (!pd || typeof checkerSerializeChronogram !== 'function') return '';
+  const text = pd.doc
+    ? CrisisDocReader.outline(pd.doc, pd.analysis, { limit: 3000 })
+    : String(checkerSerializeChronogram({ withDocument: false })?.serialized || '');
   const limit = 3200;
-  return `Existing crisis exercise file "${cs.file?.name || 'file'}" loaded as a reference (reuse its good ideas, pacing and injects where they fit; do not copy it blindly):\n${text.length > limit ? `${text.slice(0, limit)}\n[… truncated]` : text}`;
+  return `Source file "${cs.file?.name || 'file'}" loaded by the designer (an existing exercise, a proposal or a brief): read it in full with getReferenceFile and build from it (its context, objectives, players, phases, incident timeline and injects), adapted to the frame; do not copy it blindly. Excerpt:\n${text.length > limit ? `${text.slice(0, limit)}\n[… truncated]` : text}`;
 }
 
 /* Objective handed to the builder agent: the context fields are in its state, this adds intent. */
@@ -1429,6 +1400,12 @@ function tabBindInputs(root) {
     App.render();
   }));
   root.querySelectorAll('[data-cx-mode]').forEach((select) => select.addEventListener('change', () => { tabUI('context').mode = select.value === 'auto' ? 'auto' : 'agent'; }));
+  root.querySelectorAll('[data-cx-library]').forEach((select) => select.addEventListener('change', () => {
+    // The generic scenario the AI generation adapts (as chosen in the Project library).
+    project.storyboard.meta.library_id = select.value && sbFindTemplate(select.value) ? select.value : '';
+    saveLocal(false);
+    App.render();
+  }));
   root.querySelectorAll('[data-cx-load-basic]').forEach((button) => button.addEventListener('click', () => {
     const template = contextLibraryTemplate(project);
     if (!template || !sbUseTemplate(template, 'replace')) return;

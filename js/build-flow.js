@@ -59,7 +59,7 @@ const BuildFlow = {
   progress: null,
 
   busy() {
-    return !!this.stage || getCrisisAgent().active || (typeof SbPipeline !== 'undefined' && SbPipeline.active) || !!appState.checkerState?.analysisLoading;
+    return !!this.stage || (typeof ContextGeneration !== 'undefined' && !!ContextGeneration.stage) || getCrisisAgent().active || (typeof SbPipeline !== 'undefined' && SbPipeline.active) || !!appState.checkerState?.analysisLoading;
   },
 
   /* Stage 1: the builder agent sets the framing, then the Main storyline opens for review. */
@@ -155,7 +155,7 @@ const BuildFlow = {
 };
 
 /* The Build card of the Context tab: the two stages and the validation between them. */
-function renderBuildFlow(project) {
+function renderBuildFlow(project, { framingButton = true } = {}) {
   const ai = isLLMAvailable();
   const busy = BuildFlow.busy();
   const phases = sbMainBlocks(project.storyboard).length;
@@ -179,7 +179,7 @@ function renderBuildFlow(project) {
     </div>
     <ol class="bf-steps">
       ${step(1, phases && BuildFlow.stage !== 'adapting' ? 'done' : 'todo', tt('Framing', 'Cadrage', 'Rahmen'), escapeHtml(BuildFlow.stage === 'adapting' ? tt(`Adapting the library scenario to the client${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`, `Adaptation du scénario de bibliothèque au client${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`, `Das Bibliotheksszenario wird an den Kunden angepasst${BuildFlow.progress ? ` (${BuildFlow.progress.done}/${BuildFlow.progress.total})` : ''}…`) : phases ? tt(`${phases} phases on the main storyline.`, `${phases} phases sur la storyline principale.`, `${phases} Phasen in der Haupt-Storyline.`) : tt('Phases, main events and their consequences, cells and senders, from the context above.', 'Phases, événements principaux et leurs conséquences, cellules et émetteurs, à partir du contexte ci-dessus.', 'Phasen, Hauptereignisse und ihre Folgen, Zellen und Absender, aus dem Kontext oben.')),
-        `<button class="btn ${phases ? 'btn-secondary' : 'btn-primary'} btn-sm" data-bf-action="framing" ${ai && !busy ? '' : 'disabled'} ${noAI}>${running('adapting') || running('framing')}${sbUiIcon('sparkles', 14)} ${escapeHtml(phases ? tt('Rebuild the framing', 'Reconstruire le cadrage', 'Rahmen neu erstellen') : tt('Build the framing', 'Construire le cadrage', 'Rahmen erstellen'))}</button>`)}
+        framingButton ? `<button class="btn ${phases ? 'btn-secondary' : 'btn-primary'} btn-sm" data-bf-action="framing" ${ai && !busy ? '' : 'disabled'} ${noAI}>${running('adapting') || running('framing')}${sbUiIcon('sparkles', 14)} ${escapeHtml(phases ? tt('Rebuild the framing', 'Reconstruire le cadrage', 'Rahmen neu erstellen') : tt('Build the framing', 'Construire le cadrage', 'Rahmen erstellen'))}</button>` : '')}
       ${step(2, validation && !changes?.total ? 'done' : phases ? 'todo' : 'later', tt('Client validation', 'Validation client', 'Kundenfreigabe'), validatedText,
         `<button class="btn btn-secondary btn-sm" data-route="storyline" ${phases ? '' : 'disabled'}>${escapeHtml(tt('Review', 'Relire', 'Prüfen'))} ${sbUiIcon('chevronRight', 14)}</button>
          <button class="btn ${phases && !validation ? 'btn-primary' : 'btn-secondary'} btn-sm" data-bf-action="validate" ${phases && !busy ? '' : 'disabled'}>${sbUiIcon('checkCircle', 14)} ${escapeHtml(validation ? tt('Validate again', 'Valider à nouveau', 'Erneut freigeben') : tt('Validate the framing', 'Valider le cadrage', 'Rahmen freigeben'))}</button>`)}
@@ -249,7 +249,9 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
     } else if (action === 'stimuli') {
       await BuildFlow.stimuli();
     } else if (action === 'all') {
-      await BuildFlow.all();
+      // From the Context tab, the sources are read first, as the AI generation does.
+      if (typeof ContextGeneration !== 'undefined') await ContextGeneration.generate({ all: true });
+      else await BuildFlow.all();
     }
   } catch (error) {
     pushToast(sbErrorMessage(error), 'error');

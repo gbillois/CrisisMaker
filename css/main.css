@@ -4235,6 +4235,28 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .cx-mode { display: grid; gap: 5px; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
 .cx-mode select { min-height: 40px; width: auto; }
 
+/* Scenario generation: numbered sources, then the AI generation. */
+.cx-generation .section-header h3 { display: inline-flex; align-items: center; gap: 8px; }
+.cx-step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; align-items: start; }
+.cx-step-num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--indigo-tint); color: var(--indigo); font-weight: 700; font-size: 0.85rem; }
+.cx-step-body { display: grid; gap: 8px; min-width: 0; }
+.cx-library { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cx-library select { min-height: 38px; flex: 1 1 260px; max-width: 520px; width: auto; }
+.cx-file-found { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.8rem; }
+.cx-file-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; background: var(--indigo-tint); color: var(--primary-strong); border-radius: 999px; }
+.cx-file-chip b { color: var(--indigo); }
+.cx-missing { margin: 0; display: flex; align-items: flex-start; gap: 6px; padding: 8px 12px; background: var(--surface-alt); border-left: 3px solid var(--line-strong); font-size: 0.84rem; color: var(--muted); }
+.cx-frame .cx-design { margin-top: 6px; }
+/* Update: the amended context flows into the exercise. */
+.cx-update { display: grid; gap: 14px; }
+.cx-update-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; background: var(--surface-alt); border-left: 3px solid var(--line-strong); }
+.cx-update-row.has-changes { background: #fff8e6; border-left-color: #d99a00; }
+.cx-update-text { display: inline-flex; align-items: flex-start; gap: 8px; font-size: 0.88rem; min-width: 0; flex: 1 1 320px; }
+@media (max-width: 768px) {
+  .cx-step { grid-template-columns: 1fr; }
+  .cx-update-row .btn { width: 100%; justify-content: center; }
+}
+
 
 /* ═══ Agent: embedded panel, questions ═══ */
 .agent-panel { display: grid; gap: 12px; padding: 14px 16px; border: 1px solid #d9cef9; border-left: 3px solid var(--indigo); background: #faf9ff; }

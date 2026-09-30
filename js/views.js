@@ -1067,8 +1067,9 @@
           sbCaptureFocus();
           return `
           <section class="tab-page sc-page">
+            ${renderContextGeneration(project)}
             ${renderContextGlance(project)}
-            ${renderContextBrief(project)}
+            ${renderContextUpdate(project)}
           </section>`;
         });
       }

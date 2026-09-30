@@ -26,6 +26,8 @@ function builderAgentAnswer(payload) {
 
 function answerFor(system, user) {
   if (system.includes('Crisis Context Builder Agent')) return builderAgentAnswer(JSON.parse(user));
+  // The AI generation reads the sources first and fills the empty Context fields.
+  if (system.includes('fill the frame of the exercise')) return { exercise_name: 'Northwind ransomware drill', learning_objectives: 'Executives: decide on isolation under uncertainty', incident_timeline: 'D-3: phishing of a nurse', context: 'Regional hospital group.', cells: [], missing: [] };
   if (!system.includes('Scenario Builder')) return { subject: 'Generated subject', body: '<p>Generated body</p>', headline: 'Generated headline', text: 'Generated text', title: 'Generated title' };
   const payload = JSON.parse(user);
   if (payload.task.startsWith('Design a complete')) {
@@ -105,7 +107,7 @@ function answerFor(system, user) {
   assert.equal(await page.evaluate(() => appState.route), 'scenario');
   assert.equal(await page.evaluate(() => appState.scenario.client.name), 'Northwind Hospitals', 'the project is kept');
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
-  assert.ok((await page.locator('.cx-brief').innerText()).includes('Ransomware with double extortion'));
+  assert.equal(await page.inputValue('[data-cx-library]'), 'ransomware-double-extortion', 'the generic scenario is chosen in Context');
   await page.click('[data-cx-load-basic]');
   assert.equal(await page.evaluate(() => appState.route), 'storyline');
   assert.equal(await page.evaluate(() => sbStoryboard().tracks.length), 1);
@@ -113,14 +115,17 @@ function answerFor(system, user) {
   await page.keyboard.press('Control+z');
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 0);
 
-  // Context tab: objectives and ideas, then Build the framing runs the builder agent (framing only), which asks first.
+  // Context tab: what you want, then AI generation reads the sources, fills the empty fields and runs the builder agent (framing only), which asks first.
   await page.click('.nav-icon-btn[data-route="scenario"]');
   await page.fill('[data-sb-meta="brief"]', 'Three-hour hospital ransomware exercise for the executive cell');
   await page.dispatchEvent('[data-sb-meta="brief"]', 'change');
   await page.selectOption('[data-cx-mode]', 'auto');
   assert.ok(await page.isDisabled('[data-bf-action="validate"]'), 'nothing to validate before the framing');
-  await page.click('[data-bf-action="framing"]');
+  // Without the library scenario, the agent builds from the notes alone.
+  await page.selectOption('[data-cx-library]', '');
+  await page.click('[data-cx-generate]');
   await page.waitForSelector('.agent-panel .agent-question');
+  assert.deepEqual(await page.evaluate(() => [appState.scenario.name, appState.scenario.scenario.learning_objectives, appState.scenario.scenario.attack_path]), ['Ransomware with double extortion', 'Executives: decide on isolation under uncertainty', 'D-3: phishing of a nurse'], 'the empty fields are filled first; the name already set stays');
   assert.equal(await page.evaluate(() => crisisAgentRunner.scope), 'framing');
   await page.fill('#agent-answer', 'The executive committee; the isolation decision.');
   await page.click('.agent-panel [data-agent-action="answer"]');
@@ -136,6 +141,19 @@ function answerFor(system, user) {
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 3);
   assert.ok(await page.evaluate(() => crisisAgentRunner.answers.some((entry) => entry.answers?.includes('executive committee'))));
   assert.equal(await page.evaluate(() => sbMainBlocks(sbStoryboard())[1].beats[0].cell_id), await page.evaluate(() => appState.scenario.cells[1].id));
+  // Update: an amended field is listed, then carried into the exercise by the agent.
+  assert.ok(await page.isVisible('.cx-update-row:not(.has-changes)'), 'up to date after the generation');
+  await page.fill('[data-bind="client.name"]', 'Northwind Health');
+  await page.dispatchEvent('[data-bind="client.name"]', 'change');
+  await page.waitForSelector('.cx-update-row.has-changes');
+  assert.ok((await page.locator('.cx-update-row').innerText()).includes('Client'));
+  await page.click('[data-cx-update]');
+  await page.waitForSelector('.cx-update .agent-panel .agent-question');
+  assert.ok((await page.evaluate(() => crisisAgentRunner.objective)).includes('Client: "Northwind Hospitals" → "Northwind Health"'));
+  await page.fill('#agent-answer', 'Keep the phases.');
+  await page.click('.agent-panel [data-agent-action="answer"]');
+  await page.waitForFunction(() => crisisAgentRunner.status === 'complete' && !ContextGeneration.stage);
+  await page.waitForSelector('.cx-update-row:not(.has-changes)');
   await page.click('.nav-icon-btn[data-route="storyline"]');
 
   // 2. Main storyline: single line, phase editor at the bottom.

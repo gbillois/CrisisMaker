@@ -6,6 +6,32 @@ cells and their learning objectives, and the attack path. Injects (stimuli) serv
 the phases: each belongs to a phase, is addressed to a cell and is written from the
 scenario. The exercise is then played phase by phase and debriefed.
 
+## Context tab: generate the exercise from what you have
+
+The Context tab starts with **Scenario generation**:
+
+1. **Existing exercise, proposal or exercise brief**: a deck (.pptx), a Word document (.docx),
+   a chronogram (.xlsx, .xls) or plain text (.txt, .md). A deck is read slide by slide in the
+   presentation order: titles, bullets with their levels, tables (merged cells repeated down, so
+   a phase spanning several rows stays on each), grouped shapes in reading order, charts, SmartArt,
+   picture descriptions, speaker notes and hidden slides. A Word or text document is split into
+   sections at its headings. Each slide or section is tagged with what it is about (context,
+   objectives, players and cells, phases, incident timeline, chronogram and injects, facilitation,
+   rules, debrief, proposal). Chronogram tables continued over several slides are joined, and
+   injects written one per slide ("From:", "To:", "Channel:", a time) become rows, so Check &
+   Challenge can audit them.
+2. **Generic scenario**: a library scenario the AI adapts to the client, or loads as it is.
+3. **What you want in this exercise**: your own notes; they win over the file.
+
+**AI generation** reads these sources, fills the empty Context fields (name, client, sector,
+duration, simulated start, cells and their players, learning objectives, incident timeline,
+context), then the builder agent builds the framing. The agent can read the whole file with its
+`getReferenceFile` tool. Without AI, **Fill the fields from the file** copies the sections found
+into the empty fields.
+
+Amend any field afterwards, then select **Update** under the fields: the agent carries the changes
+into the phases, cells and cast, and the injects follow in cascade.
+
 ## Azure OpenAI
 
 Use the endpoint, API key, and deployment name from the same Azure resource.

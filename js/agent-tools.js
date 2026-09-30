@@ -94,8 +94,28 @@ function agentExerciseFrame() {
     incident_timeline_in_play: String(project.scenario.attack_path || '').split(/\n+/).map(line => line.trim()).filter(Boolean)
       .map(line => ({ minute: sbTextClockMinute(line, project.scenario.start_date, storyboard?.duration_minutes), text: agentExcerpt(line, 300) }))
       .filter(item => item.minute !== null).map(item => ({ exercise_minute: item.minute, time: sbFormatOffset(item.minute), text: item.text })),
-    library_scenario: storyboard?.meta?.template_id && storyboard.meta.template_id !== 'agent' ? storyboard.meta.template_id : null
+    library_scenario: storyboard?.meta?.template_id && storyboard.meta.template_id !== 'agent' ? storyboard.meta.template_id : null,
+    reference_file: agentReferenceFileSummary()
   };
+}
+/* The file loaded in the Context tab (a deck, a proposal, a brief or a chronogram), in short:
+   getReferenceFile reads it in full. */
+function agentReferenceFileSummary() {
+  const cs = typeof appState !== 'undefined' ? appState.checkerState : null;
+  const pd = cs?.parsedData;
+  if (!pd) return null;
+  return { name: cs.file?.name || 'file', kind: pd.doc?.kind || 'spreadsheet', units: pd.doc ? `${pd.doc.slides.length} ${pd.analysis.unit.toLowerCase()}s` : `${pd.rows.length} rows`, sections_found: pd.analysis?.sections || undefined, injects: pd.analysis ? pd.analysis.chronogramRows : pd.rows.length, note: 'Read it with getReferenceFile before building.' };
+}
+function agentReferenceFile({ part = 'outline', offset = 0 } = {}) {
+  const cs = appState.checkerState || {};
+  const pd = cs.parsedData;
+  if (!pd) return { loaded: false, note: 'No file is loaded in the Context tab.' };
+  const text = part === 'injects' || !pd.doc
+    ? String(checkerSerializeChronogram({ withDocument: false })?.serialized || '')
+    : CrisisDocReader.outline(pd.doc, pd.analysis, { limit: 400000 });
+  const page = 12000;
+  const start = Math.min(Math.max(0, offset || 0), text.length);
+  return { loaded: true, ...agentReferenceFileSummary(), note: undefined, part, total: text.length, offset: start, nextOffset: start + page < text.length ? start + page : null, text: agentRedact(text.slice(start, start + page)) };
 }
 const AgentContext = {
   build() {
@@ -289,6 +309,7 @@ function createAgentToolRegistry() {
   }, 'write');
   // ── Exercise frame, storyline, cells, cast and per-cell inject plan ──────────
   add('getExerciseFrame', 'Read the exercise frame set in the Context tab: play duration, simulated start/end dates, timezone, languages, number of cells and players, and the designer context (objectives and ideas).', {}, [], agentExerciseFrame);
+  add('getReferenceFile', 'Read the file the designer loaded in the Context tab: an exercise deck, a proposal, an exercise brief or a chronogram. part "outline" (default) gives everything it says, slide by slide or section by section, each tagged with what it is about (context, objectives, players, phases, incident, chronogram, facilitation, rules, debrief): titles, bullets, tables, charts, SmartArt and speaker notes. part "injects" gives its chronogram as rows. Pages of 12000 characters: pass nextOffset as offset to read on.', { part: { ...S.text(), enum: ['outline', 'injects'] }, offset: { type: 'integer', minimum: 0, maximum: 1000000 } }, [], agentReferenceFile);
   add('setExerciseFrame', 'Patch the exercise frame. duration_minutes is the real play time; start_date/end_date are the simulated in-story clock (ISO local date-time). learning_objectives is one free text on what the players must practise (it may name cells); attack_path is the incident timeline: what really happened, in order, from the attack to its detection and the response.', {
     duration_minutes: { type: 'integer', minimum: 30, maximum: SB_MAX_DURATION }, start_date: S.text(30), end_date: S.text(30), timezone: { ...S.text(), enum: TIMEZONES }, players_count: { type: 'integer', minimum: 0, maximum: 10000 }, cells_count: { type: 'integer', minimum: 0, maximum: 30 }, learning_objectives: S.text(6000), attack_path: S.text(6000)
   }, [], args => {

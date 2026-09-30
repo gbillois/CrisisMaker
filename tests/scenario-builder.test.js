@@ -592,8 +592,9 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   const h = harness();
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
   const context = h.run('renderScenarioView()');
-  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-cx-sector', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-bf-action="framing"', 'Build my exercise', 'data-bf-action="validate"', 'data-bf-action="stimuli"']) assert.ok(context.includes(marker), marker);
-  assert.ok(context.indexOf('data-sc-players') < context.indexOf('data-sb-meta="brief"'), 'context, then objectives and AI');
+  for (const marker of ['data-sc-duration', 'data-sc-cells', 'data-sc-players', 'data-bind="client.name"', 'data-cx-sector', 'data-cx-logo', 'data-bind="scenario.start_date"', 'data-bind="scenario.end_date"', 'data-bind="scenario.timezone"', 'data-bind="client.language"', 'data-bind="settings.inject_language"', 'data-sb-meta="brief"', 'data-cx-generate', 'data-cx-library', 'data-cx-update', 'Build my exercise', 'data-bf-action="validate"', 'data-bf-action="stimuli"']) assert.ok(context.includes(marker), marker);
+  // Generation first (sources, notes, AI generation), then the fields it fills, then Update.
+  assert.ok(context.indexOf('data-sb-meta="brief"') < context.indexOf('data-cx-generate') && context.indexOf('data-cx-generate') < context.indexOf('data-sc-players') && context.indexOf('data-sc-players') < context.indexOf('scenario.learning_objectives') && context.indexOf('scenario.attack_path') < context.indexOf('data-cx-update'), 'generation, then the context it fills, then Update');
   assert.ok(context.includes('data-bind="name"') && !context.includes('cx-details') && !context.includes('data-sb-meta="synopsis"'), 'the exercise name in the Context card; no "Scenario details" block');
   assert.ok(!context.includes('skeleton.brief') && !context.includes('llm-block-scenario'), 'the old AI blocks are gone');
   assert.ok(!context.includes('sb-template-card'), 'the library moved to the Project tab');
@@ -618,7 +619,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   assert.ok(preview.includes('data-sb-action="select-template"') && !preview.includes('Use this scenario'), 'library offers Load');
   h.run(`sbUI().modal = null; sbStoryboard().meta.library_id = 'ransomware-double-extortion'`);
   const loaded = h.run('renderScenarioView()');
-  assert.ok(loaded.includes('Scenario generation') && loaded.includes('Library scenario loaded') && /data-cx-load-basic\s(?!disabled)/.test(loaded), 'Context offers the loaded library scenario');
+  assert.ok(loaded.includes('Scenario generation') && /<option value="ransomware-double-extortion" selected>/.test(loaded) && /data-cx-load-basic\s(?!disabled)/.test(loaded), 'Context offers the loaded library scenario');
   h.run(`sbStoryboard().meta.library_id = ''`);
   assert.ok(/data-cx-load-basic disabled/.test(h.run('renderScenarioView()')), 'greyed without a library scenario');
   h.run(`sbUI().modal = null; appState.scenario.cells[0].players.push(sbNormalizePlayer({ name: 'Ann Lee', role: 'CEO' }))`);
@@ -836,7 +837,7 @@ test('check & challenge: one readiness verdict, the checker merged into Summary,
 
   // Context hosts the exercise file loader.
   let context = h.run('renderScenarioView()');
-  assert.ok(context.includes('Existing crisis exercise file') && context.includes('checker-dropzone is-compact'));
+  assert.ok(context.includes('Existing exercise, proposal or exercise brief') && context.includes('checker-dropzone is-compact') && context.includes('accept=".xlsx,.xls,.pptx,.docx,.txt,.md"'));
   h.run(`Object.assign(appState.checkerState, { file: { name: 'old-drill.xlsx' }, parsedData: { headers: ['Time', 'Sender', 'Content'], rows: [['09:00', 'CERT', 'Ransom note found on <b>file server</b>']] }, sheets: [], columnMapping: checkerAutoDetectColumns(['Time', 'Sender', 'Content']) })`);
   context = h.run('renderScenarioView()');
   assert.ok(context.includes('old-drill.xlsx') && context.includes('data-action="cc-challenge-file"') && context.includes('Preview and column mapping'));

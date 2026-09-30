@@ -42,18 +42,24 @@
 
       // ─── File parsing ─────────────────────────────────────────────────────────────
 
+      // Files the Context tab and Check & Challenge accept: a chronogram (.xlsx, .xls), a deck
+      // (.pptx), a proposal or an exercise brief (.docx, .txt, .md).
+      const CHECKER_FILE_TYPES = /\.(xlsx?|pptx|docx|txt|md|markdown)$/;
+      const CHECKER_FILE_ACCEPT = '.xlsx,.xls,.pptx,.docx,.txt,.md';
+      const checkerUnsupportedMessage = () => tt(
+        'Unsupported file format. Please upload .pptx, .docx, .xlsx, .xls, .txt or .md (save an older .ppt or .doc in the current format first).',
+        'Format de fichier non supporté. Importez un fichier .pptx, .docx, .xlsx, .xls, .txt ou .md (enregistrez d’abord un ancien .ppt ou .doc au format actuel).',
+        'Nicht unterstütztes Dateiformat. Bitte laden Sie eine .pptx-, .docx-, .xlsx-, .xls-, .txt- oder .md-Datei hoch (ältere .ppt- oder .doc-Dateien zuerst im aktuellen Format speichern).'
+      );
+
       async function checkerParseFile(file) {
         const name = file.name.toLowerCase();
         if (/\.xlsx?$/.test(name)) {
           return await checkerParseExcel(file);
-        } else if (/\.pptx$/.test(name)) {
-          return await checkerParsePptx(file);
+        } else if (CHECKER_FILE_TYPES.test(name)) {
+          return await checkerParseDocument(file);
         }
-        throw new Error(tt(
-          'Unsupported file format. Please upload .xlsx, .xls, or .pptx',
-          'Format de fichier non supporté. Veuillez importer un fichier .xlsx, .xls ou .pptx',
-          'Nicht unterstütztes Dateiformat. Bitte laden Sie eine .xlsx-, .xls- oder .pptx-Datei hoch'
-        ));
+        throw new Error(checkerUnsupportedMessage());
       }
 
       async function checkerParseExcel(file) {
@@ -97,89 +103,32 @@
         return { headers, rows };
       }
 
-      async function checkerParsePptx(file) {
-        const arrayBuffer = await file.arrayBuffer();
-        const zip = await JSZip.loadAsync(arrayBuffer);
-
-        // Find slide XML files
-        const slideFiles = [];
-        zip.forEach((path, entry) => {
-          if (/^ppt\/slides\/slide\d+\.xml$/i.test(path)) {
-            slideFiles.push({ path, entry });
-          }
-        });
-
-        // Sort slides by number
-        slideFiles.sort((a, b) => {
-          const numA = parseInt(a.path.match(/slide(\d+)/)[1]);
-          const numB = parseInt(b.path.match(/slide(\d+)/)[1]);
-          return numA - numB;
-        });
-
-        const allTextRows = [];
-        for (const { entry } of slideFiles) {
-          const xml = await entry.async('string');
-          const slideTexts = checkerExtractPptxText(xml);
-          if (slideTexts.length) {
-            allTextRows.push(slideTexts);
-          }
-        }
-
-        // Try to reconstruct a tabular structure from slide texts
-        // Each slide becomes one or more rows; each text element becomes a cell
-        if (!allTextRows.length) {
+      /* A deck, a proposal or a brief: read as slides or sections (CrisisDocReader), then
+         shown as tables Check & Challenge can map (the chronogram tables of the deck, its
+         injects written one per slide, and every slide). The document itself is kept: the
+         Context generation, the agent and the challenge read all of it, not only the tables. */
+      async function checkerParseDocument(file) {
+        const doc = await CrisisDocReader.read(file, file.name);
+        const analysis = CrisisDocReader.analyze(doc, CHECKER_COLUMN_PATTERNS);
+        if (!analysis.textLength) {
           throw new Error(tt(
-            'Could not parse the file. Please check the file format and content.',
-            'Impossible de lire le fichier. Vérifiez le format et le contenu.',
-            'Die Datei konnte nicht gelesen werden. Bitte überprüfen Sie Format und Inhalt.'
+            'No text found in this file: its slides may be pictures only.',
+            'Aucun texte trouvé dans ce fichier : ses slides ne contiennent peut-être que des images.',
+            'Kein Text in dieser Datei gefunden: Die Folien enthalten vielleicht nur Bilder.'
           ));
         }
-
-        // Find the max number of columns across all slides
-        const maxCols = Math.max(...allTextRows.map(r => r.length));
-
-        // Use first slide texts as potential headers if they look like headers
-        const firstSlide = allTextRows[0];
-        const headers = firstSlide.length >= 3
-          ? firstSlide.map(h => String(h).trim())
-          : Array.from({ length: maxCols }, (_, i) => `${tt('Column', 'Colonne', 'Spalte')} ${String.fromCharCode(65 + i)}`);
-
-        const rows = (firstSlide.length >= 3 ? allTextRows.slice(1) : allTextRows)
-          .map(r => {
-            // Pad short rows
-            while (r.length < maxCols) r.push('');
-            return r;
-          });
-
+        const view = analysis.views[analysis.defaultView];
         return {
-          sheets: [tt('All slides', 'Toutes les slides', 'Alle Folien')],
-          selectedSheet: tt('All slides', 'Toutes les slides', 'Alle Folien'),
-          headers,
-          rows,
+          sheets: Object.keys(analysis.views),
+          selectedSheet: analysis.defaultView,
+          headers: view.headers,
+          rows: view.rows,
           workbook: null,
-          isPptx: true
+          views: analysis.views,
+          doc,
+          analysis,
+          isPptx: doc.kind === 'pptx'
         };
-      }
-
-      function checkerExtractPptxText(xmlString) {
-        // Extract text from PowerPoint XML slide
-        // Text is in <a:t> tags, grouped by <a:p> (paragraphs) within <p:sp> (shapes)
-        const texts = [];
-        const shapeRegex = /<p:sp\b[^>]*>[\s\S]*?<\/p:sp>/g;
-        let shapeMatch;
-        while ((shapeMatch = shapeRegex.exec(xmlString)) !== null) {
-          const shape = shapeMatch[0];
-          // Extract all text runs in this shape
-          const textParts = [];
-          const tRegex = /<a:t>([^<]*)<\/a:t>/g;
-          let tMatch;
-          while ((tMatch = tRegex.exec(shape)) !== null) {
-            textParts.push(tMatch[1]);
-          }
-          const combined = textParts.join(' ').trim();
-          if (combined) texts.push(combined);
-        }
-        return texts;
       }
 
       // ─── Column auto-detection ────────────────────────────────────────────────────
@@ -280,10 +229,10 @@ Response format (strict JSON):
               <div class="checker-dropzone-icon">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="12" y2="12"></line><line x1="15" y1="15" x2="12" y2="12"></line></svg>
               </div>
-              <p class="checker-dropzone-title">${tt('Drop your chronogram file here', 'Déposez votre fichier chronogramme ici', 'Chronogramm-Datei hier ablegen')}</p>
+              <p class="checker-dropzone-title">${options.title || tt('Drop your chronogram file here', 'Déposez votre fichier chronogramme ici', 'Chronogramm-Datei hier ablegen')}</p>
               <p class="checker-dropzone-sub">${tt('or click to browse', 'ou cliquez pour parcourir', 'oder klicken zum Durchsuchen')}</p>
-              <p class="checker-dropzone-formats">${tt('Supported: .xlsx, .xls, .pptx', 'Formats acceptés : .xlsx, .xls, .pptx', 'Unterstützt: .xlsx, .xls, .pptx')}</p>
-              <input type="file" id="checker-file-input" accept=".xlsx,.xls,.pptx" style="display:none;">
+              <p class="checker-dropzone-formats">${options.formats || tt('Supported: .pptx, .docx, .xlsx, .xls, .txt, .md', 'Formats acceptés : .pptx, .docx, .xlsx, .xls, .txt, .md', 'Unterstützt: .pptx, .docx, .xlsx, .xls, .txt, .md')}</p>
+              <input type="file" id="checker-file-input" accept="${CHECKER_FILE_ACCEPT}" style="display:none;">
             </div>
             ${appState.checkerState._fileError ? `<p class="checker-error-msg">${escapeHtml(appState.checkerState._fileError)}</p>` : ''}`;
         return options.inner ? zone : `<article class="card">${zone}</article>`;
@@ -294,21 +243,33 @@ Response format (strict JSON):
       function renderCheckerImported(options = {}) {
         const cs = appState.checkerState;
         const pd = cs.parsedData;
-        // Inside the Context tab: a compact file line, the details folded underneath.
-        if (options.inner) return `
+        // Inside the Context tab: a compact file line, what was found, the details folded underneath.
+        if (options.inner) {
+          const doc = pd.doc;
+          const analysis = pd.analysis;
+          const unitLabel = doc?.unit === 'slide' ? tt('slides', 'slides', 'Folien') : tt('sections', 'sections', 'Abschnitte');
+          const size = doc
+            ? `${doc.slides.length} ${unitLabel}${analysis.chronogramRows ? ` · ${analysis.chronogramRows} ${tt('injects', 'injects', 'Injects')}` : ''}`
+            : `${pd.rows.length} ${tt('rows', 'lignes', 'Zeilen')}`;
+          const order = ['context', 'objectives', 'players', 'phases', 'incident', 'chronogram', 'facilitation', 'rules', 'debrief', 'proposal'];
+          const found = analysis ? order.filter((key) => analysis.sections[key]?.length) : [];
+          const challenge = !doc || analysis.chronogramRows;
+          return `
           <div class="cx-file-loaded">
-            <span class="cx-file-name">${sbUiIcon('sheet', 16)} <strong>${escapeHtml(cs.file.name)}</strong> <span class="subtle">${pd.rows.length} ${tt('rows', 'lignes', 'Zeilen')}${cs.columnMappingLoading ? ` · ${tt('mapping the columns…', 'association des colonnes…', 'Spalten werden zugeordnet…')}` : ''}</span></span>
+            <span class="cx-file-name">${sbUiIcon(doc ? 'book' : 'sheet', 16)} <strong>${escapeHtml(cs.file.name)}</strong> <span class="subtle">${escapeHtml(size)}${cs.columnMappingLoading ? ` · ${tt('mapping the columns…', 'association des colonnes…', 'Spalten werden zugeordnet…')}` : ''}</span></span>
             <span class="cx-file-actions">
-              <button class="btn btn-primary btn-sm" data-action="cc-challenge-file">${sbUiIcon('checkCircle', 14)} ${tt('Challenge it', 'Le challenger', 'Hinterfragen')}</button>
+              ${challenge ? `<button class="btn btn-secondary btn-sm" data-action="cc-challenge-file" title="${escapeAttribute(tt('Audit the chronogram of this file as it is in Check & Challenge', 'Auditer le chronogramme de ce fichier tel quel dans Check & Challenge', 'Das Chronogramm dieser Datei unverändert in Check & Challenge prüfen'))}">${sbUiIcon('checkCircle', 14)} ${tt('Challenge it', 'Le challenger', 'Hinterfragen')}</button>` : ''}
               <button class="btn btn-secondary btn-sm" data-action="checker-clear-file">${sbUiIcon('close', 14)} ${tt('Remove', 'Retirer', 'Entfernen')}</button>
             </span>
           </div>
+          ${found.length ? `<div class="cx-file-found"><span class="subtle">${escapeHtml(tt('Found:', 'Trouvé :', 'Gefunden:'))}</span>${found.map((key) => `<span class="cx-file-chip" title="${escapeAttribute(`${doc.unit === 'slide' ? tt('Slides', 'Slides', 'Folien') : tt('Sections', 'Sections', 'Abschnitte')} ${analysis.sections[key].join(', ')}`)}">${escapeHtml(tt(...CrisisDocReader.sectionLabel(key)))} <b>${analysis.sections[key].length}</b></span>`).join('')}</div>` : ''}
           <details class="cx-file-details">
-            <summary>${tt('Preview and column mapping', 'Aperçu et correspondance des colonnes', 'Vorschau und Spaltenzuordnung')} ${sbUiIcon('down', 14)}</summary>
+            <summary>${doc ? tt('Preview, injects and column mapping', 'Aperçu, injects et correspondance des colonnes', 'Vorschau, Injects und Spaltenzuordnung') : tt('Preview and column mapping', 'Aperçu et correspondance des colonnes', 'Vorschau und Spaltenzuordnung')} ${sbUiIcon('down', 14)}</summary>
             ${renderCheckerSheetSelector()}
             ${renderCheckerPreviewTable()}
             ${renderCheckerColumnMapping()}
           </details>`;
+        }
         return `
           <article class="card">
             <div class="section-header" style="margin-bottom:16px;">
@@ -472,12 +433,8 @@ Response format (strict JSON):
 
       async function checkerHandleFile(file) {
         const name = file.name.toLowerCase();
-        if (!/\.(xlsx?|pptx)$/.test(name)) {
-          appState.checkerState._fileError = tt(
-            'Unsupported file format. Please upload .xlsx, .xls, or .pptx',
-            'Format de fichier non supporté. Veuillez importer un fichier .xlsx, .xls ou .pptx',
-            'Nicht unterstütztes Dateiformat. Bitte laden Sie eine .xlsx-, .xls- oder .pptx-Datei hoch'
-          );
+        if (!CHECKER_FILE_TYPES.test(name)) {
+          appState.checkerState._fileError = checkerUnsupportedMessage();
           App.render();
           return;
         }
@@ -487,7 +444,7 @@ Response format (strict JSON):
           const result = await checkerParseFile(file);
 
           appState.checkerState.file = { name: file.name, size: file.size, type: file.type };
-          appState.checkerState.parsedData = { headers: result.headers, rows: result.rows, workbook: result.workbook, isPptx: !!result.isPptx };
+          appState.checkerState.parsedData = { headers: result.headers, rows: result.rows, workbook: result.workbook, views: result.views || null, doc: result.doc || null, analysis: result.analysis || null, isPptx: !!result.isPptx };
           appState.checkerState.sheets = result.sheets;
           appState.checkerState.selectedSheet = result.selectedSheet;
           appState.checkerState.columnMapping = checkerAutoDetectColumns(result.headers);
@@ -495,7 +452,7 @@ Response format (strict JSON):
           appState.checkerState.analysisResult = null;
           appState.checkerState.analysisError = null;
 
-          if (isLLMAvailable()) {
+          if (isLLMAvailable() && checkerNeedsAIMapping(result.selectedSheet)) {
             appState.checkerState.columnMappingLoading = true;
             App.render();
             pushToast(tt(`File loaded: ${file.name}`, `Fichier chargé : ${file.name}`, `Datei geladen: ${file.name}`), 'success');
@@ -522,10 +479,17 @@ Response format (strict JSON):
         }
       }
 
+      /* A spreadsheet or a chronogram table of a deck has headers of its own: the AI maps them.
+         The views built from slides or sections have known headers. */
+      function checkerNeedsAIMapping(sheetName) {
+        const views = appState.checkerState.parsedData?.views;
+        return !views || /^Chronogram/.test(sheetName);
+      }
+
       function checkerSwitchSheet(sheetName) {
         const cs = appState.checkerState;
-        if (!cs.parsedData || !cs.parsedData.workbook) return;
-        const sheetData = checkerReadSheet(cs.parsedData.workbook, sheetName);
+        if (!cs.parsedData || !(cs.parsedData.workbook || cs.parsedData.views?.[sheetName])) return;
+        const sheetData = cs.parsedData.views ? cs.parsedData.views[sheetName] : checkerReadSheet(cs.parsedData.workbook, sheetName);
         cs.selectedSheet = sheetName;
         cs.parsedData.headers = sheetData.headers;
         cs.parsedData.rows = sheetData.rows;
@@ -534,7 +498,7 @@ Response format (strict JSON):
         cs.analysisResult = null;
         cs.analysisError = null;
 
-        if (isLLMAvailable()) {
+        if (isLLMAvailable() && checkerNeedsAIMapping(sheetName)) {
           cs.columnMappingLoading = true;
           App.render();
           checkerAutoDetectColumnsLLM(sheetData.headers, sheetData.rows)
@@ -710,7 +674,7 @@ ${lines.join('\n')}`;
         return { serialized, detectedCols, missingCols, truncated: false };
       }
 
-      function checkerSerializeChronogram() {
+      function checkerSerializeChronogram(options = {}) {
         const cs = appState.checkerState;
         const pd = cs.parsedData;
         const mapping = cs.columnMapping;
@@ -742,12 +706,20 @@ ${lines.join('\n')}`;
           lines.push(`${i + 1} | ${cells.join(' | ')}`);
         }
 
-        const serialized = `CHRONOGRAM DATA
+        const table = `CHRONOGRAM DATA${pd.doc ? ` (view "${cs.selectedSheet}" of the document)` : ''}
 Total lines: ${pd.rows.length}${pd.rows.length > MAX_ROWS ? ` (the first ${MAX_ROWS} are listed below)` : ''}
 Columns detected: ${detectedCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none'}
 Columns missing: ${missingCols.map(k => CHECKER_COLUMN_LABELS[k]()).join(', ') || 'none'}
 
 ${lines.join('\n')}`;
+        // A deck or a brief also says what the exercise is for: its context, objectives,
+        // players and phases come first, so the challenge judges the injects against them.
+        const serialized = pd.doc && options.withDocument !== false
+          ? `EXERCISE DOCUMENT (everything it says, slide by slide: use its context, objectives, players, phases and incident timeline to judge the chronogram; lines below are cited by their LINE number, the ${pd.analysis.unit} column gives where they are in the document)
+${CrisisDocReader.outline(pd.doc, pd.analysis, { limit: options.documentLimit || 14000, skipChronogramTables: /^Chronogram/.test(cs.selectedSheet) })}
+
+${table}`
+          : table;
 
         return { serialized, detectedCols, missingCols, truncated };
       }
