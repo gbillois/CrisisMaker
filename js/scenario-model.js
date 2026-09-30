@@ -435,6 +435,26 @@ function sbBlockEnd(block) {
 function sbStoryboardEnd(storyboard) {
   return storyboard.blocks.reduce((max, block) => Math.max(max, sbBlockEnd(block)), 0);
 }
+/* Injects wanted in a phase when nobody set it: about one per cell every 20 minutes. */
+function sbDefaultInjectTarget(block, project) {
+  const cells = Math.max(1, (project.cells || []).length);
+  return Math.min(SB_MAX_BEATS, Math.max(Math.min(cells, 4), Math.round(block.duration_minutes * cells / 20)));
+}
+/* The default target, raised to the injects the source file lists, shared over the phases. */
+function sbWantedInjects(block, project) {
+  const analysis = typeof appState !== 'undefined' ? appState.checkerState?.parsedData?.analysis : null;
+  const listed = analysis ? (analysis.chronogramRows || 0) + (analysis.listedStimuli || 0) : 0;
+  const perPhase = listed ? Math.ceil(listed / Math.max(1, sbMainBlocks(project.storyboard).length)) : 0;
+  return Math.min(SB_MAX_BEATS, Math.max(sbDefaultInjectTarget(block, project), perPhase));
+}
+/* The main-storyline phases with no inject wanted nor planned get the default target, so
+   planning has something to plan. Returns the phases changed. */
+function sbFillInjectTargets(project, blocks = sbMainBlocks(project.storyboard)) {
+  const empty = blocks.filter((block) => !block.locked && !block.beats.length && !(block.stimuli_target > 0) && sbMainBlocks(project.storyboard).includes(block));
+  empty.forEach((block) => { block.stimuli_target = sbWantedInjects(block, project); });
+  return empty;
+}
+
 /* Fits every phase to a new exercise duration, keeping their order and proportions: starts,
    lengths (5 minutes at least), planned injects and main events scale with them, and the main
    storyline ends at the new duration. false when the phases cannot fit (5 minutes each). */

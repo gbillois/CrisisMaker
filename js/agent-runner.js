@@ -13,7 +13,8 @@ const AgentLog = {
 function agentFramingGaps(project) {
   const gaps = [];
   const main = sbMainBlocks(project.storyboard);
-  if (!main.length) return ['no phase in the main storyline (buildMainStoryline or setPhases)'];
+  const cellsOnly = typeof BuildFlow !== 'undefined' && BuildFlow.only?.phases === false;
+  if (!main.length && !cellsOnly) return ['no phase in the main storyline (buildMainStoryline or setPhases)'];
   const fromSource = typeof bfSourceDefinesPhases === 'function' && bfSourceDefinesPhases();
   const empty = main.filter(block => !(block.events || []).length && !(fromSource && block.beats.length));
   if (empty.length) gaps.push(`no main events in ${empty.map(block => `"${block.title}" (${block.id})`).join(', ')} (setMainEvents)`);
@@ -21,6 +22,10 @@ function agentFramingGaps(project) {
   if (!fromSource && !sbEndsWithClosing(project.storyboard)) gaps.push('the last phase is not a closing phase');
   if (!project.cells.some(cell => cell.players.length)) gaps.push('no player in the cells (upsertCells)');
   if (!project.storyboard.cast.length) gaps.push('no cast role (upsertCast)');
+  // A framing asked for the cells only, or the phases only, is checked on that part only.
+  const only = typeof BuildFlow !== 'undefined' ? BuildFlow.only : null;
+  if (only?.cells === false) return gaps.filter(gap => !/cells|cast/.test(gap));
+  if (only?.phases === false) return gaps.filter(gap => /cells|cast/.test(gap));
   return gaps;
 }
 

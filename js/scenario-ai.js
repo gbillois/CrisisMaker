@@ -61,6 +61,10 @@ function sbAIContext(project, options = {}) {
       inject_language: sbLanguageName(project)
     }
   };
+  // The file the designer loaded in the Context (an exercise deck, a proposal, a brief): the
+  // injects it lists are planned first, in their phase.
+  const source = typeof cgSourceText === 'function' ? cgSourceText(options.sourceLimit || 6000) : '';
+  if (source) context.source_document = source;
   if (options.storyboard !== false) {
     context.storyboard = {
       duration_minutes: storyboard.duration_minutes,
@@ -308,6 +312,8 @@ const SbAI = {
           'want=narrative: return narrative only. want=beats: return beats only. want=narrative_and_beats: return both.',
           'beats: exactly `injects` NEW beats minus existing_beats (existing beats are kept unchanged). Space them realistically, vary channels, escalate, and make each one force a reaction or decision.',
           'Nudges: every player cell receives at least one nudge ("nudge": true) over the exercise, counted within `injects`: a planned inject that relaunches or redirects players who stall or go off track (a follow-up from the CEO asking for a decision, a journalist calling back, a regulator deadline reminder). Plan one in these phases for each cell that has no [nudge] yet in context.storyboard, preferably where that cell must decide.',
+          'When context.source_document lists injects or stimuli for a phase (a "Stimuli" row, a chronogram), plan those first in that phase, as they are written, then complete up to `injects`.',
+          'Beats are stimuli: small, simple messages that animate the exercise (an email, a call, a log extract, a post), each with one purpose. They never restate a key event of the phase (key_events): they announce it, react to it or bring its consequences to a cell.',
           'Only add cast entries for roles that do not exist yet.'
         ]
       };

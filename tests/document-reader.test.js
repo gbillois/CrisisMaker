@@ -375,6 +375,7 @@ test('pptx drawn with free shapes: running header dropped, titles found, a table
   assert.deepEqual(analysis.sections.phases, [3]);
   assert.deepEqual(analysis.sections.chronogram, [3], 'the Stimuli row');
   assert.deepEqual(analysis.sections.incident, [4], 'the "Chemin d’attaque" subheading');
+  assert.equal(analysis.listedStimuli, 6, 'the lines of the Stimuli row');
   assert.equal(h.run('CrisisDocReader.findDuration(doc).minutes'), 45);
 });
 
@@ -386,7 +387,7 @@ test('framing from a source with its own phases and stimuli: exactly its phases,
   assert.ok(objective.includes('The source file defines the phases: build exactly those'));
   assert.ok(objective.includes('plan now (planPhaseInjects), in their phase, only the stimuli the source file lists'));
   assert.ok(!objective.includes('Do NOT plan or write injects'));
-  assert.ok(h.run('AgentPrompts.builder').includes('never as main events'));
+  assert.ok(h.run('AgentPrompts.builder').includes('never as a main event'));
   // Three phases from the source, the last one not a closing phase, each with its planned injects: complete.
   h.run(`sbApplyTemplate(sbBuiltinTemplates()[0], 'replace');
     const blocks = sbMainBlocks(appState.scenario.storyboard);
@@ -399,4 +400,38 @@ test('framing from a source with its own phases and stimuli: exactly its phases,
   h.run('checkerClearFile()');
   assert.ok(h.json('agentFramingGaps(appState.scenario)').some(g => /closing/.test(g)));
   assert.ok(h.run('bfFramingObjective(appState.scenario)').includes('Do NOT plan or write injects'));
+});
+
+test('injects per phase: set in the phase editor; a phase left at 0 gets a target, raised to what the source lists', async () => {
+  const h = harness();
+  h.run(`sbApplyTemplate(sbBuiltinTemplates()[0], 'replace');`);
+  const editor = h.run('renderPhaseEditor(appState.scenario.storyboard, sbMainBlocks(appState.scenario.storyboard)[0])');
+  assert.ok(/data-sb-field="stimuli_target" value="\d+"/.test(editor) && editor.includes('planned'), 'the number of injects is editable in the phase editor');
+  // Three phases without any inject wanted nor planned (a framing).
+  h.run(`const blocks = sbMainBlocks(appState.scenario.storyboard).slice(0, 3); appState.scenario.storyboard.blocks = blocks.map((b, i) => ({ ...b, start_minutes: i * 15, duration_minutes: 15, beats: [], stimuli_target: 0 })); appState.scenario.storyboard.duration_minutes = 45;`);
+  assert.equal(h.run('sbFillInjectTargets(appState.scenario).length'), 3);
+  const cells = h.run('appState.scenario.cells.length');
+  assert.deepEqual(h.json('sbMainBlocks(appState.scenario.storyboard).map(b => b.stimuli_target)'), Array(3).fill(Math.max(Math.min(Math.max(1, cells), 4), Math.round(15 * Math.max(1, cells) / 20))));
+  // A source listing 6 stimuli over 3 phases: at least 2 each (here with one cell).
+  h.context.file = load(h, 'tests/fixtures/exercise-shapes.pptx');
+  await h.run('checkerHandleFile(file)');
+  h.run(`appState.scenario.cells = [sbMakeCell('decision')]; sbMainBlocks(appState.scenario.storyboard).forEach(b => { b.stimuli_target = 0; }); sbFillInjectTargets(appState.scenario)`);
+  assert.deepEqual(h.json('sbMainBlocks(appState.scenario.storyboard).map(b => b.stimuli_target)'), [2, 2, 2]);
+  // A target set by the designer stays.
+  h.run(`sbMainBlocks(appState.scenario.storyboard)[0].stimuli_target = 7; sbFillInjectTargets(appState.scenario)`);
+  assert.equal(h.run('sbMainBlocks(appState.scenario.storyboard)[0].stimuli_target'), 7);
+});
+
+test('creation report: what really exists, item by item, only for what was ticked', () => {
+  const h = harness();
+  let report = h.json(`cgCreationReport(appState.scenario, { cells: true, phases: true, stimuli: true, evaluation: true })`);
+  assert.deepEqual(report.map(i => [i.key, i.ok]), [['cells', false], ['phases', false], ['stimuli', false], ['evaluation', false]]);
+  h.run(`sbApplyTemplate(sbBuiltinTemplates()[0], 'replace'); appState.scenario.cells = [sbMakeCell('decision')]; appState.scenario.cells[0].players.push(sbNormalizePlayer({ role: 'CEO' }));`);
+  report = h.json(`cgCreationReport(appState.scenario, { cells: true, phases: true })`);
+  assert.deepEqual(report.map(i => [i.key, i.ok]), [['cells', true], ['phases', true]]);
+  assert.ok(/1 cell\(s\), 1 player\(s\), \d+ role\(s\)/.test(report[0].detail));
+  // The five boxes, ticked by default, above the AI generation button.
+  const view = h.run('renderScenarioView()');
+  assert.equal((view.match(/data-cx-create="[a-z]+" checked/g) || []).length, 5);
+  assert.ok(view.indexOf('data-cx-create="evaluation"') < view.indexOf('data-cx-generate'));
 });

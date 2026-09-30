@@ -557,6 +557,9 @@ const SbPipeline = {
     StoryboardHistory.ensure(project);
     StoryboardHistory.flush();
     const storyboard = project.storyboard;
+    // A phase with no inject wanted nor planned (a framing, a storyline drawn by hand) gets the
+    // default target: otherwise Plan has nothing to do.
+    if (plan && !beatIds && !cellIds && sbFillInjectTargets(project, blockIds ? blockIds.map((id) => sbBlock(storyboard, id)).filter(Boolean) : undefined).length) StoryboardHistory.commit('Set inject targets');
     const blocks = (blockIds ? blockIds.map((id) => sbBlock(storyboard, id)).filter(Boolean) : sbSortedBlocks(storyboard)).filter((block) => block.stimuli_target > 0 || block.beats.length);
     if (!blocks.length) throw new AgentValidationError('Nothing to generate: set a number of injects on at least one block.');
     const aiAvailable = isLLMAvailable();

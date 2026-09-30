@@ -4267,6 +4267,18 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .cx-duration-conflict span { color: var(--muted); font-size: 0.82rem; }
 .cx-duration-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 768px) { .cx-duration-conflict { grid-template-columns: 18px minmax(0, 1fr); } .cx-duration-actions { grid-column: 1 / -1; } }
+/* What the AI generation creates, and the report of what was created. */
+.cx-create { margin: 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface-alt); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.cx-create legend { padding: 0 4px; font-size: 0.8rem; font-weight: 700; color: var(--primary-strong); }
+.cx-create-item { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); background: #fff; font-size: 0.85rem; cursor: pointer; }
+.cx-create-item.is-on { border-color: var(--indigo); background: var(--indigo-tint); }
+.cx-create-item input { margin: 0; }
+.cx-report { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid #b9ecd0; border-left: 3px solid var(--green); background: #f1fdf6; }
+.cx-report.has-failed { border-color: #f1d58a; border-left-color: #d99a00; background: #fff8e6; }
+.cx-report ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.cx-report li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 0.86rem; }
+.cx-report li.is-ok > svg { color: var(--green); }
+.cx-report li.is-ko > svg { color: var(--danger); }
 .cx-open-points { display: grid; gap: 10px; padding: 14px 16px; background: #fff8e6; border: 1px solid #f1d58a; border-left: 3px solid #d99a00; }
 .cx-open-head { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; }
 .cx-open-head > svg { margin-top: 2px; color: #b07d00; }

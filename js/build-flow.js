@@ -44,13 +44,15 @@ function bfValidateFraming(project = appState.scenario) {
   return true;
 }
 
-function bfFramingObjective(project, { adapted = false } = {}) {
+function bfFramingObjective(project, { adapted = false, only = null } = {}) {
   return [
+    only && only.phases === false ? 'THIS RUN BUILDS ONLY the player cells with their players, and the cast roles with their actors (upsertCells, upsertCast). Do not change the scenario, the phases or their main events.' : '',
+    only && only.cells === false ? 'THIS RUN BUILDS ONLY the scenario and its phases with their main events. Do not change the player cells, their players or the cast.' : '',
     'STAGE 1 OF 2, FRAMING ONLY. The designer reviews and validates the framing with the client before any inject is planned.',
     adapted ? 'The library scenario is already adapted to the client (phases, roles and planned injects): keep its phases and planned injects, correct only what contradicts the context, and spend your steps on what is missing: main events, cells and players, actors for the roles.' : '',
     'Build: scenario name, type and summary; objectives; synopsis and threat; the phases of the main storyline, ending with a closing phase (recovery, return to normal, end of exercise) unless the context says otherwise; the main events of each phase with the main consequences the players must manage; the player cells and their players; the cast roles with their actors.',
     bfSourceListsStimuli()
-      ? 'Injects: plan now (planPhaseInjects), in their phase, only the stimuli the source file lists (one planned inject each, not written); do not invent others and do not write any (no createStimulus): stage 2 completes the plan of each cell and writes the injects once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects.'
+      ? 'Injects: plan now (planPhaseInjects), in their phase, only the stimuli the source file lists (one planned inject each, not written); do not invent others and do not write any (no createStimulus): stage 2 completes the plan of each cell and writes the injects once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects. Keep the main events (setMainEvents) for the few pieces of information or actions that structure each phase (a sequence summary or presentation), never for the listed stimuli.'
       : 'Do NOT plan or write injects for the cells (no planPhaseInjects, no addPlannedInjects, no createStimulus): stage 2 plans and writes them once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects.',
     bfSourceDefinesPhases() ? 'The source file defines the phases: build exactly those, in its order, and no other (no added closing phase unless the file has one).' : '',
     contextAgentObjective(project)
@@ -75,9 +77,11 @@ const BuildFlow = {
   },
 
   /* Stage 1: the builder agent sets the framing, then the Main storyline opens for review. */
-  async framing({ openStoryline = true } = {}) {
+  async framing({ openStoryline = true, only = null } = {}) {
     const project = appState.scenario;
     if (this.busy()) return false;
+    // What this framing builds: the cells and cast, the phases, or both (default).
+    this.only = only;
     const template = contextLibraryTemplate(project);
     let adapted = false;
     if (template && project.storyboard.meta.template_id !== template.id) {
@@ -109,9 +113,10 @@ const BuildFlow = {
     saveLocal(false);
     this.stage = 'framing';
     try {
-      await startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', objective: bfFramingObjective(project, { adapted }), origin: 'context', scope: 'framing' });
+      await startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', objective: bfFramingObjective(project, { adapted, only }), origin: 'context', scope: 'framing' });
     } finally {
       this.stage = '';
+      this.only = null;
     }
     const done = appState.scenario === project && getCrisisAgent().status === 'complete' && sbMainBlocks(project.storyboard).length > 0;
     if (done && openStoryline) {
@@ -123,7 +128,7 @@ const BuildFlow = {
   },
 
   /* Stage 2: every cell's injects are planned and written under the framing, then challenged. */
-  async stimuli({ confirmUnvalidated = true } = {}) {
+  async stimuli({ confirmUnvalidated = true, challenge = true } = {}) {
     const project = appState.scenario;
     if (this.busy()) return false;
     if (!sbMainBlocks(project.storyboard).length) {
@@ -133,12 +138,7 @@ const BuildFlow = {
     if (confirmUnvalidated && !bfFramingValidation(project) && !window.confirm(tt('The framing is not validated yet. Build the stimuli of every cell anyway?', 'Le cadrage n’est pas encore validé. Construire quand même les stimuli de chaque cellule ?', 'Der Rahmen ist noch nicht freigegeben. Trotzdem die Stimuli aller Zellen erstellen?'))) return false;
     // A framing plans no inject: each phase gets a target from its length and the cells
     // (about one inject per cell every 20 minutes), unless the designer set one.
-    const cells = Math.max(1, project.cells.length);
-    const empty = sbMainBlocks(project.storyboard).filter((block) => !block.locked && !block.beats.length && !(block.stimuli_target > 0));
-    if (empty.length) {
-      empty.forEach((block) => { block.stimuli_target = Math.min(40, Math.max(Math.min(cells, 4), Math.round(block.duration_minutes * cells / 20))); });
-      StoryboardHistory.commit('Set inject targets');
-    }
+    if (sbFillInjectTargets(project).length) StoryboardHistory.commit('Set inject targets');
     this.stage = 'stimuli';
     appState.route = 'detailed';
     App.render();
@@ -149,13 +149,15 @@ const BuildFlow = {
       pushToast(sbErrorMessage(error), 'error');
     }
     if (appState.scenario !== project || SbPipeline.status !== 'complete') { this.stage = ''; App.render(); return false; }
-    pushToast(tt(`${result?.created || 0} inject(s) created, ${result?.written || 0} written. Challenging the exercise…`, `${result?.created || 0} inject(s) créé(s), ${result?.written || 0} rédigé(s). Challenge de l’exercice…`, `${result?.created || 0} Inject(s) erstellt, ${result?.written || 0} geschrieben. Die Übung wird geprüft…`), 'success');
+    pushToast(challenge
+      ? tt(`${result?.created || 0} inject(s) created, ${result?.written || 0} written. Challenging the exercise…`, `${result?.created || 0} inject(s) créé(s), ${result?.written || 0} rédigé(s). Challenge de l’exercice…`, `${result?.created || 0} Inject(s) erstellt, ${result?.written || 0} geschrieben. Die Übung wird geprüft…`)
+      : tt(`${result?.created || 0} inject(s) created, ${result?.written || 0} written.`, `${result?.created || 0} inject(s) créé(s), ${result?.written || 0} rédigé(s).`, `${result?.created || 0} Inject(s) erstellt, ${result?.written || 0} geschrieben.`), 'success');
     this.stage = 'challenge';
     appState.route = 'summary';
     appState.checkerState.mode = 'scenario';
     App.render();
     try {
-      if (isLLMAvailable()) await ccChallenge();
+      if (challenge && isLLMAvailable()) await ccChallenge();
     } finally {
       this.stage = '';
       App.render();

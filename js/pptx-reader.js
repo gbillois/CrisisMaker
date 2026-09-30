@@ -657,6 +657,10 @@ const CrisisDocReader = (() => {
       unit, sections, views, defaultView,
       slideSections: Object.fromEntries(slides.map(({ slide, section }) => [slide.number, section])),
       chronogramRows: chronograms.reduce((sum, view) => sum + view.rows.length, 0) + injectSlides.length,
+      // Injects the document lists outside a chronogram: the lines of a "Stimuli" row of a table.
+      listedStimuli: doc.slides.reduce((sum, slide) => sum + slide.blocks.filter((block) => block.kind === 'table').reduce((count, block) => count + block.rows
+        .filter((row) => /^(stimul|inject|einspiel|messages?\b)/i.test(String(row[0] || '').trim()))
+        .reduce((lines, row) => lines + row.slice(1).reduce((n, cell) => n + String(cell || '').split('\n').filter((line) => line.trim()).length, 0), 0), 0), 0),
       textLength: doc.slides.reduce((sum, slide) => sum + slideText(slide).length + slide.notes.length + slide.title.length, 0)
     };
   }

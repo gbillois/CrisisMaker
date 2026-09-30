@@ -107,6 +107,44 @@ function cgMinutes(value) {
   return sbParseDuration(text) ?? CrisisDocReader.durationIn(text);
 }
 
+/* What the AI generation creates, as the designer ticks it. [key, label] */
+const CG_CREATE = [
+  ['context', ['The context', 'Le contexte', 'Den Kontext']],
+  ['cells', ['Cells and actors', 'Les cellules et les acteurs', 'Zellen und Akteure']],
+  ['phases', ['Phases and key points', 'Les phases et les points clés', 'Phasen und Kernpunkte']],
+  ['stimuli', ['Stimuli (injects)', 'Les stimuli (injects)', 'Stimuli (Injects)']],
+  ['evaluation', ['Evaluation sheets', 'Les grilles d’évaluation', 'Bewertungsbögen']]
+];
+function cgCreateOptions() {
+  const state = tabUI('context');
+  state.create = { ...Object.fromEntries(CG_CREATE.map(([key]) => [key, true])), ...(state.create || {}) };
+  return state.create;
+}
+
+/* What really exists after a creation, item by item: { key, label, ok, detail }. */
+function cgCreationReport(project, want) {
+  const main = sbMainBlocks(project.storyboard);
+  const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
+  const items = sbExerciseItems(project);
+  const created = items.filter((item) => item.stimulus);
+  // Written: the AI wrote it (its generated text), or its content was written by hand.
+  const written = created.filter(({ stimulus }) => Object.values(stimulus.generated_text || {}).some((value) => typeof value === 'string' && value.trim())
+    || Object.entries(stimulus.fields || {}).some(([key, value]) => !SB_MEDIA_FIELD.test(key) && typeof value === 'string' && value.replace(/<[^>]+>/g, '').trim().length > 80));
+  const events = main.reduce((sum, block) => sum + (block.events || []).length, 0);
+  const sheets = project.cells.filter((cell) => evState(project).sheets[cell.id]?.adapted_at);
+  const check = {
+    context: () => {
+      const parts = [project.scenario.learning_objectives?.trim() && tt('learning objectives', 'objectifs pédagogiques', 'Lernziele'), project.scenario.attack_path?.trim() && tt('incident timeline', 'chronologie de l’incident', 'Ablauf des Vorfalls'), String(project.storyboard.meta.brief || '').trim() && tt('context', 'contexte', 'Kontext')].filter(Boolean);
+      return { ok: parts.length >= 2, detail: `${tt('Duration', 'Durée', 'Dauer')} ${sbFormatDuration(project.storyboard.duration_minutes)}${parts.length ? ` · ${parts.join(', ')}` : ''}` };
+    },
+    cells: () => ({ ok: project.cells.length > 0 && players > 0 && project.storyboard.cast.length > 0, detail: tt(`${project.cells.length} cell(s), ${players} player(s), ${project.storyboard.cast.length} role(s), ${project.actors.length} actor(s)`, `${project.cells.length} cellule(s), ${players} joueur(s), ${project.storyboard.cast.length} rôle(s), ${project.actors.length} acteur(s)`, `${project.cells.length} Zelle(n), ${players} Spieler, ${project.storyboard.cast.length} Rolle(n), ${project.actors.length} Akteur(e)`) }),
+    phases: () => ({ ok: main.length > 0 && main.every((block) => (block.events || []).length || block.beats.length), detail: tt(`${main.length} phase(s), ${events} key point(s)`, `${main.length} phase(s), ${events} point(s) clé(s)`, `${main.length} Phase(n), ${events} Kernpunkt(e)`) }),
+    stimuli: () => ({ ok: created.length > 0 && created.length === items.length && written.length === created.length, detail: tt(`${created.length} / ${items.length} planned injects created, ${written.length} written`, `${created.length} / ${items.length} injects prévus créés, ${written.length} rédigés`, `${created.length} / ${items.length} geplante Injects erstellt, ${written.length} geschrieben`) }),
+    evaluation: () => ({ ok: project.cells.length > 0 && sheets.length === project.cells.length, detail: tt(`${sheets.length} / ${project.cells.length} sheet(s) adapted to the scenario`, `${sheets.length} / ${project.cells.length} grille(s) adaptée(s) au scénario`, `${sheets.length} / ${project.cells.length} Bogen/Bögen an das Szenario angepasst`) })
+  };
+  return CG_CREATE.filter(([key]) => want[key]).map(([key, label]) => ({ key, label: tt(...label), ...check[key]() }));
+}
+
 const CG_SECTORS = ['Banking', 'Insurance', 'Energy', 'Healthcare', 'Transport', 'Industry', 'Telecom', 'Retail', 'Public sector', 'Pharmaceutical', 'Technology', 'Other'];
 
 const CG_EXTRACT_SYSTEM = `You are a senior crisis exercise designer. You read what the designer has for a new crisis exercise: their own notes, a library scenario they chose, and a source document (an existing exercise deck or chronogram, a commercial proposal or an exercise brief), then you fill the frame of the exercise.
@@ -133,7 +171,7 @@ const ContextGeneration = {
   stage: '',
 
   busy() {
-    return !!this.stage || (typeof BuildFlow !== 'undefined' && BuildFlow.busy());
+    return !!this.stage || !!this.step || (typeof BuildFlow !== 'undefined' && BuildFlow.busy());
   },
 
   /* Reads the sources with AI and fills the Context fields that are still empty. Returns the
@@ -236,7 +274,7 @@ const ContextGeneration = {
   },
 
   /* AI generation: sources → Context fields → framing (and, with all, the stimuli). */
-  async generate({ all = false } = {}) {
+  async generate({ all = false, want: asked = null } = {}) {
     const project = appState.scenario;
     if (this.busy()) return false;
     this.pending = null;
@@ -245,8 +283,16 @@ const ContextGeneration = {
       pushToast(tt('Load a file, choose a generic scenario or describe what you want first.', 'Chargez un fichier, choisissez un scénario générique ou décrivez ce que vous voulez d’abord.', 'Laden Sie zuerst eine Datei, wählen Sie ein generisches Szenario oder beschreiben Sie, was Sie wollen.'), 'info');
       return false;
     }
-    if (sbMainBlocks(project.storyboard).length && !window.confirm(tt('Generate the exercise again? The agent rebuilds the framing from the context, adapting the current phases. To carry only your changes, use Update below.', 'Générer à nouveau l’exercice ? L’agent reconstruit le cadrage à partir du contexte en adaptant les phases actuelles. Pour ne reporter que vos modifications, utilisez Mettre à jour plus bas.', 'Die Übung erneut erstellen? Der Agent baut den Rahmen aus dem Kontext neu auf und passt die aktuellen Phasen an. Um nur Ihre Änderungen zu übernehmen, nutzen Sie unten Aktualisieren.'))) return false;
+    const want = asked || (all ? Object.fromEntries(CG_CREATE.map(([key]) => [key, true])) : { ...cgCreateOptions() });
+    if (!Object.values(want).some(Boolean)) {
+      pushToast(tt('Tick at least one thing to create.', 'Cochez au moins un élément à créer.', 'Kreuzen Sie mindestens ein Element an.'), 'info');
+      return false;
+    }
+    this.want = want;
+    this.report = null;
+    if ((want.cells || want.phases) && sbMainBlocks(project.storyboard).length && !window.confirm(tt('Generate the exercise again? The agent rebuilds the framing from the context, adapting the current phases. To carry only your changes, use Update below.', 'Générer à nouveau l’exercice ? L’agent reconstruit le cadrage à partir du contexte en adaptant les phases actuelles. Pour ne reporter que vos modifications, utilisez Mettre à jour plus bas.', 'Die Übung erneut erstellen? Der Agent baut den Rahmen aus dem Kontext neu auf und passt die aktuellen Phasen an. Um nur Ihre Änderungen zu übernehmen, nutzen Sie unten Aktualisieren.'))) return false;
     tabUI('context').panel = 'generate';
+    if (!want.context) return this.create(project, { all });
     this.stage = 'reading';
     App.render();
     let read = false;
@@ -274,13 +320,90 @@ const ContextGeneration = {
     return this.create(project, { all });
   },
 
-  /* The creation itself: framing, then (all) the stimuli. */
+  /* The creation itself, in the order of the boxes ticked: cells and actors with phases and
+     key points (the builder agent), then the stimuli (plan, cast, write), then the evaluation
+     sheets. Each step is checked on what really exists; what is missing gets one targeted
+     retry; the report says what was created. */
   async create(project, { all = false } = {}) {
-    const done = await BuildFlow.framing({ openStoryline: !all });
-    if (appState.scenario !== project) return false;
-    if (done) cgRemember(project);
-    if (done && all) return BuildFlow.stimuli({ confirmUnvalidated: false });
-    return done;
+    const want = this.want || Object.fromEntries(CG_CREATE.map(([key]) => [key, true]));
+    const ai = isLLMAvailable();
+    const alive = () => appState.scenario === project;
+    try {
+      if (want.cells || want.phases) {
+        this.step = 'framing';
+        const done = await BuildFlow.framing({ openStoryline: false, only: want.cells && want.phases ? null : { cells: want.cells, phases: want.phases } });
+        if (!alive()) return false;
+        if (done) cgRemember(project);
+        const missing = cgCreationReport(project, want).filter((item) => ['cells', 'phases'].includes(item.key) && !item.ok);
+        if (missing.length && ai && getCrisisAgent().status !== 'stopped') {
+          this.step = 'repair';
+          App.render();
+          BuildFlow.only = want.cells && want.phases ? null : { cells: want.cells, phases: want.phases };
+          try {
+            await startCrisisAgent({ kind: 'builder', mode: tabUI('context').mode || 'agent', origin: 'context', scope: 'framing', objective: [
+              'VERIFICATION AFTER THE FRAMING. These parts are still missing or incomplete; build them now with the tools, keeping everything that exists:',
+              ...missing.map((item) => `- ${item.label}: ${item.detail}`),
+              'Cells and actors: every cell has its players (upsertCells) and every cast role its actor (upsertCast). Phases and key points: every phase has its main events (setMainEvents) or its planned injects.',
+              contextAgentObjective(project)
+            ].join('\n').slice(0, 7900) });
+          } finally {
+            BuildFlow.only = null;
+          }
+          if (!alive()) return false;
+          cgRemember(project);
+        }
+      }
+      if (want.stimuli && sbMainBlocks(project.storyboard).length && ai) {
+        this.step = 'stimuli';
+        App.render();
+        await BuildFlow.stimuli({ confirmUnvalidated: false, challenge: false });
+        if (!alive()) return false;
+        const stimuli = cgCreationReport(project, { stimuli: true })[0];
+        if (!stimuli.ok && SbPipeline.status !== 'stopped') {
+          this.step = 'stimuli';
+          try { await SbPipeline.run({ plan: true, cast: true, write: true }); } catch (error) { pushToast(sbErrorMessage(error), 'error'); }
+        }
+      }
+      if (want.evaluation && project.cells.length && ai) {
+        this.step = 'evaluation';
+        App.render();
+        const controller = new AbortController();
+        EvAI.controller = controller;
+        for (let pass = 0; pass < 2; pass++) {
+          const todo = project.cells.filter((cell) => !evState(project).sheets[cell.id]?.adapted_at);
+          for (const cell of todo) {
+            if (controller.signal.aborted || !alive()) break;
+            EvAI.progress = tt(`Evaluation sheet: ${cell.name}…`, `Grille d’évaluation : ${cell.name}…`, `Bewertungsbogen: ${cell.name}…`);
+            App.render();
+            try { await EvAI.updateCell(project, cell, controller.signal); saveLocal(false); } catch (error) { if (error?.name === 'AbortError') break; }
+          }
+        }
+        EvAI.progress = '';
+        EvAI.controller = null;
+      }
+    } finally {
+      this.step = '';
+    }
+    if (!alive()) return false;
+    this.report = cgCreationReport(project, want);
+    const failed = this.report.filter((item) => !item.ok);
+    // A framing alone opens the Main storyline for the client review; a full creation comes
+    // back to the Context, on its report.
+    appState.route = !want.stimuli && !want.evaluation && sbMainBlocks(project.storyboard).length ? 'storyline' : 'scenario';
+    pushToast(failed.length
+      ? tt(`Created, except: ${failed.map((item) => item.label).join(', ')}. See the report in the Context.`, `Créé, sauf : ${failed.map((item) => item.label).join(', ')}. Voir le bilan dans le Contexte.`, `Erstellt, außer: ${failed.map((item) => item.label).join(', ')}. Siehe Bilanz im Kontext.`)
+      : tt('Everything ticked was created. See the report in the Context.', 'Tout ce qui était coché a été créé. Voir le bilan dans le Contexte.', 'Alles Angekreuzte wurde erstellt. Siehe Bilanz im Kontext.'), failed.length ? 'warning' : 'success');
+    saveLocal(false);
+    App.render();
+    return !failed.length;
+  },
+
+  /* Retry one item of the report. */
+  async retry(key) {
+    const project = appState.scenario;
+    if (this.busy() || !CG_CREATE.some(([k]) => k === key)) return false;
+    this.want = Object.fromEntries(CG_CREATE.map(([k]) => [k, k === key]));
+    return key === 'context' ? this.generate({ want: this.want }) : this.create(project);
   },
 
   /* The answers to the open points go into "What you want" (answered ones as decisions, the
@@ -375,11 +498,15 @@ function renderContextGeneration(project) {
   state.mode = state.mode || 'agent';
   const template = contextLibraryTemplate(project);
   const entries = typeof sbLibraryEntries === 'function' ? sbLibraryEntries() : [];
-  const running = ContextGeneration.stage === 'reading' || (BuildFlow.stage && state.panel !== 'update');
+  const current = ContextGeneration.step;
+  const running = ContextGeneration.stage === 'reading' || !!current || (BuildFlow.stage && state.panel !== 'update');
   const runningLabel = ContextGeneration.stage === 'reading'
     ? tt('Reading your sources…', 'Lecture de vos sources…', 'Ihre Quellen werden gelesen…')
     : BuildFlow.stage === 'adapting' ? tt('Adapting the library scenario…', 'Adaptation du scénario de bibliothèque…', 'Bibliotheksszenario wird angepasst…')
-      : tt('Building the framing…', 'Construction du cadrage…', 'Rahmen wird erstellt…');
+      : current === 'repair' ? tt('Completing what is missing…', 'Complément de ce qui manque…', 'Fehlendes wird ergänzt…')
+        : current === 'stimuli' ? tt('Creating the stimuli…', 'Création des stimuli…', 'Stimuli werden erstellt…')
+          : current === 'evaluation' ? (EvAI.progress || tt('Evaluation sheets…', 'Grilles d’évaluation…', 'Bewertungsbögen…'))
+            : tt('Building the framing…', 'Construction du cadrage…', 'Rahmen wird erstellt…');
   const step = (n, title, helper, body) => `<div class="cx-step"><span class="cx-step-num">${n}</span><div class="cx-step-body"><div class="cx-design-head"><strong>${escapeHtml(title)}</strong>${helper ? `<span class="helper">${escapeHtml(helper)}</span>` : ''}</div>${body}</div></div>`;
   const pd = appState.checkerState?.parsedData;
   const pendingHere = ContextGeneration.pending?.projectId === project.id;
@@ -401,6 +528,7 @@ function renderContextGeneration(project) {
     ${step(3, tt('What you want in this exercise', 'Ce que vous voulez dans cet exercice', 'Was Sie in dieser Übung wollen'),
       tt('Audience, what to test, constraints, twists you have in mind. It wins over the file when they differ.', 'Public, ce qu’il faut tester, contraintes, rebondissements que vous avez en tête. Il prime sur le fichier en cas de différence.', 'Publikum, was getestet werden soll, Rahmenbedingungen, geplante Wendungen. Bei Abweichungen hat es Vorrang vor der Datei.'),
       `<textarea class="cx-brief-text" data-sb-meta="brief" rows="5" placeholder="${escapeAttribute(tt('e.g. Executive crisis cell of a regional hospital group. Test the isolation decision under uncertainty, patient safety, regulatory notifications and media pressure. Players are experienced; include a twist in the second hour. Avoid naming real suppliers.', 'Ex. : cellule de crise de direction d’un groupe hospitalier régional. Tester la décision d’isolement dans l’incertitude, la sécurité des patients, les notifications réglementaires et la pression médiatique. Joueurs expérimentés ; prévoir un rebondissement dans la deuxième heure. Ne pas citer de fournisseurs réels.', 'Z. B. Krisenstab der Geschäftsleitung einer regionalen Klinikgruppe. Die Isolationsentscheidung unter Unsicherheit, die Patientensicherheit, behördliche Meldungen und den Mediendruck testen. Erfahrene Spieler; in der zweiten Stunde eine Wendung einbauen. Keine echten Lieferanten nennen.'))}">${escapeHtml(project.storyboard.meta.brief)}</textarea>`)}
+    ${renderCreateOptions(busy)}
     <div class="cx-generate">
       <label class="cx-mode">${escapeHtml(tt('AI autonomy', 'Autonomie de l’IA', 'KI-Autonomie'))}<select data-cx-mode ${busy ? 'disabled' : ''}>
         <option value="agent" ${state.mode === 'agent' ? 'selected' : ''}>${escapeHtml(tt('Ask me before big changes', 'Me demander avant les gros changements', 'Vor größeren Änderungen fragen'))}</option>
@@ -411,8 +539,29 @@ function renderContextGeneration(project) {
     </div>
     ${ai ? '' : `<p class="agent-warning">${escapeHtml(tt('Configure an AI connection in Settings to generate with AI.', 'Configurez une connexion IA dans les Paramètres pour générer avec l’IA.', 'Richten Sie in den Einstellungen eine KI-Verbindung ein, um mit KI zu generieren.'))}</p>`}
     ${renderOpenPoints(project)}
+    ${renderCreationReport(project)}
     ${state.panel !== 'update' ? renderAgentPanel({ origin: 'context' }) : ''}
   </article>`;
+}
+
+/* What the AI generation creates: one box per part of the exercise. */
+function renderCreateOptions(busy) {
+  const want = cgCreateOptions();
+  return `<fieldset class="cx-create" ${busy ? 'disabled' : ''}>
+    <legend>${escapeHtml(tt('Create', 'Créer', 'Erstellen'))}</legend>
+    ${CG_CREATE.map(([key, label], index) => `<label class="cx-create-item ${want[key] ? 'is-on' : ''}"><input type="checkbox" data-cx-create="${key}" ${want[key] ? 'checked' : ''}><span>${index + 1}. ${escapeHtml(tt(...label))}</span></label>`).join('')}
+  </fieldset>`;
+}
+
+/* After a creation: what really exists, item by item, with a retry for what is missing. */
+function renderCreationReport(project) {
+  const report = ContextGeneration.report;
+  if (!report?.length || ContextGeneration.busy()) return '';
+  const failed = report.filter((item) => !item.ok).length;
+  return `<div class="cx-report ${failed ? 'has-failed' : ''}">
+    <strong>${escapeHtml(failed ? tt(`Creation report: ${failed} part(s) incomplete`, `Bilan de la création : ${failed} élément(s) incomplet(s)`, `Bilanz der Erstellung: ${failed} Teil(e) unvollständig`) : tt('Creation report: everything was created', 'Bilan de la création : tout a été créé', 'Bilanz der Erstellung: alles wurde erstellt'))}</strong>
+    <ul>${report.map((item) => `<li class="${item.ok ? 'is-ok' : 'is-ko'}">${sbUiIcon(item.ok ? 'checkCircle' : 'xCircle', 15)}<span><b>${escapeHtml(item.label)}</b> <span class="subtle">${escapeHtml(item.detail)}</span></span>${item.ok ? '' : `<button class="btn btn-secondary btn-xs" data-cx-retry="${item.key}" ${isLLMAvailable() ? '' : 'disabled'}>${sbUiIcon('refresh', 12)} ${escapeHtml(tt('Retry', 'Réessayer', 'Erneut versuchen'))}</button>`}</li>`).join('')}</ul>
+  </div>`;
 }
 
 /* The points the sources leave open, found when they were read: one answer field under each,
@@ -593,6 +742,10 @@ if (typeof document !== 'undefined' && document.addEventListener) ['input', 'cha
 
 /* Events of the generation and update cards (the page is re-rendered, so one listener). */
 if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('click', async (event) => {
+  const box = event.target?.closest?.('[data-cx-create]');
+  if (box) { cgCreateOptions()[box.dataset.cxCreate] = box.checked; box.closest('.cx-create-item')?.classList.toggle('is-on', box.checked); return; }
+  const retry = event.target?.closest?.('[data-cx-retry]');
+  if (retry && !retry.disabled) { try { await ContextGeneration.retry(retry.dataset.cxRetry); } catch (error) { ContextGeneration.step = ''; pushToast(sbErrorMessage(error), 'error'); App.render(); } return; }
   const button = event.target?.closest?.('[data-cx-generate], [data-cx-update], [data-cx-fill-file], [data-cx-use-duration], [data-cx-open-continue], [data-cx-open-skip], [data-cx-open-cancel], [data-cx-duration-force], [data-cx-duration-cancel]');
   if (!button || button.disabled) return;
   try {

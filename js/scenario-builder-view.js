@@ -549,9 +549,10 @@ function renderSbGenerateModal(storyboard) {
   const options = ui.generate;
   const cell = options.scope === 'cell' ? sbCell(project, options.cellId) : null;
   const scope = sbSortedBlocks(storyboard);
-  const toPlan = cell ? [] : scope.filter((block) => !block.locked && block.beats.length < block.stimuli_target);
+  const wanted = (block) => block.stimuli_target > 0 || block.beats.length || !sbMainBlocks(project.storyboard).includes(block) ? block.stimuli_target : sbWantedInjects(block, project);
+  const toPlan = cell ? [] : scope.filter((block) => !block.locked && block.beats.length < wanted(block));
   const missing = scope.reduce((sum, block) => sum + block.beats.filter((beat) => !sbStimulusForBeat(project, beat.id) && (!cell || sbReaches(beat.cell_id, cell.id))).length, 0);
-  const toPlanCount = toPlan.reduce((sum, block) => sum + block.stimuli_target - block.beats.length, 0);
+  const toPlanCount = toPlan.reduce((sum, block) => sum + wanted(block) - block.beats.length, 0);
   const castMissing = storyboard.cast.filter((cast) => !sbFindActorForCast(project, cast)).length;
   const running = SbPipeline.active;
   const ai = isLLMAvailable();

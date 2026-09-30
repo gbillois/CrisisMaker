@@ -121,15 +121,27 @@ function answerFor(system, user) {
   await page.dispatchEvent('[data-sb-meta="brief"]', 'change');
   await page.selectOption('[data-cx-mode]', 'auto');
   assert.ok(await page.isDisabled('[data-bf-action="validate"]'), 'nothing to validate before the framing');
-  // Without the library scenario, the agent builds from the notes alone.
+  // Without the library scenario, the agent builds from the notes alone; the framing only (the
+  // stimuli and the evaluation sheets come after the client review).
   await page.selectOption('[data-cx-library]', '');
+  await page.uncheck('[data-cx-create="stimuli"]');
+  await page.uncheck('[data-cx-create="evaluation"]');
   await page.click('[data-cx-generate]');
   await page.waitForSelector('.agent-panel .agent-question');
   assert.deepEqual(await page.evaluate(() => [appState.scenario.name, appState.scenario.scenario.learning_objectives, appState.scenario.scenario.attack_path]), ['Ransomware with double extortion', 'Executives: decide on isolation under uncertainty', 'D-3: phishing of a nurse'], 'the empty fields are filled first; the name already set stays');
   assert.equal(await page.evaluate(() => crisisAgentRunner.scope), 'framing');
   await page.fill('#agent-answer', 'The executive committee; the isolation decision.');
   await page.click('.agent-panel [data-agent-action="answer"]');
-  await page.waitForFunction(() => crisisAgentRunner.status === 'complete');
+  // The framing is checked: phases left without key points get a second, targeted agent run
+  // (the mock agent asks again first).
+  await page.waitForFunction(() => crisisAgentRunner.status === 'complete' || (crisisAgentRunner.status === 'question' && ContextGeneration.step === 'repair'));
+  assert.ok(await page.evaluate(() => crisisAgentRunner.answers.some((entry) => entry.answers?.includes('executive committee')) || ContextGeneration.step === 'repair'), 'the first run got the answer');
+  if (await page.evaluate(() => ContextGeneration.step === 'repair')) {
+    assert.ok((await page.evaluate(() => crisisAgentRunner.objective)).startsWith('VERIFICATION AFTER THE FRAMING'));
+    await page.fill('#agent-answer', 'Add the key points.');
+    await page.click('.agent-panel [data-agent-action="answer"]');
+  }
+  await page.waitForFunction(() => crisisAgentRunner.status === 'complete' && !ContextGeneration.busy());
   // The framing done, the Main storyline opens for the client review, with the validation at hand.
   await page.waitForFunction(() => appState.route === 'storyline');
   assert.ok(await page.isVisible('.bf-bar [data-bf-action="validate"]'));
@@ -139,7 +151,6 @@ function answerFor(system, user) {
   await page.click('.nav-icon-btn[data-route="scenario"]');
   assert.ok(await page.isVisible('.agent-panel.is-complete'));
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 3);
-  assert.ok(await page.evaluate(() => crisisAgentRunner.answers.some((entry) => entry.answers?.includes('executive committee'))));
   assert.equal(await page.evaluate(() => sbMainBlocks(sbStoryboard())[1].beats[0].cell_id), await page.evaluate(() => appState.scenario.cells[1].id));
   // Update: an amended field is listed, then carried into the exercise by the agent.
   assert.ok(await page.isVisible('.cx-update-row:not(.has-changes)'), 'up to date after the generation');
