@@ -717,9 +717,9 @@
           library: tt('Start a new project from this library scenario?', 'Démarrer un nouveau projet à partir de ce scénario de la bibliothèque ?', 'Neues Projekt aus diesem Bibliotheksszenario starten?')
         }[kind];
         const detail = tt(
-          `The current project "${name}" is replaced, including its copy saved in this browser: unsaved work is lost. To keep it, cancel and export it first (Export text content).`,
-          `Le projet actuel « ${name} » est remplacé, y compris sa copie enregistrée dans ce navigateur : le travail non exporté est perdu. Pour le garder, annulez et exportez-le d’abord (Exporter le contenu texte).`,
-          `Das aktuelle Projekt „${name}“ wird ersetzt, auch seine in diesem Browser gespeicherte Kopie: nicht exportierte Arbeit geht verloren. Um es zu behalten, abbrechen und zuerst exportieren (Textinhalt exportieren).`
+          `The current project "${name}" is replaced, including its copy saved in this browser: unsaved work is lost. To keep it, cancel and save it first (File > Save to CrisisMaker JSON).`,
+          `Le projet actuel « ${name} » est remplacé, y compris sa copie enregistrée dans ce navigateur : le travail non enregistré est perdu. Pour le garder, annulez et enregistrez-le d’abord (Fichier > Enregistrer en JSON CrisisMaker).`,
+          `Das aktuelle Projekt „${name}“ wird ersetzt, auch seine in diesem Browser gespeicherte Kopie: nicht gespeicherte Arbeit geht verloren. Um es zu behalten, abbrechen und zuerst speichern (Datei > Als CrisisMaker-JSON speichern).`
         );
         if (ask && !window.confirm(`${intro}\n\n${detail}`)) return false;
         try {

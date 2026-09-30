@@ -174,8 +174,9 @@
                   <span class="brand-product">Crisis<b>Maker</b></span>
                 </a>
                 <div class="brand-project-wrap">
-                  <button type="button" class="brand-project ${appState.route === 'project' ? 'is-active' : ''}" data-action="toggle-project-menu" aria-haspopup="menu" aria-expanded="${appState.projectMenuOpen ? 'true' : 'false'}" title="${escapeAttribute(tt('Project: open, save, export, library', 'Projet : ouvrir, sauvegarder, exporter, bibliothèque', 'Projekt: öffnen, speichern, exportieren, Bibliothek'))}">
-                    <span class="brand-project-label">${svgFolder()} ${tt('Project', 'Projet', 'Projekt')}</span>
+                  <button type="button" class="brand-project ${appState.route === 'project' ? 'is-active' : ''}" data-action="toggle-project-menu" aria-haspopup="menu" aria-expanded="${appState.projectMenuOpen ? 'true' : 'false'}" title="${escapeAttribute(tt('File menu: new, open, save, download, library', 'Menu Fichier : nouveau, ouvrir, enregistrer, télécharger, bibliothèque', 'Menü Datei: neu, öffnen, speichern, herunterladen, Bibliothek'))}">
+                    <span class="brand-project-icon" aria-hidden="true">${sbUiIcon('fileText', 18)}</span>
+                    <span class="brand-project-label">${tt('File', 'Fichier', 'Datei')}</span>
                     <span class="nav-project-name">${escapeHtml(appState.scenario.name || tt('CrisisMaker project', 'Projet CrisisMaker', 'CrisisMaker-Projekt'))}</span>
                     <span class="brand-project-caret" aria-hidden="true">${sbUiIcon('down', 14)}</span>
                   </button>
@@ -303,7 +304,7 @@
         const exporting = !!appState.ui?.actionLoading?.['export-all'];
         const item = (attrs, icon, label, hint = '') => `<button type="button" class="project-menu-item" role="menuitem" ${attrs}>${sbUiIcon(icon, 16)}<span><strong>${escapeHtml(label)}</strong>${hint ? `<small>${escapeHtml(hint)}</small>` : ''}</span></button>`;
         const excel = isLLMAvailable() ? 'data-action="import-chronogram-ia"' : `data-action="import-chronogram-ia" disabled title="${escapeAttribute(tt('Configure an AI connection in Settings to import an Excel timeline', 'Configurez une connexion IA dans les Paramètres pour importer une chronologie Excel', 'Konfigurieren Sie eine KI-Verbindung in den Einstellungen, um einen Excel-Zeitplan zu importieren'))}"`;
-        return `<div class="project-menu" role="menu" aria-label="${escapeAttribute(tt('Project', 'Projet', 'Projekt'))}">
+        return `<div class="project-menu" role="menu" aria-label="${escapeAttribute(tt('File', 'Fichier', 'Datei'))}">
           ${item('data-route="project"', 'layers', tt('Project overview', 'Vue d’ensemble du projet', 'Projektübersicht'), tt('Summary, data and scenario library', 'Synthèse, données et bibliothèque de scénarios', 'Übersicht, Daten und Szenario-Bibliothek'))}
           <div class="project-menu-sep"></div>
           ${item('data-action="new-scenario"', 'filePlus', tt('New', 'Nouveau', 'Neu'), tt('Blank project', 'Projet vierge', 'Leeres Projekt'))}
@@ -312,8 +313,8 @@
           ${item(excel, 'sheet', tt('Import Excel', 'Importer Excel', 'Excel importieren'), tt('AI-assisted timeline import', 'Import de chronologie assisté par IA', 'KI-gestützter Zeitplan-Import'))}
           ${item('data-action="load-example"', 'demo', tt('Load a demo', 'Charger une démo', 'Demo laden'), tt('StonaWave ransomware', 'Rançongiciel StonaWave', 'StonaWave-Ransomware'))}
           <div class="project-menu-sep"></div>
-          ${item('data-action="save-json"', 'braces', tt('Export text content', 'Exporter le contenu texte', 'Textinhalt exportieren'), 'JSON')}
-          ${item(`data-action="export-all" ${exporting ? 'disabled' : ''}`, exporting ? 'clock' : 'archive', tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Styled images · .zip', 'Images stylées · .zip', 'Gestaltete Bilder · .zip'))}
+          ${item('data-action="save-json"', 'braces', tt('Save to CrisisMaker JSON', 'Enregistrer en JSON CrisisMaker', 'Als CrisisMaker-JSON speichern'), tt('Project file to reopen later · .json', 'Fichier projet à rouvrir plus tard · .json', 'Projektdatei zum späteren Öffnen · .json'))}
+          ${item(`data-action="export-all" ${exporting ? 'disabled' : ''}`, exporting ? 'clock' : 'archive', tt('Download all injects (zip file)', 'Télécharger tous les injects (fichier zip)', 'Alle Injects herunterladen (ZIP-Datei)'), tt('One image per inject, ready to send', 'Une image par inject, prête à envoyer', 'Ein Bild pro Inject, versandfertig'))}
         </div>`;
       }
 
@@ -613,8 +614,8 @@
               <span class="pj-row-label">${tt('Save & export', 'Sauvegarder & exporter', 'Speichern & exportieren')}</span>
               <div class="pj-actions">
                 ${button('save-local', 'save', tt('Save locally', 'Sauvegarder localement', 'Lokal speichern'), tt('Browser storage', 'Stockage du navigateur', 'Browser-Speicher'))}
-                ${button('save-json', 'braces', tt('Export text content', 'Exporter le contenu texte', 'Textinhalt exportieren'), 'JSON')}
-                ${button('export-all', exporting ? 'clock' : 'archive', exportAllProgressLabel(tt('Export all injects', 'Exporter tous les injects', 'Alle Injects exportieren'), tt('Exporting…', 'Export en cours…', 'Wird exportiert…')), tt('Styled images · .zip', 'Images stylées · .zip', 'Gestaltete Bilder · .zip'), exporting ? 'disabled' : '')}
+                ${button('save-json', 'braces', tt('Save to CrisisMaker JSON', 'Enregistrer en JSON CrisisMaker', 'Als CrisisMaker-JSON speichern'), tt('Project file to reopen later · .json', 'Fichier projet à rouvrir plus tard · .json', 'Projektdatei zum späteren Öffnen · .json'))}
+                ${button('export-all', exporting ? 'clock' : 'archive', exportAllProgressLabel(tt('Download all injects (zip file)', 'Télécharger tous les injects (fichier zip)', 'Alle Injects herunterladen (ZIP-Datei)'), tt('Preparing the zip file…', 'Préparation du fichier zip…', 'ZIP-Datei wird vorbereitet…')), tt('One image per inject, ready to send', 'Une image par inject, prête à envoyer', 'Ein Bild pro Inject, versandfertig'), exporting ? 'disabled' : '')}
               </div>
             </div>
           </article>`;

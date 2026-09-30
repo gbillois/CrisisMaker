@@ -94,27 +94,44 @@
       display: flex;
     }
     /* The project name opens the Project menu (files, library, overview). */
+    /* A File menu button: document icon, "File" over the project name, and a caret, always framed so
+       it reads as a menu. */
     .brand-project {
       min-width: 0;
       max-width: 100%;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      column-gap: 8px;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      column-gap: 9px;
       row-gap: 1px;
       align-items: center;
       text-align: left;
-      padding: 5px 10px;
-      margin-left: -10px;
-      border: 1px solid transparent;
-      background: transparent;
+      padding: 4px 8px 4px 5px;
+      margin-left: -6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface, #fff);
       color: inherit;
       font: inherit;
       cursor: pointer;
     }
-    .brand-project:hover, .brand-project[aria-expanded="true"] { border-color: var(--line); background: var(--surface-alt, #f3f1fa); }
+    .brand-project:hover, .brand-project[aria-expanded="true"] { border-color: var(--indigo); background: var(--surface-alt, #f3f1fa); }
     .brand-project:focus-visible { outline: 2px solid var(--indigo); outline-offset: 1px; }
     .brand-project.is-active .brand-project-label { color: var(--indigo); }
-    .brand-project-caret { grid-row: 1 / span 2; grid-column: 2; display: flex; color: var(--muted); }
+    .brand-project-icon {
+      grid-row: 1 / span 2;
+      grid-column: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: var(--indigo);
+      color: #fff;
+    }
+    .brand-project-label { grid-column: 2; }
+    .brand-project .nav-project-name { grid-column: 2; }
+    .brand-project-caret { grid-row: 1 / span 2; grid-column: 3; display: flex; color: var(--indigo); }
     .brand-project-label {
       display: flex;
       align-items: center;
@@ -125,7 +142,6 @@
       text-transform: uppercase;
       color: var(--muted);
     }
-    .brand-project-label svg { width: 12px; height: 12px; }
     .project-menu {
       position: absolute;
       top: calc(100% + 6px);
@@ -1868,10 +1884,9 @@
       .brand-bar { height: 48px; padding: 0 12px; gap: 10px; }
       .wavestone-logo { width: 108px; }
       .brand-project-wrap { flex: none; padding-left: 8px; }
-      .brand-project { margin-left: 0; padding: 6px; }
-      .brand-project .nav-project-name, .brand-project-caret { display: none; }
-      .brand-project-label { font-size: 0; letter-spacing: 0; }
-      .brand-project-label svg { width: 20px; height: 20px; }
+      .brand-project { margin-left: 0; padding: 4px; column-gap: 0; }
+      .brand-project .nav-project-name, .brand-project-label { display: none; }
+      .brand-project-caret { margin-left: 2px; }
       .project-menu { position: fixed; top: 52px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 64px); overflow-y: auto; }
       .brand-lockup { flex: 1; min-width: 0; }
       .brand-product { font-size: 0.66rem; }
