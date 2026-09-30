@@ -1049,6 +1049,7 @@
           restoreApiKeysFromStorage(appState.scenario.settings);
           appState.selectedStimulusId = appState.scenario.stimuli[0]?.id || null;
           if (appState.checkerState) Object.assign(appState.checkerState, { analysisResult: null, analysisError: null, challengeRestoredFor: null });
+          if (typeof checkerRestoreSource === 'function') checkerRestoreSource(appState.scenario);
           // Restore LLM prompt texts from saved data
           appState.llmState = makeDefaultLLMState();
           restoreLLMPrompts(data.llm_prompts);

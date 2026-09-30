@@ -331,7 +331,7 @@
           if (channel === 'breaking_news_tv') fields.time = clock(minute);
           Object.assign(fields, content);
           stimulus.name = title;
-          stimulus.status = minute <= 60 ? 'validated' : 'draft';
+          stimulus.status = minute <= 60 ? 'ready' : 'draft';
           stimulus.cell_id = cellIdsFor(cells);
           stimulus._demo = { title, intent, nudge: nudge === true };
           return stimulus;

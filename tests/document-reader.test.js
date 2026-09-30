@@ -495,3 +495,32 @@ test('live stimuli demo mode: its own clock at ×50, from the first stimulus to 
   const view = h.run('renderPlayView()');
   assert.ok(view.includes('data-play-demo checked') && view.includes('×50') && !/play-live[\s\S]*data-play-set="sent"[\s\S]*<\/aside>/.test(view.slice(view.indexOf('class="play-live"'))), 'no Mark as sent in demo mode');
 });
+
+test('source file: kept with the project JSON, restored on reload, never carried to another project', async () => {
+  const h = harness();
+  const file = load(h, 'tests/fixtures/exercise-deck.pptx');
+  h.context.file = file;
+  await h.run('checkerHandleFile(file)');
+  const before = h.run('cgSourceText()');
+  assert.ok(before.length > 200);
+  assert.equal(h.run('appState.scenario.source_file.name'), 'exercise-deck.pptx');
+  assert.equal(h.run('appState.scenario.source_file.data.workbook'), undefined, 'the spreadsheet object is not saved');
+  // Saved as a file, the page reloaded (no file in memory), then the JSON opened again.
+  const saved = h.run('JSON.stringify(buildProjectFileData({ forFile: true }))');
+  h.run('checkerClearFile({ keepProject: true })');
+  assert.equal(h.run('cgSourceText()'), '');
+  h.context.saved = saved;
+  h.run('applyLoadedScenario(JSON.parse(saved))');
+  assert.equal(h.run('appState.checkerState.file.name'), 'exercise-deck.pptx');
+  assert.equal(h.run('cgSourceText()'), before, 'the AI reads the same source after reload');
+  assert.ok(h.json('agentReferenceFile({})').loaded);
+  // The browser autosave restores it too.
+  h.run('checkerClearFile({ keepProject: true }); appState.scenario = mergeScenario(migrateScenario(JSON.parse(JSON.stringify(buildProjectFileData())))); checkerRestoreSource()');
+  assert.equal(h.run('cgSourceText()'), before);
+  // Another project (new, demo, library) does not inherit it.
+  h.run('startProject(emptyScenario({}))');
+  assert.equal(h.run('appState.checkerState.parsedData'), null);
+  // Removing the file removes it from the project.
+  h.run('applyLoadedScenario(JSON.parse(saved)); checkerClearFile()');
+  assert.equal(h.run('appState.scenario.source_file'), null);
+});

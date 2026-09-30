@@ -451,6 +451,7 @@ Response format (strict JSON):
           appState.checkerState.columnMappingLoading = false;
           appState.checkerState.analysisResult = null;
           appState.checkerState.analysisError = null;
+          checkerRememberSource();
 
           if (isLLMAvailable() && checkerNeedsAIMapping(result.selectedSheet)) {
             appState.checkerState.columnMappingLoading = true;
@@ -459,6 +460,7 @@ Response format (strict JSON):
             try {
               const llmMapping = await checkerAutoDetectColumnsLLM(result.headers, result.rows);
               appState.checkerState.columnMapping = llmMapping;
+              checkerRememberSource();
             } catch (_llmErr) {
               // Keep regex fallback silently
             }
@@ -513,9 +515,40 @@ Response format (strict JSON):
         }
       }
 
+      /* The file loaded in the Context (deck, proposal, brief or chronogram) is kept with the
+         project, as read (text, tables, analysis), so a reload or a saved JSON still has it for
+         Update, the AI and Check & Challenge. The spreadsheet object itself is not kept: after a
+         reload, the sheet read stays, other sheets need the file again. */
+      const CHECKER_SOURCE_MAX = 3000000;
+      function checkerRememberSource(project = appState.scenario) {
+        const cs = appState.checkerState;
+        if (!project || !cs?.parsedData) return;
+        const { workbook: _workbook, ...data } = cs.parsedData;
+        let source = { name: cs.file?.name || 'file', size: cs.file?.size || 0, type: cs.file?.type || '', loaded_at: new Date().toISOString(), sheets: cs.sheets || [], selectedSheet: cs.selectedSheet || '', columnMapping: cs.columnMapping || {}, data };
+        // A very large file keeps its analysis and rows, not every slide.
+        if (JSON.stringify(source).length > CHECKER_SOURCE_MAX) source = { ...source, data: { ...data, doc: null, views: null }, trimmed: true };
+        project.source_file = source;
+        if (typeof saveLocal === 'function') saveLocal(false);
+      }
+
+      /* Puts back the file saved with the project, or none: a project never sees another's file. */
+      function checkerRestoreSource(project = appState.scenario) {
+        const source = project?.source_file;
+        const current = appState.checkerState;
+        if (current?.file && source && current.file.name === source.name && current.parsedData) return;
+        if (current?.parsedData || current?.file) checkerClearFile({ keepProject: true });
+        if (!source?.data) return;
+        Object.assign(appState.checkerState, {
+          file: { name: source.name, size: source.size, type: source.type },
+          parsedData: { ...source.data, workbook: null },
+          sheets: source.sheets || [], selectedSheet: source.selectedSheet || '', columnMapping: source.columnMapping || {}
+        });
+      }
+
       /* Removes the external file only: the readiness checklist and the challenge of the
          current scenario stay. */
-      function checkerClearFile() {
+      function checkerClearFile({ keepProject = false } = {}) {
+        if (!keepProject && appState.scenario?.source_file) { appState.scenario.source_file = null; if (typeof saveLocal === 'function') saveLocal(false); }
         const cs = appState.checkerState;
         const keep = cs.mode === 'file' ? (cs.resultsByMode?.scenario || {}) : { analysisResult: cs.analysisResult, analysisError: cs.analysisError, llmLogs: cs.llmLogs, activeAxisTab: cs.activeAxisTab };
         appState.checkerState = {

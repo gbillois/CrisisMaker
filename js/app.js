@@ -44,6 +44,7 @@
 
       const App = {
         init() {
+          if (typeof checkerRestoreSource === 'function') checkerRestoreSource();
           // Restore LLM prompt texts from saved scenario data
           if (appState.scenario._llm_prompts) {
             restoreLLMPrompts(appState.scenario._llm_prompts);
@@ -750,6 +751,7 @@
         appState.checkerState.analysisResult = null;
         appState.checkerState.analysisError = null;
         appState.checkerState.challengeRestoredFor = null; // Its saved challenge shows again, even under the same id.
+        if (typeof checkerRestoreSource === 'function') checkerRestoreSource(appState.scenario);
         appState.route = 'scenario';
         appState.launchScreenOpen = false;
         _fileHandle = null; // Save must not write the new project over the file of the old one.

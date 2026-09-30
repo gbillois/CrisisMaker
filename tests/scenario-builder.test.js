@@ -1645,3 +1645,25 @@ test('evaluation: several evaluators per cell, JSON and Excel contributions impo
   const debrief = h.json(`SdAI.context(appState.scenario).evaluation.find((item) => item.cell === '${cell.name}')`);
   assert.ok(debrief.generic_criteria.some((item) => item.includes('Alice Martin')) && debrief.injects.length && debrief.evaluators.length === 2);
 });
+
+test('project file: everything saved in the JSON comes back identical after opening it again', () => {
+  const h = harness();
+  h.run(`window.confirm = () => true; appState.scenario = defaultScenario(); StoryboardHistory.ensure();`);
+  h.run(`(() => { const p = appState.scenario; const cell = p.cells[0];
+    evApplyField(p, cell.id + '|sheet|evaluator', 'Alice'); evApplyField(p, cell.id + '|gen|gen_logbook|rating', 'M');
+    const crit = evSheet(p, cell).criteria[0].id; evApplyField(p, cell.id + '|crit|' + crit + '|rating', 'S');
+    evAddContribution(p, { format: 'crisismaker-evaluation', project: { id: p.id }, cell: { id: cell.id }, evaluator: 'Bob', criteria: { [crit]: { rating: 'U', notes: 'late', text: 'x' } }, generic: { gen_roles: { rating: 'P', notes: '' } }, injects: {}, strengths: 's', improvements: 'i' }, 'b.json', { added: [], replaced: [], kept: [], refused: [] });
+    const play = playState(); play.log.push({ at: new Date().toISOString(), minute: 5, kind: 'note', text: 'Decision taken' });
+    p.slide_debrief = normalizeSlideDebrief({ ...p.slide_debrief, key_messages: 'Isolate early' });
+    p.source_file = { name: 'deck.pptx', size: 10, type: '', loaded_at: '2026-01-01T00:00:00.000Z', sheets: [], selectedSheet: '', columnMapping: {}, data: { headers: [], rows: [], doc: null, analysis: null, views: null, isPptx: true } };
+  })()`);
+  const first = h.run('JSON.stringify(buildProjectFileData({ forFile: true }))');
+  h.context.first = first;
+  h.run('applyLoadedScenario(JSON.parse(first))');
+  const strip = (json) => { const data = JSON.parse(json); delete data.updated_at; return data; };
+  assert.deepEqual(strip(h.run('JSON.stringify(buildProjectFileData({ forFile: true }))')), strip(first));
+  const data = JSON.parse(first);
+  for (const key of ['evaluation', 'play', 'slide_debrief', 'storyboard', 'storyboard_versions', 'framing_validation', 'source_file', 'debrief', 'checklist']) assert.ok(key in data, key);
+  assert.equal(data.evaluation.contributions[h.run('appState.scenario.cells[0].id')][0].evaluator, 'Bob');
+  assert.equal(data.settings.ai_api_key, '', 'no API key in the file');
+});

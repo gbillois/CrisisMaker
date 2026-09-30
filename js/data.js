@@ -137,6 +137,7 @@
           framing_validation: null,
           // The Context fields when the exercise was last generated or updated from them.
           context_generation: null,
+          source_file: null,
           settings: { ...base.settings, ...settingsOverrides }
         };
       }
