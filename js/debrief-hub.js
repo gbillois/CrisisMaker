@@ -467,13 +467,25 @@ const SdAI = {
         main_events: (block.events || []).slice(0, 8).map((event) => `${sbFormatOffset(block.start_minutes + (event.offset_minutes || 0))} ${sdClip(event.text, 200)}`)
       })),
       what_really_happened: (project.debrief?.events || []).slice(0, 15).map((event) => sdClip(`${event.dateLabel || ''} ${event.title}: ${event.headline || ''}`, 220)),
+      // Everything the Evaluation tab holds: the consolidated marks and notes of every line
+      // (scenario criteria, injects received, generic criteria), the summary, and who evaluated.
       evaluation: (project.cells || []).map((cell) => {
         const sheet = typeof evSheet === 'function' ? evSheet(project, cell) : { criteria: [] };
         const tally = typeof evTally === 'function' ? evTally(project, cell) : null;
+        const lines = typeof evLines === 'function' ? evLines(project, cell) : [];
+        const marked = (scope, max, size) => lines.filter((line) => line.scope === scope && (line.rating || line.notes || line.marks.some((mark) => mark.rating || mark.notes))).slice(0, max).map((line) => {
+          const others = line.marks.filter((mark) => mark.rating || mark.notes).map((mark) => `${mark.evaluator} ${mark.rating || '-'}${mark.notes ? `: ${mark.notes}` : ''}`).join('; ');
+          return sdClip(`${line.rating || '-'} · ${line.scope === 'inject' ? `${line.number} ` : ''}${line.text}${line.notes ? ` (${line.notes})` : ''}${line.time ? ` [reaction ${line.time}]` : ''}${others ? ` {evaluators: ${others}}` : ''}`, size);
+        });
+        const contributions = typeof evContributions === 'function' ? evContributions(project, cell.id) : [];
         return {
-          cell: cell.name, marks: tally ? tally.counts : {},
-          criteria: sheet.criteria.filter((criterion) => criterion.rating || criterion.notes).slice(0, 20).map((criterion) => sdClip(`${criterion.rating || '-'} · ${criterion.text}${criterion.notes ? ` (${criterion.notes})` : ''}`, 260)),
-          strengths: sdClip(sheet.strengths, 800), improvements: sdClip(sheet.improvements, 800)
+          cell: cell.name, marks: tally ? tally.counts : {}, rated: tally ? `${tally.rated}/${tally.total}` : '',
+          evaluators: contributions.length ? contributions.map((item) => item.evaluator) : [sheet.evaluator].filter(Boolean),
+          criteria: lines.length ? marked('crit', 20, 300) : sheet.criteria.filter((criterion) => criterion.rating || criterion.notes).slice(0, 20).map((criterion) => sdClip(`${criterion.rating || '-'} · ${criterion.text}${criterion.notes ? ` (${criterion.notes})` : ''}`, 260)),
+          injects: marked('inject', 25, 300),
+          generic_criteria: marked('gen', 14, 260),
+          strengths: sdClip(sheet.strengths, 800), improvements: sdClip(sheet.improvements, 800),
+          evaluators_summary: contributions.filter((item) => item.strengths || item.improvements).slice(0, 6).map((item) => sdClip(`${item.evaluator}: + ${item.strengths} / - ${item.improvements}`, 500))
         };
       }),
       current_text: Object.fromEntries(SD_TEXT_FIELDS.map(([key]) => [key, sdClip(project.slide_debrief?.[key], 1500)])),
@@ -491,7 +503,7 @@ const SdAI = {
     App.render();
     try {
       const system = `You are a senior crisis exercise facilitator writing the debrief (hot wash and after-action review) of a crisis management exercise for the participants and their management.
-Use the exercise design, the phases and main events, what really happened, and above all the evaluators' marks and notes (P = performed without challenges, S = some challenges, M = major challenges, U = unable to be performed). Be specific to this exercise and this organisation, factual, constructive, never generic. Link findings to the learning objectives. When the evaluation is empty, base the findings on the design and say what to confirm with the participants.
+Use the exercise design, the phases and main events, what really happened, and above all the evaluators' marks and notes (P = performed without challenges, S = some challenges, M = major challenges, U = unable to be performed): the scenario criteria, the reaction observed on each inject received (with its time), the generic crisis management criteria (logbook, roles, situation points, action follow-up, health and safety…), the strengths and areas for improvement, and each evaluator's own marks when several evaluated a cell. Be specific to this exercise and this organisation, factual, constructive, never generic. Link findings to the learning objectives. When the evaluation is empty, base the findings on the design and say what to confirm with the participants.
 Write in the language requested. Each item is one short sentence (max 25 words). Reply only with a JSON object:
 {"key_messages":["3 to 5 items"],"went_well":["3 to 6 items"],"to_improve":["3 to 6 items"],"recommendations":["3 to 6 items, each with an owner and a horizon"],"next_steps":["2 to 4 items"]}`;
       const result = await agentCall((callSignal) => AITextGenerator.generate('slide_debrief', system, JSON.stringify(this.context(project)), true, 4000, { signal: callSignal, strictJSON: true, promptFilter: agentRedact, timeoutMs: SB_AI_TIMEOUT }), signal, SB_AI_TIMEOUT);

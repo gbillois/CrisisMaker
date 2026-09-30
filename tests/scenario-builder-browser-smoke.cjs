@@ -71,7 +71,7 @@ function answerFor(system, user) {
   // 0. Context is the first tab, top left, in the Prepare group; Project is a menu of the header.
   assert.equal(await page.evaluate(() => appState.route), 'scenario');
   assert.equal(await page.evaluate(() => document.querySelector('.nav-topbar-left .nav-icon-btn')?.dataset.route), 'scenario');
-  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.nav-group')].map((group) => group.querySelectorAll('.nav-icon-btn').length)), [5, 2, 2]);
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.nav-group')].map((group) => group.querySelectorAll('.nav-icon-btn').length)), [5, 3, 1]);
   assert.equal(await page.locator('.nav-icon-btn[data-route="project"]').count(), 0);
   const navX = await page.evaluate(() => document.querySelector('.nav-topbar-left').getBoundingClientRect().left);
   assert.ok(navX < 40, `nav starts top left (${navX})`);

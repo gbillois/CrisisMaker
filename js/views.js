@@ -215,10 +215,10 @@
                   ])}
                   ${renderNavGroup(tt('Run', 'Jouer', 'Durchführen'), [
                     renderNavIconButton('summary', svgShieldCheck(), 'Check & Challenge'),
-                    renderNavIconButton('play', svgBroadcast(), 'Play')
+                    renderNavIconButton('play', svgBroadcast(), 'Play'),
+                    renderNavIconButton('evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung'))
                   ])}
                   ${renderNavGroup(tt('After', 'Après', 'Danach'), [
-                    renderNavIconButton('evaluation', svgEvaluation(), tt('Evaluation', 'Évaluation', 'Bewertung')),
                     renderNavIconButton('debrief', svgDebrief(), tt('Debrief', 'Debrief', 'Debrief'))
                   ])}
                 </div>

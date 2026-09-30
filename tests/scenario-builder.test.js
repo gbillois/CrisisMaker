@@ -1140,7 +1140,11 @@ test('evaluation: one sheet per cell, default criteria by type, editable, saved,
   const legal = cells.find((cell) => cell.key === 'legal');
   const sheet = h.json(`evSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
   assert.equal(sheet.isDefault, true);
-  assert.ok(sheet.criteria.some((item) => item.text.includes('Regulatory obligations')) && sheet.criteria.some((item) => item.category === 'Mobilisation'));
+  assert.ok(sheet.criteria.some((item) => item.text.includes('Regulatory obligations')));
+  // The generic crisis management criteria are rated apart, on every sheet.
+  assert.ok(!sheet.criteria.some((item) => item.category === 'Mobilisation'));
+  const generic = h.json(`evLines(appState.scenario, sbCell(appState.scenario, '${legal.id}')).filter((line) => line.scope === 'gen').map((line) => line.category)`);
+  assert.ok(generic.includes('Mobilisation') && generic.includes('Logbook') && generic.includes('Health and safety'));
   const view = h.run(`(() => { appState.route = 'evaluation'; return renderEvaluationView(); })()`);
   for (const cell of cells) assert.ok(view.includes(escapeForTest(cell.name)), cell.name);
   assert.ok(view.includes('data-ev-action="download-all"') && view.includes('data-ev-field='));
@@ -1148,12 +1152,14 @@ test('evaluation: one sheet per cell, default criteria by type, editable, saved,
   h.run(`(() => { const sheet = evEditableSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}')); sheet.criteria.push({ id: 'crit_custom', category: 'Sector', text: 'Notify the health regulator', observe: 'Within 24 h' }); })()`);
   const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).evaluation.sheets['${legal.id}'].criteria.map((item) => item.text)`);
   assert.ok(reloaded.includes('Notify the health regulator'));
-  // Excel rows: criteria, then every inject the cell receives with the reaction expected.
+  // Excel rows: one filterable table, criteria, every inject the cell receives with the reaction expected, the generic criteria.
   const rows = h.json(`evSheetRows(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
-  assert.ok(rows.some((row) => row[1] === 'Notify the health regulator'));
+  assert.ok(rows.some((row) => row[3] === 'Notify the health regulator'));
   const received = h.json(`evReceivedInjects(appState.scenario, sbCell(appState.scenario, '${legal.id}')).length`);
-  const start = rows.findIndex((row) => row[0] === 'Injects received');
-  assert.ok(received > 0 && rows.slice(start + 2).filter((row) => /^H\+/.test(row[0] || '')).length === received);
+  const keys = rows.map((row) => String(row[row.length - 1] || ''));
+  assert.ok(received > 0 && keys.filter((key) => key.startsWith('inject:')).length === received);
+  assert.equal(keys.filter((key) => key.startsWith('gen:')).length, 14);
+  assert.ok(rows.filter((row, index) => keys[index].startsWith('inject:')).every((row) => /^H\+/.test(row[0])));
   // Marks: a rating and notes per criterion, a rating and the reaction per inject received.
   const critId = h.run(`evSheet(appState.scenario, sbCell(appState.scenario, '${legal.id}')).criteria[0].id`);
   const injectKey = h.run(`evInjectKey(evReceivedInjects(appState.scenario, sbCell(appState.scenario, '${legal.id}'))[0])`);
@@ -1172,8 +1178,8 @@ test('evaluation: one sheet per cell, default criteria by type, editable, saved,
   const tally = h.json(`evTally(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
   assert.equal(tally.counts.M, 1); assert.equal(tally.counts.P, 1); assert.equal(tally.rated, 2);
   const marked = h.json(`evSheetRows(appState.scenario, sbCell(appState.scenario, '${legal.id}'))`);
-  assert.ok(marked.some((row) => row[3] === 'M' && row[4] === 'Late notification draft'));
-  assert.ok(marked.some((row) => row[4] === 'Called the DPO at once' && row[6] === 'P'));
+  assert.ok(marked.some((row) => row[5] === 'M' && row[6] === 'Late notification draft'));
+  assert.ok(marked.some((row) => row[6] === 'Called the DPO at once' && row[5] === 'P'));
   h.run(`evUI().cell = '${legal.id}'`);
   const marksView = h.run('renderEvaluationView()');
   assert.ok(marksView.includes('class="ev-rating is-M"') && marksView.includes('data-ev-action="ai-update"') && marksView.includes('Called the DPO at once'));
@@ -1556,4 +1562,86 @@ test('v2 project saved by v1: injects that lost their link find their planned in
   assert.equal(h.run('appState.scenario.stimuli.filter((s) => s.scenario_link?.beat_id).length'), count);
   assert.equal(h.run('appState.scenario.stimuli.filter((s) => !s.cell_id).length'), 0);
   assert.equal(h.run('sbExerciseItems(appState.scenario).length'), count, 'no duplicate between planned and written injects');
+});
+
+test('evaluation: several evaluators per cell, JSON and Excel contributions imported without overwriting, then consolidated', async () => {
+  const h = harness();
+  h.context.JSZip = require('../js/lib/jszip.min.js');
+  h.context.XLSX = require('../js/lib/xlsx.full.min.js');
+  h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.scenario.evaluation = normalizeEvaluation(null); window.confirm = () => true;`);
+  const cell = h.json(`(() => { const cell = appState.scenario.cells.find((c) => c.key === 'legal'); return { id: cell.id, name: cell.name }; })()`);
+  const crit = h.run(`evSheet(appState.scenario, sbCell(appState.scenario, '${cell.id}')).criteria[0].id`);
+  const inject = h.run(`evInjectKey(evReceivedInjects(appState.scenario, sbCell(appState.scenario, '${cell.id}'))[0])`);
+  // Evaluator 1 rates in the app and exports a .crisiseval.json.
+  h.run(`evApplyField(appState.scenario, '${cell.id}|sheet|evaluator', 'Alice Martin'); evApplyField(appState.scenario, '${cell.id}|crit|${crit}|rating', 'S'); evApplyField(appState.scenario, '${cell.id}|gen|gen_logbook|rating', 'M'); evApplyField(appState.scenario, '${cell.id}|gen|gen_logbook|notes', 'No time stamps'); evApplyField(appState.scenario, '${cell.id}|inject|${inject}|rating', 'P')`);
+  const alice = h.json(`evContributionOf(appState.scenario, sbCell(appState.scenario, '${cell.id}'))`);
+  assert.equal(alice.format, 'crisismaker-evaluation');
+  assert.equal(alice.generic.gen_logbook.rating, 'M');
+  // Evaluator 2 fills the Excel sheet: read it back as SheetJS would, with a rating typed with its label.
+  h.run(`delete evState(appState.scenario).sheets['${cell.id}']`);
+  h.run(`evApplyField(appState.scenario, '${cell.id}|sheet|evaluator', 'Bruno Leroy'); evApplyField(appState.scenario, '${cell.id}|crit|${crit}|rating', 'M'); evApplyField(appState.scenario, '${cell.id}|gen|gen_logbook|rating', 'U'); evApplyField(appState.scenario, '${cell.id}|sheet|strengths', 'Calm lead')`);
+  const buffer = await h.run(`evBuildWorkbook(appState.scenario, [sbCell(appState.scenario, '${cell.id}')]).toArrayBuffer()`);
+  const files = h.run(`evBuildWorkbook(appState.scenario, [sbCell(appState.scenario, '${cell.id}')]).files()`);
+  const sheetXml = files['xl/worksheets/sheet1.xml'];
+  assert.ok(sheetXml.includes('<autoFilter ref="A') && sheetXml.includes('state="frozen"') && sheetXml.includes('type="list"') && sheetXml.includes('"P,S,M,U,N/A"'), 'filter, frozen header, rating drop-down');
+  assert.ok(sheetXml.includes('P = Performed without challenges'), 'the drop-down says what each rating means');
+  assert.ok(files['xl/styles.xml'].includes('FF451DC7') && files['xl/styles.xml'].includes('FF04F06A'), 'Wavestone indigo and green');
+  assert.ok(files['xl/workbook.xml'].includes('state="hidden"'));
+  const parsed = h.context.XLSX.read(new Uint8Array(buffer), { type: 'array' });
+  h.context.parsedBook = parsed;
+  const bruno = h.json('evParseContributionWorkbook(parsedBook)');
+  assert.equal(bruno.length, 1);
+  assert.equal(bruno[0].evaluator, 'Bruno Leroy');
+  assert.equal(bruno[0].criteria[crit].rating, 'M');
+  assert.equal(bruno[0].generic.gen_logbook.rating, 'U');
+  assert.equal(bruno[0].strengths, 'Calm lead');
+  assert.equal(h.run(`evRatingFromCell('s · Performed with some challenges')`), 'S');
+  assert.equal(h.run(`evRatingFromCell('n/a')`), 'N/A');
+  // The central team: a clean sheet, then both files imported. One contribution per evaluator.
+  h.run(`delete evState(appState.scenario).sheets['${cell.id}']`);
+  h.context.aliceFile = { name: 'alice.crisiseval.json', text: async () => JSON.stringify(alice) };
+  h.context.brunoFile = { name: 'bruno.xlsx', arrayBuffer: async () => buffer };
+  h.context.otherFile = { name: 'other.crisiseval.json', text: async () => JSON.stringify({ ...alice, evaluator: 'Eve', project: { id: 'another-exercise', name: 'Another' } }) };
+  h.context.projectFile = { name: 'exercise.json', text: async () => JSON.stringify({ cells: [], stimuli: [] }) };
+  h.run(`evLibraries = async () => {}`);
+  const report = await h.run('evImportFiles(appState.scenario, [aliceFile, brunoFile, otherFile, projectFile]).then((r) => JSON.stringify(r))');
+  const result = JSON.parse(report);
+  assert.equal(result.added.length, 2);
+  assert.equal(result.refused.length, 2, 'another exercise and a project file are refused');
+  assert.ok(result.refused[0].includes('another exercise'));
+  assert.equal(h.run(`evContributions(appState.scenario, '${cell.id}').length`), 2);
+  // The same evaluator again: replaces their own after confirmation, never the other one.
+  h.context.aliceAgain = { name: 'alice-2.crisiseval.json', text: async () => JSON.stringify({ ...alice, generic: { gen_logbook: { rating: 'S', notes: '' } } }) };
+  await h.run('evImportFiles(appState.scenario, [aliceAgain])');
+  assert.equal(h.run(`evContributions(appState.scenario, '${cell.id}').length`), 2);
+  assert.equal(h.run(`evContributions(appState.scenario, '${cell.id}').find((c) => c.evaluator === 'Alice Martin').generic.gen_logbook.rating`), 'S');
+  // Consolidation: ratings side by side, the most frequent proposed, the lowest on a tie.
+  assert.equal(h.run(`evProposal(['P', 'S', 'S'])`), 'S');
+  assert.equal(h.run(`evProposal(['S', 'M'])`), 'M');
+  assert.equal(h.run(`evProposal(['N/A', ''])`), 'N/A');
+  const line = h.json(`evLines(appState.scenario, sbCell(appState.scenario, '${cell.id}')).find((l) => l.id === 'gen_logbook')`);
+  assert.deepEqual(line.marks.map((mark) => mark.rating), ['S', 'U']);
+  assert.equal(line.proposal, 'U');
+  const changed = h.run(`evApplyProposals(appState.scenario, sbCell(appState.scenario, '${cell.id}'))`);
+  assert.ok(changed >= 3);
+  const sheet = h.json(`evSheet(appState.scenario, sbCell(appState.scenario, '${cell.id}'))`);
+  assert.equal(sheet.generic.gen_logbook.rating, 'U');
+  assert.equal(sheet.criteria.find((c) => c.id === crit).rating, 'M', 'S vs M: the lower');
+  assert.ok(sheet.strengths.includes('Bruno Leroy: Calm lead'));
+  // Kept with the project; the consolidated Excel has one column per evaluator.
+  const reloaded = h.json(`mergeScenario(JSON.parse(JSON.stringify(appState.scenario))).evaluation.contributions['${cell.id}'].map((c) => c.evaluator)`);
+  assert.deepEqual(reloaded, ['Alice Martin', 'Bruno Leroy']);
+  const consolidated = h.json(`evSheetRows(appState.scenario, sbCell(appState.scenario, '${cell.id}'), { consolidated: true })`);
+  const header = consolidated.find((row) => row.includes('Consolidated rating'));
+  assert.ok(header.includes('Alice Martin') && header.includes('Bruno Leroy') && header.includes('Proposed'));
+  // The view: the rating options say what they mean, and each inject has its view button.
+  h.run(`evUI().cell = '${cell.id}'; appState.route = 'evaluation'`);
+  let view = h.run('renderEvaluationView()');
+  assert.ok(view.includes('>P · Performed without challenges</option>') && view.includes('data-ev-view=') && view.includes('ev-chip') && view.includes('Generic crisis management criteria'));
+  h.run(`evUI().view = '${inject}'`);
+  view = h.run('renderEvaluationView()');
+  assert.ok(view.includes('class="ev-view"') && view.includes('data-ev-resize'));
+  // The debrief AI receives the whole evaluation.
+  const debrief = h.json(`SdAI.context(appState.scenario).evaluation.find((item) => item.cell === '${cell.name}')`);
+  assert.ok(debrief.generic_criteria.some((item) => item.includes('Alice Martin')) && debrief.injects.length && debrief.evaluators.length === 2);
 });
