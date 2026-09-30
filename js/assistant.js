@@ -13,17 +13,54 @@ function assistantState() {
   return appState.assistant;
 }
 
+/* Suggestions that fit the tab open: what the assistant can answer or change there. */
 function assistantSuggestions() {
-  return [
-    tt('What happens in each phase?', 'Que se passe-t-il à chaque phase ?', 'Was passiert in jeder Phase?'),
-    tt('Which cell receives the fewest injects?', 'Quelle cellule reçoit le moins d’injects ?', 'Welche Zelle erhält die wenigsten Injects?'),
-    tt('Which objectives are not covered?', 'Quels objectifs ne sont pas couverts ?', 'Welche Ziele sind nicht abgedeckt?'),
-    tt('Who sends the most injects?', 'Qui envoie le plus d’injects ?', 'Wer sendet die meisten Injects?'),
-    tt('What is left to do?', 'Que reste-t-il à faire ?', 'Was bleibt zu tun?'),
+  const byRoute = {
+    scenario: [
+      tt('What is missing in the context?', 'Que manque-t-il dans le contexte ?', 'Was fehlt im Kontext?'),
+      tt('Make the learning objectives measurable', 'Rends les objectifs pédagogiques mesurables', 'Mach die Lernziele messbar')
+    ],
+    storyline: [
+      tt('What happens in each phase?', 'Que se passe-t-il à chaque phase ?', 'Was passiert in jeder Phase?'),
+      tt('Make the second phase more intense', 'Rends la deuxième phase plus intense', 'Mach die zweite Phase intensiver')
+    ],
+    cells: [
+      tt('Add a journalist to the actors', 'Ajoute un journaliste aux acteurs', 'Füge einen Journalisten zu den Akteuren hinzu'),
+      tt('Which cell has no player yet?', 'Quelle cellule n’a pas encore de joueur ?', 'Welche Zelle hat noch keinen Spieler?')
+    ],
+    detailed: [
+      tt('Which cell receives the fewest injects?', 'Quelle cellule reçoit le moins d’injects ?', 'Welche Zelle erhält die wenigsten Injects?'),
+      tt('Add a nudge when the decision cell stalls', 'Ajoute une relance si la cellule de décision bloque', 'Füge einen Impuls hinzu, wenn die Entscheidungszelle stockt')
+    ],
+    library: [
+      tt('Who sends the most injects?', 'Qui envoie le plus d’injects ?', 'Wer sendet die meisten Injects?'),
+      tt('Which injects are still drafts?', 'Quels injects sont encore en brouillon ?', 'Welche Injects sind noch Entwürfe?')
+    ],
+    summary: [
+      tt('Which objectives are not covered?', 'Quels objectifs ne sont pas couverts ?', 'Welche Ziele sind nicht abgedeckt?'),
+      tt('What is left to do?', 'Que reste-t-il à faire ?', 'Was bleibt zu tun?')
+    ],
+    play: [
+      tt('What comes next in the exercise?', 'Que se passe-t-il ensuite dans l’exercice ?', 'Was kommt als Nächstes in der Übung?'),
+      tt('Which injects are late?', 'Quels injects sont en retard ?', 'Welche Injects sind verspätet?')
+    ],
+    evaluation: [
+      tt('Which criteria should each evaluator watch most?', 'Quels critères chaque évaluateur doit-il surveiller en priorité ?', 'Auf welche Kriterien sollten die Bewertenden besonders achten?'),
+      tt('Which inject tests each learning objective?', 'Quel inject teste chaque objectif pédagogique ?', 'Welcher Inject prüft welches Lernziel?')
+    ],
+    debrief: [
+      tt('Summarise the exercise', 'Résume l’exercice', 'Fasse die Übung zusammen'),
+      tt('What were the key decision points?', 'Quels étaient les points de décision clés ?', 'Was waren die wichtigsten Entscheidungspunkte?')
+    ]
+  };
+  const common = [
     tt('Summarise the exercise', 'Résume l’exercice', 'Fasse die Übung zusammen'),
-    tt('Add a journalist to the cast', 'Ajoute un journaliste aux rôles', 'Füge einen Journalisten hinzu'),
-    tt('Make the second phase more intense', 'Rends la deuxième phase plus intense', 'Mach die zweite Phase intensiver')
+    tt('What is left to do?', 'Que reste-t-il à faire ?', 'Was bleibt zu tun?'),
+    tt('Which objectives are not covered?', 'Quels objectifs ne sont pas couverts ?', 'Welche Ziele sind nicht abgedeckt?'),
+    tt('Which cell receives the fewest injects?', 'Quelle cellule reçoit le moins d’injects ?', 'Welche Zelle erhält die wenigsten Injects?')
   ];
+  const own = byRoute[appState.route] || [];
+  return [...own, ...common.filter((item) => !own.includes(item))].slice(0, 4);
 }
 
 /* Plain text with line breaks and "- " bullets, escaped. */

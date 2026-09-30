@@ -203,9 +203,9 @@ function renderPhaseEditor(storyboard, block) {
         ${sbNeedsReplan(block) ? `<div class="sl-replan">${sbUiIcon('alert', 14)}<span>${escapeHtml(tt(`What happens changed: the ${block.beats.length} planned inject(s) still follow the previous version.`, `Le déroulé a changé : les ${block.beats.length} inject(s) prévu(s) suivent encore la version précédente.`, `Der Ablauf hat sich geändert: Die ${block.beats.length} geplanten Injects folgen noch der vorherigen Version.`))}</span>${renderUpdateButton(project)}</div>` : ''}
         <div class="sl-injects">${block.beats.length ? `<b>${block.beats.length}</b> ${escapeHtml(tt('injects planned', 'injects prévus', 'geplante Injects'))} · ${(project.cells || []).filter((cell) => counts.get(cell.id)).map((cell) => `<span class="cell-dot" style="--cell-color:${cell.color}"></span>${escapeHtml(cell.name)} ${counts.get(cell.id)}`).join(' · ')}` : escapeHtml(tt('No inject planned in this phase yet.', 'Aucun inject prévu dans cette phase pour l’instant.', 'In dieser Phase ist noch kein Inject geplant.'))} <button class="btn btn-ghost btn-xs" data-tab-action="open-detailed" data-tab-value="${block.id}">${escapeHtml(workflowTabLabel('detailed'))} →</button></div>
         <div class="sl-ai">
-          <span class="sl-ai-label">${sbUiIcon('wand', 14)} ${escapeHtml(tt('Modify with AI', 'Modifier avec l’IA', 'Mit KI ändern'))}</span>
+          <span class="sl-ai-label">${sbUiIcon('sparkles', 14)} ${escapeHtml(tt('Rewrite this phase with AI', 'Réécrire cette phase avec l’IA', 'Diese Phase mit KI umschreiben'))}</span>
           <input type="text" data-sb-ui="rewrite" value="${escapeAttribute(ui.rewrite)}" placeholder="${escapeAttribute(tt('What to change, e.g. make it more ambiguous. Empty: the AI details the phase and plans its injects.', 'Ce qu’il faut changer, ex. : la rendre plus ambiguë. Vide : l’IA détaille la phase et planifie ses injects.', 'Was geändert werden soll, z. B. mehrdeutiger machen. Leer: Die KI detailliert die Phase und plant ihre Injects.'))}" aria-label="${escapeAttribute(tt('Instruction for the AI', 'Instruction pour l’IA', 'Anweisung für die KI'))}" ${readOnly}>
-          <button class="btn btn-secondary btn-sm" data-sb-action="modify-block" ${ai && !readOnly ? '' : 'disabled'} title="${escapeAttribute(ai ? tt('With an instruction, the AI rewrites the phase; empty, it details it and plans its injects', 'Avec une instruction, l’IA réécrit la phase ; sans instruction, elle la détaille et planifie ses injects', 'Mit einer Anweisung schreibt die KI die Phase um; ohne Anweisung detailliert sie sie und plant ihre Injects') : tt('Configure an AI connection in Settings', 'Configurez une connexion IA dans les Paramètres', 'Richten Sie in den Einstellungen eine KI-Verbindung ein'))}">${sbUiIcon('wand', 13)} ${escapeHtml(tt('Modify with AI', 'Modifier avec l’IA', 'Mit KI ändern'))}</button>
+          <button class="btn btn-secondary btn-sm" data-sb-action="modify-block" ${ai && !readOnly ? '' : 'disabled'} title="${escapeAttribute(ai ? tt('With an instruction, the AI rewrites the phase; empty, it details it and plans its injects', 'Avec une instruction, l’IA réécrit la phase ; sans instruction, elle la détaille et planifie ses injects', 'Mit einer Anweisung schreibt die KI die Phase um; ohne Anweisung detailliert sie sie und plant ihre Injects') : tt('Configure an AI connection in Settings', 'Configurez une connexion IA dans les Paramètres', 'Richten Sie in den Einstellungen eine KI-Verbindung ein'))}">${sbUiIcon('sparkles', 13)} ${escapeHtml(tt('Rewrite', 'Réécrire', 'Umschreiben'))}</button>
         </div>
       </div>
     </div>`;
@@ -337,7 +337,6 @@ function renderCellsView() {
     const items = sbExerciseItems(project);
     const players = project.cells.reduce((sum, cell) => sum + cell.players.length, 0);
     const missingPresets = SB_CELL_PRESETS.filter((preset) => !project.cells.some((cell) => cell.key === preset.key));
-    const actorsPlaceholder = tt('Ex: "Journalists from a national daily and a TV channel, the national cyber agency, the data protection authority, an angry B2C customer on social media and the ransomware group."', 'Ex. : « Des journalistes d’un quotidien national et d’une chaîne TV, l’agence nationale de cybersécurité, l’autorité de protection des données, un client particulier en colère sur les réseaux sociaux et le groupe de rançongiciel. »', 'Z. B.: „Journalisten einer überregionalen Tageszeitung und eines TV-Senders, die nationale Cybersicherheitsbehörde, die Datenschutzbehörde, ein verärgerter Privatkunde in sozialen Netzwerken und die Ransomware-Gruppe.“');
     const pending = sbPendingSyncCount(project);
     return `<section class="tab-page ce-page" data-sb-scope>
       <div class="ce-update ${pending ? 'has-changes' : ''}">
@@ -359,7 +358,7 @@ function renderCellsView() {
         </div>
       </article>
       ${renderCePlayers(project)}
-      ${renderCeActors(project, storyboard, actorsPlaceholder)}
+      ${renderCeActors(project, storyboard)}
       ${renderSbModal(storyboard)}
     </section>`;
   });
@@ -420,7 +419,7 @@ function renderCePlayers(project) {
 }
 
 /* The simulated actors, one table grouped by category, with the storyline roles each plays. */
-function renderCeActors(project, storyboard, placeholder) {
+function renderCeActors(project, storyboard) {
   const categories = ceActorCategories(project);
   const groups = [
     ...CE_ACTOR_GROUPS.map(([role, en, fr, de]) => ({ key: `role:${role}`, label: tt(en, fr, de), role, custom: null })),
@@ -461,7 +460,6 @@ function renderCeActors(project, storyboard, placeholder) {
         <select class="ce-add-actor" data-ce-add-actor aria-label="${escapeAttribute(tt('Add an actor', 'Ajouter un acteur', 'Akteur hinzufügen'))}"><option value="">${escapeHtml(tt('+ Actor in…', '+ Acteur dans…', '+ Akteur in…'))}</option>${groupOptions('')}</select>
       </div>
     </div>
-    ${renderLLMConfigBlock('actors', placeholder)}
     ${unlinked.length ? `<div class="ce-unlinked">
       <strong>${sbUiIcon('alert', 13)} ${escapeHtml(tt('Storyline roles without an actor', 'Rôles de la storyline sans acteur', 'Storyline-Rollen ohne Akteur'))}</strong>
       <p class="sb-help">${escapeHtml(tt('Senders the story needs: pick the actor who plays each one, or create it.', 'Émetteurs dont l’histoire a besoin : choisissez l’acteur qui joue chacun, ou créez-le.', 'Absender, die die Geschichte braucht: Wählen Sie den Akteur, der jeden spielt, oder legen Sie ihn an.'))}</p>
@@ -478,7 +476,7 @@ function renderCeActors(project, storyboard, placeholder) {
       ${groups.filter((group) => byGroup.get(group.key).length || group.custom).map((group) => `<tbody>
         <tr class="ce-group-row"><th colspan="8"><span class="ce-group-title">${head(group)} <span class="sb-chip">${byGroup.get(group.key).length}</span><button class="btn btn-ghost btn-xs" data-tab-action="add-actor" data-tab-value="${group.key}">${sbUiIcon('plus', 12)} ${escapeHtml(tt('Actor', 'Acteur', 'Akteur'))}</button></span></th></tr>
         ${byGroup.get(group.key).map(row).join('')}
-      </tbody>`).join('') || `<tbody><tr><td colspan="8" class="sb-empty">${escapeHtml(tt('No actor yet: add one, generate them with AI above, or build the exercise in Context.', 'Aucun acteur pour l’instant : ajoutez-en un, générez-les avec l’IA ci-dessus, ou construisez l’exercice dans Contexte.', 'Noch kein Akteur: Fügen Sie einen hinzu, erzeugen Sie sie oben mit KI oder bauen Sie die Übung im Kontext auf.'))}</td></tr></tbody>`}
+      </tbody>`).join('') || `<tbody><tr><td colspan="8" class="sb-empty">${escapeHtml(tt('No actor yet: add one, ask the assistant (bottom right), or build the exercise in Context.', 'Aucun acteur pour l’instant : ajoutez-en un, demandez à l’assistant (en bas à droite), ou construisez l’exercice dans Contexte.', 'Noch kein Akteur: Fügen Sie einen hinzu, erzeugen Sie sie oben mit KI oder bauen Sie die Übung im Kontext auf.'))}</td></tr></tbody>`}
     </table></div>
     ${storyboard.cast.length ? `<p class="sb-help ce-cast-foot">${escapeHtml(tt(`${storyboard.cast.length} storyline role(s), ${storyboard.cast.length - unlinked.length} played by an actor.`, `${storyboard.cast.length} rôle(s) de la storyline, ${storyboard.cast.length - unlinked.length} joué(s) par un acteur.`, `${storyboard.cast.length} Storyline-Rolle(n), ${storyboard.cast.length - unlinked.length} von einem Akteur gespielt.`))} <button class="btn btn-ghost btn-xs" data-sb-action="add-cast" ${readOnly}>${sbUiIcon('plus', 12)} ${escapeHtml(tt('Role', 'Rôle', 'Rolle'))}</button></p>` : ''}
   </article>`;
@@ -538,11 +536,10 @@ function renderDetailedView() {
         </div>
         <div class="sb-tb-group sb-tb-output">
           ${renderUpdateButton(project, pending)}
-          <button class="btn btn-primary btn-sm" data-tab-action="ds-generate" ${readOnly ? 'disabled' : ''}>${sbUiIcon('play', 13)} ${escapeHtml(tt('Generate', 'Générer', 'Generieren'))}${missing ? ` <span class="sb-count sb-count-light">${missing}</span>` : ''}</button>
+          <button class="btn btn-primary btn-sm" data-tab-action="ds-generate" ${readOnly ? 'disabled' : ''}>${sbUiIcon('sparkles', 13)} ${escapeHtml(tt('Write the injects with AI', 'Rédiger les injects avec l’IA', 'Injects mit KI schreiben'))}${missing ? ` <span class="sb-count sb-count-light" title="${escapeAttribute(tt('Planned injects not written yet', 'Injects prévus pas encore rédigés', 'Geplante, noch nicht geschriebene Injects'))}">${missing}</span>` : ''}</button>
         </div>
       </header>
       ${renderSbStatusBar()}
-      ${renderFramingBar(project, 'detailed')}
       <div class="ds-timeline">${storyboard.blocks.length || items.length ? renderDetailedTimeline(project, items) : tabEmptyNote(tt('Build the main storyline first: its phases frame the injects of every cell.', 'Construisez d’abord la storyline principale : ses phases structurent les injects de chaque cellule.', 'Erstellen Sie zuerst die Haupt-Storyline: Ihre Phasen bilden den Rahmen für die Injects jeder Zelle.'), 'storyline', workflowTabLabel('storyline'))}</div>
       ${renderEditorSplitter('detailed')}
       <section class="bottom-editor ds-editor" aria-label="${escapeAttribute(tt('Inject editor', 'Éditeur d’inject', 'Inject-Editor'))}" ${editorHeightStyle('detailed')}>${selected ? renderInjectEditor(project, selected) : `<div class="bottom-editor-empty">${sbUiIcon('play', 18)}<span>${escapeHtml(tt('Select an inject to edit it. Drag it to change its time, or to another cell row to change its recipient.', 'Sélectionnez un inject pour le modifier. Faites-le glisser pour changer son heure, ou vers la ligne d’une autre cellule pour changer son destinataire.', 'Wählen Sie einen Inject, um ihn zu bearbeiten. Ziehen Sie ihn, um seine Zeit zu ändern, oder in die Zeile einer anderen Zelle, um den Empfänger zu ändern.'))} ${cellScope ? escapeHtml(tt(`“+ Inject” adds one for the ${cellScope.name} at the playhead.`, `« + Inject » en ajoute un pour la cellule ${cellScope.name} à la tête de lecture.`, `„+ Inject“ fügt am Abspielkopf einen für ${cellScope.name} hinzu.`)) : escapeHtml(tt('Pick a cell above to focus on its injects.', 'Choisissez une cellule ci-dessus pour vous concentrer sur ses injects.', 'Wählen Sie oben eine Zelle, um sich auf ihre Injects zu konzentrieren.'))}</span></div>`}</section>

@@ -87,7 +87,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await page.locator('.project-menu [data-route="project"]').click();
   await page.locator('.assistant-fab').click();
   await page.locator('.assistant-panel').waitFor();
-  assert.ok(await page.locator('.assistant-chip').count() >= 6);
+  assert.equal(await page.locator('.assistant-chip').count(), 4, 'suggestions that fit the tab');
   await page.locator('[data-assistant-input]').fill('How many injects are there?');
   await page.locator('[data-assistant-input]').press('Enter');
   await page.waitForFunction(() => assistantState().messages.length === 2 && !crisisAgentRunner.active);

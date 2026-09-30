@@ -38,7 +38,7 @@ function bfValidateFraming(project = appState.scenario) {
   if (!sbMainBlocks(project.storyboard).length) return false;
   const at = new Date();
   const when = at.toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' });
-  const version = StoryboardHistory.snapshot(tt(`Framing validated (${when})`, `Cadrage validé (${when})`, `Rahmen freigegeben (${when})`), 'named');
+  const version = StoryboardHistory.snapshot(tt(`Approved by the client (${when})`, `Approuvée par le client (${when})`, `Vom Kunden freigegeben (${when})`), 'named');
   project.framing_validation = { at: at.toISOString(), version_id: version?.id || '', prints: bfFramingPrints(project) };
   saveLocal(false);
   return true;
@@ -121,7 +121,7 @@ const BuildFlow = {
     const done = appState.scenario === project && getCrisisAgent().status === 'complete' && sbMainBlocks(project.storyboard).length > 0;
     if (done && openStoryline) {
       appState.route = 'storyline';
-      pushToast(tt('Framing ready. Review it with the client, then validate it and build the stimuli.', 'Cadrage prêt. Relisez-le avec le client, puis validez-le et construisez les stimuli.', 'Rahmen fertig. Mit dem Kunden prüfen, dann freigeben und die Stimuli erstellen.'), 'success');
+      pushToast(tt('Main storyline ready. Review it with the client, then write the injects.', 'Storyline principale prête. Relisez-la avec le client, puis rédigez les injects.', 'Haupt-Storyline fertig. Mit dem Kunden prüfen, dann die Injects schreiben.'), 'success');
     }
     App.render();
     return done;
@@ -135,7 +135,7 @@ const BuildFlow = {
       pushToast(tt('Build the framing first: its phases frame the injects of every cell.', 'Construisez d’abord le cadrage : ses phases structurent les injects de chaque cellule.', 'Erstellen Sie zuerst den Rahmen: Seine Phasen strukturieren die Injects jeder Zelle.'), 'info');
       return false;
     }
-    if (confirmUnvalidated && !bfFramingValidation(project) && !window.confirm(tt('The framing is not validated yet. Build the stimuli of every cell anyway?', 'Le cadrage n’est pas encore validé. Construire quand même les stimuli de chaque cellule ?', 'Der Rahmen ist noch nicht freigegeben. Trotzdem die Stimuli aller Zellen erstellen?'))) return false;
+    if (confirmUnvalidated && !bfFramingValidation(project) && !window.confirm(tt('The client has not approved the main storyline yet. Write the injects of every cell anyway?', 'Le client n’a pas encore approuvé la storyline principale. Rédiger quand même les injects de chaque cellule ?', 'Der Kunde hat die Haupt-Storyline noch nicht freigegeben. Trotzdem die Injects aller Zellen schreiben?'))) return false;
     // A framing plans no inject: each phase gets a target from its length and the cells
     // (about one inject per cell every 20 minutes), unless the designer set one.
     if (sbFillInjectTargets(project).length) StoryboardHistory.commit('Set inject targets');
@@ -171,10 +171,11 @@ function bfChangesLabel(changes) {
   if (changes.changed) parts.push(tt(`${changes.changed} phase(s) changed`, `${changes.changed} phase(s) modifiée(s)`, `${changes.changed} Phase(n) geändert`));
   if (changes.added) parts.push(tt(`${changes.added} added`, `${changes.added} ajoutée(s)`, `${changes.added} hinzugefügt`));
   if (changes.removed) parts.push(tt(`${changes.removed} removed`, `${changes.removed} supprimée(s)`, `${changes.removed} entfernt`));
-  return tt(`Changed since validation: ${parts.join(', ')}`, `Modifié depuis la validation : ${parts.join(', ')}`, `Seit der Freigabe geändert: ${parts.join(', ')}`);
+  return tt(`Changed since the client approved it: ${parts.join(', ')}`, `Modifiée depuis l’accord du client : ${parts.join(', ')}`, `Seit der Freigabe durch den Kunden geändert: ${parts.join(', ')}`);
 }
 
-/* The line under the toolbar of the Main and Detailed storylines: where the framing stands. */
+/* The line under the toolbar of the Main storyline: whether the client approved the phases
+   and main events, and what changed since. */
 function renderFramingBar(project, route) {
   if (!sbMainBlocks(project.storyboard).length) return '';
   const validation = bfFramingValidation(project);
@@ -184,23 +185,23 @@ function renderFramingBar(project, route) {
   let tone = 'info';
   if (!validation) {
     text = route === 'storyline'
-      ? tt('Stage 1, framing. Review the phases and main events with the client, then validate the framing before building the stimuli of each cell.', 'Étape 1, cadrage. Relisez les phases et les événements principaux avec le client, puis validez le cadrage avant de construire les stimuli de chaque cellule.', 'Schritt 1, Rahmen. Phasen und Hauptereignisse mit dem Kunden prüfen, dann den Rahmen freigeben, bevor die Stimuli jeder Zelle erstellt werden.')
-      : tt('The framing of the main storyline is not validated yet.', 'Le cadrage de la storyline principale n’est pas encore validé.', 'Der Rahmen der Haupt-Storyline ist noch nicht freigegeben.');
+      ? tt('Review the phases and main events with the client. Once they agree, mark the storyline as approved: any later change will be flagged here.', 'Relisez les phases et les événements principaux avec le client. Une fois d’accord, marquez la storyline comme approuvée : toute modification ultérieure sera signalée ici.', 'Phasen und Hauptereignisse mit dem Kunden prüfen. Sobald er zustimmt, die Storyline als freigegeben markieren: Jede spätere Änderung wird hier angezeigt.')
+      : '';
   } else if (changes.total) {
     tone = 'warn';
     text = `${bfChangesLabel(changes)}.`;
   } else {
     tone = 'ok';
-    text = tt(`Framing validated on ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, unchanged since.`, `Cadrage validé le ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, inchangé depuis.`, `Rahmen freigegeben am ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, seitdem unverändert.`);
+    text = tt(`Approved by the client on ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, unchanged since.`, `Approuvée par le client le ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, inchangée depuis.`, `Vom Kunden freigegeben am ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, seitdem unverändert.`);
   }
   const validate = !validation || changes.total
-    ? `<button class="btn ${validation ? 'btn-secondary' : 'btn-primary'} btn-xs" data-bf-action="validate" ${busy ? 'disabled' : ''}>${sbUiIcon('checkCircle', 13)} ${escapeHtml(validation ? tt('Validate again', 'Valider à nouveau', 'Erneut freigeben') : tt('Validate the framing', 'Valider le cadrage', 'Rahmen freigeben'))}</button>`
+    ? `<button class="btn ${validation ? 'btn-secondary' : 'btn-primary'} btn-xs" data-bf-action="validate" ${busy ? 'disabled' : ''}>${sbUiIcon('checkCircle', 13)} ${escapeHtml(validation ? tt('Approved again', 'Approuvée à nouveau', 'Erneut freigegeben') : tt('Mark as approved', 'Marquer comme approuvée', 'Als freigegeben markieren'))}</button>`
     : '';
   const compare = validation?.version_id && changes.total && StoryboardHistory.findVersion(validation.version_id)
     ? `<button class="btn btn-ghost btn-xs" data-bf-action="compare">${sbUiIcon('history', 13)} ${escapeHtml(tt('Compare', 'Comparer', 'Vergleichen'))}</button>`
     : '';
   const next = route === 'storyline' && validation && !changes.total
-    ? `<button class="btn btn-primary btn-xs" data-bf-action="stimuli" ${busy || !isLLMAvailable() ? 'disabled' : ''}>${sbUiIcon('play', 13)} ${escapeHtml(tt('Build the stimuli', 'Construire les stimuli', 'Stimuli erstellen'))}</button>`
+    ? `<button class="btn btn-primary btn-xs" data-bf-action="stimuli" ${busy || !isLLMAvailable() ? 'disabled' : ''}>${sbUiIcon('sparkles', 13)} ${escapeHtml(tt('Write the injects with AI', 'Rédiger les injects avec l’IA', 'Injects mit KI schreiben'))}</button>`
     : '';
   return `<div class="bf-bar is-${tone}">${sbUiIcon(tone === 'ok' ? 'checkCircle' : tone === 'warn' ? 'alert' : 'info', 14)}<span>${escapeHtml(text)}</span><div class="bf-bar-actions">${compare}${validate}${next}</div></div>`;
 }
@@ -212,7 +213,7 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
   const action = button.dataset.bfAction;
   try {
     if (action === 'validate') {
-      if (bfValidateFraming()) pushToast(tt('Framing validated: a version of the storyline was kept. Later changes to the phases will show.', 'Cadrage validé : une version de la storyline a été conservée. Les modifications ultérieures des phases seront signalées.', 'Rahmen freigegeben: Eine Version der Storyline wurde gespeichert. Spätere Änderungen an den Phasen werden angezeigt.'), 'success');
+      if (bfValidateFraming()) pushToast(tt('Storyline marked as approved by the client: a version was kept, later changes to the phases will be flagged.', 'Storyline marquée comme approuvée par le client : une version a été conservée, les modifications ultérieures des phases seront signalées.', 'Storyline als vom Kunden freigegeben markiert: Eine Version wurde gespeichert, spätere Änderungen an den Phasen werden angezeigt.'), 'success');
       App.render();
     } else if (action === 'compare') {
       const ui = sbUI();
