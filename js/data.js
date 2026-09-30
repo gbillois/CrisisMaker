@@ -134,7 +134,6 @@
           checklist: normalizeChecklist(null),
           player_pool: [],
           actor_categories: [],
-          framing_validation: null,
           // The Context fields when the exercise was last generated or updated from them.
           context_generation: null,
           source_file: null,

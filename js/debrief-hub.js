@@ -139,12 +139,12 @@ const sdClip = (value, max) => {
    clipped to the lengths below, so nothing relies on PowerPoint shrinking text (it only does so
    once a box is edited): a longer list continues on a "(continued)" slide. */
 const SD_FIT = {
-  phaseItems: 4, phaseWhat: 140, eventText: 64, injectTitle: 56, injectCell: 22,
+  phaseItems: 7, phaseWhat: 260, eventText: 120, injectTitle: 90, injectCell: 26,
   storyItems: 4, storyTitle: 60, storyText: 90,
   scenario: 440, objectives: 4, objectiveText: 100,
   timelineEvents: 12, timelineText: 48,
-  evaluationRows: 8, cells: 3, cellItems: 2, cellText: 56,
-  bulletItems: 5, bulletText: 160, columnItems: 4, columnText: 130
+  evaluationRows: 8, cells: 3, cellItems: 4, cellText: 110,
+  bulletItems: 5, bulletText: 160, columnItems: 6, columnText: 130
 };
 
 /* Splits a list into pages of at most `size` items; an empty list gives one empty page. */
@@ -275,7 +275,7 @@ function renderSlideDebriefView() {
       <div class="sd-fields">${SD_TEXT_FIELDS.map(([key]) => { const field = sdFieldText(key, ui); return `<label class="field">${escapeHtml(field.label)}<textarea rows="5" data-sd-field="${key}" placeholder="${escapeAttribute(field.hint)}" ${locked}>${escapeHtml(state[key])}</textarea></label>`; }).join('')}</div>
     </article>
     <article class="card sd-preview-card">
-      <div class="section-header"><div><h3>${escapeHtml(tt('Slides', 'Slides', 'Folien'))} <small>${slides.length}</small></h3><p class="subtle">${escapeHtml(tt('Preview of the deck, updated with the exercise. The PowerPoint file has the same slides, ready to edit.', 'Aperçu du deck, mis à jour avec l’exercice. Le fichier PowerPoint contient les mêmes slides, prêtes à modifier.', 'Vorschau des Foliensatzes, mit der Übung aktualisiert. Die PowerPoint-Datei enthält dieselben Folien, bereit zum Bearbeiten.'))}${labels.lang !== ui ? ` ${escapeHtml(tt('The slides are in the language of the injects (Context).', 'Les slides sont dans la langue des injects (Contexte).', 'Die Folien sind in der Sprache der Injects (Kontext).'))}` : ''}</p></div></div>
+      <div class="section-header"><div><h3>${escapeHtml(tt('Slides', 'Slides', 'Folien'))} <small>${slides.length}</small></h3><p class="subtle">${escapeHtml(tt('Check the deck before downloading it: click a slide to see it full size. The PowerPoint file has the same slides in editable text, to finish in PowerPoint.', 'Vérifiez le deck avant de le télécharger : cliquez sur une slide pour la voir en grand. Le fichier PowerPoint contient les mêmes slides en texte modifiable, à finaliser dans PowerPoint.', 'Prüfen Sie den Foliensatz vor dem Herunterladen: Klicken Sie auf eine Folie, um sie groß zu sehen. Die PowerPoint-Datei enthält dieselben Folien als bearbeitbaren Text, zum Fertigstellen in PowerPoint.'))}${labels.lang !== ui ? ` ${escapeHtml(tt('The slides are in the language of the injects (Context).', 'Les slides sont dans la langue des injects (Contexte).', 'Die Folien sind in der Sprache der Injects (Kontext).'))}` : ''}</p></div></div>
       <div class="sd-grid">${slides.map((slide, index) => sdSlideFigure(slide, index, slides.length, labels, sdKicker(project))).join('')}</div>
     </article>
   </section>`;
@@ -333,7 +333,7 @@ const SD_WAVES = [
 ];
 
 function sdSlideFigure(slide, index, total, labels, kicker) {
-  return `<figure class="sd-slide-wrap"><div class="sd-slide sd-${slide.kind}${sdIsDark(slide) ? ' is-dark' : ''}">${sdSlideHtml(slide, labels, { index, total, kicker })}</div><figcaption>${index + 1}. ${escapeHtml(slide.title)}</figcaption></figure>`;
+  return `<figure class="sd-slide-wrap" data-sd-open="${index}" title="${escapeAttribute(tt('Click to enlarge', 'Cliquer pour agrandir', 'Zum Vergrößern klicken'))}"><div class="sd-slide sd-${slide.kind}${sdIsDark(slide) ? ' is-dark' : ''}">${sdSlideHtml(slide, labels, { index, total, kicker })}</div><figcaption>${index + 1}. ${escapeHtml(slide.title)}</figcaption></figure>`;
 }
 
 function sdList(items, cls = '') {
@@ -367,7 +367,7 @@ function sdSlideHtml(slide, labels = sdDeckLabels(), frame = {}) {
   const head = `<span class="sd-eyebrow">${e(slide.eyebrow || '')}</span>${tag}<h4 class="sd-headline" style="--size:${sdHeadSize(slide.title)}">${e(sdClip(slide.title, SD_HEAD_MAX))}</h4><div class="sd-accentbar"></div>`;
   const label = (text, cls = '') => `<span class="sd-label ${cls}">${e(text)}</span>`;
   const num = (index) => String(index + 1).padStart(2, '0');
-  const rows = (items) => (items.length ? `<ul class="sd-rows">${items.join('')}</ul>` : '<p class="sd-none">-</p>');
+  const rows = (items, count = 4) => (items.length ? `<ul class="sd-rows" style="--rows:${count}">${items.join('')}</ul>` : '<p class="sd-none">-</p>');
   let body = '';
   switch (slide.kind) {
     case 'overview':
@@ -384,8 +384,8 @@ function sdSlideHtml(slide, labels = sdDeckLabels(), frame = {}) {
       break;
     case 'phase':
       body = `${slide.what ? `<p class="sd-lede">${e(slide.what)}</p>` : ''}<div class="sd-split">
-        <div class="sd-card sd-col">${label(labels.mainEvents, 'is-indigo')}${rows(slide.events.map((event) => `<li><b>${e(event.at)}</b><span>${e(event.text)}</span></li>`))}</div>
-        <div class="sd-card sd-col">${label(labels.injects, 'is-indigo')}${rows(slide.injects.map((inject) => `<li><b>${e(inject.at)}</b><span>${e(inject.title)}${inject.to ? ` <i>→ ${e(inject.to)}</i>` : ''}</span></li>`))}</div></div>`;
+        <div class="sd-card sd-col">${label(labels.mainEvents, 'is-indigo')}${rows(slide.events.map((event) => `<li><b>${e(event.at)}</b><span>${e(event.text)}</span></li>`), SD_FIT.phaseItems)}</div>
+        <div class="sd-card sd-col">${label(labels.injects, 'is-indigo')}${rows(slide.injects.map((inject) => `<li><b>${e(inject.at)}</b><span>${e(inject.title)}${inject.to ? ` <i>→ ${e(inject.to)}</i>` : ''}</span></li>`), SD_FIT.phaseItems)}</div></div>`;
       break;
     case 'story':
       body = `<div class="sd-quad">${slide.items.map((item) => `<div class="sd-card sd-story-card">${label(item.when || '', 'is-indigo')}<strong>${e(item.title)}</strong><p>${e(item.text)}</p></div>`).join('')}</div>`;
@@ -404,7 +404,7 @@ function sdSlideHtml(slide, labels = sdDeckLabels(), frame = {}) {
     case 'columns':
       body = `<div class="sd-split">${[slide.left, slide.right].map((list) => {
         const style = SD_LIST_STYLE[list.key] || { marker: '•', color: SD_COLORS.indigo };
-        return `<div class="sd-col ${style.dark ? 'sd-dark' : 'sd-card'}" style="--mark:#${style.color}">${label(list.label, style.dark ? '' : 'is-mark')}${rows(list.items.map((item, index) => `<li><b>${style.numbered ? num(index) : style.marker}</b><span>${e(item)}</span></li>`))}</div>`;
+        return `<div class="sd-col ${style.dark ? 'sd-dark' : 'sd-card'}" style="--mark:#${style.color}">${label(list.label, style.dark ? '' : 'is-mark')}${rows(list.items.map((item, index) => `<li><b>${style.numbered ? num(index) : style.marker}</b><span>${e(item)}</span></li>`), SD_FIT.columnItems)}</div>`;
       }).join('')}</div>`;
       break;
     default: break;
@@ -430,12 +430,50 @@ function bindSlideDebriefEvents() {
     saveLocal(false);
     App.render();
   }));
+  root.querySelector('.sd-grid')?.addEventListener('click', (event) => {
+    const figure = event.target.closest('[data-sd-open]');
+    if (figure) sdOpenViewer(Number(figure.dataset.sdOpen));
+  });
   root.querySelectorAll('[data-sd-action]').forEach((button) => button.addEventListener('click', async () => {
     const action = button.dataset.sdAction;
     if (action === 'download') await sdDownload(project);
     if (action === 'ai') await SdAI.write(project);
     if (action === 'ai-stop') SdAI.stop();
   }));
+}
+
+/* A slide at full size, with previous and next (arrow keys) and Escape to close. */
+function sdOpenViewer(index) {
+  document.querySelector('.sd-viewer')?.remove();
+  const slides = sdSlides(appState.scenario);
+  if (!slides.length) return;
+  const labels = sdDeckLabels(appState.scenario);
+  const kicker = sdKicker(appState.scenario);
+  const at = Math.max(0, Math.min(slides.length - 1, index));
+  const viewer = document.createElement('div');
+  viewer.className = 'sd-viewer';
+  viewer.setAttribute('role', 'dialog');
+  viewer.setAttribute('aria-modal', 'true');
+  viewer.innerHTML = `<div class="sd-viewer-bar">
+      <button type="button" data-sd-step="-1" ${at ? '' : 'disabled'} aria-label="${escapeAttribute(tt('Previous slide', 'Slide précédente', 'Vorherige Folie'))}">${sbUiIcon('chevronRight', 16).replace('<svg', '<svg style="transform:rotate(180deg)"')}</button>
+      <button type="button" data-sd-step="1" ${at < slides.length - 1 ? '' : 'disabled'} aria-label="${escapeAttribute(tt('Next slide', 'Slide suivante', 'Nächste Folie'))}">${sbUiIcon('chevronRight', 16)}</button>
+      <span>${at + 1} / ${slides.length} · ${escapeHtml(slides[at].title)}</span>
+      <button type="button" data-sd-close aria-label="${escapeAttribute(tt('Close', 'Fermer', 'Schließen'))}">${sbUiIcon('close', 16)}</button>
+    </div>
+    <div class="sd-viewer-stage">${sdSlideFigure(slides[at], at, slides.length, labels, kicker)}</div>`;
+  const close = () => { viewer.remove(); document.removeEventListener('keydown', keys); };
+  const keys = (event) => {
+    if (event.key === 'Escape') close();
+    else if (event.key === 'ArrowRight' && at < slides.length - 1) { close(); sdOpenViewer(at + 1); }
+    else if (event.key === 'ArrowLeft' && at > 0) { close(); sdOpenViewer(at - 1); }
+  };
+  viewer.addEventListener('click', (event) => {
+    const step = event.target.closest('[data-sd-step]');
+    if (step && !step.disabled) { close(); sdOpenViewer(at + Number(step.dataset.sdStep)); return; }
+    if (event.target.closest('[data-sd-close]') || event.target === viewer || event.target.classList.contains('sd-viewer-stage')) close();
+  });
+  document.addEventListener('keydown', keys);
+  document.body.appendChild(viewer);
 }
 
 /* Typing refreshes the preview only, so the field keeps its focus. */
@@ -643,9 +681,9 @@ function sdBuildDeck(project) {
     text(slide, sdPageNumber(index, total), 1026, 672, 200, 18, { size: 12, fontFace: F.mono, color: onDark ? C.onDarkFaint : C.subtle, align: 'right', valign: 'middle' });
   };
   const listRows = (slide, items, x, y, w, h, style) => {
-    // Four rows per column, as in the preview: a marker (time, number or sign) and its text.
+    // As many rows per column as the slide holds, as in the preview: a marker (time, number or sign) and its text.
     if (!items.length) { text(slide, '-', x + 22, y, w - 40, 24, { size: 15, color: style.textColor || C.muted }); return; }
-    const rowH = h / 4;
+    const rowH = h / (style.rows || 4);
     items.forEach((item, index) => {
       const top = y + index * rowH;
       if (index) hline(slide, x + 22, top, w - 40, style.lineColor || C.line);
@@ -736,14 +774,14 @@ function sdBuildDeck(project) {
       rect(slide, G.X + G.CW - tagW, 88, tagW, 22, sdHex(data.color));
       text(slide, tagText, G.X + G.CW - tagW, 88, tagW, 22, { size: 10, fontFace: F.mono, bold: true, color: C.white, align: 'center', valign: 'middle', charSpacing: 0.5 });
       let y = top;
-      if (data.what) { text(slide, data.what, left, y, G.CW, 48, { size: 16, color: C.muted, lineSpacingMultiple: 1.25, fit: 'shrink' }); y += 58; }
+      if (data.what) { text(slide, data.what, left, y, G.CW, 58, { size: 15, color: C.muted, lineSpacingMultiple: 1.2, fit: 'shrink' }); y += 66; }
       const h = bottom - y;
       [[labels.mainEvents, data.events.map((event) => ({ marker: event.at, text: event.text }))],
         [labels.injects, data.injects.map((inject) => ({ marker: inject.at, text: [run(inject.title), ...(inject.to ? [run(`  → ${inject.to}`, { color: C.muted })] : [])] }))]].forEach(([name, items], i) => {
         const x = i ? right : left;
         card(slide, x, y, col, h);
         label(slide, name, x + 22, y + 18, col - 40);
-        listRows(slide, items, x, y + 46, col, h - 58, { markerW: 64, size: 13.5 });
+        listRows(slide, items, x, y + 46, col, h - 58, { markerW: 64, size: 13, rows: SD_FIT.phaseItems });
       });
     } else if (data.kind === 'story') {
       const h = (bottom - top - 14) / 2;
@@ -797,7 +835,7 @@ function sdBuildDeck(project) {
         if (style.dark) dark(slide, x, top, col, h); else card(slide, x, top, col, h);
         label(slide, list.label, x + 22, top + 18, col - 40, style.dark ? C.green300 : style.color);
         listRows(slide, list.items.map((item, n) => ({ marker: style.numbered ? String(n + 1).padStart(2, '0') : style.marker, text: item })), x, top + 48, col, h - 60,
-          { markerW: 36, markerSize: 14, size: 15, markerColor: style.color, textColor: style.dark ? C.onDarkText : C.ink, lineColor: style.dark ? '3A3550' : C.line });
+          { markerW: 36, markerSize: 14, size: 15, rows: SD_FIT.columnItems, markerColor: style.color, textColor: style.dark ? C.onDarkText : C.ink, lineColor: style.dark ? '3A3550' : C.line });
       });
     }
   });

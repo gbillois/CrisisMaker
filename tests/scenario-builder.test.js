@@ -635,7 +635,7 @@ test('view: the six tabs and every modal render without a DOM and escape user te
   h.run(`appState.scenario.storyboard.blocks[0].beats[0].cell_id = ''`);
   h.run(`tabUI('summary').review = { score: null, summary: '', issues: sbExerciseChecks(appState.scenario) }; tabUI('summary').time = 120`);
   const summary = h.run('renderSummaryView()');
-  for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'cc-launch', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
+  for (const marker of ['cc-readiness', 'cc-gauge', 'su-kpis', 'su-heat', 'data-action="checker-analyze"', 'data-mode="file"', 'su-issue-group']) assert.ok(summary.includes(marker), marker);
   h.run(`appState.scenario.storyboard.blocks[0].title = '<img src=x onerror=alert(1)>'; appState.scenario.cells[0].name = '<img src=y onerror=alert(1)>'; sbUI().selected = [sbStoryboard().blocks[0].id]`);
   for (const view of ['renderStorylineView()', 'renderCellsView()', 'renderDetailedView()', 'renderSummaryView()']) assert.ok(!/<img src=[xy]/.test(h.run(view)), view);
 });
@@ -1439,24 +1439,24 @@ test('slide debrief: long lists continue on extra slides; nothing is dropped and
   h.run(`appState.scenario = defaultScenario(); StoryboardHistory.ensure(); appState.scenario.slide_debrief = normalizeSlideDebrief(null);`);
   const blockId = h.run('sbMainBlocks(sbStoryboard())[0].id');
   const phaseInjects = h.run(`ExerciseModel.of(appState.scenario).injects.filter((inject) => inject.phase_id === '${blockId}').length`);
-  // Nine main events in phase 1: 4 + 4 + 1 over three slides.
+  // Nine main events in phase 1: 7 + 2 over two slides.
   h.run(`sbMainBlocks(sbStoryboard())[0].events = Array.from({ length: 9 }, (_, i) => ({ offset_minutes: i, text: 'Event ' + i + ' ' + 'with a long description '.repeat(8) }));`);
   const phase1 = h.json(`sdSlides(appState.scenario).filter((slide) => slide.kind === 'phase' && slide.title.startsWith('Phase 1:'))`);
-  const pages = Math.max(3, Math.ceil(phaseInjects / 4));
+  const pages = Math.max(2, Math.ceil(phaseInjects / 7));
   assert.equal(phase1.length, pages);
   assert.equal(phase1[1].title, `${phase1[0].title} (continued)`);
   assert.equal(phase1[1].what, '', 'the phase summary is on its first slide only');
   assert.deepEqual(phase1.flatMap((slide) => slide.events.map((event) => event.text.split(' ')[1])), ['0', '1', '2', '3', '4', '5', '6', '7', '8']);
   assert.equal(phase1.reduce((sum, slide) => sum + slide.injects.length, 0), phaseInjects);
-  assert.ok(phase1.every((slide) => slide.events.length <= 4 && slide.injects.length <= 4));
-  assert.ok(phase1.every((slide) => slide.events.every((event) => event.text.length <= 64 && (event.text.length < 64 || event.text.endsWith('…')))));
+  assert.ok(phase1.every((slide) => slide.events.length <= 7 && slide.injects.length <= 7));
+  assert.ok(phase1.every((slide) => slide.events.every((event) => event.text.length <= 120 && (event.text.length < 120 || event.text.endsWith('…')))));
   // Every debrief event is shown, four per slide.
   const story = h.run('(appState.scenario.debrief?.events || []).length');
   const storySlides = h.json(`sdSlides(appState.scenario).filter((slide) => slide.kind === 'story')`);
   assert.equal(storySlides.length, Math.ceil(story / 4));
   assert.equal(storySlides.reduce((sum, slide) => sum + slide.items.length, 0), story);
-  // Seven strengths and two improvements: two slides, the second one with the three last strengths.
-  h.run(`Object.assign(sdState(appState.scenario), { went_well: 'a\\nb\\nc\\nd\\ne\\nf\\ng', to_improve: 'x\\ny' })`);
+  // Nine strengths and two improvements: two slides, the second one with the three last strengths.
+  h.run(`Object.assign(sdState(appState.scenario), { went_well: 'a\\nb\\nc\\nd\\nh\\ni\\ne\\nf\\ng', to_improve: 'x\\ny' })`);
   const columns = h.json(`sdSlides(appState.scenario).filter((slide) => slide.kind === 'columns')`);
   assert.equal(columns.length, 2);
   assert.deepEqual(columns[1].left.items, ['e', 'f', 'g']);
@@ -1663,7 +1663,7 @@ test('project file: everything saved in the JSON comes back identical after open
   const strip = (json) => { const data = JSON.parse(json); delete data.updated_at; return data; };
   assert.deepEqual(strip(h.run('JSON.stringify(buildProjectFileData({ forFile: true }))')), strip(first));
   const data = JSON.parse(first);
-  for (const key of ['evaluation', 'play', 'slide_debrief', 'storyboard', 'storyboard_versions', 'framing_validation', 'source_file', 'debrief', 'checklist']) assert.ok(key in data, key);
+  for (const key of ['evaluation', 'play', 'slide_debrief', 'storyboard', 'storyboard_versions', 'source_file', 'debrief', 'checklist']) assert.ok(key in data, key);
   assert.equal(data.evaluation.contributions[h.run('appState.scenario.cells[0].id')][0].evaluator, 'Bob');
   assert.equal(data.settings.ai_api_key, '', 'no API key in the file');
 });

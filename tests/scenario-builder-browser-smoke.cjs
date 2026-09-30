@@ -142,12 +142,9 @@ function answerFor(system, user) {
     await page.click('.agent-panel [data-agent-action="answer"]');
   }
   await page.waitForFunction(() => crisisAgentRunner.status === 'complete' && !ContextGeneration.busy());
-  // The framing done, the Main storyline opens for the client review, with the validation at hand.
+  // The framing done, the Main storyline opens for the review; no approval step.
   await page.waitForFunction(() => appState.route === 'storyline');
-  assert.ok(await page.isVisible('.bf-bar [data-bf-action="validate"]'));
-  await page.click('.bf-bar [data-bf-action="validate"]');
-  assert.ok(await page.isVisible('.bf-bar.is-ok'), 'validated, unchanged');
-  assert.ok(await page.evaluate(() => StoryboardHistory.findVersion(appState.scenario.framing_validation.version_id)?.kind === 'named'));
+  assert.equal(await page.locator('[data-bf-action]').count(), 0);
   await page.click('.nav-icon-btn[data-route="scenario"]');
   assert.ok(await page.isVisible('.agent-panel.is-complete'));
   assert.equal(await page.evaluate(() => sbStoryboard().blocks.length), 3);
@@ -287,7 +284,8 @@ function answerFor(system, user) {
   assert.ok((await page.locator('.page-title, h2').first().innerText()).includes('Check & Challenge'));
   assert.ok(await page.isVisible('.cc-readiness') && await page.isVisible('.su-issue-group'), 'readiness and live checks without running anything');
   assert.equal(await page.locator('[data-su-rehearse]').count(), 0, 'no rehearsal block');
-  assert.ok(await page.isVisible('.cc-gauge .cc-launch'), 'Launch button in the AI challenge gauge');
+  assert.equal(await page.locator('.cc-launch').count(), 0, 'one way to launch the challenge: Challenge with AI');
+  assert.equal(await page.locator('[data-action="checker-analyze"]').count(), 1);
   // The five-axis analysis streams; the timing review goes through the mocked chat endpoint.
   await page.evaluate(() => {
     const original = AITextGenerator.generateStreaming;
@@ -295,7 +293,7 @@ function answerFor(system, user) {
       ? { summary: 'Solid storyline, thin external pressure.', maturity: 'advanced_draft', priority_actions: ['Add a media inject in phase 2'], axes: [1, 2, 3, 4, 5].map(id => ({ id, title: `Axis ${id}`, verdict: id === 3 ? 'insufficient' : 'satisfactory', positive: ['Good'], negative: id === 3 ? ['No press'] : [], recommendations: ['Keep'] })) }
       : original.call(AITextGenerator, kind, ...rest);
   });
-  await page.click('.cc-gauge .cc-launch');
+  await page.click('[data-action="checker-analyze"]');
   await page.waitForFunction(() => tabUI('summary').review?.issues.some(issue => issue.source === 'ai') && appState.checkerState.analysisResult);
   await page.waitForFunction(() => !appState.checkerState.analysisLoading && !SbAI.busy);
   assert.ok(await page.isVisible('.su-issue-group'));

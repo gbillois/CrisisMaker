@@ -379,9 +379,6 @@
           scenario.scenario.phases = sbDerivePhases(storyboard);
           sbSealLinks(scenario);
           storyboard.meta.validated_rev = storyboard.rev;
-          if (typeof bfFramingPrints === 'function') {
-            scenario.framing_validation = { at: '2026-11-02T16:00:00.000Z', version_id: '', prints: bfFramingPrints(scenario) };
-          }
         } else {
           stimuli.forEach((stimulus) => { delete stimulus._demo; });
         }

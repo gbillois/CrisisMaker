@@ -1,59 +1,18 @@
-/* Build my exercise, in the two stages of the work with a client:
-   1. the framing: phases, main events and their consequences, cells and senders (Main storyline),
-      reviewed and validated with the client;
-   2. the stimuli of every cell, planned and written under that framing (Detailed storyline),
-      then challenged (Check & Challenge).
-   The validation keeps a named version of the storyline and a fingerprint of each phase, so the
-   next tabs can say what changed in the framing since the client validated it. */
-
-/* What the client validates: the phases of the main storyline and their main events, not the
-   injects planned under them. */
-function bfFramingPrints(project = appState.scenario) {
-  const storyboard = project.storyboard;
-  if (!storyboard) return {};
-  return Object.fromEntries(sbMainBlocks(storyboard).map((block) => [block.id, sbHash({
-    type: block.type, title: block.title, start: block.start_minutes, duration: block.duration_minutes,
-    brief: block.brief, narrative: block.narrative,
-    events: (block.events || []).map((event) => [event.offset_minutes, event.text || event.title || ''])
-  })]));
-}
-
-function bfFramingValidation(project = appState.scenario) {
-  const saved = project.framing_validation;
-  return saved && typeof saved === 'object' && saved.prints && typeof saved.prints === 'object' ? saved : null;
-}
-
-/* The phases added, removed or changed since the validation (null when never validated). */
-function bfFramingChanges(project = appState.scenario) {
-  const saved = bfFramingValidation(project);
-  if (!saved) return null;
-  const now = bfFramingPrints(project);
-  const added = Object.keys(now).filter((id) => !(id in saved.prints)).length;
-  const removed = Object.keys(saved.prints).filter((id) => !(id in now)).length;
-  const changed = Object.keys(now).filter((id) => id in saved.prints && saved.prints[id] !== now[id]).length;
-  return { added, removed, changed, total: added + removed + changed };
-}
-
-function bfValidateFraming(project = appState.scenario) {
-  if (!sbMainBlocks(project.storyboard).length) return false;
-  const at = new Date();
-  const when = at.toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' });
-  const version = StoryboardHistory.snapshot(tt(`Approved by the client (${when})`, `Approuvée par le client (${when})`, `Vom Kunden freigegeben (${when})`), 'named');
-  project.framing_validation = { at: at.toISOString(), version_id: version?.id || '', prints: bfFramingPrints(project) };
-  saveLocal(false);
-  return true;
-}
+/* Building an exercise in two stages:
+   1. the framing: phases, main events and their consequences, cells and senders (Main storyline);
+   2. the injects of every cell, planned and written under that framing (Detailed storyline),
+      then challenged (Check & Challenge). */
 
 function bfFramingObjective(project, { adapted = false, only = null } = {}) {
   return [
     only && only.phases === false ? 'THIS RUN BUILDS ONLY the player cells with their players, and the cast roles with their actors (upsertCells, upsertCast). Do not change the scenario, the phases or their main events.' : '',
     only && only.cells === false ? 'THIS RUN BUILDS ONLY the scenario and its phases with their main events. Do not change the player cells, their players or the cast.' : '',
-    'STAGE 1 OF 2, FRAMING ONLY. The designer reviews and validates the framing with the client before any inject is planned.',
+    'STAGE 1 OF 2, FRAMING ONLY. The injects of the cells are planned and written in stage 2.',
     adapted ? 'The library scenario is already adapted to the client (phases, roles and planned injects): keep its phases and planned injects, correct only what contradicts the context, and spend your steps on what is missing: main events, cells and players, actors for the roles.' : '',
     'Build: scenario name, type and summary; objectives; synopsis and threat; the phases of the main storyline, ending with a closing phase (recovery, return to normal, end of exercise) unless the context says otherwise; the main events of each phase with the main consequences the players must manage; the player cells and their players; the cast roles with their actors.',
     bfSourceListsStimuli()
       ? 'Injects: plan now (planPhaseInjects), in their phase, only the stimuli the source file lists (one planned inject each, not written); do not invent others and do not write any (no createStimulus): stage 2 completes the plan of each cell and writes the injects once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects. Keep the main events (setMainEvents) for the few pieces of information or actions that structure each phase (a sequence summary or presentation), never for the listed stimuli.'
-      : 'Do NOT plan or write injects for the cells (no planPhaseInjects, no addPlannedInjects, no createStimulus): stage 2 plans and writes them once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects.',
+      : 'Do NOT plan or write injects for the cells (no planPhaseInjects, no addPlannedInjects, no createStimulus): stage 2 plans and writes them. Ignore consistency findings about cells without injects or unwritten injects.',
     bfSourceDefinesPhases() ? 'The source file defines the phases: build exactly those, in its order, and no other (no added closing phase unless the file has one).' : '',
     contextAgentObjective(project)
   ].filter(Boolean).join('\n').slice(0, 7900);
@@ -128,14 +87,13 @@ const BuildFlow = {
   },
 
   /* Stage 2: every cell's injects are planned and written under the framing, then challenged. */
-  async stimuli({ confirmUnvalidated = true, challenge = true } = {}) {
+  async stimuli({ challenge = true } = {}) {
     const project = appState.scenario;
     if (this.busy()) return false;
     if (!sbMainBlocks(project.storyboard).length) {
       pushToast(tt('Build the framing first: its phases frame the injects of every cell.', 'Construisez d’abord le cadrage : ses phases structurent les injects de chaque cellule.', 'Erstellen Sie zuerst den Rahmen: Seine Phasen strukturieren die Injects jeder Zelle.'), 'info');
       return false;
     }
-    if (confirmUnvalidated && !bfFramingValidation(project) && !window.confirm(tt('The client has not approved the main storyline yet. Write the injects of every cell anyway?', 'Le client n’a pas encore approuvé la storyline principale. Rédiger quand même les injects de chaque cellule ?', 'Der Kunde hat die Haupt-Storyline noch nicht freigegeben. Trotzdem die Injects aller Zellen schreiben?'))) return false;
     // A framing plans no inject: each phase gets a target from its length and the cells
     // (about one inject per cell every 20 minutes), unless the designer set one.
     if (sbFillInjectTargets(project).length) StoryboardHistory.commit('Set inject targets');
@@ -165,67 +123,3 @@ const BuildFlow = {
     return true;
   }
 };
-
-function bfChangesLabel(changes) {
-  const parts = [];
-  if (changes.changed) parts.push(tt(`${changes.changed} phase(s) changed`, `${changes.changed} phase(s) modifiée(s)`, `${changes.changed} Phase(n) geändert`));
-  if (changes.added) parts.push(tt(`${changes.added} added`, `${changes.added} ajoutée(s)`, `${changes.added} hinzugefügt`));
-  if (changes.removed) parts.push(tt(`${changes.removed} removed`, `${changes.removed} supprimée(s)`, `${changes.removed} entfernt`));
-  return tt(`Changed since the client approved it: ${parts.join(', ')}`, `Modifiée depuis l’accord du client : ${parts.join(', ')}`, `Seit der Freigabe durch den Kunden geändert: ${parts.join(', ')}`);
-}
-
-/* The line under the toolbar of the Main storyline: whether the client approved the phases
-   and main events, and what changed since. */
-function renderFramingBar(project, route) {
-  if (!sbMainBlocks(project.storyboard).length) return '';
-  const validation = bfFramingValidation(project);
-  const changes = bfFramingChanges(project);
-  const busy = BuildFlow.busy();
-  let text;
-  let tone = 'info';
-  if (!validation) {
-    text = route === 'storyline'
-      ? tt('Review the phases and main events with the client. Once they agree, mark the storyline as approved: any later change will be flagged here.', 'Relisez les phases et les événements principaux avec le client. Une fois d’accord, marquez la storyline comme approuvée : toute modification ultérieure sera signalée ici.', 'Phasen und Hauptereignisse mit dem Kunden prüfen. Sobald er zustimmt, die Storyline als freigegeben markieren: Jede spätere Änderung wird hier angezeigt.')
-      : '';
-  } else if (changes.total) {
-    tone = 'warn';
-    text = `${bfChangesLabel(changes)}.`;
-  } else {
-    tone = 'ok';
-    text = tt(`Approved by the client on ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, unchanged since.`, `Approuvée par le client le ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, inchangée depuis.`, `Vom Kunden freigegeben am ${new Date(validation.at).toLocaleString(uiLocale(), { dateStyle: 'short', timeStyle: 'short' })}, seitdem unverändert.`);
-  }
-  const validate = !validation || changes.total
-    ? `<button class="btn ${validation ? 'btn-secondary' : 'btn-primary'} btn-xs" data-bf-action="validate" ${busy ? 'disabled' : ''}>${sbUiIcon('checkCircle', 13)} ${escapeHtml(validation ? tt('Approved again', 'Approuvée à nouveau', 'Erneut freigegeben') : tt('Mark as approved', 'Marquer comme approuvée', 'Als freigegeben markieren'))}</button>`
-    : '';
-  const compare = validation?.version_id && changes.total && StoryboardHistory.findVersion(validation.version_id)
-    ? `<button class="btn btn-ghost btn-xs" data-bf-action="compare">${sbUiIcon('history', 13)} ${escapeHtml(tt('Compare', 'Comparer', 'Vergleichen'))}</button>`
-    : '';
-  const next = route === 'storyline' && validation && !changes.total
-    ? `<button class="btn btn-primary btn-xs" data-bf-action="stimuli" ${busy || !isLLMAvailable() ? 'disabled' : ''}>${sbUiIcon('sparkles', 13)} ${escapeHtml(tt('Write the injects with AI', 'Rédiger les injects avec l’IA', 'Injects mit KI schreiben'))}</button>`
-    : '';
-  return `<div class="bf-bar is-${tone}">${sbUiIcon(tone === 'ok' ? 'checkCircle' : tone === 'warn' ? 'alert' : 'info', 14)}<span>${escapeHtml(text)}</span><div class="bf-bar-actions">${compare}${validate}${next}</div></div>`;
-}
-
-/* One listener for the framing bar of the storylines (it is re-rendered with the page). */
-if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('click', async (event) => {
-  const button = event.target?.closest?.('[data-bf-action]');
-  if (!button || button.disabled) return;
-  const action = button.dataset.bfAction;
-  try {
-    if (action === 'validate') {
-      if (bfValidateFraming()) pushToast(tt('Storyline marked as approved by the client: a version was kept, later changes to the phases will be flagged.', 'Storyline marquée comme approuvée par le client : une version a été conservée, les modifications ultérieures des phases seront signalées.', 'Storyline als vom Kunden freigegeben markiert: Eine Version wurde gespeichert, spätere Änderungen an den Phasen werden angezeigt.'), 'success');
-      App.render();
-    } else if (action === 'compare') {
-      const ui = sbUI();
-      ui.diffVersionId = bfFramingValidation()?.version_id || null;
-      ui.modal = 'versions';
-      appState.route = 'storyline';
-      App.render();
-    } else if (action === 'stimuli') {
-      await BuildFlow.stimuli();
-    }
-  } catch (error) {
-    pushToast(sbErrorMessage(error), 'error');
-    App.render();
-  }
-});

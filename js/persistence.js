@@ -14,6 +14,7 @@
           exportData.play = { ...exportData.play, offset_min: Math.round(playNow(appState.scenario) * 100) / 100, running: false, run_since: null };
         }
         exportData.debrief = normalizeDebrief(exportData.debrief, exportData);
+        delete exportData.framing_validation; // The former client approval of the storyline, no longer used.
         exportData.settings = { ...exportData.settings, ai_api_key: '', azure_api_key: '', azure_speech_key: '' };
         exportData.llm_prompts = extractLLMPrompts();
         delete exportData._llm_prompts;

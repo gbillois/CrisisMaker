@@ -110,8 +110,8 @@ function cgMinutes(value) {
 /* What the AI generation creates, as the designer ticks it. [key, label] */
 const CG_CREATE = [
   ['context', ['The context', 'Le contexte', 'Den Kontext']],
+  ['phases', ['Main storyline: phases and key points', 'Storyline principale : phases et points clés', 'Haupt-Storyline: Phasen und Kernpunkte']],
   ['cells', ['Cells and actors', 'Les cellules et les acteurs', 'Zellen und Akteure']],
-  ['phases', ['Phases and key points', 'Les phases et les points clés', 'Phasen und Kernpunkte']],
   ['stimuli', ['Stimuli (injects)', 'Les stimuli (injects)', 'Stimuli (Injects)']],
   ['evaluation', ['Evaluation sheets', 'Les grilles d’évaluation', 'Bewertungsbögen']]
 ];
@@ -290,7 +290,7 @@ const ContextGeneration = {
     }
     this.want = want;
     this.report = null;
-    if ((want.cells || want.phases) && sbMainBlocks(project.storyboard).length && !window.confirm(tt('Generate the exercise again? The agent rebuilds the framing from the context, adapting the current phases. To carry only your changes, use Update below.', 'Générer à nouveau l’exercice ? L’agent reconstruit le cadrage à partir du contexte en adaptant les phases actuelles. Pour ne reporter que vos modifications, utilisez Mettre à jour plus bas.', 'Die Übung erneut erstellen? Der Agent baut den Rahmen aus dem Kontext neu auf und passt die aktuellen Phasen an. Um nur Ihre Änderungen zu übernehmen, nutzen Sie unten Aktualisieren.'))) return false;
+    if ((want.cells || want.phases) && sbMainBlocks(project.storyboard).length && !window.confirm(tt('Generate the exercise again? The agent rebuilds the framing from the context, adapting the current phases. To carry only your changes, use Update next tabs below.', 'Générer à nouveau l’exercice ? L’agent reconstruit le cadrage à partir du contexte en adaptant les phases actuelles. Pour ne reporter que vos modifications, utilisez Mettre à jour les onglets suivants plus bas.', 'Die Übung erneut erstellen? Der Agent baut den Rahmen aus dem Kontext neu auf und passt die aktuellen Phasen an. Um nur Ihre Änderungen zu übernehmen, nutzen Sie unten Folgende Tabs aktualisieren.'))) return false;
     tabUI('context').panel = 'generate';
     if (!want.context) return this.create(project, { all });
     this.stage = 'reading';
@@ -356,7 +356,7 @@ const ContextGeneration = {
       if (want.stimuli && sbMainBlocks(project.storyboard).length && ai) {
         this.step = 'stimuli';
         App.render();
-        await BuildFlow.stimuli({ confirmUnvalidated: false, challenge: false });
+        await BuildFlow.stimuli({ challenge: false });
         if (!alive()) return false;
         const stimuli = cgCreationReport(project, { stimuli: true })[0];
         if (!stimuli.ok && SbPipeline.status !== 'stopped') {
@@ -666,7 +666,7 @@ function cgForceDuration(project = appState.scenario) {
   sbAfterStoryboardChange(project, { save: true });
   state.durationConflict = null;
   state.forcedDuration = conflict.minutes;
-  pushToast(tt(`Duration forced to ${sbFormatDuration(conflict.minutes)}: the phases were fitted to it. Select Update at the bottom of the page to carry it into the injects.`, `Durée forcée à ${sbFormatDuration(conflict.minutes)} : les phases ont été ajustées. Cliquez sur Mettre à jour en bas de page pour la répercuter sur les injects.`, `Dauer auf ${sbFormatDuration(conflict.minutes)} erzwungen: Die Phasen wurden angepasst. Wählen Sie unten auf der Seite Aktualisieren, um sie in die Injects zu übernehmen.`), 'warning');
+  pushToast(tt(`Duration forced to ${sbFormatDuration(conflict.minutes)}: the phases were fitted to it. Select Update next tabs at the bottom of the page to carry it into the injects.`, `Durée forcée à ${sbFormatDuration(conflict.minutes)} : les phases ont été ajustées. Cliquez sur Mettre à jour les onglets suivants en bas de page pour la répercuter sur les injects.`, `Dauer auf ${sbFormatDuration(conflict.minutes)} erzwungen: Die Phasen wurden angepasst. Wählen Sie unten auf der Seite Folgende Tabs aktualisieren, um sie in die Injects zu übernehmen.`), 'warning');
   return true;
 }
 
@@ -678,7 +678,7 @@ function renderDurationConflict(project) {
   return `<div class="cx-duration-conflict" role="alert">
     ${sbUiIcon('alert', 16)}
     <div><strong>${escapeHtml(tt(`The phases end at ${sbFormatDuration(conflict.end)}, after the new duration of ${value}.`, `Les phases se terminent à ${sbFormatDuration(conflict.end)}, après la nouvelle durée de ${value}.`, `Die Phasen enden bei ${sbFormatDuration(conflict.end)}, nach der neuen Dauer von ${value}.`))}</strong>
-      <span>${escapeHtml(tt(`Force duration fits every phase, its planned injects and main events into ${value}, keeping their proportions. Then select Update at the bottom of the page.`, `Forcer la durée ajuste toutes les phases, leurs injects prévus et leurs événements principaux à ${value}, en gardant leurs proportions. Cliquez ensuite sur Mettre à jour en bas de page.`, `Dauer erzwingen passt alle Phasen, ihre geplanten Injects und Hauptereignisse an ${value} an und behält ihre Anteile. Wählen Sie danach unten auf der Seite Aktualisieren.`))}</span></div>
+      <span>${escapeHtml(tt(`Force duration fits every phase, its planned injects and main events into ${value}, keeping their proportions. Then select Update next tabs at the bottom of the page.`, `Forcer la durée ajuste toutes les phases, leurs injects prévus et leurs événements principaux à ${value}, en gardant leurs proportions. Cliquez ensuite sur Mettre à jour les onglets suivants en bas de page.`, `Dauer erzwingen passt alle Phasen, ihre geplanten Injects und Hauptereignisse an ${value} an und behält ihre Anteile. Wählen Sie danach unten auf der Seite Folgende Tabs aktualisieren.`))}</span></div>
     <div class="cx-duration-actions">
       <button class="btn btn-ghost btn-sm" data-cx-duration-cancel>${escapeHtml(tt('Cancel', 'Annuler', 'Abbrechen'))}</button>
       <button class="btn btn-primary btn-sm" data-cx-duration-force>${sbUiIcon('clock', 14)} ${escapeHtml(tt('Force duration', 'Forcer la durée', 'Dauer erzwingen'))}</button>
@@ -691,12 +691,12 @@ function cgUpdateStatus(project = appState.scenario) {
   const phases = sbMainBlocks(project.storyboard).length;
   const changes = cgChanges(project);
   let text;
-  if (!phases) text = tt('Generate the exercise first: Update then carries the changes you make to these fields into it.', 'Générez d’abord l’exercice : Mettre à jour y reportera ensuite les modifications que vous faites dans ces champs.', 'Erstellen Sie zuerst die Übung: Aktualisieren übernimmt danach Ihre Änderungen an diesen Feldern.');
+  if (!phases) text = tt('Generate the exercise first: Update next tabs then carries the changes you make to these fields into it.', 'Générez d’abord l’exercice : Mettre à jour les onglets suivants y reportera ensuite les modifications que vous faites dans ces champs.', 'Erstellen Sie zuerst die Übung: Folgende Tabs aktualisieren übernimmt danach Ihre Änderungen an diesen Feldern.');
   else if (changes?.length) text = tt(`Changed since the last generation: ${changes.map((change) => change.label).join(', ')}.`, `Modifié depuis la dernière génération : ${changes.map((change) => change.label).join(', ')}.`, `Seit der letzten Erstellung geändert: ${changes.map((change) => change.label).join(', ')}.`);
   else if (changes) text = tt('The exercise follows the context above.', 'L’exercice suit le contexte ci-dessus.', 'Die Übung folgt dem Kontext oben.');
-  else text = tt('Amend the fields above as you need, then Update: the changes flow into the storyline, the cells and actors, then the injects.', 'Modifiez les champs ci-dessus si besoin, puis Mettre à jour : les changements se répercutent sur la storyline, les cellules et acteurs, puis les injects.', 'Passen Sie die Felder oben nach Bedarf an, dann Aktualisieren: Die Änderungen fließen in die Storyline, die Zellen und Akteure, dann in die Injects.');
+  else text = tt('Amend the fields above as you need, then Update next tabs: the changes flow into the storyline, the cells and actors, then the injects.', 'Modifiez les champs ci-dessus si besoin, puis Mettre à jour les onglets suivants : les changements se répercutent sur la storyline, les cellules et acteurs, puis les injects.', 'Passen Sie die Felder oben nach Bedarf an, dann Folgende Tabs aktualisieren: Die Änderungen fließen in die Storyline, die Zellen und Akteure, dann in die Injects.');
   const forced = tabUI('context').forcedDuration;
-  if (phases && forced) text = `${tt(`Duration forced to ${sbFormatDuration(forced)}: Update to carry it into the injects.`, `Durée forcée à ${sbFormatDuration(forced)} : mettez à jour pour la répercuter sur les injects.`, `Dauer auf ${sbFormatDuration(forced)} erzwungen: Aktualisieren, um sie in die Injects zu übernehmen.`)} ${changes?.length ? text : ''}`.trim();
+  if (phases && forced) text = `${tt(`Duration forced to ${sbFormatDuration(forced)}: Update next tabs to carry it into the injects.`, `Durée forcée à ${sbFormatDuration(forced)} : cliquez sur Mettre à jour les onglets suivants pour la répercuter sur les injects.`, `Dauer auf ${sbFormatDuration(forced)} erzwungen: Folgende Tabs aktualisieren, um sie in die Injects zu übernehmen.`)} ${changes?.length ? text : ''}`.trim();
   return { phases, changed: !!(phases && (changes?.length || forced)), text };
 }
 
@@ -707,7 +707,7 @@ function renderContextUpdate(project) {
   const state = tabUI('context');
   const status = cgUpdateStatus(project);
   const running = ContextGeneration.stage === 'update' || ContextGeneration.stage === 'cascade' || (BuildFlow.stage === 'framing' && state.panel === 'update');
-  const label = ContextGeneration.stage === 'cascade' ? tt('Updating the injects…', 'Mise à jour des injects…', 'Injects werden aktualisiert…') : running ? tt('Updating…', 'Mise à jour…', 'Wird aktualisiert…') : tt('Update', 'Mettre à jour', 'Aktualisieren');
+  const label = ContextGeneration.stage === 'cascade' ? tt('Updating the injects…', 'Mise à jour des injects…', 'Injects werden aktualisiert…') : running ? tt('Updating…', 'Mise à jour…', 'Wird aktualisiert…') : tt('Update next tabs', 'Mettre à jour les onglets suivants', 'Folgende Tabs aktualisieren');
   return `<article class="card cx-update" data-sb-scope>
     <div class="cx-update-row ${status.changed ? 'has-changes' : ''}">
       <span class="cx-update-text">${sbUiIcon(status.changed ? 'alert' : 'sync', 15)} <span>${escapeHtml(status.text)}</span></span>

@@ -353,7 +353,7 @@ test('shorter duration: Force duration fits the phases, Cancel keeps them, and U
   assert.equal(blocks[blocks.length - 1].start + blocks[blocks.length - 1].duration, 45);
   assert.equal(h.run('appState.scenario.storyboard.duration_minutes'), 45);
   view = h.run('renderScenarioView()');
-  assert.ok(view.includes('Duration forced to 45 min: Update to carry it into the injects.') && view.includes('cx-update-row has-changes'));
+  assert.ok(view.includes('Duration forced to 45 min: Update next tabs to carry it into the injects.') && view.includes('cx-update-row has-changes'));
   // Too many phases for the duration: refused, nothing changes.
   assert.equal(h.run('sbFitStoryboardToDuration(appState.scenario.storyboard, 30)'), sbFits(blocks.length, 30));
 });
@@ -426,11 +426,11 @@ test('injects per phase: set in the phase editor; a phase left at 0 gets a targe
 test('creation report: what really exists, item by item, only for what was ticked', () => {
   const h = harness();
   let report = h.json(`cgCreationReport(appState.scenario, { cells: true, phases: true, stimuli: true, evaluation: true })`);
-  assert.deepEqual(report.map(i => [i.key, i.ok]), [['cells', false], ['phases', false], ['stimuli', false], ['evaluation', false]]);
+  assert.deepEqual(report.map(i => [i.key, i.ok]), [['phases', false], ['cells', false], ['stimuli', false], ['evaluation', false]]);
   h.run(`sbApplyTemplate(sbBuiltinTemplates()[0], 'replace'); appState.scenario.cells = [sbMakeCell('decision')]; appState.scenario.cells[0].players.push(sbNormalizePlayer({ role: 'CEO' }));`);
   report = h.json(`cgCreationReport(appState.scenario, { cells: true, phases: true })`);
-  assert.deepEqual(report.map(i => [i.key, i.ok]), [['cells', true], ['phases', true]]);
-  assert.ok(/1 cell\(s\), 1 player\(s\), \d+ role\(s\)/.test(report[0].detail));
+  assert.deepEqual(report.map(i => [i.key, i.ok]), [['phases', true], ['cells', true]]);
+  assert.ok(/1 cell\(s\), 1 player\(s\), \d+ role\(s\)/.test(report[1].detail));
   // The five boxes, ticked by default, above the AI generation button.
   const view = h.run('renderScenarioView()');
   assert.equal((view.match(/data-cx-create="[a-z]+" checked/g) || []).length, 5);

@@ -73,7 +73,7 @@ function answerFor(system, user) {
 
   const report = await page.evaluate(() => ContextGeneration.report);
   if (process.env.DEBUG_SMOKE) console.log(await page.evaluate(() => JSON.stringify({ log: SbPipeline.log.slice(-15), agent: getCrisisAgent().log.slice(-12).map(e => e.message), phases: sbMainBlocks(appState.scenario.storyboard).map(b => [b.title, b.stimuli_target, b.beats.length, (b.events||[]).length]) })));
-  assert.deepEqual(report.map((item) => [item.key, item.ok]), [['context', true], ['cells', true], ['phases', true], ['stimuli', true], ['evaluation', true]], JSON.stringify(report));
+  assert.deepEqual(report.map((item) => [item.key, item.ok]), [['context', true], ['phases', true], ['cells', true], ['stimuli', true], ['evaluation', true]], JSON.stringify(report));
   const state = await page.evaluate(() => ({
     duration: appState.scenario.storyboard.duration_minutes,
     phases: sbMainBlocks(appState.scenario.storyboard).map((block) => [block.title, block.beats.length]),

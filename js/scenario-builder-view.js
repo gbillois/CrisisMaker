@@ -616,7 +616,7 @@ function renderSbSyncModal(storyboard) {
   const footer = `${SbPipeline.checkpoint && SbPipeline.checkpoint.projectId === appState.scenario.id && !SbPipeline.active ? `<button class="btn btn-ghost btn-sm" data-sb-action="undo-generation">${sbUiIcon('undo', 13)} ${escapeHtml(tt('Undo', 'Annuler', 'Rückgängig:'))} ${escapeHtml(SbPipeline.checkpoint.label)}</button>` : ''}
     <button class="btn btn-secondary btn-sm" data-sb-action="refresh-sync" ${SbPipeline.active ? 'disabled' : ''}>${sbUiIcon('sync', 13)} ${escapeHtml(tt('Refresh', 'Actualiser', 'Aktualisieren'))}</button>
     ${SbPipeline.active ? `<button class="btn btn-secondary btn-sm" data-sb-action="stop-pipeline">${sbUiIcon('stop', 13)} ${escapeHtml(tt('Stop', 'Arrêter', 'Stoppen'))}</button>` : `<button class="btn btn-primary btn-sm" data-sb-action="apply-sync" ${count && !sbReadOnly() ? '' : 'disabled'}>${sbUiIcon('sync', 13)} ${escapeHtml(tt(`Update ${count} change(s)`, `Mettre à jour ${count} modification(s)`, `${count} Änderung(en) übernehmen`))}</button>`}`;
-  return sbModalShell(escapeHtml(tt('Update the exercise', 'Mettre à jour l’exercice', 'Übung aktualisieren')), body, footer, 'sb-modal-wide');
+  return sbModalShell(escapeHtml(tt('Update next tabs', 'Mettre à jour les onglets suivants', 'Folgende Tabs aktualisieren')), body, footer, 'sb-modal-wide');
 }
 
 function renderSbPreviewModal() {
