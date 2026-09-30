@@ -1425,7 +1425,7 @@ function tabBindInputs(root) {
     const template = contextLibraryTemplate(project);
     if (!template || !sbUseTemplate(template, 'replace')) return;
     appState.route = 'storyline';
-    pushToast(tt(`"${template.name}" loaded as it is. Refine the phases, then plan and write the injects.`, `« ${template.name} » chargé tel quel. Affinez les phases, puis planifiez et rédigez les injects.`, `„${template.name}“ unverändert geladen. Verfeinern Sie die Phasen, dann planen und schreiben Sie die Injects.`), 'success');
+    pushToast(tt(`"${template.name}" used without AI adaptation. Refine the phases, then plan and write the injects.`, `« ${template.name} » utilisé sans adaptation par l’IA. Affinez les phases, puis planifiez et rédigez les injects.`, `„${template.name}“ ohne KI-Anpassung verwendet. Verfeinern Sie die Phasen, dann planen und schreiben Sie die Injects.`), 'success');
     App.render();
   }));
   root.querySelectorAll('[data-sc-players]').forEach((input) => input.addEventListener('change', () => {

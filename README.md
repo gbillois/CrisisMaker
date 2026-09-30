@@ -24,7 +24,8 @@ The Context tab starts with **Scenario generation**:
    built by `tools/make-example-deck.py`) can be downloaded or loaded next to the upload zone: it
    holds every essential point and a table of sequences drawn with shapes, without a
    chronogram: the AI writes the stimuli from the key events and the context.
-2. **Generic scenario**: a library scenario the AI adapts to the client, or loads as it is.
+2. **Generic scenario**: a library scenario the AI adapts to the client, or that you use
+   without AI adaptation (**Use without AI adaptation**).
 3. **What you want in this exercise**: your own notes; they win over the file.
 
 **AI generation** reads these sources, fills the empty Context fields (name, client, sector,
@@ -176,7 +177,7 @@ client; then the **stimuli of each cell** (Detailed storyline).
    the **attack path**, the technical steps the attacker follows, in order. These feed
    every AI operation: the agent, the storyline AI, the writing of each stimulus
    (the recipient cell's objectives and the attack path) and the debrief. Then
-   either **Load basic scenario from library** (the loaded library scenario as it is;
+   either **Use without AI adaptation** (the loaded library scenario as written;
    greyed when none is loaded) or **Build my exercise**, in three steps:
    **Build the framing** starts the builder agent with all of the above and adapts the
    loaded library scenario: the agent asks you a few questions, then builds the main

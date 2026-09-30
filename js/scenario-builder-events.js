@@ -346,8 +346,8 @@ async function sbHandleAction(event) {
         saveLocal(false);
         appState.route = 'scenario';
         pushToast(choice === 'new'
-          ? tt(`New project from "${template.name}". Set the key information, then generate the scenario with AI or load the basic scenario.`, `Nouveau projet à partir de « ${template.name} ». Renseignez les informations clés, puis générez le scénario avec l’IA ou chargez le scénario de base.`, `Neues Projekt aus „${template.name}“. Legen Sie die wichtigsten Angaben fest, dann generieren Sie das Szenario mit KI oder laden das Basisszenario.`)
-          : tt(`"${template.name}" loaded. Set the key information, then generate the scenario with AI or load the basic scenario.`, `« ${template.name} » chargé. Renseignez les informations clés, puis générez le scénario avec l’IA ou chargez le scénario de base.`, `„${template.name}“ geladen. Legen Sie die wichtigsten Angaben fest, dann generieren Sie das Szenario mit KI oder laden das Basisszenario.`), 'success');
+          ? tt(`New project from "${template.name}". Set the key information, then generate the scenario with AI or use it without AI adaptation.`, `Nouveau projet à partir de « ${template.name} ». Renseignez les informations clés, puis générez le scénario avec l’IA ou utilisez-le sans adaptation IA.`, `Neues Projekt aus „${template.name}“. Legen Sie die wichtigsten Angaben fest, dann generieren Sie das Szenario mit KI oder verwenden es ohne KI-Anpassung.`)
+          : tt(`"${template.name}" loaded. Set the key information, then generate the scenario with AI or use it without AI adaptation.`, `« ${template.name} » chargé. Renseignez les informations clés, puis générez le scénario avec l’IA ou utilisez-le sans adaptation IA.`, `„${template.name}“ geladen. Legen Sie die wichtigsten Angaben fest, dann generieren Sie das Szenario mit KI oder verwenden es ohne KI-Anpassung.`), 'success');
         App.render();
         break;
       }
