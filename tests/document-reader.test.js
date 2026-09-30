@@ -249,10 +249,11 @@ test('open points: the creation waits for the answers to what the sources leave 
   assert.ok(call.brief.includes('Left to the AI (make a reasonable assumption and say it):\n- Timing of the three sequences'));
   assert.equal(h.run('ContextGeneration.pending'), null);
   assert.ok(!h.run('renderScenarioView()').includes('cx-open-points'));
-  // Skip: everything left to the AI.
+  // Nothing typed: every open point is left to the AI (there is no separate skip button).
   await h.run('ContextGeneration.generate()');
-  await h.run('ContextGeneration.resume({ skip: true })');
-  assert.ok(!h.json('framings[1]').brief.includes('Contoso →') && h.json('framings[1]').brief.split('Left to the AI').length === 3);
+  assert.ok(!h.run('renderScenarioView()').includes('data-cx-open-skip'));
+  await h.run('ContextGeneration.resume()');
+  assert.equal(h.json('framings[1]').brief.split('Left to the AI').length, 3, 'both points left to the AI this time');
 });
 
 test('check before the creation: always when asked before big changes, only for open points when built automatically', async () => {

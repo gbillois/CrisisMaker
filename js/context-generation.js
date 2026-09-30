@@ -408,14 +408,14 @@ const ContextGeneration = {
 
   /* The answers to the open points go into "What you want" (answered ones as decisions, the
      others left to the AI as disclosed assumptions), then the creation starts. */
-  async resume({ skip = false } = {}) {
+  async resume() {
     const project = appState.scenario;
     const pending = this.pending;
     if (!pending || pending.projectId !== project.id || this.busy()) return false;
     this.pending = null;
-    const answered = skip ? [] : pending.missing.map((point, i) => [point, String(pending.answers[i] || '').trim()]).filter(([, answer]) => answer);
+    const answered = pending.missing.map((point, i) => [point, String(pending.answers[i] || '').trim()]).filter(([, answer]) => answer);
     const open = pending.missing.filter((point) => !answered.some(([p]) => p === point));
-    const corrections = skip ? '' : String(pending.corrections || '').trim();
+    const corrections = String(pending.corrections || '').trim();
     // The duration checked by the designer frames everything that follows.
     const minutes = sbParseDuration(pending.duration);
     if (minutes && minutes <= SB_MAX_DURATION && Math.max(30, minutes) !== project.storyboard.duration_minutes) {
@@ -579,7 +579,6 @@ function renderOpenPoints(project) {
     <label class="cx-open-section"><strong>${escapeHtml(tt('Corrections and details', 'Corrections et précisions', 'Korrekturen und Präzisierungen'))}</strong><span class="helper">${escapeHtml(tt('Anything the AI got wrong or should know, in your own words.', 'Tout ce que l’IA a mal compris ou devrait savoir, avec vos mots.', 'Alles, was die KI falsch verstanden hat oder wissen sollte, in Ihren Worten.'))}</span><textarea rows="3" data-cx-open-corrections placeholder="${escapeAttribute(tt('e.g. There are 3 cells, not 4. The competitor is the target, not a partner. The exercise takes place on 15/10 at 10:00.', 'Ex. : il y a 3 cellules et non 4. Le concurrent est la cible, pas un partenaire. L’exercice a lieu le 15/10 à 10h00.', 'Z. B.: Es gibt 3 Zellen, nicht 4. Der Wettbewerber ist das Ziel, kein Partner. Die Übung findet am 15.10. um 10:00 statt.'))}">${escapeHtml(pending.corrections || '')}</textarea></label>
     <div class="cx-open-actions">
       <button class="btn btn-ghost btn-sm" data-cx-open-cancel>${escapeHtml(tt('Cancel', 'Annuler', 'Abbrechen'))}</button>
-      ${count ? `<button class="btn btn-secondary btn-sm" data-cx-open-skip>${escapeHtml(tt('Let the AI decide everything', 'Laisser l’IA tout décider', 'Alles der KI überlassen'))}</button>` : ''}
       <button class="btn btn-primary btn-sm" data-cx-open-continue>${sbUiIcon('sparkles', 14)} ${escapeHtml(tt('Continue the creation', 'Continuer la création', 'Erstellung fortsetzen'))}</button>
     </div>
   </div>`;
@@ -762,12 +761,12 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
   if (box) { cgCreateOptions()[box.dataset.cxCreate] = box.checked; box.closest('.cx-create-item')?.classList.toggle('is-on', box.checked); return; }
   const retry = event.target?.closest?.('[data-cx-retry]');
   if (retry && !retry.disabled) { try { await ContextGeneration.retry(retry.dataset.cxRetry); } catch (error) { ContextGeneration.step = ''; pushToast(sbErrorMessage(error), 'error'); App.render(); } return; }
-  const button = event.target?.closest?.('[data-cx-generate], [data-cx-update], [data-cx-fill-file], [data-cx-use-duration], [data-cx-open-continue], [data-cx-open-skip], [data-cx-open-cancel], [data-cx-duration-force], [data-cx-duration-cancel]');
+  const button = event.target?.closest?.('[data-cx-generate], [data-cx-update], [data-cx-fill-file], [data-cx-use-duration], [data-cx-open-continue], [data-cx-open-cancel], [data-cx-duration-force], [data-cx-duration-cancel]');
   if (!button || button.disabled) return;
   try {
-    if ((button.hasAttribute('data-cx-open-continue') || button.hasAttribute('data-cx-open-skip')) && ContextGeneration.pending && !sbParseDuration(ContextGeneration.pending.duration)) {
+    if (button.hasAttribute('data-cx-open-continue') && ContextGeneration.pending && !sbParseDuration(ContextGeneration.pending.duration)) {
       pushToast(tt('Type the duration as hours:minutes, e.g. 0:45, 1:30 or 3:00.', 'Saisissez la durée en heures:minutes, ex. : 0:45, 1:30 ou 3:00.', 'Geben Sie die Dauer als Stunden:Minuten ein, z. B. 0:45, 1:30 oder 3:00.'), 'warning');
-    } else if (button.hasAttribute('data-cx-open-continue') || button.hasAttribute('data-cx-open-skip')) await ContextGeneration.resume({ skip: button.hasAttribute('data-cx-open-skip') });
+    } else if (button.hasAttribute('data-cx-open-continue')) await ContextGeneration.resume();
     else if (button.hasAttribute('data-cx-open-cancel')) { ContextGeneration.pending = null; App.render(); }
     else if (button.hasAttribute('data-cx-use-duration')) {
       const minutes = Number(button.dataset.cxUseDuration);
