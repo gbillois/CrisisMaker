@@ -527,6 +527,12 @@ function renderDetailedView() {
           <button class="sb-tool" data-sb-action="undo" ${StoryboardHistory.canUndo() ? '' : 'disabled'} title="${escapeAttribute(tt('Undo (Ctrl+Z)', 'Annuler (Ctrl+Z)', 'Rückgängig (Strg+Z)'))}">${sbUiIcon('undo')}</button>
           <button class="sb-tool" data-sb-action="redo" ${StoryboardHistory.canRedo() ? '' : 'disabled'} title="${escapeAttribute(tt('Redo (Ctrl+Shift+Z)', 'Rétablir (Ctrl+Maj+Z)', 'Wiederholen (Strg+Umschalt+Z)'))}">${sbUiIcon('redo')}</button>
         </div>
+        <div class="sb-tb-group sb-tb-zoom">
+          <button class="sb-tool" data-tab-action="ds-zoom" data-tab-value="out" title="${escapeAttribute(tt('Zoom out (Ctrl + wheel)', 'Dézoomer (Ctrl + molette)', 'Verkleinern (Strg + Mausrad)'))}">${sbUiIcon('minus')}</button>
+          <input class="sb-zoom" type="range" min="${SB_ZOOM_MIN}" max="${SB_ZOOM_MAX}" step="0.1" value="${state.zoom}" data-ds-zoom aria-label="${escapeAttribute(tt('Zoom', 'Zoom', 'Zoom'))}">
+          <button class="sb-tool" data-tab-action="ds-zoom" data-tab-value="in" title="${escapeAttribute(tt('Zoom in (Ctrl + wheel)', 'Zoomer (Ctrl + molette)', 'Vergrößern (Strg + Mausrad)'))}">${sbUiIcon('plus')}</button>
+          <button class="sb-tool" data-tab-action="ds-zoom" data-tab-value="fit" title="${escapeAttribute(tt('Fit the whole exercise', 'Afficher tout l’exercice', 'Ganze Übung einpassen'))}">${sbUiIcon('fit')}</button>
+        </div>
         <div class="sb-tb-group">
           <button class="sb-tool sb-tool-label" data-tab-action="ds-add" ${readOnly || !storyboard.blocks.length ? 'disabled' : ''} title="${escapeAttribute(tt('Add an inject at the playhead', 'Ajouter un inject à la tête de lecture', 'Inject am Abspielkopf hinzufügen'))}">${sbUiIcon('plus')}<span>${escapeHtml(tt('Inject', 'Inject', 'Inject'))}</span></button>
         </div>
@@ -1127,6 +1133,16 @@ function dsDeleteSelected(project) {
   saveLocal(false);
 }
 
+/* Zooms the Detailed storyline, keeping the minute at the centre of the view in place. */
+function dsSetZoom(value) {
+  const state = tabUI('detailed');
+  const scroller = document.getElementById('ds-scroll');
+  const width = scroller ? Math.max(0, scroller.clientWidth - sbHeaderWidth()) : 0;
+  const centre = scroller ? (scroller.scrollLeft + width / 2) / state.zoom : state.playhead;
+  state.zoom = Math.min(SB_ZOOM_MAX, Math.max(SB_ZOOM_MIN, Math.round(value * 100) / 100));
+  if (scroller) state.scrollLeft = Math.max(0, centre * state.zoom - width / 2);
+}
+
 function dsFitZoom() {
   const scroller = document.getElementById('ds-scroll');
   const state = tabUI('detailed');
@@ -1276,6 +1292,10 @@ async function tabHandleAction(event) {
       case 'ds-add':
         dsAddInject(project);
         break;
+      case 'ds-zoom':
+        if (value === 'fit') dsFitZoom();
+        else dsSetZoom(tabUI('detailed').zoom * (value === 'in' ? 1.25 : 1 / 1.25));
+        break;
       case 'sl-event-add': {
         const block = sbBlock(storyboard, value);
         if (!block || block.locked) break;
@@ -1352,6 +1372,7 @@ function tabBindInputs(root) {
   const detailed = tabUI('detailed');
   const summary = tabUI('summary');
   root.querySelectorAll('[data-tab-action]').forEach((element) => element.addEventListener('click', tabHandleAction));
+  root.querySelectorAll('[data-ds-zoom]').forEach((input) => input.addEventListener('change', () => { dsSetZoom(Number(input.value)); App.render(); }));
 
   root.querySelectorAll('[data-sl-add]').forEach((select) => select.addEventListener('change', () => {
     if (!select.value) return;
