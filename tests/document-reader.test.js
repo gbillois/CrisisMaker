@@ -201,7 +201,7 @@ test('duration: stated, as a schedule, as a phrase, or estimated from the latest
 test('essential points: listed before loading, checked once a file is loaded, the duration usable in one click', async () => {
   const h = harness();
   let view = h.run('renderScenarioView()');
-  assert.ok(view.includes('For a complete generation, the document should state:') && view.includes('Exercise duration') && view.includes('essential'));
+  assert.ok(view.includes('For a complete generation, the document should state the points below. Whatever is missing, the AI creates using its best judgment.') && view.includes('Exercise duration') && view.includes('essential'));
   assert.ok(view.indexOf('Exercise duration') < view.indexOf('Incident timeline'), 'the duration first');
   h.context.file = load(h, 'tests/fixtures/exercise-deck.pptx');
   await h.run('checkerHandleFile(file)');

@@ -627,8 +627,8 @@ function renderSourceEssentials(project) {
   const found = items.filter((item) => item.status === 'found').length;
   return `<div class="cx-essentials ${loaded ? 'is-loaded' : ''}">
     <p class="cx-essentials-head">${escapeHtml(loaded
-      ? tt(`What the file holds: ${found} of the ${items.length} essential points. The AI proposes what is missing; you can complete it below.`, `Ce que contient le fichier : ${found} des ${items.length} points essentiels. L’IA propose ce qui manque ; vous pouvez le compléter ci-dessous.`, `Was die Datei enthält: ${found} von ${items.length} wesentlichen Punkten. Die KI schlägt Fehlendes vor; Sie können es unten ergänzen.`)
-      : tt('For a complete generation, the document should state:', 'Pour une génération complète, le support doit indiquer :', 'Für eine vollständige Erstellung sollte das Dokument Folgendes enthalten:'))}</p>
+      ? tt(`What the file holds: ${found} of the ${items.length} essential points. The AI creates whatever is missing using its best judgment; you can correct it below.`, `Ce que contient le fichier : ${found} des ${items.length} points essentiels. L’IA crée ce qui manque au mieux de son jugement ; vous pouvez le corriger ci-dessous.`, `Was die Datei enthält: ${found} von ${items.length} wesentlichen Punkten. Die KI erstellt Fehlendes nach bestem Ermessen; Sie können es unten korrigieren.`)
+      : tt('For a complete generation, the document should state the points below. Whatever is missing, the AI creates using its best judgment.', 'Pour une génération complète, le support doit indiquer les points ci-dessous. Ce qui manque, l’IA le crée au mieux de son jugement.', 'Für eine vollständige Erstellung sollte das Dokument die folgenden Punkte enthalten. Was fehlt, erstellt die KI nach bestem Ermessen.'))}</p>
     <ul>${items.map(row).join('')}</ul>
   </div>`;
 }
