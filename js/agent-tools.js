@@ -367,7 +367,7 @@ function createAgentToolRegistry() {
       duration_minutes: project.storyboard.duration_minutes, objectives: args.objectives?.length ? args.objectives : sbObjectivesList(project), cast: args.cast || [],
       blocks: args.phases.map((phase, index) => ({ key: `p${index + 1}`, type: phase.type, track: 'main', title: phase.title, start: phase.start_minutes, duration: phase.duration_minutes, stimuli: phase.injects ?? phase.beats?.length ?? SB_BLOCK_TYPES[phase.type].stimuli, brief: phase.brief, narrative: phase.narrative || '', objectives: phase.objectives || [], beats: [] }))
     };
-    sbApplyTemplate(template, 'replace');
+    sbApplyTemplate(template, 'replace', { clean: false });
     // Beats are mapped after the storyline exists, so cells and cast resolve to real ids.
     const castMap = new Map(project.storyboard.cast.map(cast => [cast.label, cast.id]));
     (args.cast || []).forEach(item => { const cast = project.storyboard.cast.find(entry => entry.label === item.label); if (cast) castMap.set(item.key, cast.id); });

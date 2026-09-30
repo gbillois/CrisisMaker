@@ -1669,6 +1669,8 @@
       function addStimulus() {
         const actorId = appState.scenario.actors[0]?.id;
         const stimulus = makeStimulus('email_internal', actorId, nextStimulusOffset());
+        // A new inject starts blank: the template's example content belongs to another company.
+        blankTemplateExample(stimulus);
         appState.scenario.stimuli.push(stimulus);
         appState.selectedStimulusId = stimulus.id;
         appState.stimulusModalId = stimulus.id;
@@ -2368,10 +2370,24 @@
 
       function replaceStimulusTemplate(stimulus, newChannel) {
         const template = TEMPLATE_LIBRARY[newChannel] || TEMPLATE_LIBRARY.email_internal;
+        const title = ['subject', 'headline', 'title', 'thread_title'].map((key) => stimulus.fields?.[key]).find((value) => typeof value === 'string' && value.trim());
         stimulus.channel = newChannel;
         stimulus.template_id = template.template_id;
         stimulus.fields = deepClone(template.defaults);
+        // The new layout keeps the inject's title, never the template's example content.
+        blankTemplateExample(stimulus, title);
         setDefaultVideoForStimulus(stimulus);
+      }
+
+      /* Empties the example content a template carries (the StonaWave demo: its people, company,
+         dates and texts), so a new or retyped inject holds only this project's data. The sender
+         comes from the inject's actor; the title, when given, goes to the template's title field. */
+      function blankTemplateExample(stimulus, title = '') {
+        if (typeof sbBlankForGeneration === 'function') sbBlankForGeneration(stimulus);
+        else if (typeof playBlankFields === 'function') playBlankFields(stimulus);
+        const key = ['subject', 'headline', 'title', 'thread_title', 'text'].find((item) => item in (stimulus.fields || {}));
+        if (key && !String(stimulus.fields[key] || '').trim()) stimulus.fields[key] = title || tt('[New inject]', '[Nouvel inject]', '[Neuer Inject]');
+        return stimulus;
       }
 
       function setDefaultVideoForStimulus(stimulus) {
@@ -2718,6 +2734,8 @@
               const channel = CHANNEL_META[config.channel] ? config.channel : 'email_internal';
               const actor = stimuliBatchActor(config, createdActors);
               const stimulus = makeStimulus(channel, actor?.id || null, 0, config.template_id || null);
+              // Fields the AI leaves out stay empty instead of carrying the template's example content.
+              if (typeof sbBlankForGeneration === 'function') sbBlankForGeneration(stimulus);
               await applyStimulusConfig(stimulus, { ...config, channel, actor_id: actor?.name || null, generation_prompt: config.generation_prompt || state.text });
               stimulus.actor_id = actor?.id || null;
               if (range) stimulus.timestamp_offset_minutes = Math.min(range[1], Math.max(range[0], stimulus.timestamp_offset_minutes));

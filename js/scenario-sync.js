@@ -367,6 +367,25 @@ function sbBlankForGeneration(stimulus, project = appState.scenario) {
   return stimulus;
 }
 
+/* The newspaper or TV channel of a planned press or TV inject without one: a publication of the
+   exercise language, since a press template writes in its own language (Le Monde in French,
+   FAZ in German, Nikkei in Japanese). Other channels have a single template. */
+function sbMediaTemplateFor(channel, project = appState.scenario) {
+  const language = project.settings?.inject_language || project.settings?.language || 'en';
+  if (channel === 'article_press') return ({ fr: 'lemonde', de: 'faz', ja: 'nikkei' })[language] || 'nyt';
+  if (channel === 'breaking_news_tv') return ({ fr: 'bfm' })[language] || 'cnn';
+  return '';
+}
+
+/* An audio message takes the voice of its sender: the distorted attacker voice only for an
+   attacker, a plain voice otherwise, read in the exercise language (TTS_LANGUAGES). */
+function sbSetAudioVoice(stimulus, actor, project = appState.scenario) {
+  const fields = stimulus.fields || (stimulus.fields = {});
+  fields.audio_character = actor?.role === 'attacker' ? 'attacker_best' : 'male';
+  const language = project.settings?.inject_language || project.settings?.language || 'en';
+  fields.tts_language = ({ fr: 'fr-FR', de: 'de-DE' })[language] || 'en-US';
+}
+
 function sbPrimaryFieldKey(stimulus) {
   const keys = Object.keys(getTemplateDefinition(stimulus)?.defaults || stimulus.fields || {});
   return ['subject', 'headline', 'thread_title', 'title', 'text'].find((key) => keys.includes(key)) || null;
@@ -623,7 +642,8 @@ const SbPipeline = {
         this.label = tt(`Creating ${beat.title || channelLabel(beat.channel)}`, `Création : ${beat.title || channelLabel(beat.channel)}`, `Wird erstellt: ${beat.title || channelLabel(beat.channel)}`);
         const castEntry = storyboard.cast.find((item) => item.id === beat.cast_id);
         const actor = (castEntry && sbFindActorForCast(project, castEntry)) || fallbackActor();
-        const probe = makeStimulus(beat.channel, actor.id, 0, beat.template_id || null);
+        const templateId = beat.template_id || sbMediaTemplateFor(beat.channel, project);
+        const probe = makeStimulus(beat.channel, actor.id, 0, templateId || null);
         const primary = sbPrimaryFieldKey(probe);
         const args = {
           name: sbText(beat.title || `${block.title} · ${channelLabel(beat.channel)}`, 500),
@@ -633,12 +653,13 @@ const SbPipeline = {
           generation_prompt: sbText(beat.intent, 8000),
           status: 'draft'
         };
-        if (beat.template_id) args.template_id = beat.template_id;
+        if (templateId) args.template_id = templateId;
         if (primary && beat.title) args.fields = { [primary]: beat.title };
         ToolValidator.validate(args, createTool.inputSchema);
         const result = createTool.execute(args);
         const stimulus = getStimulus(result.id);
         stimulus.generation_mode = 'ai_guided';
+        if (stimulus.channel === 'audio_message') sbSetAudioVoice(stimulus, actor, project);
         sbStampStimulus(stimulus, block, beat, storyboard);
         created++;
         toWrite.push({ stimulus, block, beat });

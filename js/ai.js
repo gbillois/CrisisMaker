@@ -453,13 +453,27 @@
               ));
             }
           }
+          // Injects written in another script than the exercise language are asked again once.
+          const offLanguage = (value) => stimulusConfigsFromResult(value).map((config) => stimulusOffLanguage(config?.fields, { template_id: config?.template_id || currentStimulus?.template_id }, scenario)).find(Boolean) || '';
+          const language = offLanguage(result);
+          if (language) {
+            result = await this.generate('llm_config_stimulus', `${systemPrompt}\n\nLANGUAGE: write every field in ${language} only (press articles excepted, in their publication's language). A previous answer used another language: do not keep any text in another language.`, userPrompt, false, maxTokens, options.signal ? { signal: options.signal } : {});
+            if (offLanguage(result)) throw new Error(tt(`The AI answered in another language than ${language}. Try again or choose another model.`, `L’IA a répondu dans une autre langue que ${language}. Réessayez ou choisissez un autre modèle.`, `Die KI hat in einer anderen Sprache als ${language} geantwortet. Erneut versuchen oder ein anderes Modell wählen.`));
+          }
           return result;
         },
         async generateForStimulus(stimulus, fieldName = null, guidedPrompt = null, options = {}) {
           const actor = getActor(stimulus.actor_id);
           const promptInfo = PromptBuilder.forStimulus(stimulus, actor, appState.scenario, fieldName, guidedPrompt);
           // Room for long content and non-Latin scripts (Japanese or Chinese cost more tokens).
-          return this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 4000, options);
+          const result = await this.generate(stimulus.channel, promptInfo.systemPrompt, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 4000, options);
+          const language = stimulusOffLanguage(result, stimulus, appState.scenario);
+          if (!language) return result;
+          // A reply in another script than the exercise language (Japanese or Chinese in an English
+          // or French exercise) is asked again once, then refused rather than saved.
+          const retried = await this.generate(stimulus.channel, `${promptInfo.systemPrompt}\n\nLANGUAGE: write every field in ${language} only. A previous answer used another language: do not translate or keep any text in another language.`, promptInfo.userPrompt, !!options.quiet, options.maxTokens || 4000, options);
+          if (stimulusOffLanguage(retried, stimulus, appState.scenario)) throw new Error(tt(`The AI answered in another language than ${language}. Try again or choose another model.`, `L’IA a répondu dans une autre langue que ${language}. Réessayez ou choisissez un autre modèle.`, `Die KI hat in einer anderen Sprache als ${language} geantwortet. Erneut versuchen oder ein anderes Modell wählen.`));
+          return retried;
         },
         /* Streaming calls: retried like generate() on a transient error, but only when nothing
            has streamed yet (the caller already showed the chunks). */
@@ -994,6 +1008,16 @@
         }
       };
 
+      /* The exercise language (its English name) when an AI reply for an inject is written in a
+         CJK script it does not use, else ''. Japanese and Chinese exercises, and the Nikkei layout
+         (always Japanese), are left alone. */
+      function stimulusOffLanguage(result, stimulus, scenario) {
+        const code = scenario?.settings?.inject_language || scenario?.settings?.language || 'en';
+        if (['ja', 'zh'].includes(code) || stimulus?.template_id === 'nikkei') return '';
+        const cjk = (JSON.stringify(result ?? '').match(/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/g) || []).length;
+        return cjk > 3 ? ({ en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese', nl: 'Dutch' }[code] || 'English') : '';
+      }
+
       const LLMConfigPrompts = {
         scenario(userInput) {
           const today = new Date().toISOString().slice(0, 10);
@@ -1102,7 +1126,7 @@ AVAILABLE TEMPLATES:
 INSTRUCTIONS:
 ${currentStimulus ? `- EDIT MODE: channel and template_id are immutable. Return channel exactly "${currentStimulus.channel}" and template_id exactly "${currentStimulus.template_id}".
 - Never infer, substitute, or recommend another inject type or layout while editing, even if another channel could also fit the requested wording.
-- Update the requested content within the current fields schema. Preserve current field values that the user did not ask to change.
+- Update the requested content within the current fields schema. Preserve current field values that the user did not ask to change, except the template's example content (the StonaWave demo company, its people such as Sophie Delacroix or Jean-Luc Moreau, its dates and figures): replace it with content of this scenario.
 - Return one updated stimulus object, never a batch.
 
 CURRENT INJECT TO UPDATE:
@@ -1551,8 +1575,12 @@ Return this structure:
               const character = stimulus.fields.audio_character || 'attacker_best';
               const isAttacker = character.startsWith('attacker');
               const isFemale = character === 'female';
+              // Anyone but a journalist or presenter speaks for themselves: a voicemail or a call.
+              const isCaller = !isAttacker && !['journalist', 'analyst'].includes(common.actorRole);
               const voiceInstruction = isAttacker
                 ? `The text will be read by a TTS engine with a deep, distorted, anonymous voice (cybercriminal ransom demands). Write a menacing, cold, and direct ransom message or threat. Use short, impactful sentences. No pleasantries. The tone should be intimidating and clinical.`
+                : isCaller
+                  ? `The text will be read by a TTS engine as a voicemail or a phone call from ${common.actorName}, ${common.actorTitle}, to the people who must act. Write it in the first person, spoken and direct: who is calling, what they see, what they need and by when. Short sentences for easy oral reading, no headings.`
                 : isFemale
                   ? `The text will be read by a professional female radio presenter. Write a clear, well-structured news bulletin or announcement. Use a journalistic, calm, and authoritative tone. Structure sentences for easy oral reading: short paragraphs, no complex subordinate clauses.`
                   : `The text will be read by a professional male radio presenter. Write a clear, well-structured news bulletin or announcement. Use a journalistic, calm, and authoritative tone. Structure sentences for easy oral reading: short paragraphs, no complex subordinate clauses.`;
