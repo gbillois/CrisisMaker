@@ -976,6 +976,7 @@ function renderContextGlance(project) {
       <label class="field">${escapeHtml(tt('Number of crisis cells', 'Nombre de cellules de crise', 'Anzahl der Krisenzellen'))}<input type="number" min="0" max="20" step="1" data-sc-cells value="${escapeAttribute(project.exercise.cells_count || project.cells.length || '')}" placeholder="${escapeAttribute(tt('e.g. 3', 'ex. : 3', 'z. B. 3'))}"><span class="helper">${escapeHtml(tt(`${project.cells.length} cell(s) defined`, `${project.cells.length} cellule(s) définie(s)`, `${project.cells.length} Zelle(n) definiert`))}</span></label>
       <label class="field">${escapeHtml(tt('Number of players', 'Nombre de joueurs', 'Anzahl der Spieler'))}<input type="number" min="0" max="10000" step="1" data-sc-players value="${escapeAttribute(project.exercise.players_count ?? '')}" placeholder="${escapeAttribute(tt('e.g. 15', 'ex. : 15', 'z. B. 15'))}"><span class="helper">${escapeHtml(tt(`${players} listed in Cells & actors`, `${players} inscrit(s) dans Cellules et acteurs`, `${players} in Zellen und Akteure erfasst`))}</span></label>
     </div>
+    ${typeof renderDurationConflict === 'function' ? renderDurationConflict(project) : ''}
     <div class="cx-row cx-row-lang">
       <label class="field">${escapeHtml(tt('Primary language', 'Langue principale', 'Hauptsprache'))}<select data-bind="client.language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.client.language || 'en')).join('')}</select></label>
       <label class="field">${escapeHtml(tt('Default inject language', 'Langue par défaut des injects', 'Standardsprache der Injects'))}<select data-bind="settings.inject_language">${LANGUAGES.map((item) => sbOption(item.value, item.label, project.settings.inject_language || 'en')).join('')}</select></label>
@@ -1356,15 +1357,10 @@ function tabBindInputs(root) {
 
   root.querySelectorAll('[data-sc-duration]').forEach((input) => input.addEventListener('change', () => {
     const minutes = sbParseDuration(input.value);
-    if (minutes === null || minutes > SB_MAX_DURATION) {
-      pushToast(tt('Type the duration as hours:minutes, e.g. 0:45, 1:30 or 3:00.', 'Saisissez la durée en heures:minutes, ex. : 0:45, 1:30 ou 3:00.', 'Geben Sie die Dauer als Stunden:Minuten ein, z. B. 0:45, 1:30 oder 3:00.'), 'warning');
-    } else {
-      const end = sbStoryboardEnd(storyboard);
-      storyboard.duration_minutes = Math.max(30, minutes, end);
-      if (minutes < 30) pushToast(tt('An exercise lasts at least 30 minutes.', 'Un exercice dure au moins 30 minutes.', 'Eine Übung dauert mindestens 30 Minuten.'), 'info');
-      else if (minutes < end) pushToast(tt(`The phases end at ${sbFormatDuration(end)}: shorten them in the Main storyline first.`, `Les phases se terminent à ${sbFormatDuration(end)} : raccourcissez-les d’abord dans la Storyline principale.`, `Die Phasen enden bei ${sbFormatDuration(end)}: Kürzen Sie sie zuerst in der Haupt-Storyline.`), 'info');
-      StoryboardHistory.commit('Change duration');
-    }
+    // Shorter than the phases: Force duration or Cancel, under the field (Context generation).
+    const result = minutes === null ? 'invalid' : cgSetDuration(minutes, project);
+    if (result === 'invalid') pushToast(tt('Type the duration as hours:minutes, e.g. 0:45, 1:30 or 3:00.', 'Saisissez la durée en heures:minutes, ex. : 0:45, 1:30 ou 3:00.', 'Geben Sie die Dauer als Stunden:Minuten ein, z. B. 0:45, 1:30 oder 3:00.'), 'warning');
+    else if (minutes < 30) pushToast(tt('An exercise lasts at least 30 minutes.', 'Un exercice dure au moins 30 minutes.', 'Eine Übung dauert mindestens 30 Minuten.'), 'info');
     App.render();
   }));
   root.querySelectorAll('[data-sc-cells]').forEach((input) => input.addEventListener('change', () => {

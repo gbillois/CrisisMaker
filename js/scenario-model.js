@@ -435,6 +435,42 @@ function sbBlockEnd(block) {
 function sbStoryboardEnd(storyboard) {
   return storyboard.blocks.reduce((max, block) => Math.max(max, sbBlockEnd(block)), 0);
 }
+/* Fits every phase to a new exercise duration, keeping their order and proportions: starts,
+   lengths (5 minutes at least), planned injects and main events scale with them, and the main
+   storyline ends at the new duration. false when the phases cannot fit (5 minutes each). */
+function sbFitStoryboardToDuration(storyboard, minutes) {
+  const target = Math.round(Number(minutes));
+  if (!Number.isFinite(target) || target < 30 || target > SB_MAX_DURATION) return false;
+  const main = sbMainBlocks(storyboard);
+  const end = sbStoryboardEnd(storyboard);
+  if (!end || !storyboard.blocks.length) { storyboard.duration_minutes = target; return true; }
+  if (main.length * 5 > target) return false;
+  const factor = target / end;
+  const scaleInner = (block, from) => {
+    const ratio = block.duration_minutes / (from || 1);
+    for (const beat of block.beats || []) beat.offset_minutes = Math.min(Math.max(0, block.duration_minutes - 1), Math.round(beat.offset_minutes * ratio));
+    for (const event of block.events || []) event.offset_minutes = Math.min(Math.max(0, block.duration_minutes - 1), Math.round((event.offset_minutes || 0) * ratio));
+  };
+  // The main storyline stays contiguous: each phase starts where the previous one ends.
+  let cursor = 0;
+  main.forEach((block, index) => {
+    const from = block.duration_minutes;
+    const left = main.length - index - 1;
+    const scaled = index === main.length - 1 ? target - cursor : Math.round(from * factor);
+    block.start_minutes = index === 0 ? Math.round(block.start_minutes * factor) : cursor;
+    block.duration_minutes = Math.max(5, Math.min(scaled, target - block.start_minutes - left * 5));
+    cursor = block.start_minutes + block.duration_minutes;
+    scaleInner(block, from);
+  });
+  for (const block of storyboard.blocks.filter((item) => !main.includes(item))) {
+    const from = block.duration_minutes;
+    block.start_minutes = Math.min(Math.round(block.start_minutes * factor), target - 5);
+    block.duration_minutes = Math.max(5, Math.min(Math.round(from * factor), target - block.start_minutes));
+    scaleInner(block, from);
+  }
+  storyboard.duration_minutes = target;
+  return true;
+}
 function sbSortedBlocks(storyboard, trackId = null) {
   return storyboard.blocks
     .filter((block) => !trackId || block.track_id === trackId)

@@ -261,7 +261,9 @@ const CrisisDocReader = (() => {
         const paras = paragraphs(kids(el, 'txBody')[0]);
         if (!paras.length) continue;
         const role = ph && ['title', 'ctrTitle'].includes(ph.type) ? 'title' : ph?.type === 'subTitle' ? 'subtitle' : ph ? 'body' : 'text';
-        items.push({ kind: 'text', role, paragraphs: paras, box, name });
+        // The largest font of the shape (points): the title of a slide without a title placeholder.
+        const sizes = [...desc(el, 'rPr'), ...desc(el, 'defRPr'), ...desc(el, 'endParaRPr')].map((rPr) => +attr(rPr, 'sz') / 100).filter((value) => value > 0);
+        items.push({ kind: 'text', role, paragraphs: paras, box, name, size: sizes.length ? Math.max(...sizes) : ph && role === 'title' ? 32 : 0 });
       } else if (el.local === 'graphicFrame') {
         const tbl = first(el, 'tbl');
         const chart = first(el, 'chart');
@@ -278,11 +280,11 @@ const CrisisDocReader = (() => {
         }
       } else if (el.local === 'pic') {
         const description = clean(attr(first(el, 'cNvPr'), 'descr') || attr(first(el, 'cNvPr'), 'title'));
-        if (description) items.push({ kind: 'image', description, box, name });
+        // Only a description someone wrote: not "Image 3", a file path or an icon's automatic label.
+        const meaningful = description && !/^(image|picture|graphic|grafik|imagen|bild|photo|icon|ic[oô]ne)\s*\d*$/i.test(description) && !/[\\/]|\.(png|jpe?g|gif|svg|emf|wmf)$/i.test(description) && !/with (solid )?fill|with outline|remplissage uni|contour$/i.test(description);
+        if (meaningful) items.push({ kind: 'image', description, box, name });
       }
     }
-    const blocks = readingOrder(items, size.cy);
-    const titleBlock = blocks.find((block) => block.role === 'title');
     let notes = '';
     const notesPath = pkg.byType(rels, 'notesSlide');
     if (notesPath) {
@@ -290,13 +292,81 @@ const CrisisDocReader = (() => {
       notes = collectShapes(notesDoc).filter(({ el }) => el.local === 'sp' && (placeholder(el)?.type === 'body' || !placeholder(el)))
         .map(({ el }) => paragraphs(kids(el, 'txBody')[0]).map((p) => p.text).join('\n')).filter(Boolean).join('\n');
     }
-    return {
-      number,
-      title: titleBlock ? titleBlock.paragraphs.map((p) => p.text).join(' ').replace(/\s+/g, ' ') : '',
-      hidden: attr(first(doc, 'sld'), 'show') === '0',
-      blocks: blocks.filter((block) => block !== titleBlock).map(({ box, ...block }) => block),
-      notes: clean(notes)
-    };
+    // Titles and positions are settled once the whole deck is read (running headers).
+    return { number, hidden: attr(first(doc, 'sld'), 'show') === '0', items: shapeGrids(dedupe(items), size), notes: clean(notes) };
+  }
+  const itemText = (item) => item.kind === 'text' ? item.paragraphs.map((p) => p.text).join('\n') : '';
+  const norm = (text) => String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  /* The same text drawn twice at the same place (a shape and a text box over it) is read once. */
+  function dedupe(items) {
+    const out = [];
+    for (const item of items) {
+      const text = norm(itemText(item));
+      const twin = text && out.find((other) => norm(itemText(other)) === text && Math.abs(other.box.x - item.box.x) < 100000 && Math.abs(other.box.y - item.box.y) < 100000);
+      if (!twin) out.push(item);
+    }
+    return out;
+  }
+  /* A table drawn with shapes: a row of at least three short headers side by side, and shapes
+     below them in their columns (a "Brief | Sequence 1 | Sequence 2" layout with rows such as
+     "Stimuli"). It is read as a table, so what belongs to each column stays together. */
+  function shapeGrids(items, size) {
+    const texts = items.filter((item) => item.kind === 'text' && item.box.cx > 0);
+    const tolerance = size.cy * 0.02;
+    const centre = (item) => item.box.x + item.box.cx / 2;
+    const bands = [];
+    [...texts].sort((a, b) => a.box.y - b.box.y).forEach((item) => {
+      const band = bands.find((entry) => Math.abs(entry.y - item.box.y) <= tolerance);
+      if (band) band.items.push(item); else bands.push({ y: item.box.y, items: [item] });
+    });
+    for (const band of bands) {
+      const headers = band.items.filter((item) => item.paragraphs.length === 1 && itemText(item).length <= 40).sort((a, b) => a.box.x - b.box.x);
+      if (headers.length < 3 || headers.some((item, i) => i && item.box.x < headers[i - 1].box.x + headers[i - 1].box.cx * 0.9)) continue;
+      const left = headers[0].box.x - size.cx * 0.01;
+      const right = headers[headers.length - 1].box.x + headers[headers.length - 1].box.cx + size.cx * 0.01;
+      const column = (item) => headers.findIndex((header) => centre(item) >= header.box.x - size.cx * 0.01 && centre(item) <= header.box.x + header.box.cx + size.cx * 0.01);
+      // The table stops at the first shape wider than a column (a heading across the slide,
+      // a box over two columns): what follows is another part of the slide.
+      const widest = Math.max(...headers.map((item) => item.box.cx));
+      const under = texts.filter((item) => !headers.includes(item) && item.box.y > band.y + tolerance && centre(item) >= left && centre(item) <= right);
+      const stop = Math.min(...under.filter((item) => item.box.cx > widest * 1.5).map((item) => item.box.y), Infinity);
+      const below = under.filter((item) => item.box.y < stop);
+      const placed = below.filter((item) => column(item) >= 0);
+      if (placed.length < headers.length || placed.length < below.length * 0.6) continue;
+      // Rows: shapes whose heights overlap.
+      const rows = [];
+      [...placed].sort((a, b) => a.box.y - b.box.y).forEach((item) => {
+        const row = rows.find((entry) => item.box.y < entry.bottom - tolerance && item.box.y + item.box.cy > entry.top + tolerance);
+        if (row) { row.items.push(item); row.bottom = Math.max(row.bottom, item.box.y + item.box.cy); }
+        else rows.push({ top: item.box.y, bottom: item.box.y + item.box.cy, items: [item] });
+      });
+      if (rows.length < 2) continue;
+      const table = [headers.map(itemText), ...rows.map((row) => headers.map((_, index) => row.items.filter((item) => column(item) === index).sort((a, b) => a.box.y - b.box.y).map(itemText).join('\n')))];
+      const used = new Set([...headers, ...placed]);
+      const box = { x: left, y: band.y, cx: right - left, cy: rows[rows.length - 1].bottom - band.y, set: true };
+      return shapeGrids([...items.filter((item) => !used.has(item)), { kind: 'table', rows: table, box, name: 'Shapes as a table', drawn: true }], size);
+    }
+    return items;
+  }
+  /* After the whole deck is read: text repeated at the same place on most slides (a running
+     header or footer) is dropped, and a slide without a title placeholder takes the largest
+     short text at its top as its title. */
+  function settleSlides(slides, size) {
+    const counts = new Map();
+    slides.forEach((slide) => new Set(slide.items.filter((item) => item.kind === 'text' && item.role !== 'title').map((item) => norm(itemText(item)))).forEach((text) => counts.set(text, (counts.get(text) || 0) + 1)));
+    const running = new Set([...counts].filter(([text, count]) => text && text.length <= 80 && slides.length >= 3 && count >= Math.max(3, slides.length * 0.6)).map(([text]) => text));
+    return slides.map((slide) => {
+      let items = slide.items.filter((item) => !(item.kind === 'text' && running.has(norm(itemText(item)))));
+      let title = items.find((item) => item.role === 'title');
+      if (!title) {
+        const candidates = items.filter((item) => item.kind === 'text' && item.box.y < size.cy * 0.3 && item.paragraphs.length <= 2 && itemText(item).length <= 120 && item.size);
+        const largest = Math.max(0, ...candidates.map((item) => item.size));
+        title = candidates.filter((item) => item.size === largest).sort((a, b) => a.box.y - b.box.y)[0];
+        if (title && largest < 14) title = null;
+      }
+      const blocks = readingOrder(items, size.cy).filter((item) => item !== title).map(({ box, size: _size, ...block }) => block);
+      return { number: slide.number, title: title ? itemText(title).replace(/\s+/g, ' ') : '', hidden: slide.hidden, blocks, notes: slide.notes };
+    });
   }
   async function readPptx(zip, name) {
     const pkg = openPackage(zip);
@@ -307,6 +377,7 @@ const CrisisDocReader = (() => {
     if (!paths.length) throw new Error('No slide found in this PowerPoint file.');
     const slides = [];
     for (let i = 0; i < paths.length; i++) slides.push(await readSlide(pkg, paths[i], i + 1, size));
+    slides.splice(0, slides.length, ...settleSlides(slides, size));
     return { kind: 'pptx', name, unit: 'slide', meta: await coreProperties(pkg), slides };
   }
 
@@ -431,8 +502,8 @@ const CrisisDocReader = (() => {
      matters: the first rule that matches wins. [key, pattern]. */
   const SECTION_RULES = [
     ['debrief', /retex|\brex\b|d[ée]brief|hot ?wash|lessons learn|[ée]valuation|evaluation|auswertung|nachbesprechung/i],
-    ['facilitation', /animat|facilitat|r[ée]serv[ée] aux|contr[oô]leurs?\b|umpire|white cell|cellule d.animation|spielleitung|moderat/i],
-    ['incident', /chronologie de l.(attaque|incident)|attack|attaque|kill ?chain|mode op[ée]ratoire|threat actor|menace|angriff|vorfall|incident timeline|sc[ée]nario technique/i],
+    ['facilitation', /animat|facilitat|r[ée]serv[ée] aux|contr[oô]leurs?\b|umpire|white cell|cellule d.animation|spielleitung|moderat|complices?\b|observateurs?|observers?/i],
+    ['incident', /chronologie de l.(attaque|incident)|chemin d.attaque|attack path|attack|attaque|kill ?chain|mode op[ée]ratoire|threat actor|menace|angriff|vorfall|incident timeline|sc[ée]nario technique/i],
     ['objectives', /objecti|\bgoals?\b|\baims?\b|enjeux|\bziele?\b|lernziel|attendus|learning/i],
     ['players', /particip|joueurs?|players?|cellules?|\bcells?\b|gouvernance|organisation de crise|crisis organi[sz]ation|r[oô]les?\b|teilnehm|spieler|zellen?\b|besetzung|rollen|trombinoscope|dispositif|audience|publics? cibles?/i],
     ['phases', /\bphases?\b|trame|storyline|fil rouge|narrati|d[ée]roul[ée] du sc[ée]nario|synopsis|sc[ée]nario|handlung|s[ée]quen/i],
@@ -566,7 +637,22 @@ const CrisisDocReader = (() => {
     const largestTable = viewNames.filter((n) => /^Chronogram/.test(n)).sort((a, b) => views[b].rows.length - views[a].rows.length)[0];
     const defaultView = largestTable || (injectSlides.length >= 3 ? viewNames.find((n) => /^Injects/.test(n)) : null) || viewNames[viewNames.length - 1];
     const sections = {};
-    slides.forEach(({ slide, section }) => { (sections[section] = sections[section] || []).push(slide.number); });
+    const add = (key, number) => { const list = sections[key] = sections[key] || []; if (!list.includes(number)) list.push(number); };
+    slides.forEach(({ slide, section }) => add(section, slide.number));
+    // A slide often holds several parts under their own subheadings ("PARTICIPANTS", "Chemin
+    // d'attaque", a "Stimuli" row): each one counts for its section too.
+    slides.forEach(({ slide }) => {
+      const heading = (text) => /^[^a-zà-ÿ]*$/.test(text) && /[A-ZÀ-Ý]{3}/.test(text) || /[:：]$/.test(text);
+      const heads = slide.blocks.flatMap((block) => {
+        // A label on its own (one short paragraph), a line in capitals or ending with ":".
+        if (block.kind === 'text') return block.paragraphs.length === 1 ? [block.paragraphs[0].text] : block.paragraphs.map((p) => p.text).filter(heading);
+        // The header row and first column of a table that is not a chronogram.
+        if (block.kind === 'table' && !chronogramHeader(block.rows, patterns)) return [...block.rows[0], ...block.rows.map((row) => row[0])];
+        return [];
+      }).map((text) => String(text).trim()).filter((text) => text && text.length <= 40 && !/^\d{1,2}[:h]\d{2}/.test(text));
+      heads.forEach((text) => { const key = SECTION_RULES.find(([, re]) => re.test(text))?.[0]; if (key) add(key, slide.number); });
+    });
+    Object.values(sections).forEach((list) => list.sort((a, b) => a - b));
     return {
       unit, sections, views, defaultView,
       slideSections: Object.fromEntries(slides.map(({ slide, section }) => [slide.number, section])),
@@ -616,6 +702,74 @@ const CrisisDocReader = (() => {
     return `${head}\n\n${parts.map((part) => part.text).join('\n\n')}`.slice(0, limit);
   }
 
+  // ── Exercise duration ───────────────────────────────────────────────────────
+  /* A duration however it is written: "45 minutes", "45 min", "45mn", "45'", "0h45", "0:45",
+     "1h30", "1 h 30 min", "1,5 h", "2 heures", "3 hours", "90 Minuten", "3 Stunden". */
+  function durationIn(text) {
+    const match = /(?<![\d.,:])(\d{1,2}(?:[.,]\d{1,2})?)\s*-?\s*(?:h|hr?s?|heures?|hours?|stunden?|std\.?)(?![a-z])(?:\s*(\d{1,2})(?!\d)\s*(?:min(?:utes?)?|mn|m)?)?|(?<![\d.,:])(\d{1,4})\s*-?\s*(?:min(?:utes?|uten)?|mn|['’′])(?![a-z])|(?<![\d.,:])(\d{1,2}):(\d{2})(?![\d:])/i.exec(text);
+    if (!match) return null;
+    let minutes;
+    if (match[3]) minutes = +match[3];
+    else if (match[4]) minutes = +match[4] * 60 + +match[5];
+    else minutes = Math.round(parseFloat(match[1].replace(',', '.')) * 60) + (/[.,]/.test(match[1]) ? 0 : +match[2] || 0);
+    return minutes >= 10 && minutes <= 7 * 24 * 60 ? minutes : null;
+  }
+  const clockMinutes = (h, m) => +h * 60 + (+m || 0);
+  /* The play time of the exercise as the document states it: a duration next to "durée",
+     "duration", "Dauer"; else the span of an exercise schedule ("exercice de 9h à 12h");
+     else, estimated, the latest time from the start the document mentions (H+3:00).
+     { minutes, where (slide or section number), text, estimated } or null. */
+  function findDuration(doc) {
+    const lines = [];
+    doc.slides.forEach((slide) => {
+      const add = (text) => String(text || '').split('\n').forEach((line) => { if (line.trim()) lines.push({ where: slide.number, text: line.trim() }); });
+      add(slide.title);
+      slide.blocks.forEach((block) => {
+        if (block.kind === 'text') block.paragraphs.forEach((p) => add(p.text));
+        else if (block.kind === 'table') block.rows.forEach((row) => add(row.join(' | ')));
+        else if (block.kind === 'diagram') block.items.forEach(add);
+      });
+      add(slide.notes);
+    });
+    const exercise = /exercise|exercice|übung|drill|simulation|table.?top/i;
+    const keyword = /dur[ée]e|duration|dauer|temps de jeu|play(?:ing)? time|spielzeit|length of the exercise|longueur/i;
+    for (const line of lines) {
+      const at = line.text.search(keyword);
+      if (at < 0) continue;
+      // Within the clause of the keyword: "Durée de la journée 3 h ; exercice de 45 min" is
+      // not read as 3 h for the exercise when "exercice" comes later in the line.
+      const clause = line.text.slice(at).split(/[;|•]/)[0];
+      if (/journ[ée]e|day|tag|atelier|workshop|session|s[ée]minaire/i.test(clause.slice(0, 30)) && exercise.test(line.text.slice(at + clause.length))) continue;
+      const minutes = durationIn(clause);
+      if (minutes) return { minutes, where: line.where, text: line.text.slice(0, 160), estimated: false };
+    }
+    // "a 3-hour exercise", "a 45-minute drill", "exercice de 45 minutes", "Exercice (0:45)".
+    const schedulePart = /\d{1,2}\s*[h:]\s*\d{2}[^\d]{1,8}\d{1,2}\s*[h:]/i;
+    for (const line of lines) {
+      const at = line.text.search(exercise);
+      if (at < 0) continue;
+      // The words right after "exercise" first ("exercice de 45 min"), then right before it.
+      const parts = [line.text.slice(at, at + 40), line.text.slice(Math.max(0, at - 24), at)];
+      const minutes = parts.map((part) => schedulePart.test(part) ? null : durationIn(part)).find(Boolean);
+      if (minutes) return { minutes, where: line.where, text: line.text.slice(0, 160), estimated: false };
+    }
+    const schedule = /exercice|exercise|übung|simulation|jeu\b|play\b|d[ée]but|start|beginn/i;
+    const clock = /(\d{1,2})\s*[h:]\s*(\d{2})?/gi;
+    for (const line of lines) {
+      if (!schedule.test(line.text) || !/\s(à|a|to|bis|au)\s|jusqu|until|[-–→]/i.test(line.text)) continue;
+      const times = [...line.text.matchAll(clock)].map((m) => clockMinutes(m[1], m[2])).filter((m) => m <= 24 * 60);
+      if (times.length >= 2 && times[1] > times[0] && times[1] - times[0] >= 30) return { minutes: times[1] - times[0], where: line.where, text: line.text.slice(0, 160), estimated: false };
+    }
+    let latest = null;
+    lines.forEach((line) => {
+      for (const m of line.text.matchAll(/(?:^|[^\w])[HT]\s*\+\s*(\d{1,2})(?:\s*[:h]\s*(\d{2}))?/gi)) {
+        const minutes = clockMinutes(m[1], m[2]);
+        if (!latest || minutes > latest.minutes) latest = { minutes, where: line.where, text: line.text.slice(0, 160), estimated: true };
+      }
+    });
+    return latest && latest.minutes >= 30 ? latest : null;
+  }
+
   /* Without AI: the fields of the Context tab, taken from the sections found. */
   function contextDraft(doc, analysis) {
     const bySection = (key) => (analysis.sections[key] || []).map((n) => doc.slides.find((s) => s.number === n)).filter(Boolean);
@@ -632,9 +786,10 @@ const CrisisDocReader = (() => {
       name: (doc.meta?.title || (doc.unit === 'slide' ? doc.slides[0]?.title : '') || '').slice(0, 200),
       brief: brief.slice(0, 6000),
       learning_objectives: paragraphsOf('objectives').slice(0, 6000),
-      attack_path: paragraphsOf('incident').slice(0, 6000)
+      attack_path: paragraphsOf('incident').slice(0, 6000),
+      duration_minutes: findDuration(doc)?.estimated === false ? findDuration(doc).minutes : null
     };
   }
 
-  return { parseXml, read, readText, analyze, outline, contextDraft, sectionLabel: (key) => SECTION_LABELS[key] || SECTION_LABELS.other, SECTION_LABELS };
+  return { parseXml, read, readText, analyze, outline, contextDraft, findDuration, durationIn, sectionLabel: (key) => SECTION_LABELS[key] || SECTION_LABELS.other, SECTION_LABELS };
 })();

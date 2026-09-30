@@ -49,9 +49,21 @@ function bfFramingObjective(project, { adapted = false } = {}) {
     'STAGE 1 OF 2, FRAMING ONLY. The designer reviews and validates the framing with the client before any inject is planned.',
     adapted ? 'The library scenario is already adapted to the client (phases, roles and planned injects): keep its phases and planned injects, correct only what contradicts the context, and spend your steps on what is missing: main events, cells and players, actors for the roles.' : '',
     'Build: scenario name, type and summary; objectives; synopsis and threat; the phases of the main storyline, ending with a closing phase (recovery, return to normal, end of exercise) unless the context says otherwise; the main events of each phase with the main consequences the players must manage; the player cells and their players; the cast roles with their actors.',
-    'Do NOT plan or write injects for the cells (no planPhaseInjects, no addPlannedInjects, no createStimulus): stage 2 plans and writes them once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects.',
+    bfSourceListsStimuli()
+      ? 'Injects: plan now (planPhaseInjects), in their phase, only the stimuli the source file lists (one planned inject each, not written); do not invent others and do not write any (no createStimulus): stage 2 completes the plan of each cell and writes the injects once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects.'
+      : 'Do NOT plan or write injects for the cells (no planPhaseInjects, no addPlannedInjects, no createStimulus): stage 2 plans and writes them once the framing is validated. Ignore consistency findings about cells without injects or unwritten injects.',
+    bfSourceDefinesPhases() ? 'The source file defines the phases: build exactly those, in its order, and no other (no added closing phase unless the file has one).' : '',
     contextAgentObjective(project)
   ].filter(Boolean).join('\n').slice(0, 7900);
+}
+
+/* What the file loaded in the Context says: its own phases, its own stimuli. */
+function bfSourceDefinesPhases() {
+  return !!appState.checkerState?.parsedData?.analysis?.sections?.phases?.length;
+}
+function bfSourceListsStimuli() {
+  const analysis = appState.checkerState?.parsedData?.analysis;
+  return !!(analysis && (analysis.chronogramRows || analysis.sections?.chronogram?.length));
 }
 
 const BuildFlow = {
@@ -85,6 +97,10 @@ const BuildFlow = {
         this.progress = null;
       }
       if (appState.scenario !== project) return false;
+      // The phases are fitted to the exercise duration set in the Context (the library
+      // scenarios are written for 3 hours).
+      const duration = project.storyboard.duration_minutes;
+      if (duration && Number(instance.duration_minutes) !== duration) instance = { ...instance, duration_minutes: duration };
       if (!sbUseTemplate(instance, 'replace')) return false;
       project.storyboard.meta.template_id = template.id;
       project.storyboard.meta.library_id = template.id;

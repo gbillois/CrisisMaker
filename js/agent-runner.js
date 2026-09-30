@@ -14,9 +14,11 @@ function agentFramingGaps(project) {
   const gaps = [];
   const main = sbMainBlocks(project.storyboard);
   if (!main.length) return ['no phase in the main storyline (buildMainStoryline or setPhases)'];
-  const empty = main.filter(block => !(block.events || []).length);
+  const fromSource = typeof bfSourceDefinesPhases === 'function' && bfSourceDefinesPhases();
+  const empty = main.filter(block => !(block.events || []).length && !(fromSource && block.beats.length));
   if (empty.length) gaps.push(`no main events in ${empty.map(block => `"${block.title}" (${block.id})`).join(', ')} (setMainEvents)`);
-  if (!sbEndsWithClosing(project.storyboard)) gaps.push('the last phase is not a closing phase');
+  // The phases of a source file are kept as they are, without an added closing phase.
+  if (!fromSource && !sbEndsWithClosing(project.storyboard)) gaps.push('the last phase is not a closing phase');
   if (!project.cells.some(cell => cell.players.length)) gaps.push('no player in the cells (upsertCells)');
   if (!project.storyboard.cast.length) gaps.push('no cast role (upsertCast)');
   return gaps;

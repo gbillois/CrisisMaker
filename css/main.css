@@ -4245,7 +4245,44 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .cx-file-found { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.8rem; }
 .cx-file-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; background: var(--indigo-tint); color: var(--primary-strong); border-radius: 999px; }
 .cx-file-chip b { color: var(--indigo); }
-.cx-missing { margin: 0; display: flex; align-items: flex-start; gap: 6px; padding: 8px 12px; background: var(--surface-alt); border-left: 3px solid var(--line-strong); font-size: 0.84rem; color: var(--muted); }
+/* The essential points a source should hold. */
+.cx-essentials { display: grid; gap: 6px; padding: 10px 12px; background: var(--surface-alt); border: 1px solid var(--line); }
+.cx-essentials-head { margin: 0; font-size: 0.84rem; font-weight: 600; color: var(--primary-strong); }
+.cx-essentials ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; }
+.cx-essential { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: start; font-size: 0.82rem; line-height: 1.4; }
+.cx-essential > svg { margin-top: 2px; color: var(--muted); }
+.cx-essential strong { font-weight: 600; }
+.cx-essential em { font-style: normal; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--indigo); }
+.cx-essential-detail { color: var(--muted); }
+.cx-essential.is-key { grid-column: 1 / -1; }
+.cx-essential.is-found > svg { color: var(--green); }
+.cx-essential.is-missing > svg, .cx-essential.is-estimated > svg { color: #d99a00; }
+.cx-essential.is-key.is-missing, .cx-essential.is-key.is-todo { padding: 4px 6px; background: #fff8e6; }
+.cx-essential .btn-xs { margin-left: 4px; vertical-align: baseline; }
+@media (max-width: 768px) { .cx-essentials ul { grid-template-columns: 1fr; } }
+/* The points the sources leave open, answered before the creation. */
+.cx-duration-conflict { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; padding: 10px 14px; background: #fff8e6; border: 1px solid #f1d58a; border-left: 3px solid #d99a00; }
+.cx-duration-conflict > svg { color: #b07d00; align-self: start; margin-top: 2px; }
+.cx-duration-conflict div:not(.cx-duration-actions) { display: grid; gap: 2px; font-size: 0.86rem; }
+.cx-duration-conflict span { color: var(--muted); font-size: 0.82rem; }
+.cx-duration-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 768px) { .cx-duration-conflict { grid-template-columns: 18px minmax(0, 1fr); } .cx-duration-actions { grid-column: 1 / -1; } }
+.cx-open-points { display: grid; gap: 10px; padding: 14px 16px; background: #fff8e6; border: 1px solid #f1d58a; border-left: 3px solid #d99a00; }
+.cx-open-head { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; }
+.cx-open-head > svg { margin-top: 2px; color: #b07d00; }
+.cx-open-head div { display: grid; gap: 2px; }
+.cx-open-head span { font-size: 0.84rem; color: var(--muted); }
+.cx-open-section { display: grid; gap: 6px; font-size: 0.86rem; }
+.cx-open-section > textarea { min-height: 70px; font-size: 0.86rem; background: #fff; }
+.cx-open-duration-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cx-open-duration-row input { width: 110px; height: 38px; font-weight: 700; background: #fff; }
+.cx-open-duration.is-warn .helper { color: #8a6100; }
+.cx-understood { margin: 0; padding-left: 18px; display: grid; gap: 2px; line-height: 1.4; }
+.cx-open-points ol { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.cx-open-point { display: grid; gap: 5px; font-size: 0.86rem; line-height: 1.4; }
+.cx-open-point textarea { min-height: 52px; font-size: 0.86rem; background: #fff; }
+.cx-open-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+@media (max-width: 768px) { .cx-open-actions .btn { flex: 1 1 100%; justify-content: center; } }
 .cx-frame .cx-design { margin-top: 6px; }
 /* Update: the amended context flows into the exercise. */
 .cx-update { display: grid; gap: 14px; }
