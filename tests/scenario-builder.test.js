@@ -724,7 +724,7 @@ test('play: clock, numbering, timing, statuses both ways with the log, on-the-fl
   assert.ok(items.some((item) => item.timing === 'is-late') && items.some((item) => item.timing === 'is-due'));
   // View: generate block, permanent bar with reset, chronogram by phase with the NOW line, log panel.
   const closed = h.run('renderPlayView()');
-  assert.ok(closed.includes('data-play-pane="logOpen"') && closed.includes('data-play-pane="liveOpen"') && !closed.includes('data-play-note') && !closed.includes('play-live'), 'log and live stimuli hidden in panes by default');
+  assert.ok(closed.includes('data-play="log"') && closed.includes('data-play="live"') && !closed.includes('data-play-note') && !closed.includes('play-live'), 'log and live stimuli hidden in panes by default');
   h.run('playUI().logOpen = true');
   const view = h.run('renderPlayView()');
   assert.ok(!view.includes('play-generate'), 'the download block moved to the Injects library');

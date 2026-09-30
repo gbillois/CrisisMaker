@@ -273,8 +273,8 @@ function renderPlayBar(project, play, ui, items, now, counts, phases) {
     <div class="play-bar-top">
       <span class="play-bar-title">${sbUiIcon('play', 13)} ${tt('Exercise control', 'Pilotage de l’exercice', 'Übungssteuerung')}${play.started_at ? ` · ${tt('started at', 'démarré à', 'gestartet um')} ${escapeHtml(playWallClock(play.started_at))}` : ''}</span>
       <button class="play-export" data-play="export-xlsx" title="${escapeAttribute(tt('The whole chronogram in an Excel file, with a filter on every column', 'Tout le chronogramme dans un fichier Excel, avec un filtre sur chaque colonne', 'Das ganze Chronogramm als Excel-Datei, mit einem Filter in jeder Spalte'))}" ${items.length ? '' : 'disabled'}>${sbUiIcon('sheet', 13)} ${tt('Export chronogram (Excel)', 'Exporter le chronogramme (Excel)', 'Chronogramm exportieren (Excel)')}</button>
-      <label class="play-log-toggle ${ui.logOpen ? 'active' : ''}"><input type="checkbox" data-play-pane="logOpen" ${ui.logOpen ? 'checked' : ''}> ${sbUiIcon('history', 13)} ${tt('Display exercise log', 'Afficher le journal', 'Protokoll anzeigen')} <b>${play.log.length}</b></label>
-      <label class="play-log-toggle ${ui.liveOpen ? 'active' : ''}"><input type="checkbox" data-play-pane="liveOpen" ${ui.liveOpen ? 'checked' : ''}> ${sbUiIcon('image', 13)} ${tt('Display live stimuli', 'Afficher les stimuli en direct', 'Live-Stimuli anzeigen')}</label>
+      <button class="play-log-toggle ${ui.logOpen ? 'active' : ''}" data-play="log" aria-pressed="${ui.logOpen ? 'true' : 'false'}">${sbUiIcon('history', 13)} ${tt('Exercise log', 'Journal', 'Protokoll')} <b>${play.log.length}</b></button>
+      <button class="play-log-toggle ${ui.liveOpen ? 'active' : ''}" data-play="live" aria-pressed="${ui.liveOpen ? 'true' : 'false'}" title="${escapeAttribute(tt('Each stimulus shown when its time comes, then replaced by the next', 'Chaque stimulus affiché à son heure, puis remplacé par le suivant', 'Jeder Stimulus zu seiner Zeit angezeigt, dann durch den nächsten ersetzt'))}">${sbUiIcon('image', 13)} ${tt('Live stimuli', 'Stimuli en direct', 'Live-Stimuli')}</button>
       <button class="play-reset" data-play="reset-all" ${started || play.log.length || counts.sent ? '' : 'disabled'} title="${escapeAttribute(tt('Clock back to H+0:00, sent injects back to Validated, log cleared', 'Horloge à H+0:00, injects envoyés repassés en Validé, journal effacé', 'Uhr auf H+0:00, gesendete Injects wieder Freigegeben, Protokoll gelöscht'))}">${sbUiIcon('refresh', 13)} ${tt('Reset play', 'Réinitialiser le jeu', 'Spiel zurücksetzen')}</button>
     </div>
     <div class="play-bar-main">
@@ -576,7 +576,6 @@ function bindPlayEvents() {
     saveLocal(false);
     App.render();
   }));
-  root.querySelectorAll('[data-play-pane]').forEach((input) => input.addEventListener('change', () => { ui[input.dataset.playPane] = input.checked; App.render(); }));
   // A pane is widened by dragging its left edge; the page makes room once it is released.
   root.querySelectorAll('[data-play-resize]').forEach((handle) => handle.addEventListener('pointerdown', (event) => {
     event.preventDefault();

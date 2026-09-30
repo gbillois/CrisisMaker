@@ -4623,8 +4623,6 @@ svg.ui-icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 /* The right panes can be widened from their left edge. */
 .play-pane-resize { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; z-index: 2; }
 .play-pane-resize:hover, .play-pane-resize:active { background: rgba(69, 29, 199, 0.18); }
-.play-log-toggle input { margin: 0; accent-color: var(--green); }
-label.play-log-toggle { cursor: pointer; }
 /* Live stimuli: the visual of what is to be sent now, and the next one. */
 .play-live { position: fixed; top: var(--header-h); bottom: 0; z-index: 94; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: #f7f6fa; border-left: 1px solid var(--line); border-top: 3px solid var(--green); box-shadow: var(--shadow-lg); }
 .play-live-list { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 12px; }

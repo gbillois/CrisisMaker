@@ -19,7 +19,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.equal(await page.locator('.play-phase-group').count(), await page.evaluate(() => sbMainBlocks(sbStoryboard()).length));
   // The log is hidden in a pane, opened from the control bar.
   assert.equal(await page.locator('.play-log').count(), 0);
-  await page.check('[data-play-pane="logOpen"]');
+  await page.click('.play-bar [data-play="log"]');
   assert.ok(await page.isVisible('.play-log'));
 
   // Start at ×30: the clock runs, the log records the start.
@@ -137,7 +137,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   // Live stimuli, like a film: the stimulus of this moment, replaced by the next one when its
   // time comes; the pane sits left of the log and is widened by dragging its left edge.
   await page.evaluate(() => { playState().running = false; playState().offset_min = 0; App.render(); });
-  await page.check('[data-play-pane="liveOpen"]');
+  await page.click('.play-bar [data-play="live"]');
   assert.ok(await page.isVisible('.play-live'));
   const [firstTime, secondTime] = await page.evaluate(() => [...new Set(playItems().filter((item) => item.stimulus).map((item) => item.time))].sort((a, b) => a - b).slice(0, 2));
   await page.evaluate((t) => { playState().offset_min = t; App.render(); }, firstTime);
