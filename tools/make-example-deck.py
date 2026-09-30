@@ -97,28 +97,28 @@ box(s, 45, 436, 1130, 80, ["Realism: a credible scenario, inspired by real threa
 # 3. Players and cells
 s = slide("Players and cells", "One decision cell: the executive committee, with its key functions.")
 table(s, 45, 110, 1130, [
-    ["Cell", "Function", "Role in the exercise"],
-    ["Decision cell (executive committee)", "Group Chief Executive Officer", "Chairs the cell, arbitrates and decides"],
-    ["Decision cell (executive committee)", "General Counsel", "Liability, notifications, relations with third parties"],
-    ["Decision cell (executive committee)", "Chief Communications Officer", "Internal and external stance and messages"],
-    ["Decision cell (executive committee)", "Chief Financial Officer", "Financial impacts, insurance, markets"],
-    ["Decision cell (executive committee)", "Chief Human Resources Officer", "Staff, interns, employee relations"],
-    ["Decision cell (executive committee)", "Chief Operating Officer", "Continuity of operations and of the responses to tenders"],
-    ["Decision cell (executive committee)", "Group Chief Information Officer", "Systems, AI tools, technical investigation"],
-    ["Decision cell (executive committee)", "Heads of the main subsidiaries", "Business and customer impacts of each subsidiary"]
-], [0.28, 0.34, 0.38])
+    ["Cell", "Name", "Function", "Role in the exercise"],
+    ["Decision cell (executive committee)", "Helena Varga", "Group Chief Executive Officer", "Chairs the cell, arbitrates and decides"],
+    ["Decision cell (executive committee)", "Marc Delorme", "General Counsel", "Liability, notifications, relations with third parties"],
+    ["Decision cell (executive committee)", "Aisha Rahman", "Chief Communications Officer", "Internal and external stance and messages"],
+    ["Decision cell (executive committee)", "Tomas Lindqvist", "Chief Financial Officer", "Financial impacts, insurance, markets"],
+    ["Decision cell (executive committee)", "Claire Moreau", "Chief Human Resources Officer", "Staff, interns, employee relations"],
+    ["Decision cell (executive committee)", "David Okonkwo", "Chief Operating Officer", "Continuity of operations and of the responses to tenders"],
+    ["Decision cell (executive committee)", "Nina Castellanos", "Group Chief Information Officer", "Systems, AI tools, technical investigation"],
+    ["Decision cell (executive committee)", "Paul Werner, Sofia Brandt", "Heads of the main subsidiaries", "Business and customer impacts of each subsidiary"]
+], [0.24, 0.16, 0.26, 0.34])
 notes(s, "The players do not know the scenario: they live the exercise as a real situation.")
 
 # 4. Accomplices and facilitation
 s = slide("Accomplices and facilitation", "Staff who know the scenario: they play roles and deliver stimuli, without taking part in the decisions.")
 table(s, 45, 110, 1130, [
-    ["Accomplice", "Roles played", "Stimuli delivered"],
-    ["Group CISO", "SOC team, internal cyber expert", "Connection traces, logs, map of the agent's rights"],
-    ["Head of AI innovation", "AI platform team, interns from other entities", "Evidence tied to the AI tool, messages from users"],
-    ["Head of customer relations", "Customer, competitor, partner", "Emails and calls from the third parties attacked"],
-    ["Communications officer", "Journalist, social media", "Media speculation, article on an \"AI out of control\""]
-], [0.26, 0.34, 0.40])
-box(s, 45, 290, 1130, 60, ["Observers: two cyber experts (facilitation) and one observer from risk management.", "Early stop: the lead facilitator can pause the game at any time (fallback: a ransomware scenario)."], 10)
+    ["Accomplice", "Name", "Roles played", "Stimuli delivered"],
+    ["Group CISO", "Julien Marchetti", "SOC team, internal cyber expert", "Connection traces, logs, map of the agent's rights"],
+    ["Head of AI innovation", "Priya Nair", "AI platform team, interns from other entities", "Evidence tied to the AI tool, messages from users"],
+    ["Head of customer relations", "Oliver Grant", "Customer, competitor, partner", "Emails and calls from the third parties attacked"],
+    ["Communications officer", "Lea Fontaine", "Journalist, social media", "Media speculation, article on an \"AI out of control\""]
+], [0.22, 0.16, 0.28, 0.34])
+box(s, 45, 290, 1130, 60, ["Observers: two cyber experts, Hugo Lambert and Mei Tanaka (facilitation), and Rachel Stein from risk management.", "Early stop: the lead facilitator can pause the game at any time (fallback: a ransomware scenario)."], 10)
 
 # 5. Scenario context and attack path
 s = slide("Scenario context")
