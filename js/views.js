@@ -167,12 +167,14 @@
             ${appState.launchScreenOpen ? renderLaunchScreen() : ''}
             <header class="app-header">
               <div class="brand-bar">
-                <a class="brand-lockup" href="https://www.wavestone.com/" target="_blank" rel="noopener noreferrer" title="Wavestone">
-                  ${wavestoneLogo()}
+                <div class="brand-lockup">
+                  <a class="brand-wavestone" href="https://www.wavestone.com/" target="_blank" rel="noopener noreferrer" title="Wavestone">${wavestoneLogo()}</a>
                   <span class="brand-divider" aria-hidden="true"></span>
-                  ${crisisMakerIcon(26, 'cm-icon brand-mark')}
-                  <span class="brand-product">Crisis<b>Maker</b></span>
-                </a>
+                  <button type="button" class="brand-home" data-action="show-launch-screen" title="${tt('Show the welcome screen', 'Afficher l’écran d’accueil', 'Startbildschirm anzeigen')}">
+                    ${crisisMakerIcon(26, 'cm-icon brand-mark')}
+                    <span class="brand-product">Crisis<b>Maker</b></span>
+                  </button>
+                </div>
                 <div class="brand-project-wrap">
                   <button type="button" class="brand-project ${appState.route === 'project' ? 'is-active' : ''}" data-action="toggle-project-menu" aria-haspopup="menu" aria-expanded="${appState.projectMenuOpen ? 'true' : 'false'}" title="${escapeAttribute(tt('File menu: new, open, save, download, library', 'Menu Fichier : nouveau, ouvrir, enregistrer, télécharger, bibliothèque', 'Menü Datei: neu, öffnen, speichern, herunterladen, Bibliothek'))}">
                     <span class="brand-project-icon" aria-hidden="true">${sbUiIcon('fileText', 18)}</span>

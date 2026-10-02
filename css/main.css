@@ -75,6 +75,23 @@
       text-decoration: none;
     }
     .wavestone-logo { display: block; width: 132px; height: auto; color: var(--indigo); }
+    .brand-wavestone { display: flex; min-width: 0; color: var(--indigo); }
+    .brand-wavestone .wavestone-logo { max-width: 100%; }
+    /* The product name opens the welcome screen again. */
+    .brand-home {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+      padding: 4px 6px;
+      margin: -4px 0 -4px -6px;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      cursor: pointer;
+    }
+    .brand-home:hover .brand-product { color: var(--indigo); }
+    .brand-home:focus-visible { outline: 2px solid var(--indigo); outline-offset: 1px; }
     .brand-divider { width: 1px; height: 22px; background: var(--line); }
     .brand-product {
       font-size: 0.72rem;
