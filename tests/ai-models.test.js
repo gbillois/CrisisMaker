@@ -241,6 +241,14 @@ async function run() {
   assert.match(editPrompts.systemPrompt, /template_id exactly "nyt"/);
   assert.match(editPrompts.systemPrompt, /Existing headline/);
   assert.match(editPrompts.userPrompt, /^UPDATE REQUEST:/);
+  // "Translate to German" on a Le Monde article: the request wins over the press language rule.
+  assert.match(editPrompts.systemPrompt, /UPDATE REQUEST wins over the default language rules/);
+  assert.match(editPrompts.systemPrompt, /unless the update request asks for another language/);
+  assert.doesNotMatch(editPrompts.systemPrompt, /Strict press media rule/);
+  assert.match(editPrompts.systemPrompt, /keep the current timestamp_offset_minutes/);
+  const createPrompts = vm.runInContext(`LLMConfigPrompts.stimulus('create 1 inject', appState.scenario, [])`, context);
+  assert.match(createPrompts.systemPrompt, /Strict press media rule/);
+  assert.doesNotMatch(createPrompts.systemPrompt, /UPDATE REQUEST wins/);
 
   context.appState.scenario.settings = {
     ...context.appState.scenario.settings,

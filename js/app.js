@@ -1264,8 +1264,14 @@
                 captureLLMRawResponse(state);
                 const config = Array.isArray(result) ? result[0] : (Array.isArray(result?.stimuli) ? result.stimuli[0] : result);
                 if (!config || typeof config !== 'object') throw new Error(tt('The AI did not return a valid inject update.', 'L’IA n’a pas renvoyé de mise à jour d’inject valide.', 'Die KI hat keine gültige Inject-Aktualisierung zurückgegeben.'));
+                const fieldsBefore = JSON.stringify(selected.fields || {});
                 await applyStimulusConfig(selected, config, { preserveType: true });
-                state.lastFilledCount = Object.keys(config.fields || {}).length + 3;
+                // A reply that changes no field is reported, not shown as a success.
+                if (JSON.stringify(selected.fields || {}) === fieldsBefore) {
+                  state.error = tt('The AI returned the inject unchanged. Rephrase the request or try another model.', 'L’IA a renvoyé l’inject sans modification. Reformulez la demande ou essayez un autre modèle.', 'Die KI hat den Inject unverändert zurückgegeben. Formulieren Sie die Anfrage um oder versuchen Sie ein anderes Modell.');
+                } else {
+                  state.lastFilledCount = Object.keys(config.fields || {}).length + 3;
+                }
                 state.loading = false;
                 App.render();
               } catch (err) {

@@ -453,8 +453,10 @@
               ));
             }
           }
-          // Injects written in another script than the exercise language are asked again once.
-          const offLanguage = (value) => stimulusConfigsFromResult(value).map((config) => stimulusOffLanguage(config?.fields, { template_id: config?.template_id || currentStimulus?.template_id }, scenario)).find(Boolean) || '';
+          // Injects written in another script than the exercise language are asked again once,
+          // unless the operator asked to rewrite this inject in Japanese or Chinese.
+          const cjkRequested = !!currentStimulus && /japan|japon|chin|日本|中文|汉语|漢語/i.test(userInput);
+          const offLanguage = (value) => cjkRequested ? '' : stimulusConfigsFromResult(value).map((config) => stimulusOffLanguage(config?.fields, { template_id: config?.template_id || currentStimulus?.template_id }, scenario)).find(Boolean) || '';
           const language = offLanguage(result);
           if (language) {
             result = await this.generate('llm_config_stimulus', `${systemPrompt}\n\nLANGUAGE: write every field in ${language} only (press articles excepted, in their publication's language). A previous answer used another language: do not keep any text in another language.`, userPrompt, false, maxTokens, options.signal ? { signal: options.signal } : {});
@@ -1128,6 +1130,7 @@ ${currentStimulus ? `- EDIT MODE: channel and template_id are immutable. Return 
 - Never infer, substitute, or recommend another inject type or layout while editing, even if another channel could also fit the requested wording.
 - Update the requested content within the current fields schema. Preserve current field values that the user did not ask to change, except the template's example content (the StonaWave demo company, its people such as Sophie Delacroix or Jean-Luc Moreau, its dates and figures): replace it with content of this scenario.
 - Return one updated stimulus object, never a batch.
+- The operator's UPDATE REQUEST wins over the default language rules below: when it asks for another language (translate, write in German…), write every text field in that language, press articles included, and keep template_id unchanged.
 
 CURRENT INJECT TO UPDATE:
 ${JSON.stringify(currentContext)}` : `- CREATION MODE: determine the most suitable channel and template for each requested inject.
@@ -1136,11 +1139,11 @@ ${JSON.stringify(currentContext)}` : `- CREATION MODE: determine the most suitab
 - The "stimuli" array must contain exactly the number of injects requested by the operator.${requestedCount ? ` The explicit requested count is ${requestedCount}, so the array must contain exactly ${requestedCount} objects.` : ''}`}
 - If an actor is mentioned or matches the description, put their name in actor_id (the code will resolve it)${currentStimulus ? '' : `
 - When no available actor fits the sender of an inject, set actor_id to null and describe the sender in "new_actor" (it is added to the cast); reuse the same new sender across injects rather than inventing one per inject`}
-- For timeline position, interpret "H+2" as 120 minutes, "H+30" as 30, etc. If not mentioned, ${currentStimulus ? 'use 0' : 'spread the injects credibly over the exercise and its phases'}
+- For timeline position, interpret "H+2" as 120 minutes, "H+30" as 30, etc. If not mentioned, ${currentStimulus ? 'keep the current timestamp_offset_minutes' : 'spread the injects credibly over the exercise and its phases'}
 - If the user requests a batch ("create 30 injects…" with categories), return EXACTLY the requested number and distribute timestamps credibly if no precise schedule is given
 - For external stimuli ("client", "regulator", "press", etc.), alternate actors/sources to reflect the requested distribution
-- Generate field content in ${injectLangName} by default, EXCEPT press articles which must use their publication's native language
-- Strict press media rule: template_id = "lemonde" → all text content in French; "nyt" → English; "faz" → German; "ft" → British English; "nikkei" → Japanese
+- Generate field content in ${injectLangName} by default, EXCEPT press articles which must use their publication's native language${currentStimulus ? ' (unless the update request asks for another language)' : ''}
+- ${currentStimulus ? 'Default' : 'Strict'} press media rule: template_id = "lemonde" → all text content in French; "nyt" → English; "faz" → German; "ft" → British English; "nikkei" → Japanese
 - For information NOT mentioned, INVENT realistic coherent details
 - The generation_mode field must be "ai_guided"
 ${currentStimulus ? '- Reply with the single updated stimulus object.' : '- Reply with one JSON object shaped as {"stimuli":[...]}; never use a top-level JSON array.'}
