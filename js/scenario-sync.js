@@ -780,7 +780,7 @@ const SbPipeline = {
       const applyOne = async (impact) => {
         assertActive();
         this.step++;
-        this.label = `${impact.kind}: ${impact.label}`;
+        this.label = tt(`Updating ${impact.label}`, `Mise à jour : ${impact.label}`, `Wird aktualisiert: ${impact.label}`);
         const aiBound = ['regenerate', 'adapt'].includes(impact.action);
         // Re-render (progress) for AI steps and every 10th quick one, not after each change.
         if (aiBound || this.step % 10 === 0) sbNotify();

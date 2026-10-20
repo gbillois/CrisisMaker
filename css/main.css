@@ -3467,6 +3467,11 @@
 .sb-progress { flex: 1; height: 5px; border-radius: 0; background: rgba(69, 29, 199, 0.14); overflow: hidden; position: relative; max-width: 360px; }
 .sb-progress i { display: block; height: 100%; background: var(--indigo); border-radius: inherit; transition: width 0.3s; }
 .sb-progress.is-indeterminate i { width: 35%; position: absolute; animation: sb-indeterminate 1.3s ease-in-out infinite; }
+.sb-statusbar.is-busy .ai-spinner { border-color: rgba(69, 29, 199, 0.22); border-top-color: var(--primary); margin-right: 0; }
+.sb-statusbar.sb-modal-progress { position: sticky; top: -16px; z-index: 2; margin: -16px -20px 0; padding: 10px 20px; border-width: 0 0 1px; }
+.sb-modal-progress .sb-progress-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-modal-progress .sb-progress { max-width: none; min-width: 80px; }
+.sb-progress-count { flex-shrink: 0; font-variant-numeric: tabular-nums; }
 @keyframes sb-indeterminate { from { left: -35%; } to { left: 100%; } }
 
 /* Three-panel body */

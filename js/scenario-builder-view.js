@@ -216,11 +216,15 @@ function sbUiIcon(name, size = 16) {
 }
 
 
+function sbPipelineProgressBar() {
+  const progress = SbPipeline.active && SbPipeline.total ? Math.round(100 * Math.min(SbPipeline.step, SbPipeline.total) / SbPipeline.total) : null;
+  return progress !== null ? `<span class="sb-progress"><i style="width:${progress}%"></i></span>` : '<span class="sb-progress is-indeterminate"><i></i></span>';
+}
+
 function renderSbStatusBar() {
   const busy = SbAI.busy || (SbPipeline.active ? SbPipeline.label || tt('Generating', 'Génération', 'Generierung') : '');
   if (busy) {
-    const progress = SbPipeline.active && SbPipeline.total ? Math.round(100 * SbPipeline.step / SbPipeline.total) : null;
-    return `<div class="sb-statusbar is-busy" role="status"><span class="ai-spinner"></span><span>${escapeHtml(busy)}…</span>${progress !== null ? `<span class="sb-progress"><i style="width:${progress}%"></i></span>` : '<span class="sb-progress is-indeterminate"><i></i></span>'}<button class="btn btn-secondary btn-xs" data-sb-action="${SbPipeline.active ? 'stop-pipeline' : 'stop-ai'}">${sbUiIcon('stop', 12)} ${escapeHtml(tt('Stop', 'Arrêter', 'Stoppen'))}</button></div>`;
+    return `<div class="sb-statusbar is-busy" role="status"><span class="ai-spinner"></span><span>${escapeHtml(busy)}…</span>${SbAI.busy && !SbPipeline.active ? '<span class="sb-progress is-indeterminate"><i></i></span>' : sbPipelineProgressBar()}<button class="btn btn-secondary btn-xs" data-sb-action="${SbPipeline.active ? 'stop-pipeline' : 'stop-ai'}">${sbUiIcon('stop', 12)} ${escapeHtml(tt('Stop', 'Arrêter', 'Stoppen'))}</button></div>`;
   }
   if (SbAI.lastError) return `<div class="sb-statusbar is-error" role="alert"><span>${sbUiIcon('alert', 14)} ${escapeHtml(SbAI.lastError)}</span><button class="btn btn-secondary btn-xs" data-sb-action="dismiss-error">${escapeHtml(tt('Dismiss', 'Ignorer', 'Schließen'))}</button></div>`;
   return '';
@@ -466,6 +470,14 @@ function renderSbClip(storyboard, block, top, height) {
 
 // ── Inspector (right panel) ──────────────────────────────────────────────────
 // ── Modals ───────────────────────────────────────────────────────────────────
+/* The progress of a running update or generation, at the top of its dialog (the status bar
+   of the tab is hidden behind it). Stop stays in the footer. */
+function renderSbModalProgress() {
+  if (!SbPipeline.active) return '';
+  const count = SbPipeline.total ? `<span class="sb-progress-count">${Math.min(SbPipeline.step, SbPipeline.total)} / ${SbPipeline.total}</span>` : '';
+  return `<div class="sb-statusbar is-busy sb-modal-progress" role="status"><span class="ai-spinner"></span><span class="sb-progress-label">${escapeHtml(SbPipeline.label || tt('Working', 'En cours', 'Läuft'))}…</span>${sbPipelineProgressBar()}${count}</div>`;
+}
+
 function sbModalShell(title, body, footer = '', size = '') {
   return `<div class="modal-backdrop sb-modal-backdrop" data-sb-backdrop>
     <div class="modal-box sb-modal ${size}" role="dialog" aria-modal="true" aria-label="${escapeAttribute(title)}">
@@ -558,7 +570,7 @@ function renderSbGenerateModal(storyboard) {
   const running = SbPipeline.active;
   const ai = isLLMAvailable();
   const cellOption = sbCell(project, options.cellId);
-  const body = `<div class="sb-generate">
+  const body = `${renderSbModalProgress()}<div class="sb-generate">
       <div class="sb-mini-field">${escapeHtml(tt('Scope', 'Périmètre', 'Umfang'))}
         <div class="sb-segmented">
           <button class="${!cell ? 'active' : ''}" data-sb-action="generate-scope" data-sb-value="all">${escapeHtml(tt(`Whole exercise · ${storyboard.blocks.length} phases`, `Tout l’exercice · ${storyboard.blocks.length} phases`, `Gesamte Übung · ${storyboard.blocks.length} Phasen`))}</button>
@@ -601,7 +613,7 @@ function renderSbSyncModal(storyboard) {
     adapt: tt('Adapt, keep manual edits', 'Adapter, garder les modifications manuelles', 'Anpassen, manuelle Änderungen behalten'), accept: tt('Keep as is', 'Garder tel quel', 'Unverändert lassen'),
     create: tt('Create', 'Créer', 'Erstellen'), update: tt('Update actor', 'Mettre à jour l’acteur', 'Akteur aktualisieren'), replan: tt('Re-plan with AI', 'Replanifier avec l’IA', 'Mit KI neu planen')
   };
-  const body = `<p class="sb-help sb-cascade">${sbUiIcon('sync', 13)} ${tt('Changes flow down in cascade: <b>phases</b> → <b>inject plan</b> → <b>actors</b> → <b>timing and content of the injects</b>. One undo restores everything.', 'Les changements se répercutent en cascade : <b>phases</b> → <b>plan d’injects</b> → <b>acteurs</b> → <b>timing et contenu des injects</b>. Une seule annulation restaure tout.', 'Änderungen wirken sich kaskadenartig aus: <b>Phasen</b> → <b>Inject-Plan</b> → <b>Akteure</b> → <b>Timing und Inhalt der Injects</b>. Ein einziges Rückgängig stellt alles wieder her.')}</p>
+  const body = `${renderSbModalProgress()}<p class="sb-help sb-cascade">${sbUiIcon('sync', 13)} ${tt('Changes flow down in cascade: <b>phases</b> → <b>inject plan</b> → <b>actors</b> → <b>timing and content of the injects</b>. One undo restores everything.', 'Les changements se répercutent en cascade : <b>phases</b> → <b>plan d’injects</b> → <b>acteurs</b> → <b>timing et contenu des injects</b>. Une seule annulation restaure tout.', 'Änderungen wirken sich kaskadenartig aus: <b>Phasen</b> → <b>Inject-Plan</b> → <b>Akteure</b> → <b>Timing und Inhalt der Injects</b>. Ein einziges Rückgängig stellt alles wieder her.')}</p>
     ${!isLLMAvailable() && impacts.some((impact) => ['replan', 'outdated', 'people'].includes(impact.kind)) ? `<p class="agent-warning">${escapeHtml(tt('AI is not configured: re-planning a phase and rewriting injects need an AI connection (Settings). Timing, orphans and actors can still be updated.', 'L’IA n’est pas configurée : replanifier une phase et réécrire des injects nécessitent une connexion IA (Paramètres). Le timing, les orphelins et les acteurs peuvent quand même être mis à jour.', 'KI ist nicht eingerichtet: Das Neuplanen einer Phase und das Neuschreiben von Injects erfordern eine KI-Verbindung (Einstellungen). Timing, verwaiste Injects und Akteure lassen sich trotzdem aktualisieren.'))}</p>` : ''}
     ${impacts.length ? kinds.map(([kind, title, help]) => {
       const list = impacts.filter((impact) => impact.kind === kind);
