@@ -131,12 +131,36 @@
         return `${endpoint.origin}/openai/deployments/${encodeURIComponent(settings.azure_deployment.trim())}/chat/completions?api-version=${encodeURIComponent(version)}`;
       }
 
-      async function fetchAzureChat(settings, messages, { stream = false, signal } = {}) {
+      /* Azure reserves a request's output limit against the deployment's tokens-per-minute quota as
+         soon as it arrives (with no limit, the model's maximum): every call states its own, which
+         keeps a deployment with a small quota out of HTTP 429. A reasoning model (it only takes
+         max_completion_tokens) also spends that limit on its reasoning, so it gets room for it. */
+      const AZURE_REASONING_TOKENS = 16000;
+      const azureTokenParams = new Map();
+
+      async function fetchAzureChat(settings, messages, { stream = false, signal, maxTokens = 0 } = {}) {
         const url = azureChatUrl(settings);
+        const key = `${url}|${settings.azure_deployment.trim()}`;
+        const param = azureTokenParams.get(key) || 'max_tokens';
+        const send = (name) => fetchAzureOnce(settings, url, {
+          model: settings.azure_deployment.trim(), messages, ...(stream ? { stream: true } : {}),
+          ...(maxTokens ? { [name]: name === 'max_completion_tokens' ? maxTokens + AZURE_REASONING_TOKENS : maxTokens } : {})
+        }, { stream, signal });
+        const response = await send(param);
+        if (!maxTokens || response.status !== 400) return response;
+        // The deployment refuses this parameter (a reasoning model, or an older API version): the other one.
+        const text = await response.clone().text().catch(() => '');
+        if (!/unsupported|unrecognized|not supported/i.test(text) || !new RegExp(`\\b${param}\\b`).test(text)) return response;
+        const other = param === 'max_tokens' ? 'max_completion_tokens' : 'max_tokens';
+        azureTokenParams.set(key, other);
+        return send(other);
+      }
+
+      async function fetchAzureOnce(settings, url, body, { stream, signal }) {
         const init = {
           method: 'POST', signal,
           headers: { 'Content-Type': 'application/json', 'api-key': settings.azure_api_key.trim() },
-          body: JSON.stringify({ model: settings.azure_deployment.trim(), messages, ...(stream ? { stream: true } : {}) })
+          body: JSON.stringify(body)
         };
         try {
           return await fetch(url, init);
@@ -490,8 +514,9 @@
               return result;
             } catch (error) {
               CrisisTechLog.end(trace, { error, chunks, finish: this.lastFinish || '', raw: this.lastRawResponse });
-              if (options.signal?.aborted || error?.name === 'AbortError' || chunks > 0 || attempt >= LLM_MAX_ATTEMPTS || !llmTransient(error)) throw error;
-              await llmWait(llmRetryDelay(error, attempt), options.signal);
+              if (options.signal?.aborted || error?.name === 'AbortError' || chunks > 0) throw error;
+              if (attempt >= llmMaxAttempts(error) || !llmTransient(error)) throw llmRateLimitError(error);
+              await llmWait(llmRetryWait(error, attempt), options.signal);
             }
           }
         },
@@ -693,7 +718,7 @@
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const response = await fetchAzureChat(appState.scenario.settings,
               [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
-              { stream: true, signal: controller.signal });
+              { stream: true, signal: controller.signal, maxTokens });
             const fullText = await readSSE(response, (event) => event.choices?.[0]?.delta?.content || null);
             return finishStream(fullText, 'azure_openai', azure_deployment);
           }
@@ -770,8 +795,9 @@
 
         /* Every AI call goes through here: a time limit that really cancels the request, up to
            LLM_MAX_ATTEMPTS attempts on transient errors (rate limit, overload, 5xx, network) with
-           backoff, a smaller budget for a model that accepts fewer output tokens (HTTP 400 on
-           max_tokens), and one line per attempt in the technical log. */
+           backoff (LLM_RATE_LIMIT_ATTEMPTS and longer waits on a rate limit), a smaller budget for
+           a model that accepts fewer output tokens (HTTP 400 on max_tokens), and one line per
+           attempt in the technical log. */
         async generate(channel, systemPrompt, userPrompt = null, quiet = false, maxTokens = 2000, options = {}) {
           let budget = maxTokens;
           const timeoutMs = options.timeoutMs || LLM_CALL_TIMEOUT;
@@ -790,8 +816,8 @@
               if (budget > 4096 && error?.status === 400 && /max[_ ]?(output[_ ]?)?tokens|maxOutputTokens|num_predict/i.test(String(error.message || ''))) { budget = 4096; continue; }
               // An unreadable reply (malformed JSON the repair could not fix): a new answer usually reads, once.
               if (attempt === 1 && (error instanceof SyntaxError || /malformed JSON|not valid JSON|JSON mal formé|pas un JSON valide|fehlerhaftes JSON|kein gültiges JSON/i.test(String(error?.message || '')))) continue;
-              if (attempt >= LLM_MAX_ATTEMPTS || !llmTransient(error)) throw error;
-              await llmWait(llmRetryDelay(error, attempt), options.signal);
+              if (attempt >= llmMaxAttempts(error) || !llmTransient(error)) throw llmRateLimitError(error);
+              await llmWait(llmRetryWait(error, attempt), options.signal);
             } finally {
               call.done();
             }
@@ -810,7 +836,7 @@
             if (!azure_endpoint || !azure_api_key || !azure_deployment) throw new Error(tt('Incomplete Azure OpenAI configuration.', 'Configuration Azure OpenAI incomplète.', 'Unvollständige Azure-OpenAI-Konfiguration.'));
             const response = await fetchAzureChat(appState.scenario.settings,
               [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt || 'Reply in strict JSON.' }],
-              { signal: options.signal });
+              { signal: options.signal, maxTokens });
             const data = await CrisisError.responseJson(response, { operation: 'Call Azure OpenAI', provider: 'azure_openai', model: azure_deployment });
             this.lastRawResponse = JSON.stringify(data, null, 2);
             const content = llmText(data.choices?.[0]?.message?.content);
@@ -1269,6 +1295,16 @@ Return this structure:
       /* ── Reliability helpers shared by every AI call ─────────────────────────────── */
       const LLM_CALL_TIMEOUT = 300000;
       const LLM_MAX_ATTEMPTS = 3;
+      // A rate limit (HTTP 429) lifts with the provider's per-minute window: more and longer waits.
+      const LLM_RATE_LIMIT_ATTEMPTS = 5;
+
+      function llmRateLimited(error) {
+        return Number(error?.status) === 429 && llmTransient(error);
+      }
+
+      function llmMaxAttempts(error) {
+        return llmRateLimited(error) ? LLM_RATE_LIMIT_ATTEMPTS : LLM_MAX_ATTEMPTS;
+      }
 
       /* The caller's signal, plus a time limit that aborts the request itself. */
       function llmTimedSignal(parent, ms) {
@@ -1297,12 +1333,43 @@ Return this structure:
         return !error.status && /network error|failed to fetch|networkerror|load failed|overloaded|econnreset|socket hang up|stream error/i.test(text);
       }
 
-      /* Retry-After when the provider gives it (seconds or a date), else 2 s, 6 s, 15 s, plus jitter. */
+      /* Retry-After when the provider gives it (seconds or a date) or names it in its message
+         (Azure: "retry after 6 seconds"), else 2 s, 6 s, 15 s, or 10 s, 20 s, 40 s, 60 s on a rate
+         limit, plus jitter. */
       function llmRetryDelay(error, attempt) {
+        const rateLimited = llmRateLimited(error);
         const header = String(error?.retryAfter || '').trim();
         let ms = /^\d+(\.\d+)?$/.test(header) ? Number(header) * 1000 : header ? Date.parse(header) - Date.now() : NaN;
-        if (!Number.isFinite(ms) || ms < 0) ms = [2000, 6000, 15000][attempt - 1] || 15000;
-        return Math.min(30000, ms) + Math.round(Math.random() * 800);
+        const said = /retry after (\d+) seconds?/i.exec(`${error?.message || ''} ${error?.detail || ''}`);
+        if (!Number.isFinite(ms) && said) ms = Number(said[1]) * 1000;
+        const fallback = rateLimited ? [10000, 20000, 40000, 60000] : [2000, 6000, 15000];
+        if (!Number.isFinite(ms) || ms < 0) ms = fallback[attempt - 1] || fallback[fallback.length - 1];
+        return Math.min(rateLimited ? 60000 : 30000, ms) + Math.round(Math.random() * 800);
+      }
+
+      /* The wait before the next attempt; on a rate limit the user is asked to be patient. */
+      function llmRetryWait(error, attempt) {
+        const ms = llmRetryDelay(error, attempt);
+        if (llmRateLimited(error)) {
+          const seconds = Math.ceil(ms / 1000);
+          pushToast(tt(
+            `The AI service is busy right now. Trying again in ${seconds} s, please wait…`,
+            `Le service d’IA est très sollicité en ce moment. Nouvel essai dans ${seconds} s, merci de patienter…`,
+            `Der KI-Dienst ist gerade stark ausgelastet. Neuer Versuch in ${seconds} s, bitte warten…`
+          ), 'info', Math.min(ms, 10000));
+        }
+        return ms;
+      }
+
+      /* Still rate limited after every attempt: the user is asked to wait a little before retrying,
+         rather than shown the provider's message (Azure's asks for a quota increase). */
+      function llmRateLimitError(error) {
+        if (!llmRateLimited(error)) return error;
+        return CrisisError.wrap(error, { message: tt(
+          'The AI service is still busy. Please wait a minute or two, then try again.',
+          'Le service d’IA est toujours très sollicité. Merci de patienter une à deux minutes, puis de réessayer.',
+          'Der KI-Dienst ist weiterhin stark ausgelastet. Bitte warten Sie ein bis zwei Minuten und versuchen Sie es dann erneut.'
+        ) });
       }
 
       function llmWait(ms, signal) {

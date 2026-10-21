@@ -5,7 +5,9 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'content-type',
-  'Access-Control-Max-Age': '86400'
+  'Access-Control-Max-Age': '86400',
+  // The provider's rate-limit wait, readable by the page for its retries.
+  'Access-Control-Expose-Headers': 'retry-after, retry-after-ms'
 };
 
 function isAllowedUrl(url) {
