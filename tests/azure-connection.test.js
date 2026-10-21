@@ -89,13 +89,57 @@ test('Azure HTTP failures retain provider detail, never go through the relay, an
   for (const status of [400, 401, 403, 404, 429, 500]) {
     const h = harness();
     h.run('llmRetryDelay = () => 0');
-    const transient = [429, 500].includes(status);
-    for (let i = 0; i < (transient ? 3 : 1); i++) h.replies.push(jsonResponse({ error: { message: 'Azure failure detail', code: 'ProviderCode' } }, status));
+    const attempts = { 429: 5, 500: 3 }[status] || 1;
+    for (let i = 0; i < attempts; i++) h.replies.push(jsonResponse({ error: { message: 'Azure failure detail', code: 'ProviderCode' } }, status));
     await assert.rejects(h.run('AITextGenerator.testConnection()'), error =>
-      error.status === status && error.code === 'ProviderCode' && error.message === 'Azure failure detail');
-    assert.equal(h.requests.length, transient ? 3 : 1, `HTTP ${status}`);
+      error.status === status && error.code === 'ProviderCode'
+      && (status === 429 ? /please wait/i.test(error.message) && error.detail.includes('Azure failure detail') : error.message === 'Azure failure detail'));
+    assert.equal(h.requests.length, attempts, `HTTP ${status}`);
     assert.ok(h.requests.every((request) => !String(request.url).includes('deckseeder')), 'never through the relay');
   }
+});
+
+test('Azure calls state their output limit, and switch parameter when the deployment refuses it', async () => {
+  const h = harness();
+  h.replies.push(jsonResponse());
+  await h.run("AITextGenerator.generate('test', 'system', 'user', true, 3000)");
+  assert.equal(JSON.parse(h.requests[0].init.body).max_tokens, 3000);
+  // A reasoning model only takes max_completion_tokens, with room for its reasoning; remembered.
+  h.replies.push(jsonResponse({ error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." } }, 400), jsonResponse(), jsonResponse());
+  await h.run("AITextGenerator.generate('test', 'system', 'user', true, 3000)");
+  const retried = JSON.parse(h.requests[2].init.body);
+  assert.equal(retried.max_tokens, undefined);
+  assert.equal(retried.max_completion_tokens, 3000 + 16000);
+  await h.run("AITextGenerator.generateStreaming('test', 'system', 'user', null, 2000)").catch(() => {});
+  assert.equal(JSON.parse(h.requests[3].init.body).max_completion_tokens, 2000 + 16000);
+  // Any other 400 is reported as is.
+  const other = harness();
+  other.replies.push(jsonResponse({ error: { message: 'max_tokens is too large' } }, 400));
+  await assert.rejects(other.run("AITextGenerator.generate('test', 'system', 'user', true, 3000)"), /too large/);
+  assert.equal(other.requests.length, 1);
+});
+
+test('rate limits wait as the provider asks, longer otherwise, and tell the user to be patient', () => {
+  const h = harness();
+  const toasts = [];
+  h.context.pushToast = (message) => toasts.push(message);
+  const wait = (details, attempt = 1) => h.run(`llmRetryWait(CrisisError.create(${JSON.stringify(details.message || 'x')}, ${JSON.stringify(details)}), ${attempt})`);
+  const close = (ms, expected) => ms >= expected && ms <= expected + 800;
+  assert.ok(close(wait({ status: 429, retryAfter: '2.5' }), 2500));
+  assert.ok(close(wait({ status: 429, message: 'Requests have exceeded token rate limit. Please retry after 7 seconds.' }), 7000));
+  assert.ok(close(wait({ status: 429 }, 1), 10000) && close(wait({ status: 429 }, 4), 60000));
+  assert.ok(close(wait({ status: 429, retryAfter: '300' }), 60000), 'capped at a minute');
+  assert.equal(toasts.length, 5);
+  assert.ok(toasts.every((message) => /please wait/.test(message)));
+  assert.ok(close(wait({ status: 503 }, 1), 2000));
+  assert.equal(toasts.length, 5, 'no notice for other errors');
+});
+
+test('retry-after-ms is read before retry-after', async () => {
+  const h = harness();
+  h.context.response = new Response('{}', { status: 429, headers: { 'retry-after-ms': '1500', 'retry-after': '2' } });
+  const error = await h.run('CrisisError.fromHttpResponse(response)');
+  assert.equal(error.retryAfter, '1.5');
 });
 
 test('cancellation propagates without retry and is forwarded to the relay', async () => {

@@ -84,6 +84,13 @@
           });
         }
 
+        /* Azure gives the wait in milliseconds (retry-after-ms) as well as in seconds: the finer one. */
+        function retryAfterHeader(response) {
+          const ms = Number(response.headers?.get?.('retry-after-ms'));
+          if (Number.isFinite(ms) && ms > 0) return String(ms / 1000);
+          return response.headers?.get?.('retry-after') || '';
+        }
+
         async function fromHttpResponse(response, details = {}) {
           const payload = await readResponsePayload(response);
           const status = response.status || 0;
@@ -95,7 +102,7 @@
             status,
             statusText,
             code: payloadCode(payload),
-            retryAfter: response.headers?.get?.('retry-after') || '',
+            retryAfter: retryAfterHeader(response),
             detail: payload.raw
           });
         }
@@ -108,7 +115,7 @@
               status: response.status,
               statusText: response.statusText || '',
               code: payloadCode(payload),
-              retryAfter: response.headers?.get?.('retry-after') || '',
+              retryAfter: retryAfterHeader(response),
               detail: payload.raw
             });
           }
